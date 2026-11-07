@@ -329,7 +329,9 @@ def failed_action_diagnostics(identifier, key):
                 sites.append({"file": name, "line": int(line)})
         ts_sites = []
         ts_codes = sorted(set(re.findall(r"\berror (TS[0-9]{4,5}):", log)))[:16]
-        for path, line, column, code in re.findall(r"([^\s()]+)\(([0-9]{1,5}),([0-9]{1,4})\): error (TS[0-9]{4,5}):", log):
+        ts_locations = re.findall(r"([^\s()]+)\(([0-9]{1,5}),([0-9]{1,4})\): error (TS[0-9]{4,5}):", log)
+        ts_locations += re.findall(r"([^\s:]+):([0-9]{1,5}):([0-9]{1,4}) - error (TS[0-9]{4,5}):", log)
+        for path, line, column, code in ts_locations:
             path = posixpath.normpath(path)
             candidates = [path]
             for prefix in ("third_party/", "gen/", "ui/", "tools/", "components/"):
