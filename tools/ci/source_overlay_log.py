@@ -53,6 +53,10 @@ def classify(log):
         "CPP_INCOMPLETE_TYPE": r"error:.*incomplete type",
         "CPP_UNDECLARED_IDENTIFIER": r"undeclared identifier|no member named",
         "LINKER_UNDEFINED_SYMBOL": r"undefined symbol|undefined reference",
+        "LIBNODE_RUNTIME_TEST": r"check failed: patched libnode",
+        "LIBNODE_ASSERTION": r"AssertionError|ERR_ASSERTION",
+        "LIBNODE_MODULE_MISSING": r"Cannot find module|ERR_UNKNOWN_BUILTIN_MODULE",
+        "LIBNODE_BINDING_MISSING": r"No such binding|ERR_UNKNOWN_BUILTIN_MODULE",
         "NODE_HKDF_VECTOR": r"check failed: Node crypto HKDF vector",
         "NODE_HKDF_LENGTH": r"check failed: HKDF length boundary|check failed: oversized HKDF rejected",
         "NODE_BYTE_SWAP": r"check failed: unaligned byte swap|check failed: invalid byte count|check failed: byte swap bounds",
@@ -143,6 +147,7 @@ def source_test_diagnostics(identifier, key):
         "//source:perfetto_test": "perfetto",
         "//source:v8_engine_test": "v8_engine",
         "//source:base_test": "base",
+        "//source:libnode_test": "libnode",
     }
     token, seen, count = "", set(), 0
     for _ in range(8):
