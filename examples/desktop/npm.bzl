@@ -23,13 +23,16 @@ def _impl(ctx):
 copy_to_directory(
     name = "runtime",
     srcs = glob(["node_modules/**"], exclude = ["**/BUILD", "**/BUILD.bazel"]),
-    root_paths = ["node_modules"],
+    root_paths = %s,
     include_external_repositories = ["*"],
     visibility = ["//visibility:public"],
 )
-""")
+""" % repr(["node_modules"] if ctx.attr.strip_node_modules else ["."]))
 
 npm_runtime = repository_rule(
     implementation = _impl,
-    attrs = {"lock": attr.label(mandatory = True, allow_single_file = True)},
+    attrs = {
+        "lock": attr.label(mandatory = True, allow_single_file = True),
+        "strip_node_modules": attr.bool(default = True),
+    },
 )

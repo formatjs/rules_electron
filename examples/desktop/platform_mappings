@@ -1,0 +1,4 @@
+platforms:
+  @rules_electron//platforms:buildbuddy_linux_x86_64
+    --@v8//bazel/config:v8_target_cpu=x64
+    --@v8//:v8_target_os=linux

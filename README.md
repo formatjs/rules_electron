@@ -70,8 +70,9 @@ remain unchanged; missing/removed fuses fail. `onlyLoadAppFromAsar = "on"` requi
 ASAR. macOS mutates the single-architecture framework before ad hoc signing.
 macOS ASAR assembly embeds the raw JSON header's SHA-256 in `Info.plist`;
 enable `enableEmbeddedAsarIntegrityValidation` and `onlyLoadAppFromAsar` together
-to enforce it. Enabling embedded validation requires macOS and ASAR; Windows PE
-integrity resources remain pending. See [ASAR integrity](docs/asar-integrity.md).
+to enforce it. Windows embeds the same hash in PE resources when a declared
+`windows_resource_tool` is supplied. See [ASAR integrity](docs/asar-integrity.md)
+and [Windows resources](docs/windows-resources.md).
 macOS bundle/helper metadata and ad hoc signing are supported. Release signing,
 macOS/Windows installers, icons and OS integration remain pending. Linux DEB
 packaging supplies desktop/MIME/protocol/icon metadata and declared package hooks;

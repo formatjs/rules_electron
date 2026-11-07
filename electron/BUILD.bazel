@@ -4,4 +4,5 @@ exports_files([
     "defs.bzl",
     "linux.bzl",
     "update.bzl",
+    "windows.bzl",
 ])

@@ -61,17 +61,78 @@ def display_server():
                 server.wait()
 
 
-def check_asar_integrity(app, executable, environment, directory):
-    archive = app / "Contents/Resources/app.asar"
+def windows_resources(executable):
+    import ctypes
+    from ctypes import wintypes
+
+    def bind(library, name, result, *arguments):
+        function = getattr(library, name)
+        function.restype = result
+        function.argtypes = arguments
+        return function
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    load = bind(kernel, "LoadLibraryExW", wintypes.HMODULE, wintypes.LPCWSTR, wintypes.HANDLE, wintypes.DWORD)
+    find = bind(kernel, "FindResourceW", wintypes.HANDLE, wintypes.HMODULE, wintypes.LPCWSTR, wintypes.LPCWSTR)
+    size = bind(kernel, "SizeofResource", wintypes.DWORD, wintypes.HMODULE, wintypes.HANDLE)
+    load_resource = bind(kernel, "LoadResource", wintypes.HGLOBAL, wintypes.HMODULE, wintypes.HANDLE)
+    lock = bind(kernel, "LockResource", ctypes.c_void_p, wintypes.HGLOBAL)
+    free = bind(kernel, "FreeLibrary", wintypes.BOOL, wintypes.HMODULE)
+    module = load(str(executable), None, 0x22)
+    if not module:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        resource = find(module, "ELECTRONASAR", "INTEGRITY")
+        if not resource:
+            raise ctypes.WinError(ctypes.get_last_error())
+        address = lock(load_resource(module, resource))
+        length = size(module, resource)
+        if not address or not length:
+            raise ctypes.WinError(ctypes.get_last_error())
+        integrity = json.loads(ctypes.string_at(address, length))
+    finally:
+        free(module)
+
+    version = ctypes.WinDLL("version", use_last_error=True)
+    length = bind(version, "GetFileVersionInfoSizeW", wintypes.DWORD, wintypes.LPCWSTR, ctypes.c_void_p)(str(executable), None)
+    if not length:
+        raise ctypes.WinError(ctypes.get_last_error())
+    buffer = ctypes.create_string_buffer(length)
+    get = bind(version, "GetFileVersionInfoW", wintypes.BOOL, wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p)
+    if not get(str(executable), 0, length, buffer):
+        raise ctypes.WinError(ctypes.get_last_error())
+    query = bind(version, "VerQueryValueW", wintypes.BOOL, ctypes.c_void_p, wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wintypes.UINT))
+    address, length = ctypes.c_void_p(), wintypes.UINT()
+    if not query(buffer, r"\VarFileInfo\Translation", ctypes.byref(address), ctypes.byref(length)) or length.value != 4:
+        raise RuntimeError("Expected one Windows version translation")
+    language, codepage = struct.unpack("<HH", ctypes.string_at(address, 4))
+    for key, expected in {
+        "CompanyName": "Example", "ProductName": "Sample Desktop",
+        "FileDescription": "Sample Desktop", "FileVersion": "1.0.0",
+        "ProductVersion": "1.0.0", "InternalName": "sample-desktop",
+        "OriginalFilename": "sample-desktop.exe",
+    }.items():
+        if not query(buffer, f"\\StringFileInfo\\{language:04x}{codepage:04x}\\{key}", ctypes.byref(address), ctypes.byref(length)):
+            raise RuntimeError("Missing Windows version string: " + key)
+        assert ctypes.wstring_at(address, length.value - 1) == expected, key
+    return integrity
+
+
+def check_asar_integrity(app, executable, environment, directory, target_os):
+    archive = app / ("Contents/Resources/app.asar" if target_os == "macos" else "resources/app.asar")
     with archive.open("rb") as source:
         prefix = source.read(16)
         header_size = struct.unpack_from("<I", prefix, 4)[0]
         raw_header = source.read(struct.unpack_from("<I", prefix, 12)[0])
     header = json.loads(raw_header)
-    metadata = plistlib.loads((app / "Contents/Info.plist").read_bytes())
-    assert metadata["ElectronAsarIntegrity"] == {
-        "Resources/app.asar": {"algorithm": "SHA256", "hash": hashlib.sha256(raw_header).hexdigest()},
-    }
+    digest = hashlib.sha256(raw_header).hexdigest()
+    if target_os == "macos":
+        metadata = plistlib.loads((app / "Contents/Info.plist").read_bytes())
+        assert metadata["ElectronAsarIntegrity"] == {
+            "Resources/app.asar": {"algorithm": "SHA256", "hash": digest},
+        }
+    else:
+        assert windows_resources(executable) == [{"file": "resources\\app.asar", "alg": "SHA256", "value": digest}]
     entry = header["files"]["package.json"]
     payload_offset = 8 + header_size + int(entry["offset"])
     with archive.open("rb") as source:
@@ -103,7 +164,8 @@ def check_asar_integrity(app, executable, environment, directory):
             with archive.open("r+b") as file:
                 file.seek(offset)
                 file.write(original)
-    subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
+    if target_os == "macos":
+        subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
 
 
 if __name__ == "__main__":
@@ -118,6 +180,9 @@ if __name__ == "__main__":
     host_arch = {"x86_64": "x64", "amd64": "x64", "arm64": "arm64", "aarch64": "arm64"}.get(platform.machine().lower())
     if (host_os, host_arch) != (args.target_os, args.target_arch):
         raise RuntimeError(f"Smoke requires native {args.target_os}/{args.target_arch}; host is {host_os}/{host_arch}")
+    if host_os == "windows":
+        import ctypes
+        ctypes.windll.kernel32.SetErrorMode(0x8003)
     if host_os == "linux":
         if not shutil.which("Xvfb"):
             raise RuntimeError("Install Xvfb for the Electron smoke test")
@@ -169,5 +234,5 @@ if __name__ == "__main__":
             assert report["app_version"] == args.expected_version, report
         assert report["platform"] == {"linux": "linux", "macos": "darwin", "windows": "win32"}[args.target_os], report
         print("EXAMPLE_SMOKE_OK " + json.dumps(report, ensure_ascii=True))
-        if host_os == "macos":
-            check_asar_integrity(app, executable, environment, directory)
+        if host_os in ("macos", "windows"):
+            check_asar_integrity(app, executable, environment, directory, host_os)

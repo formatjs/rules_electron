@@ -11,6 +11,40 @@ bazel_dep(name = "rules_python", version = "1.9.0")
 bazel_dep(name = "llvm", version = "0.8.26")
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "bazel_lib", version = "3.7.2")
+bazel_dep(name = "nodejs", version = "0.0.0")
+bazel_dep(name = "rules_rs", version = "0.0.86")
+
+archive_override(
+    module_name = "nodejs",
+    sha256 = "da6fd53f2b14a11b681426702bfee0d275b29924d8d8602019ab45262ece3498",
+    strip_prefix = "nodejs-a3fe5d39729df187d781271e0605d52955c4b484",
+    urls = ["https://github.com/hermeticbuild/nodejs/archive/a3fe5d39729df187d781271e0605d52955c4b484.tar.gz"],
+)
+
+nodejs = use_extension("@nodejs//nodejs:extensions.bzl", "nodejs")
+nodejs.version(version = "26.13.0")
+use_repo(nodejs, "nodejs_26_13_0", "nodejs_crates_26_13_0", "nodejs_icu_26_13_0", "nodejs_toolchains", "v8")
+
+rust = use_extension("@rules_rs//rs:rules_rust_reexported_extensions.bzl", "rust")
+rust.toolchain(
+    edition = "2021",
+    versions = ["1.92.0"],
+)
+use_repo(rust, "rust_toolchains")
+
+register_toolchains("@rust_toolchains//:all")
+
+nodejs_crates = use_extension("@rules_rs//rs:extensions.bzl", "crate")
+nodejs_crates.from_cargo(
+    name = "nodejs_crates",
+    cargo_lock = "@nodejs_crates_26_13_0//:Cargo.lock",
+    cargo_toml = "@nodejs_crates_26_13_0//:Cargo.toml",
+    platform_triples = ["x86_64-unknown-linux-gnu"],
+    use_legacy_rules_rust_platforms = True,
+)
+use_repo(nodejs_crates, "nodejs_crates")
+
+inject_repo(nodejs, "nodejs_crates")
 
 register_toolchains("@llvm//toolchain:all")
 
@@ -23,6 +57,12 @@ npm_runtime = use_repo_rule("//:npm.bzl", "npm_runtime")
 npm_runtime(
     name = "updater_npm",
     lock = "//:updater-package-lock.json",
+)
+
+npm_runtime(
+    name = "windows_tools_npm",
+    lock = "//:windows-tools-package-lock.json",
+    strip_node_modules = False,
 )
 
 http_file(

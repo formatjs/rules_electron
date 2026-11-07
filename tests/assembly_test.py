@@ -109,6 +109,8 @@ class AssemblyTest(unittest.TestCase):
             {"fuses": {"enableEmbeddedAsarIntegrityValidation": "on"}, "platform": "macos"},
             {"asar": True, "fuses": {"enableEmbeddedAsarIntegrityValidation": "on"}},
             {"asar": True, "fuses": {"enableEmbeddedAsarIntegrityValidation": "on"}, "platform": "windows"},
+            {"windows_metadata": {"CompanyName": "Example"}, "platform": "windows"},
+            {"windows_metadata": {"CompanyName": "Example"}},
         ]:
             with self.subTest(options=options), self.assertRaises(ValueError):
                 assemble(self.entries, self.root / "out", **options)

@@ -19,6 +19,10 @@ Current enforcement:
 - Assembly, ASAR, update metadata and Linux payload actions use the pinned
   execution Python toolchain. Signing uses a digest-pinned execution-platform
   rcodesign archive. Target binaries never execute during packaging.
+- Windows resource editing uses an explicit execution Node and pinned pure-JS
+  `resedit`/`pe-library` closure. The example builds that Node from
+  hermeticbuild/nodejs sources on BB. It is separate from Electron's embedded
+  Node version; adding an execution tool does not change the target runtime.
 - Runtime, source header and npm bootstrap archives carry integrity hashes.
   Lockfiles are checked in; CI rejects stale example module locks. Repository
   fetching is separate from network-disabled build actions. npm lifecycle scripts

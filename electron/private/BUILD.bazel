@@ -1,7 +1,10 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 exports_files(
-    ["linux-maintainer.sh"],
+    [
+        "linux-maintainer.sh",
+        "windows_resources.cjs",
+    ],
     visibility = ["//visibility:public"],
 )
 

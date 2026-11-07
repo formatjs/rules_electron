@@ -1,5 +1,7 @@
 """Native Electron app assembly. Runtime sources belong to the electron overlay."""
 
+load(":windows.bzl", "ElectronWindowsResourceToolInfo")
+
 ElectronAppInfo = provider(
     doc = "Assembled target app and identity for downstream packaging rules.",
     fields = {
@@ -87,6 +89,14 @@ def _app_impl(ctx):
         fail("Runtime and app target OS must match")
     if platform == "macos" and not ctx.executable.macos_signer:
         fail("macOS assembly requires an execution-platform macos_signer (rcodesign)")
+    windows_tool = ctx.attr.windows_resource_tool[ElectronWindowsResourceToolInfo] if ctx.attr.windows_resource_tool else None
+    if platform == "windows" and (ctx.attr.windows_metadata or ctx.attr.fuses.get("enableEmbeddedAsarIntegrityValidation") == "on") and not windows_tool:
+        fail("Windows metadata and embedded integrity require windows_resource_tool")
+    if platform != "windows" and (windows_tool or ctx.attr.windows_metadata):
+        fail("Windows resource options require a Windows target")
+    for key in ctx.attr.windows_metadata:
+        if key not in ["CompanyName", "FileDescription", "InternalName", "LegalCopyright", "OriginalFilename", "ProductName"]:
+            fail("Unsupported Windows metadata key: %s" % key)
     executable_name = _path(ctx.attr.executable_name)
     if "/" in executable_name:
         fail("executable_name must be a filename")
@@ -115,12 +125,18 @@ def _app_impl(ctx):
         "runtime_languages": runtime.languages,
         "product_name": ctx.attr.product_name or ctx.label.name,
         "app_id": ctx.attr.app_id,
+        "windows_metadata": ctx.attr.windows_metadata,
+        "windows_resource_tool": {
+            "node": windows_tool.node.executable.path,
+            "modules": windows_tool.modules.path,
+            "script": windows_tool.script.path,
+        } if windows_tool else None,
     }))
     ctx.actions.run(
         executable = ctx.executable._assembler,
         arguments = [manifest.path, output.path] + ([ctx.executable.macos_signer.path] if platform == "macos" else []),
-        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries]),
-        tools = [ctx.executable.macos_signer] if platform == "macos" else [],
+        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + ([windows_tool.modules, windows_tool.script] if windows_tool else [])),
+        tools = ([ctx.executable.macos_signer] if platform == "macos" else []) + ([windows_tool.node] if windows_tool else []),
         outputs = [output],
         mnemonic = "ElectronApp",
         progress_message = "Assembling Electron app %{label}",
@@ -150,6 +166,8 @@ electron_app = rule(
         "product_name": attr.string(),
         "app_id": attr.string(),
         "macos_signer": attr.label(executable = True, allow_single_file = True, cfg = "exec", doc = "Execution-platform rcodesign; required on macOS. Ad hoc signing only."),
+        "windows_resource_tool": attr.label(providers = [ElectronWindowsResourceToolInfo], cfg = "exec", doc = "Declared PE resource editor; required for Windows embedded ASAR validation or windows_metadata."),
+        "windows_metadata": attr.string_dict(doc = "Windows version strings: CompanyName, FileDescription, InternalName, LegalCopyright, OriginalFilename, ProductName."),
         "remove_package_scripts": attr.bool(default = False),
         "fuses": attr.string_dict(doc = "Electron v1 fuse names mapped to on/off; macOS edits its framework before signing. See README."),
         "_assembler": attr.label(default = Label("//electron/private:assemble"), executable = True, cfg = "exec"),

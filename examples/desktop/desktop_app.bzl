@@ -45,6 +45,14 @@ def desktop_app(name, package_json, **kwargs):
                 "onlyLoadAppFromAsar": "on",
                 "grantFileProtocolExtraPrivileges": "off",
             },
+            ":windows": {
+                "runAsNode": "off",
+                "enableNodeOptionsEnvironmentVariable": "off",
+                "enableNodeCliInspectArguments": "off",
+                "enableEmbeddedAsarIntegrityValidation": "on",
+                "onlyLoadAppFromAsar": "on",
+                "grantFileProtocolExtraPrivileges": "off",
+            },
             "//conditions:default": {
                 "runAsNode": "off",
                 "enableNodeOptionsEnvironmentVariable": "off",
@@ -52,6 +60,14 @@ def desktop_app(name, package_json, **kwargs):
                 "onlyLoadAppFromAsar": "on",
                 "grantFileProtocolExtraPrivileges": "off",
             },
+        }),
+        windows_resource_tool = select({
+            ":windows": ":windows_resource_tool",
+            "//conditions:default": None,
+        }),
+        windows_metadata = select({
+            ":windows": {"CompanyName": "Example"},
+            "//conditions:default": {},
         }),
         macos_signer = select({
             ":macos": "@rcodesign_linux_x64//:rcodesign",

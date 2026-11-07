@@ -25,8 +25,10 @@ seals the bundle. Current mutation requires one fuse sentinel, matching the
 single-architecture runtime targets. Unavailable/removed fuses fail packaging.
 Unspecified fuses retain their runtime defaults.
 
-Embedded validation currently requires macOS and `asar = True`. Windows resource
-embedding remains pending; Linux Electron does not implement this enforcement.
+Embedded validation requires `asar = True`. Windows additionally requires a
+declared [resource tool](windows-resources.md); it writes the digest as an
+`INTEGRITY` / `ELECTRONASAR` PE resource before fuse mutation and final signing.
+Linux Electron does not implement this enforcement.
 Additional ASAR files outside `app.asar` have no generated embedded digest.
 Unpacked files and extra resources are not protected by the ASAR header's
 packed-file validation; release signing and installation permissions remain
@@ -41,3 +43,8 @@ The [native macOS run](https://github.com/formatjs/rules_electron/actions/runs/4
 passed all three launches and restored signature verification against BB output.
 These checks use the pinned bootstrap Electron runtime; source-runtime launch
 remains a separate goal.
+
+Windows smoke uses native resource/version APIs to check the embedded digest and
+product/version strings, then runs the same header/payload corruption checks on
+both compiler variants per available Windows CPU host. Hosted results establish
+runtime enforcement; analysis alone does not.

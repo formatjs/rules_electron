@@ -23,8 +23,8 @@ actions:
       pull_request:
         branches: ["main"]
     resource_requests:
-      memory: 4GB
-      disk: 16GB
+      memory: 8GB
+      disk: 32GB
     steps:
       - run: |
           set -euo pipefail

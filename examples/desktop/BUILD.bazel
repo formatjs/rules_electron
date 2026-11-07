@@ -3,6 +3,7 @@ load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_electron//electron:defs.bzl", "electron_runtime")
 load("@rules_electron//electron:linux.bzl", "electron_deb")
 load("@rules_electron//electron:update.bzl", "electron_update_config", "electron_update_feed")
+load("@rules_electron//electron:windows.bzl", "electron_windows_resource_tool")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//tools:cross_bundle.bzl", "cross_smoke_bundle")
 load(":desktop_app.bzl", "desktop_app")
@@ -18,7 +19,14 @@ exports_files([
     "npm.bzl",
     "node_api.BUILD.bazel",
     "updater-package-lock.json",
+    "windows-tools-package-lock.json",
 ])
+
+electron_windows_resource_tool(
+    name = "windows_resource_tool",
+    modules = "@windows_tools_npm//:runtime",
+    node = "@nodejs_26_13_0//:node",
+)
 
 [
     config_setting(

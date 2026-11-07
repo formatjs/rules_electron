@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import shutil
+import subprocess
 
 from electron.private.asar import create_archive
 from electron.private.fuses import set_fuses
@@ -49,12 +50,17 @@ def _expand(entries):
 def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              executable_name="electron", remove_package_scripts=False,
              platform="linux", runtime_archive="", exclude_files=(),
-             product_name="Electron", app_id="", runtime_languages=()):
+             product_name="Electron", app_id="", runtime_languages=(),
+             windows_resource_tool=None, windows_metadata=None):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
     embedded_integrity = (fuses or {}).get("enableEmbeddedAsarIntegrityValidation") == "on"
-    if embedded_integrity and (not asar or platform != "macos"):
-        raise ValueError("enableEmbeddedAsarIntegrityValidation requires macOS and asar=True")
+    if embedded_integrity and (not asar or platform == "linux" or platform == "windows" and not windows_resource_tool):
+        raise ValueError("enableEmbeddedAsarIntegrityValidation requires ASAR and macOS or a Windows resource tool")
+    if platform != "windows" and (windows_resource_tool or windows_metadata):
+        raise ValueError("Windows resource options require a Windows target")
+    if windows_metadata and not windows_resource_tool:
+        raise ValueError("windows_metadata requires windows_resource_tool")
     resources = "Contents/Resources" if platform == "macos" else "resources"
     if not asar and asar_unpacked:
         raise ValueError("asar_unpacked requires asar=True")
@@ -117,6 +123,15 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
             if binary.exists():
                 raise ValueError(f"Executable destination already occupied: {name}")
             (output / original).rename(binary)
+    if windows_resource_tool:
+        subprocess.run([
+            windows_resource_tool["node"], windows_resource_tool["script"],
+            windows_resource_tool["modules"], str(binary), json.dumps({
+                "version": package["version"], "product_name": product_name,
+                "executable_name": executable_name, "header_hash": header_hash,
+                "metadata": windows_metadata or {},
+            }),
+        ], check=True)
     if fuses:
         set_fuses(binary, fuses)
     normalize(output)
