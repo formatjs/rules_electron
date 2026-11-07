@@ -28648,6 +28648,7 @@
   "third_party/wasm-api/wasm.h",
   "third_party/wuffs/src/release/c/wuffs-v0.2.c",
   "third_party/wuffs/src/release/c/wuffs-v0.3.c",
+  "third_party/x11proto/keysymdef.h",
   "third_party/zlib/LICENSE",
   "third_party/zlib/adler32.c",
   "third_party/zlib/adler32_simd.c",
