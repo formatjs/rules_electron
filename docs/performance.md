@@ -91,6 +91,16 @@ changes need separate measurements. The 50% native transfer gate remains active.
 
 ## Next measurements
 
+The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)
+produced a 1,676,779,799-byte smoke ZIP, verified before GH handoff. Four native
+hosts each download that full archive: roughly 6.71 GB of archive payload across
+those hosts, excluding the bridge and protocol overhead. All four
+[native jobs passed](https://github.com/formatjs/rules_electron/actions/runs/42352517657),
+including the public macOS release ZIP. Build host-specific transport shards on
+BB next; preserve all seven architecture checks, exact installer bytes and both
+Windows compiler variants. Linux ARM64 must remain cross-built and checked even
+without a native consumer.
+
 Repeat the same target set and product inputs with explicit cold/warm cache
 conditions. Record workflow and child build durations, analysis time, actual
 executed/cache-hit counts, executor CPU/peak memory and transfer bytes. Keep

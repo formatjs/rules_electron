@@ -41,6 +41,9 @@ Its Info.plist/helper names are adapted, framework symlinks preserved, then a
 pinned Linux rcodesign execution tool re-signs the bundle ad hoc. ZIP transport
 preserves symlink topology across remote artifact storage. Ad hoc signing is
 separate from Developer ID release signing/notarization.
+The macOS smoke handoff uses `:release_zip`, built by `electron_archive` with
+compression level 1. Its native job checks signatures after release archival.
+See [release archives](../../docs/release-archives.md).
 
 Windows addon code resolves stable Node-API exports from the current executable,
 so renaming Electron does not introduce a `node.exe` import dependency. This is a

@@ -42,5 +42,8 @@ does not establish an installed-app updater lifecycle for that format.
 BB tests cover tree and macOS ZIP inputs, changed paths/mtimes/order, executable
 modes, signed-byte preservation, framework links and rejected archive graphs.
 The desktop macOS smoke consumes this rule's ZIP, then verifies native launch,
-code signatures and ASAR integrity on its matching host. Hosted results establish
-that integration's current status.
+code signatures and ASAR integrity on its matching host.
+[33244d8 validation](https://github.com/formatjs/rules_electron/actions/runs/42352517657)
+passed BB cross-builds and all four native host jobs. ZIP/tar.gz rule outputs also
+passed the BB Linux fixture test. Native installed-app tar.gz update behavior
+remains separate from archive generation.
