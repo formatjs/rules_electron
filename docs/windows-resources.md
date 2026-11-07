@@ -27,7 +27,7 @@ rather than losing metadata silently.
 
 With ASAR enabled, the editor also embeds the raw JSON header's SHA-256 in
 `INTEGRITY` / `ELECTRONASAR`, using
-[Electron's Windows resource contract](https://www.electronjs.org/docs/latest/tutorial/asar-integrity#Windows).
+[Electron's Windows resource contract](https://www.electronjs.org/docs/latest/tutorial/asar-integrity#windows).
 Enable `enableEmbeddedAsarIntegrityValidation` and `onlyLoadAppFromAsar` to enforce
 the digest. Existing integrity entries are replaced. Resource editing removes
 the old runtime signature, then fuse mutation runs; release Authenticode must

@@ -46,7 +46,7 @@ info.setStringValues(language, {
 });
 info.outputToResourceEntries(resources.entries);
 
-resources.entries = resources.entries.filter((entry) => entry.type !== 'INTEGRITY' || entry.id !== 'ELECTRONASAR');
+resources.entries = resources.entries.filter((entry) => String(entry.type).toUpperCase() !== 'INTEGRITY' || String(entry.id).toUpperCase() !== 'ELECTRONASAR');
 if (options.header_hash) {
   resources.entries.push({
     type: 'INTEGRITY',

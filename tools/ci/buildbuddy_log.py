@@ -10,6 +10,21 @@ from buildbuddy_artifacts import NoRedirect, api_request, artifact_uri, invocati
 from profile_summary import decode_profile, summarize
 
 
+def read_log(selector, key):
+    token, tail, seen = "", "", set()
+    for _ in range(32):
+        if token in seen:
+            break
+        seen.add(token)
+        with api_request("GetLog", {"selector": selector, "page_token": token}, key) as response:
+            page = json.load(response)
+        tail = (tail + page.get("log", {}).get("contents", ""))[-24000:]
+        token = page.get("nextPageToken", "")
+        if not token:
+            break
+    return tail
+
+
 def profile_diagnostics(invocation, key, sha):
     for name in ["cross-build-profile.json.gz", "fixture-profile.json.gz"]:
         if not invocation.get("success") or not any(a.get("name", "").endswith(name) for a in invocation.get("artifacts", [])):
@@ -30,7 +45,11 @@ def profile_diagnostics(invocation, key, sha):
         if len(values) != 1 or values[0].get("commitSha") != sha or values[0].get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron":
             raise ValueError("Child invocation does not match this repository and commit")
         value = values[0]
-        builds.append({"pattern": value.get("pattern"), "duration_seconds": round(int(value.get("durationUsec", 0)) / 1000000, 3), "reported_action_count": value.get("actionCount")})
+        duration = int(value.get("durationUsec", 0))
+        builds.append({"invocation_id": child["invocationId"], "pattern": value.get("pattern"), "duration_seconds": round(duration / 1000000, 3) if duration else None, "reported_action_count": value.get("actionCount")})
+        if not duration:
+            print("Active BB child log:", child["invocationId"])
+            print(read_log({"invocation_id": child["invocationId"]}, key)[-8000:])
     print("BB child builds:", json.dumps(builds))
 
 
@@ -72,15 +91,7 @@ if __name__ == "__main__":
             or invocation.get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron"
             or invocation.get("pattern") not in ("Cross-build Electron Apps", "Test Linux assembly")):
         raise ValueError("Invocation does not match this repository's CI commit")
-    token = ""
-    tail = ""
-    for _ in range(32):
-        with api_request("GetLog", {"selector": selector, "page_token": token}, key) as response:
-            page = json.load(response)
-        tail = (tail + page.get("log", {}).get("contents", ""))[-24000:]
-        token = page.get("nextPageToken", "")
-        if not token:
-            break
+    tail = read_log(selector, key)
     print(tail)
     print("Recent Bazel elapsed seconds:", re.findall(r"Elapsed time: ([0-9.]+)s", tail))
     if invocation.get("pattern") == "Test Linux assembly":
