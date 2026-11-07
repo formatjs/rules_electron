@@ -126,8 +126,14 @@ if __name__ == "__main__":
     cache = Path(os.environ["LOCALAPPDATA"]) / "sample-desktop-updater"
     user_data = Path(os.environ["APPDATA"]) / "Sample Desktop"
     shortcuts = [known_folder(2) / "Sample Desktop.lnk", known_folder(16) / "Sample Desktop.lnk"]
-    if registry_exists(REGISTRY) or registry_exists("Software\\" + APP_ID) or registry_exists(PROTOCOL) or cache.exists() or user_data.exists() or any(p.exists() for p in shortcuts):
-        raise RuntimeError("Disposable host already contains sample state; refusing to overwrite it")
+    existing = {
+        "uninstall registry": registry_exists(REGISTRY),
+        "app registry": registry_exists("Software\\" + APP_ID),
+        "protocol": registry_exists(PROTOCOL), "updater cache": cache.exists(),
+        "app data": user_data.exists(), "shortcuts": any(p.exists() for p in shortcuts),
+    }
+    if any(existing.values()):
+        raise RuntimeError("Disposable host already contains sample state: " + ", ".join(k for k, v in existing.items() if v))
     first = packages / "nsis_v1_feed/Sample-1.0.0.exe"
     second = packages / "nsis_v2_feed/Sample-2.0.0.exe"
     with tempfile.TemporaryDirectory() as directory:

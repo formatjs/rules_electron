@@ -155,6 +155,7 @@ def check_asar_integrity(app, executable, environment, directory, target_os, exp
         try:
             result = subprocess.run([
                 str(executable), "--smoke", "--disable-gpu", "--disable-dev-shm-usage",
+                "--user-data-dir=" + str(directory / "profile"),
             ], cwd=directory, env=environment, capture_output=True, encoding="utf-8", errors="replace", timeout=30)
             assert result.returncode != 0, label
             assert diagnostics[label] in result.stderr, result.stdout + result.stderr
