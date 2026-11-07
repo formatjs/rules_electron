@@ -11,6 +11,24 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
+
+
+@contextmanager
+def relocation_directory():
+    directory = tempfile.TemporaryDirectory()
+    try:
+        yield directory.name
+    finally:
+        for attempt in range(50):
+            try:
+                directory.cleanup()
+                break
+            except PermissionError as error:
+                # Chromium children can release Windows image mappings after app exit.
+                if getattr(error, "winerror", None) not in (32, 33) or attempt == 49:
+                    raise
+                time.sleep(0.1)
 
 
 @contextmanager
@@ -55,7 +73,7 @@ if __name__ == "__main__":
             raise RuntimeError("Install Xvfb for the Electron smoke test")
         subprocess.run(["unshare", "--user", "--map-root-user", "true"], check=True)
     source = Path(args.app).resolve()
-    with tempfile.TemporaryDirectory() as directory:
+    with relocation_directory() as directory:
         directory = Path(directory)
         app = directory / "relocated desktop app"
         if host_os == "macos":
