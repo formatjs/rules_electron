@@ -85,6 +85,8 @@ def classify(log):
         "V8_SUPPORT_UNICODE": r"check failed: V8 support (?:UTF8|UTF16|Unicode|invalid UTF8)",
         "V8_SUPPORT_SIMD": r"check failed: V8 support (?:CPU target|SIMD)",
         "V8_SUPPORT_COMPRESSION": r"check failed: V8 support (?:compression|short output|corrupt compression|checksum)",
+        "PROTOBUF_WIRE": r"check failed: Protobuf (?:full|lite|unknown|malformed|truncated|invalid UTF8)",
+        "PROTOBUF_REFLECTION": r"check failed: Protobuf (?:dynamic|oneof)",
         "ASSERTION_FAILURE": r"AssertionError:",
         "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction|SIGILL|SIGTRAP|Trace/breakpoint trap|Received signal [456711]",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
@@ -109,6 +111,7 @@ def source_test_diagnostics(identifier, key):
         "//source:partition_alloc_test": "partition_alloc",
         "//source:temporal_test": "temporal",
         "//source:v8_support_test": "v8_support",
+        "//source:protobuf_test": "protobuf",
     }
     token, seen, count = "", set(), 0
     for _ in range(8):
