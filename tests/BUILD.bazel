@@ -3,6 +3,13 @@ load("@rules_python//python:defs.bzl", "py_test")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
 
 py_test(
+    name = "profile_test",
+    size = "small",
+    srcs = ["profile_test.py"],
+    deps = ["//tools/ci:profiles"],
+)
+
+py_test(
     name = "hermetic_execution_test",
     size = "small",
     srcs = ["hermetic_execution_test.py"],

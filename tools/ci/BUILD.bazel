@@ -1,6 +1,12 @@
 load("@rules_python//python:defs.bzl", "py_library")
 
 py_library(
+    name = "profiles",
+    srcs = ["profile_summary.py"],
+    visibility = ["//tests:__pkg__"],
+)
+
+py_library(
     name = "artifacts",
     srcs = [
         "buildbuddy_artifacts.py",

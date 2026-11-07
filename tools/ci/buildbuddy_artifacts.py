@@ -31,7 +31,7 @@ def invocation_id(url):
     return match.group(1)
 
 
-def artifact_uri(response, expected_sha):
+def artifact_uri(response, expected_sha, artifact_name=ARCHIVE, max_bytes=MAX_BYTES):
     invocations = response.get("invocation", [])
     if len(invocations) != 1:
         raise ValueError("Expected one BuildBuddy invocation")
@@ -42,15 +42,15 @@ def artifact_uri(response, expected_sha):
             or not invocation.get("success")
             or invocation.get("invocationStatus") != "COMPLETE_INVOCATION_STATUS"):
         raise ValueError("Expected successful matrix invocation for this repository and commit")
-    artifacts = [a for a in invocation.get("artifacts", []) if PurePosixPath(a.get("name", "")).name == ARCHIVE]
+    artifacts = [a for a in invocation.get("artifacts", []) if PurePosixPath(a.get("name", "")).name == artifact_name]
     if len(artifacts) != 1:
-        raise ValueError("Expected one Electron matrix artifact")
+        raise ValueError("Expected one matching BuildBuddy artifact")
     uri = artifacts[0].get("uri", "")
     parsed = urllib.parse.urlsplit(uri)
     if parsed.scheme != "bytestream" or parsed.netloc not in ("formatjs.buildbuddy.io", "remote.buildbuddy.io"):
         raise ValueError("Unexpected artifact store")
     match = re.search(r"/blobs/([0-9a-f]{64})/(\d+)$", parsed.path)
-    if not match or int(match[2]) > MAX_BYTES:
+    if not match or int(match[2]) > max_bytes:
         raise ValueError("Invalid artifact digest or size")
     return uri, match[1], int(match[2])
 
