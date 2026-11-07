@@ -1,0 +1,17 @@
+package(default_visibility = ["//visibility:public"])
+
+[
+    platform(
+        name = name,
+        parents = ["@llvm//platforms:" + parent],
+    )
+    for name, parent in [
+        ("linux_x86_64", "linux_x86_64"),
+        ("linux_aarch64", "linux_aarch64"),
+        ("macos_aarch64", "macos_aarch64"),
+        ("windows_x86_64_gnullvm", "windows_x86_64"),
+        ("windows_aarch64_gnullvm", "windows_aarch64"),
+        ("windows_x86_64_msvc", "windows_x86_64_msvc"),
+        ("windows_aarch64_msvc", "windows_aarch64_msvc"),
+    ]
+]

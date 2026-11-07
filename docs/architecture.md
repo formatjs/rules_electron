@@ -1,6 +1,6 @@
 # RFC: native Electron app rules
 
-Status: Linux assembly, ASAR and generic runtime smoke implemented; source runtime integration pending.
+Status: seven-variant app matrix and native smoke handoff implemented; hosted execution and source runtime integration pending.
 
 Build Electron apps as Bazel targets. Cache compiler, generator, app and packaging
 actions independently. Build inputs come from declared files and pinned repositories.
@@ -17,7 +17,7 @@ flowchart TD
     Adapter --> App[electron_app]
     AppFiles --> App
     Native[Target Node-API addon + helper] --> App
-    App --> Directory[Linux unpacked directory]
+    App --> Directory[Target app directory / macOS app ZIP]
     Directory --> Future[Future archives / installers]
 ```
 
@@ -57,9 +57,10 @@ Linux v1 fuse settings patch only the output binary, leaving source inputs alone
 Unknown, removed, truncated or ambiguous fuse wires fail. Only supported settings
 are exposed; embedded ASAR integrity/signature metadata is outside this feature.
 
-Linux layout only. macOS needs framework/helper app structure and signing order;
-Windows needs executable metadata and installer support. These need dedicated
-layout implementations. Setuid sandbox packaging also needs a format that carries
+Linux/Windows directory layouts and macOS framework/helper bundle structure have
+dedicated assembly paths. macOS re-signs ad hoc using an execution-platform tool
+and returns a ZIP preserving framework symlinks. Release signing, Windows PE
+metadata and platform installers still need dedicated rules. Setuid sandbox packaging also needs a format that carries
 installation permissions. Native runtime smoke must use a working sandbox.
 
 ## Source integration
@@ -113,5 +114,14 @@ budgets do not estimate Chromium compilation costs.
 1. Complete upstream Linux source runtime; consume stable outputs here.
 2. Run the existing real sandboxed relocation smoke against that source runtime.
 3. Add OS metadata/protocol registration and distribution archives.
-4. Add macOS/Windows layouts and Electron-specific Node/V8 addon toolchains.
+4. Complete native execution validation and Electron-specific Node/V8 addon toolchains.
 5. Add signing/notarization and installers with explicit release credentials.
+
+## Seven-variant CI handoff
+
+The example split transition builds Linux x86_64/ARM64, macOS ARM64 and Windows
+x86_64/ARM64 with GNU LLVM and MSVC. BB Linux executes every build action. An
+aggregate artifact verifies binary architectures before GH downloads it using
+validated invocation metadata and a read-only BB key. GH hosted native runners
+only execute smoke; Linux ARM64 remains cross-build only. This follows the public
+formatjs/formatjs artifact handoff. See [packaging parity](packaging-parity.md).

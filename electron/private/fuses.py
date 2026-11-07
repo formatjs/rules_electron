@@ -1,4 +1,4 @@
-"""Linux v1 fuse wire, defined by electron/fuses src/{config,constants}.ts."""
+"""Linux/Windows v1 fuse wire, defined by electron/fuses src/{config,constants}.ts."""
 
 import mmap
 
@@ -19,7 +19,7 @@ def set_fuses(binary, settings):
     with binary.open("r+b") as file, mmap.mmap(file.fileno(), 0) as data:
         sentinel = data.find(SENTINEL)
         if sentinel < 0 or data.find(SENTINEL, sentinel + 1) >= 0:
-            raise ValueError("Expected one Linux Electron fuse sentinel")
+            raise ValueError("Expected one Electron fuse sentinel")
         start = sentinel + len(SENTINEL)
         if start + 2 > len(data) or data[start] != 1:
             raise ValueError("Expected Electron fuse wire version 1")

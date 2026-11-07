@@ -1,2 +1,8 @@
 import %workspace%/../../tools/buildbuddy.bazelrc
 try-import %workspace%/.bazelrc.user
+
+# Use only on hosts licensed for the Visual Studio runtime.
+build:msvc-license --repo_env=BAZEL_MSVC_RUNTIME_VISUAL_STUDIO_EULA=1
+build:msvc --config=msvc-license
+build:msvc --features=-dynamic_link_msvcrt
+build:msvc --features=static_link_msvcrt

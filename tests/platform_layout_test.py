@@ -1,0 +1,101 @@
+import json
+from pathlib import Path
+import plistlib
+import stat
+import tempfile
+import unittest
+from zipfile import ZipFile, ZipInfo
+
+from electron.private.assemble import assemble
+from electron.private.mac_sign import archive_bundle
+from electron.private.runtime import extract_runtime
+
+
+class PlatformLayoutTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.package = self.root / "package.json"
+        self.package.write_text(json.dumps({"main": "main.cjs", "version": "1.2.3"}))
+        self.main = self.root / "main.cjs"
+        self.main.write_text("module.exports = 42")
+
+    def manifest(self, prefix):
+        return [
+            {"source": str(self.package), "path": prefix + "/app/package.json"},
+            {"source": str(self.main), "path": prefix + "/app/main.cjs"},
+        ]
+
+    def test_windows_executable_and_asar_layout(self):
+        runtime = self.root / "windows.zip"
+        with ZipFile(runtime, "w") as archive:
+            archive.writestr("electron.exe", b"runtime")
+            archive.writestr("icudtl.dat", b"data")
+            archive.writestr("locales/en-US.pak", b"english")
+            archive.writestr("locales/fr.pak", b"french")
+        output = self.root / "app"
+        assemble(self.manifest("resources"), output, platform="windows", runtime_archive=runtime,
+                 executable_name="sample", asar=True, runtime_languages=["en-US"])
+        self.assertEqual((output / "sample.exe").read_bytes(), b"runtime")
+        self.assertFalse((output / "electron.exe").exists())
+        self.assertTrue((output / "resources/app.asar").is_file())
+        self.assertEqual((output / "locales/en-US.pak").read_bytes(), b"english")
+        self.assertFalse((output / "locales/fr.pak").exists())
+
+    def test_macos_branding_framework_links_and_archive(self):
+        runtime = self.root / "macos.zip"
+        with ZipFile(runtime, "w") as archive:
+            for name in ["", "/Frameworks/Electron Helper.app"]:
+                prefix = "Electron.app/Contents" + name + ("/Contents" if name else "")
+                executable = "Electron Helper" if name else "Electron"
+                archive.writestr(prefix + "/Info.plist", plistlib.dumps({"CFBundleExecutable": executable}))
+                archive.writestr(prefix + "/MacOS/" + executable, b"runtime")
+            prefix = "Electron.app/Contents/Frameworks/Foo.framework/"
+            archive.writestr(prefix + "Versions/A/Foo", b"framework")
+            for path, target in [("Versions/Current", "A"), ("Foo", "Versions/Current/Foo")]:
+                info = ZipInfo(prefix + path)
+                info.create_system = 3
+                info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(info, target)
+            archive.writestr("LICENSE", b"runtime license")
+        output = self.root / "app"
+        assemble(self.manifest("Contents/Resources"), output, platform="macos", runtime_archive=runtime,
+                 executable_name="sample", product_name="Sample Desktop", app_id="org.example.sample", asar=True)
+        metadata = plistlib.loads((output / "Contents/Info.plist").read_bytes())
+        self.assertEqual(metadata["CFBundleIdentifier"], "org.example.sample")
+        self.assertEqual(metadata["CFBundleVersion"], "1.2.3")
+        self.assertEqual((output / "Contents/MacOS/sample").read_bytes(), b"runtime")
+        self.assertTrue((output / "Contents/Frameworks/Sample Desktop Helper.app/Contents/MacOS/Sample Desktop Helper").exists())
+        link = output / "Contents/Frameworks/Foo.framework/Foo"
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(link.read_bytes(), b"framework")
+        self.assertEqual((output / "Contents/Resources/runtime-licenses/LICENSE").read_bytes(), b"runtime license")
+        first, second = self.root / "one.zip", self.root / "two.zip"
+        archive_bundle(output, first, "Sample Desktop.app")
+        archive_bundle(output, second, "Sample Desktop.app")
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        with ZipFile(first) as archive:
+            info = archive.getinfo("Sample Desktop.app/Contents/Frameworks/Foo.framework/Foo")
+            self.assertTrue(stat.S_ISLNK(info.external_attr >> 16))
+            self.assertEqual(archive.read(info), b"Versions/Current/Foo")
+
+    def test_runtime_archive_rejects_traversal_links_and_collisions(self):
+        for name, target, occupied in [
+            ("../escape", None, {}),
+            ("link", "../escape", {}),
+            ("parent", None, {Path("parent/child"): {}}),
+            ("resources/app.asar", None, {}),
+        ]:
+            archive = self.root / "invalid.zip"
+            with ZipFile(archive, "w") as zip:
+                info = ZipInfo(name)
+                if target:
+                    info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                zip.writestr(info, target or b"data")
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                extract_runtime(archive, self.root / "out", "windows", (), occupied)
+
+
+if __name__ == "__main__":
+    unittest.main()

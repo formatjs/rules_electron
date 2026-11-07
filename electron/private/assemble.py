@@ -7,6 +7,7 @@ import shutil
 
 from electron.private.asar import create_archive
 from electron.private.fuses import set_fuses
+from electron.private.runtime import brand_macos, extract_runtime, normalize
 
 
 def relative_path(value):
@@ -46,7 +47,14 @@ def _expand(entries):
 
 
 def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
-             executable_name="electron", remove_package_scripts=False):
+             executable_name="electron", remove_package_scripts=False,
+             platform="linux", runtime_archive="", exclude_files=(),
+             product_name="Electron", app_id="", runtime_languages=()):
+    if platform not in ("linux", "macos", "windows"):
+        raise ValueError(f"Unsupported platform: {platform}")
+    if platform == "macos" and fuses:
+        raise ValueError("macOS fuse mutation is not supported")
+    resources = "Contents/Resources" if platform == "macos" else "resources"
     if not asar and asar_unpacked:
         raise ValueError("asar_unpacked requires asar=True")
     if not asar and (fuses or {}).get("onlyLoadAppFromAsar") == "on":
@@ -54,7 +62,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     paths = {}
     for entry in _expand(entries):
         path = relative_path(entry["path"])
-        if path.parts[:2] in [("resources", "app.asar"), ("resources", "app.asar.unpacked")]:
+        if path.is_relative_to(resources + "/app.asar") or path.is_relative_to(resources + "/app.asar.unpacked"):
             raise ValueError("Runtime app.asar would shadow resources/app")
         if path in paths:
             raise ValueError(f"Duplicate destination: {path}")
@@ -63,13 +71,13 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         if any(parent in paths for parent in path.parents):
             raise ValueError(f"File/directory collision: {path}")
 
-    package_path = PurePosixPath("resources/app/package.json")
+    package_path = PurePosixPath(resources + "/app/package.json")
     package = json.loads(Path(paths[package_path]["source"]).read_text())
     main = relative_path(package.get("main", "index.js"))
-    if PurePosixPath("resources/app") / main not in paths:
+    if PurePosixPath(resources + "/app") / main not in paths:
         raise ValueError(f"App entry point missing: {main}")
 
-    app_prefix = PurePosixPath("resources/app")
+    app_prefix = PurePosixPath(resources + "/app")
     app_files = {str(path.relative_to(app_prefix)): path for path in paths if path.is_relative_to(app_prefix)}
     for name in asar_unpacked:
         relative_path(name)
@@ -78,6 +86,8 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
 
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
+    if runtime_archive:
+        extract_runtime(runtime_archive, output, platform, exclude_files, paths, runtime_languages)
     for path, entry in sorted(paths.items()):
         source = Path(entry["source"])
         destination = output / str(path)
@@ -85,20 +95,26 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         shutil.copyfile(source, destination)
         executable = entry.get("executable", False) or bool(source.stat().st_mode & 0o111)
         destination.chmod(0o755 if executable else 0o644)
+    if platform == "macos":
+        brand_macos(output, executable_name, product_name, app_id, package["version"])
+        binary = output / "Contents/MacOS" / executable_name
+    else:
+        original = "electron.exe" if platform == "windows" else "electron"
+        name = executable_name + (".exe" if platform == "windows" and not executable_name.endswith(".exe") else "")
+        binary = output / name
+        if original != name:
+            if binary.exists():
+                raise ValueError(f"Executable destination already occupied: {name}")
+            (output / original).rename(binary)
     if remove_package_scripts:
         package.pop("scripts", None)
         (output / package_path).write_text(json.dumps(package, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
         (output / package_path).chmod(0o644)
     if asar:
-        archive = output / "resources/app.asar"
+        archive = output / resources / "app.asar"
         create_archive({name: output / path for name, path in app_files.items()}, archive, asar_unpacked)
         archive.chmod(0o644)
         shutil.rmtree(output / app_prefix)
     if fuses:
-        set_fuses(output / str(relative_path(executable_name)), fuses)
-    for directory, _, files in os.walk(output):
-        for name in files:
-            os.utime(Path(directory) / name, (0, 0))
-    for directory, _, _ in os.walk(output, topdown=False):
-        Path(directory).chmod(0o755)
-        os.utime(directory, (0, 0))
+        set_fuses(binary, fuses)
+    normalize(output)

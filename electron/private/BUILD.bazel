@@ -6,6 +6,8 @@ py_library(
         "asar.py",
         "assemble.py",
         "fuses.py",
+        "mac_sign.py",
+        "runtime.py",
     ],
     visibility = ["//tests:__pkg__"],
 )

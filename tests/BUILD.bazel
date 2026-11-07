@@ -2,6 +2,20 @@ load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
 
+py_test(
+    name = "artifact_handoff_test",
+    size = "small",
+    srcs = ["artifact_handoff_test.py"],
+    deps = ["//tools/ci:artifacts"],
+)
+
+py_test(
+    name = "platform_layout_test",
+    size = "small",
+    srcs = ["platform_layout_test.py"],
+    deps = ["//electron/private:assembly"],
+)
+
 cc_binary(
     name = "runtime_probe",
     srcs = ["fixtures/runtime.cc"],

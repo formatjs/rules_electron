@@ -48,7 +48,8 @@ app.whenReady().then(async () => {
     if (!ownFrame(event)) throw new Error('Unexpected IPC sender');
     const settings = JSON.parse(fs.readFileSync(path.join(process.resourcesPath, 'config/settings.json')));
     const asset = require('./assets/message.json');
-    const helper = JSON.parse(execFileSync(path.join(process.resourcesPath, 'native/helper'), { encoding: 'utf8' }));
+    const helperName = process.platform === 'win32' ? 'helper.exe' : 'helper';
+    const helper = JSON.parse(execFileSync(path.join(process.resourcesPath, 'native', helperName), { encoding: 'utf8' }));
     return {
       message: settings.message,
       asset: asset.message,
@@ -71,7 +72,7 @@ app.whenReady().then(async () => {
       const environment = await window.webContents.executeJavaScript('({node: typeof require, bridge: typeof window.desktop.read, ...window.desktop.environment})');
       assert.deepEqual(environment, { node: 'undefined', bridge: 'function', sandboxed: true, contextIsolated: true });
       clearTimeout(watchdog);
-      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify({ ...result, architecture: process.arch }));
+      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify({ ...result, architecture: process.arch, platform: process.platform }));
       app.quit();
     } catch (error) {
       console.error(error);

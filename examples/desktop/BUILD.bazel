@@ -1,27 +1,59 @@
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
-load("@rules_electron//electron:defs.bzl", "electron_app")
+load("@rules_electron//electron:defs.bzl", "electron_app", "electron_runtime")
 load("@rules_python//python:defs.bzl", "py_test")
+load("//tools:cross_bundle.bzl", "cross_smoke_bundle")
+
+cross_smoke_bundle(
+    name = "cross_build_smoke_bundle",
+    app = ":app",
+)
 
 exports_files([
     "bootstrap_runtime.BUILD.bazel",
     "node_api.BUILD.bazel",
 ])
 
+[
+    config_setting(
+        name = name,
+        constraint_values = [
+            "@platforms//os:" + os,
+            "@platforms//cpu:" + cpu,
+        ],
+    )
+    for name, os, cpu in [
+        ("linux_x64", "linux", "x86_64"),
+        ("linux_arm64", "linux", "aarch64"),
+        ("macos_arm64", "osx", "aarch64"),
+        ("windows_x64", "windows", "x86_64"),
+        ("windows_arm64", "windows", "aarch64"),
+    ]
+]
+
 config_setting(
-    name = "linux_x64",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
-    ],
+    name = "windows",
+    constraint_values = ["@platforms//os:windows"],
 )
 
 config_setting(
-    name = "linux_arm64",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:aarch64",
-    ],
+    name = "macos",
+    constraint_values = ["@platforms//os:osx"],
+)
+
+electron_runtime(
+    name = "archive_runtime",
+    archive = select({
+        ":macos_arm64": "@bootstrap_electron_macos_arm64//file",
+        ":windows_x64": "@bootstrap_electron_windows_x64//file",
+        ":windows_arm64": "@bootstrap_electron_windows_arm64//file",
+    }),
+    languages = ["en-US"],
+    target_compatible_with = select({
+        ":macos": [],
+        ":windows": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
 )
 
 alias(
@@ -29,6 +61,9 @@ alias(
     actual = select({
         ":linux_x64": "@bootstrap_electron_linux_x64//:runtime",
         ":linux_arm64": "@bootstrap_electron_linux_arm64//:runtime",
+        ":macos_arm64": ":archive_runtime",
+        ":windows_x64": ":archive_runtime",
+        ":windows_arm64": ":archive_runtime",
     }),
 )
 
@@ -37,7 +72,6 @@ cc_binary(
     srcs = ["native/helper.cc"],
 )
 
-# Stand-in for a bundler's declared directory output.
 copy_to_directory(
     name = "renderer_bundle",
     srcs = [
@@ -51,9 +85,34 @@ copy_to_directory(
 cc_binary(
     name = "addon.node",
     srcs = ["native/addon.c"],
+    linkopts = select({
+        ":macos": ["-Wl,-undefined,dynamic_lookup"],
+        "//conditions:default": [],
+    }),
     linkshared = True,
-    target_compatible_with = ["@platforms//os:linux"],
+    target_compatible_with = select({
+        ":windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
     deps = ["@node_api_headers//:headers"],
+)
+
+cc_binary(
+    name = "addon.dll",
+    srcs = ["native/addon.c"],
+    linkshared = True,
+    target_compatible_with = ["@platforms//os:windows"],
+    deps = [
+        "@node_api_headers//:headers",
+    ],
+)
+
+alias(
+    name = "native_addon",
+    actual = select({
+        ":windows": ":addon.dll",
+        "//conditions:default": ":addon.node",
+    }),
 )
 
 electron_app(
@@ -65,42 +124,64 @@ electron_app(
         "assets/message.json": "assets/message.json",
         "native-package/index.cjs": "node_modules/example-native/index.cjs",
         "native-package/package.json": "node_modules/example-native/package.json",
-        ":addon.node": "node_modules/example-native/addon.node",
+        ":native_addon": "node_modules/example-native/addon.node",
     },
+    app_id = "org.example.sample-desktop",
     asar = True,
     asar_unpacked = ["node_modules/example-native/addon.node"],
     executable_name = "sample-desktop",
-    extra_resources = {
-        ":helper": "native/helper",
-        "resources/settings.json": "config/settings.json",
-    },
-    fuses = {
-        "runAsNode": "off",
-        "enableNodeOptionsEnvironmentVariable": "off",
-        "enableNodeCliInspectArguments": "off",
-        "onlyLoadAppFromAsar": "on",
-        "grantFileProtocolExtraPrivileges": "off",
-    },
+    extra_resources = select({
+        ":windows": {
+            ":helper": "native/helper.exe",
+            "resources/settings.json": "config/settings.json",
+        },
+        "//conditions:default": {
+            ":helper": "native/helper",
+            "resources/settings.json": "config/settings.json",
+        },
+    }),
+    fuses = select({
+        ":macos": {},
+        "//conditions:default": {
+            "runAsNode": "off",
+            "enableNodeOptionsEnvironmentVariable": "off",
+            "enableNodeCliInspectArguments": "off",
+            "onlyLoadAppFromAsar": "on",
+            "grantFileProtocolExtraPrivileges": "off",
+        },
+    }),
+    macos_signer = select({
+        ":macos": "@rcodesign_linux_x64//:rcodesign",
+        "//conditions:default": None,
+    }),
     package_json = "package.json",
+    product_name = "Sample Desktop",
     remove_package_scripts = True,
     runtime = ":runtime",
-    target_compatible_with = ["@platforms//os:linux"],
 )
 
-# Runs a real Chromium sandbox and display server on the test host.
+# Execute only on a matching native OS/CPU host; build actions remain remote.
 py_test(
     name = "smoke_test",
     size = "medium",
-    srcs = ["tools/smoke_test.py"],
-    args = ["$(rootpath :app)"],
+    srcs = ["//tools:smoke_test.py"],
+    args = [
+        "$(rootpath :app)",
+        "--target-os",
+    ] + select({
+        ":macos": ["macos"],
+        ":windows": ["windows"],
+        "//conditions:default": ["linux"],
+    }) + ["--target-arch"] + select({
+        ":windows_arm64": ["arm64"],
+        ":linux_arm64": ["arm64"],
+        ":macos_arm64": ["arm64"],
+        "//conditions:default": ["x64"],
+    }),
     data = [":app"],
-    main = "tools/smoke_test.py",
+    main = "//tools:smoke_test.py",
     tags = [
         "local",
         "manual",
-    ],
-    target_compatible_with = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
     ],
 )

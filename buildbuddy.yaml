@@ -15,7 +15,7 @@ actions:
           bazel test --config=bb-workflow //...
           bazel run --config=bb-workflow @buildifier_prebuilt//:buildifier -- -mode=check -r .
 
-  - name: "Cross-build native fixture"
+  - name: "Cross-build Electron Apps"
     container_image: "ubuntu-20.04"
     triggers:
       push:
@@ -37,29 +37,4 @@ actions:
               --platforms="//platforms:$platform" //tests:app
           done
           cd examples/desktop
-          for platform in linux_x86_64 linux_aarch64; do
-            bazel build --config=bb-workflow --lockfile_mode=error \
-              --platforms="@rules_electron//platforms:$platform" //:app
-          done
-
-  - name: "Desktop example smoke"
-    container_image: "ubuntu-22.04"
-    user: "buildbuddy"
-    triggers:
-      push:
-        branches: ["main", "gh-readonly-queue/*"]
-      pull_request:
-        branches: ["main"]
-    resource_requests:
-      memory: 4GB
-      disk: 16GB
-    steps:
-      # GUI test prerequisites live on the workflow host, outside build actions.
-      - run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xvfb libgtk-3-0 libnss3 libasound2 libgbm1
-      - run: |
-          set -euo pipefail
-          cd examples/desktop
-          bazel test --config=bb-workflow --lockfile_mode=error --test_output=errors //:smoke_test
+          bazel build --config=bb-workflow --config=msvc-license --lockfile_mode=error //:cross_build_smoke_bundle

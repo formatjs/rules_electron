@@ -1,93 +1,94 @@
 # Desktop packaging migration example
 
-Independent consumer workspace. Generic app, written from scratch: main/preload,
-renderer directory output, Node-API addon, native helper and extra resources.
+Independent consumer, written from scratch. Main/preload/renderer, generated
+bundle directory, stable Node-API addon, native helper, extra resources and ASAR.
 No private application code or configuration belongs here.
 
-**Temporary bootstrap:** this example explicitly downloads official Electron
-39.0.0 Linux archives, pinned by SHA256. They are test runtimes, not source-built
-Electron or a production release recommendation. The source overlay does not yet
-link a complete runtime. Once available, replace `:runtime` with an
-`electron_runtime` adapter over those outputs. App content and packaging rules
-remain the same. The core rules never download Electron.
+## Build matrix
 
-## Build and run
+All compiler, generator, assembly and ad hoc signing actions run on BB Linux
+x86_64 workers. One split-transition target produces all seven variants:
 
-From this directory:
+| Target | Native smoke host |
+| --- | --- |
+| Linux x86_64 GNU | GH Ubuntu x64 |
+| Linux ARM64 GNU | Cross-build only |
+| macOS ARM64 | GH macOS ARM64 |
+| Windows x86_64 GNU LLVM | GH Windows x64 |
+| Windows ARM64 GNU LLVM | GH Windows ARM64 |
+| Windows x86_64 MSVC | GH Windows x64 |
+| Windows ARM64 MSVC | GH Windows ARM64 |
+
+The hosted BB workflow runs this from the example workspace:
 
 ```sh
-bazel build //:app
-./bazel-bin/app/sample-desktop
-
-# Actual renderer/preload/addon/helper smoke after relocation.
-bazel test //:smoke_test --test_output=errors
-
-# Cross-compile addon and helper; assemble the ARM64 runtime without executing it.
-bazel build --platforms=@rules_electron//platforms:linux_aarch64 //:app
+bazel build --config=bb-workflow --config=msvc-license --lockfile_mode=error //:cross_build_smoke_bundle
 ```
 
-Linux x86_64 smoke requires Xvfb, GTK3/NSS/ALSA/GBM libraries and unprivileged user
-namespaces. On Ubuntu 22.04, install `xvfb libgtk-3-0 libnss3 libasound2 libgbm1`.
-Test creates its own display with no TCP listener; no xauth or existing desktop
-session required. It never passes `--no-sandbox`. The example excludes the setuid
-sandbox helper and uses Chromium's user-namespace sandbox. Unsupported host
-sandbox settings fail the smoke rather than reducing isolation.
+MSVC configuration acknowledges the Visual Studio runtime license and must only
+run on licensed hosts. Target transitions select static CRT and disable the
+default dynamic CRT feature for MSVC variants. The aggregate output checks the
+runtime, addon and helper binary architectures before packaging.
 
-Output layout:
+**Temporary bootstrap:** official Electron 39.0.0 distributions are SHA256-pinned
+test runtimes, not source-built Electron or a production release recommendation.
+Replace `:runtime` with source-built `electron_runtime` outputs once the overlay
+links a full runtime. Core rules never download Electron themselves.
 
-```text
-app/
-  sample-desktop
-  ...Electron runtime libraries, data, notices, en-US locale...
-  resources/
-    app.asar
-    app.asar.unpacked/node_modules/example-native/addon.node
-    native/helper
-    config/settings.json
-```
+Linux and Windows produce directory artifacts, with executable `sample-desktop`
+or `sample-desktop.exe`. macOS produces `app.zip` containing `Sample Desktop.app`.
+Its Info.plist/helper names are adapted, framework symlinks preserved, then a
+pinned Linux rcodesign execution tool re-signs the bundle ad hoc. ZIP transport
+preserves symlink topology across remote artifact storage. Ad hoc signing is
+separate from Developer ID release signing/notarization.
 
-The renderer uses a secure custom protocol with a fixed resource allowlist.
-Preload exposes a small IPC bridge; renderer Node integration stays disabled.
-The addon builds from C using stable Node-API headers and LLVM, without node-gyp.
-Other addons using Node/V8 internals need matching Electron headers and ABI flags.
-The bundled `example-native` package is local example code, not an npm download.
+Windows addon code resolves stable Node-API exports from the current executable,
+so renaming Electron does not introduce a `node.exe` import dependency. This is a
+small example addon, not a general native-addon rebuild toolchain. Addons using
+Node/V8 internals still need Electron-specific headers, flags and ABI handling.
+
+## Native smoke handoff
+
+BB publishes `electron-cross-smoke.zip`. The GH workflow follows
+[formatjs/formatjs](https://github.com/formatjs/formatjs/blob/main/.github/workflows/native-smoke.yml):
+trusted downloader checks repository, exact commit, successful invocation, artifact
+store, size and SHA256. GH jobs only download/extract/execute; they run no builds.
+Both Windows compiler variants execute on each matching CPU host.
+
+Configure hosted BuildBuddy workflows and make the organization's read-only
+`BUILDBUDDY_RO_PUBLIC_KEY` secret available to this repository's GH Actions.
+Automatic smoke starts from BB's `Cross-build Electron Apps` success status.
+The workflow also accepts manual invocation URL + commit inputs. No tokens belong
+in source or chat.
+
+Smoke rejects mismatched host OS/CPU. It relocates the app under a path containing
+spaces, verifies ASAR main/preload/renderer loading, Unicode assets, native addon,
+helper execution, extra resources and stripped package scripts. Renderer sandbox
+and context isolation must remain enabled. Linux/Windows check hardened startup
+environment fuses; macOS verifies its ad hoc bundle with native codesign.
+
+Linux smoke needs Xvfb, GTK3/NSS/ALSA/GBM and unprivileged user namespaces. The GH
+Ubuntu job installs host test dependencies. No smoke uses `--no-sandbox` or CPU
+emulation. Windows and macOS smoke require native desktop-capable runners.
 
 ## Replacing electron-builder
 
-| electron-builder input | Native Bazel equivalent here |
+| Input | Rule equivalent |
 | --- | --- |
-| `electronDist` | Explicit target-platform `electron_runtime` dependency |
-| `directories.app`, `files` | `package_json`, explicit `srcs` mappings |
-| Bundled main/preload/renderer | Existing Bazel outputs; renderer demonstrates a tree artifact |
-| `asar` | `asar = True`, deterministic header/content and SHA256 block hashes |
-| `asarUnpack` | `asar_unpacked`, exact declared app-relative files |
-| `extraResources` | `extra_resources`, outside ASAR with preserved executable modes |
+| `electronDist` | Explicit runtime files or ZIP dependency |
+| `directories.app`, `files` | `package_json`, `srcs` file/tree mappings |
+| `asar`, `asarUnpack` | `asar`, exact `asar_unpacked` paths |
+| `extraResources` | `extra_resources` outside ASAR |
 | `executableName` | `executable_name` |
-| `removePackageScripts` | `remove_package_scripts = True` |
-| `electronFuses` | Explicit supported Linux v1 `fuses` settings |
-| Native dependency rebuild | Separate target-platform Bazel C/C++ actions |
-| `--dir` | Relocatable directory artifact |
+| `removePackageScripts` | `remove_package_scripts` |
+| `electronFuses` | Supported Linux/Windows v1 settings |
+| Native dependency rebuild | Target-platform C/C++ actions |
 
-Source maps are omitted by the declared input list. For bundler tree artifacts,
-configure the bundler to exclude maps before packaging; every regular file in
-the tree is shipped. Directory symlinks and overlapping destinations fail; regular
-file symlink leaves from Bazel input projection are copied as regular files. No
-package-manager discovery, dependency installation or lifecycle scripts run.
+All regular files in mapped trees ship. Configure bundlers to omit source maps;
+glob filtering is not implemented. Directory symlinks inside app/resource trees
+are rejected; runtime ZIP symlinks are validated and retained. The sample custom
+renderer protocol is separate from OS-level protocol registration.
 
-Smoke checks the packaged app under a path containing spaces, after copying away
-from Bazel outputs. It loads ASAR main/preload/renderer content, reads Unicode
-assets, loads the unpacked native addon, executes the helper and reads extra
-resources. It verifies package scripts were removed, renderer sandbox/context
-isolation are enabled and Node startup environment overrides are ignored.
-
-## Remaining release work
-
-This establishes Linux unpacked-app behavior. Source-built runtime integration,
-OS-level protocol registration, desktop metadata/icons, installers, update feeds,
-macOS frameworks/helper apps, signing/notarization and Windows resources remain.
-No production migration or cross-platform release parity is claimed.
-
-BuildBuddy builds both Linux architectures and runs the real x86_64 smoke on its
-workflow host; assembly and compilation use remote execution. Root fixture
-cross-link checks still cover five platforms. Hosted workflow results are separate
-from local validation.
+See [parity checklist](../../docs/packaging-parity.md) for release gaps. Graph
+analysis, cross-build success and native smoke success are separate evidence;
+hosted results must establish the latter two for newly added variants.

@@ -1,10 +1,10 @@
 # rules_electron
 
-Native Bazel rules for Electron app assembly. Linux unpacked apps first.
+Native Bazel rules for Electron app assembly: Linux/Windows directories and macOS app ZIPs.
 
 Current implementation assembles declared runtime files and app files into a
 relocatable directory, with optional ASAR, unpacked native modules, extra resources
-and Linux fuse settings. No electron-builder, package installation, network access,
+and Linux/Windows fuse settings. No electron-builder, package installation, network access,
 GN or Ninja runs inside assembly actions. Python runs through a pinned Bazel
 execution toolchain; the target runtime is never executed during assembly.
 
@@ -61,12 +61,13 @@ trees beneath `resources/`, outside the app archive. Set `remove_package_scripts
 to drop development scripts from the packaged manifest. No implicit file filtering
 or native-addon rebuilds occur.
 
-Linux v1 `fuses` accepts `"on"`/`"off"` for `runAsNode`,
+Linux/Windows v1 `fuses` accepts `"on"`/`"off"` for `runAsNode`,
 `enableNodeOptionsEnvironmentVariable`, `enableNodeCliInspectArguments`,
 `onlyLoadAppFromAsar` and `grantFileProtocolExtraPrivileges`. Unspecified fuses
 remain unchanged; missing/removed fuses fail. `onlyLoadAppFromAsar = "on"` requires
 ASAR. This does not embed platform ASAR-integrity metadata or sign binaries.
-Installers, OS branding and signing remain pending.
+macOS bundle/helper metadata and ad hoc signing are supported. Release signing,
+installers, icons and OS integration remain pending.
 
 ## Development
 
@@ -85,9 +86,12 @@ or Electron support for those platforms. Runtime/build tools remain in target/ex
 configurations respectively. Configure BuildBuddy credentials through CI settings
 or `.bazelrc.user`; credentials do not belong in source.
 
-The independent desktop workspace also cross-builds its real app/addon/helper for
-both Linux architectures. A separate BuildBuddy action installs GUI test host
-dependencies, then runs its sandboxed x86_64 relocation smoke locally on the
-workflow host. Build actions still use remote execution.
+The independent desktop workspace declares all seven target/compiler variants.
+BB Linux workers compile and assemble an aggregate artifact; GH hosted Linux x64,
+macOS ARM64 and Windows x64/ARM64 jobs execute native smoke without building.
+Linux ARM64 is cross-build only. macOS uses a pinned execution-platform rcodesign
+for ad hoc signing and deterministic ZIP transport of framework symlinks. Runtime
+ZIP adapters accept `archive`, optional `exclude_files`, and non-macOS `languages`.
+See the [parity checklist](docs/packaging-parity.md) for remaining release work.
 
 See [design](docs/architecture.md) for source integration and next milestones.
