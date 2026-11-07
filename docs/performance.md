@@ -364,6 +364,22 @@ passed in 3.879 seconds with zero tracked remote executions. Native BB-host test
 work, cache hits and repository fetching are outside these remote totals. These
 numbers establish cost for this added closure; they do not establish a speedup.
 
+## Fontconfig/fontations baseline
+
+[6652729 source phase](https://formatjs.buildbuddy.io/invocation/b42db66f-63c0-4e3c-90c0-63831a5ac5ae)
+passed in 24.318 seconds with zero tracked remote executions. Its
+[source-test phase](https://formatjs.buildbuddy.io/invocation/f3ea78af-53ef-48ef-ab48-9330c2896356)
+passed in 27.225 seconds with 62 tracked remote executions, 42.734 CPU-seconds,
+673,886,208 bytes maximum per-action peak memory, 1,134,581,765 worker input bytes
+and 43,389,152 worker output bytes. The new closure adds 29 C units, nine Rust
+library/proc-macro targets, one build script and two native bindgen boundaries.
+
+The test phase includes required compilation/link dependencies; runtime tests
+execute on the matching native BB host. Resource totals exclude host test work,
+cache hits and repository fetching. Concurrent consumer/cache reuse prevent a
+cold-build claim; worker-input totals do not measure unique source bytes. Keep
+this transport baseline when evaluating Rust/header input reduction.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

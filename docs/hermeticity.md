@@ -149,6 +149,15 @@ data and font bytes, without host font discovery.
 [854f6a7 consumer](https://formatjs.buildbuddy.io/invocation/be89e67e-3a77-4364-917e-c8cd913427de)
 passed the Linux AMD64 runtime checks.
 
+Fontconfig uses its exact DEPS commit and checksum-pinned archive, preserving
+`ENABLE_FONTATIONS`. Two native bindgen boundaries retain original C-header
+filters and configuration; capture records and verifies the original bindgen
+configuration source hash. Existing Rust allocator/prelude/toolchains and crate
+records stay shared. The [6652729 consumer](https://formatjs.buildbuddy.io/invocation/d79263f3-c960-4981-acad-338cd9b5d328)
+passed native fontations scanning/matching with explicit empty configuration,
+declared font bytes and invalid-input rejection. New closure action audit
+found no CMake or foreign-cc actions. Full source profiles remain Linux AMD64.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.

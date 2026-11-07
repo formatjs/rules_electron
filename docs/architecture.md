@@ -128,7 +128,16 @@ passed ligature shaping, glyph rasterization, RGBA PNG roundtrip and XML/XPath
 checks. Source archives use exact DEPS commits plus checksums; ICU and zlib stay
 shared. This profile remains Linux AMD64.
 
-Remaining source work includes Fontconfig/Rust fontations, complete Skia,
+Fontconfig now adds its full captured 29 C units plus original Rust fontations:
+nine new library/proc-macro targets and one libc build script. The shared Rust
+profile contains 95 targets from 71 packages; previous 85 Rust records remain
+unchanged. Native pinned bindgen preserves the original C headers and Rust
+wrapper. [6652729 consumer](https://formatjs.buildbuddy.io/invocation/d79263f3-c960-4981-acad-338cd9b5d328)
+passed explicit-config fontations scanning, metadata/charset checks, native
+matching, invalid-font rejection and inventory cleanup using only declared
+font bytes. Native BCR libuuid supplies UUID support.
+
+Remaining source work includes complete Skia,
 electron_lib, Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
