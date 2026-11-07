@@ -307,5 +307,22 @@
     "preserved bytes",
     "realloc alignment",
     "requested alignment"
+  ],
+  "gpu_transport": [
+    "bucket limit preserves existing bytes",
+    "client token decoded by native service",
+    "declared Dawn source revision",
+    "invalid GPU preferences preserve state",
+    "malformed command arity rejected",
+    "native GPU preferences IPC roundtrip",
+    "native Viz subsampled plane layout",
+    "native command bucket allocation",
+    "native transfer buffer allocation",
+    "original shader cache protobuf roundtrip",
+    "overflowing shared range rejected without mutation",
+    "parse error observer and first error retained",
+    "released transfer handle rejected",
+    "shared transfer bytes decoded into bucket",
+    "truncated shader cache protobuf rejected"
   ]
 }
