@@ -111,6 +111,12 @@ asset discovery. [5bca689 consumer](https://formatjs.buildbuddy.io/invocation/93
 passed actual Unicode, native callback, sandboxed allocation and shutdown checks
 after the fresh network-denial gate. This full profile remains Linux AMD64.
 
+IPCz projects all captured source sets from the same Chromium archive, preserving
+original flags and shared Base/Abseil inputs. Its synchronous reference driver
+is test-only. [c961819 consumer](https://formatjs.buildbuddy.io/invocation/3afbac9c-cb0e-4445-a246-0b6d499ffcde)
+passed real portal transfer and binary messaging after the fresh network-denial
+gate; no separate IPCz source revision or standalone shim enters the build.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.

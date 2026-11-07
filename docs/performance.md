@@ -293,6 +293,25 @@ Shared Base/V8/ICU targets and separate header groups preserve existing compiler
 inputs. These phases shared caches with earlier attempts and the consumer
 workflow; they do not establish a cold-build baseline or speedup.
 
+## IPCz baseline
+
+The [c961819 source phase](https://formatjs.buildbuddy.io/invocation/8bd20248-90fc-4497-851d-e57664e37a60)
+passed in 21.754 seconds. BB tracked 39 remote executions, 44.859 CPU-seconds,
+246,165,504 bytes maximum per-action peak memory, 24,693,779 worker input bytes
+and 6,615,552 worker output bytes. The 36-unit core reuses existing Base/Abseil
+targets; their compiler inputs stay unchanged.
+
+The [source-test phase](https://formatjs.buildbuddy.io/invocation/030f953c-f7c2-4f4a-925d-7b2bba82e83b)
+passed in 6.381 seconds, including actual IPCz broker/client messaging and portal
+transfer. Six remote executions used 3.089 CPU-seconds, 150,171,648 bytes maximum
+per-action peak memory, 220,098,002 worker input bytes and 6,945,670 worker output
+bytes. The original four-unit reference driver is test-only. Runtime probes run
+on the matching BB Linux host, outside those remote-resource totals. The separate
+fresh network gate executed two actions.
+
+Concurrent component/consumer workflows shared caches. These phase totals exclude
+cache hits and repository fetching; they do not establish a cold-build speedup.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

@@ -98,6 +98,13 @@ passed native callbacks, invalid argument rejection, sandboxed ArrayBuffers,
 collection/shutdown and Unicode conversion/segmentation. Both ICU and generated
 V8 startup data are declared files. This full profile remains Linux AMD64.
 
+Chromium-configured IPCz adds its complete 36-unit core, shared Base/Abseil and
+original source-set linkage. [c961819 consumer](https://formatjs.buildbuddy.io/invocation/3afbac9c-cb0e-4445-a246-0b6d499ffcde)
+passed broker/client binary messaging, receive-capacity errors, portal transfer,
+peer closure and cleanup with the original synchronous reference driver. No
+standalone IPCz implementation replaces Chromium's configuration. Mojo still
+needs its core/platform libraries and matching networking closure.
+
 Remaining source work includes electron_lib, matching Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
