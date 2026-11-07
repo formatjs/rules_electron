@@ -415,6 +415,23 @@ fonts and codecs keep their native implementations. Compare equivalent cache
 conditions before reducing header contexts or parallelizing generators; preserve
 all GPU build configuration, runtime probes and generator byte checks.
 
+## Native gfx baseline
+
+[8f46f43 source phase](https://formatjs.buildbuddy.io/invocation/95f5aea4-975a-4764-9fe1-f2591bc1b5e1)
+passed in 72.211 seconds: 343 tracked remote executions, 380.113 CPU-seconds,
+448,229,376 bytes maximum per-action peak memory, 101,844,385 worker input bytes
+and 519,593 worker output bytes. The closure adds 351 native units, 34 original
+generator actions and four literal GN metadata targets. Earlier attempts and
+the concurrent consumer supply cache reuse; this is not a cold-build baseline.
+
+The [source-test phase](https://formatjs.buildbuddy.io/invocation/ac6cc149-8ad6-474b-9b53-17d8a9f818fa)
+passed in 8.708 seconds: one tracked remote execution, 0.822 CPU-seconds,
+331,943,936 bytes maximum per-action peak memory, 225,665,891 worker input bytes
+and 10,209,479 worker output bytes. Native BB-host test execution, cache hits and
+repository fetching remain outside these remote totals. Large shared header
+contexts are a candidate for measurement once full Electron links; preserve
+original configuration, assembly includes and generator reproducibility checks.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

@@ -178,6 +178,16 @@ implementations. [3d7a5d1 consumer](https://formatjs.buildbuddy.io/invocation/eb
 passed CPU raster/SkSL and Rust PNG/fontations probes; hardware GPU contexts
 remain untested. The source action audit found no CMake or foreign-cc actions.
 
+Native gfx preserves exact DEPS Git revisions for libdrm/libsync and uses
+Electron-patched Crashpad from Chromium. All 34 original Python generators keep
+changed-path/mtime byte checks; four literal GN metadata targets retain captured
+bytes. Original cc export headers and Crashpad assembly includes are declared.
+Shared-profile capture reproduces validated Skia metadata byte-for-byte.
+[8f46f43 consumer](https://formatjs.buildbuddy.io/invocation/e3112348-39f6-47a5-8001-f72d63c0f457)
+passed real gfx runtime checks. No CMake/foreign-cc actions matched the gfx action
+audit. Full source profiles remain Linux AMD64; GPU/device and Crashpad process
+execution remain untested.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.

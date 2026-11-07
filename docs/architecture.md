@@ -155,6 +155,14 @@ passed exact SkSL raster pixels, invalid shaders, Rust PNG RGBA/alpha, invalid
 PNG/font input and original fontations glyph paths through CXX. This complete
 profile remains Linux AMD64; hardware GPU contexts remain untested.
 
+The matching gfx closure adds 351 C/C++/assembly units, 34 original generators
+and four literal GN metadata targets. Native libdrm/libsync, Electron-patched
+Crashpad, geometry/range wire types, image codecs, memory buffers and binary data
+packs retain original sources. Skia/Mojo/fonts/Base providers remain shared.
+[8f46f43 consumer](https://formatjs.buildbuddy.io/invocation/e3112348-39f6-47a5-8001-f72d63c0f457)
+passed transform/wire, PNG alpha, buffer layout/overflow, DRM metadata and
+deterministic binary data-pack checks. This full profile remains Linux AMD64.
+
 Remaining source work includes electron_lib, Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
