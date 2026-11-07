@@ -10,6 +10,7 @@ load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool"
 electron_nsis_tool(
     name = "nsis_tool",
     compiler = ":execution_makensis",
+    archive_compiler = ":execution_7zip",
     data = ":declared_nsisdir",
 )
 
@@ -29,8 +30,12 @@ host installation, package manager, Wine or electron-builder runs in build
 actions. Compiler, stubs and plugins are bootstrap tools, not source builds in
 this repository. A source-built compiler can use the same tool provider.
 
-Default compression is solid zlib. `compression` also accepts `bzip2`, `lzma`
-and `off`; LZMA uses an 8 MiB dictionary. `verify_reproducible = True` compiles a
+Default `7z` compression uses independent per-file LZMA2 streams, a 1 MiB
+dictionary, two fixed encoder threads and no stored timestamps. NSIS stores the
+archive without recompressing it and extracts through the declared plugin.
+BCJ2 streams are rejected; extracted file sizes are checked before success.
+`compression` also accepts solid `zlib`, `bzip2`, `lzma` and `off`; the direct
+NSIS LZMA mode uses an 8 MiB dictionary. `verify_reproducible = True` compiles a
 second installer using a copied input tree with changed mtimes and different
 source/output paths, then requires byte equality. The example enables this on
 v1 installers for both CPUs. No clock value enters generated scripts; file date
@@ -74,6 +79,7 @@ whether this contract passes.
 
 Initial [x64/ARM64 lifecycle validation](https://github.com/formatjs/rules_electron/actions/runs/42349256215)
 passed install, hash rejection, upgrade, v2 launch and uninstall. Fixed-size maps
-reused only 64 KiB of roughly 125 MB installers. Content-defined maps and a
-stronger native reuse threshold address that measured gap; their hosted result
-must establish the performance effect.
+reused only 64 KiB of roughly 125 MB installers. Content-defined maps alone still
+downloaded roughly 97%: the solid compressed stream also changed throughout.
+Independent payload streams and a stronger native reuse threshold address that
+measured gap; their hosted result must establish the performance effect.

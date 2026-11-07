@@ -149,6 +149,8 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
                   'File "/oname=payload.7z" ' + q(str(Path(payload_archive).resolve())),
                   'IfErrors failed_install', 'SetOutPath "$INSTDIR"',
                   'Nsis7z::Extract "$PLUGINSDIR\\payload.7z"']
+        for name in sorted(directories):
+            lines += ['CreateDirectory "$INSTDIR\\' + name.replace('/', '\\').replace('$', '$$') + '"', 'IfErrors failed_install']
         for name, path in files:
             target = '"$INSTDIR\\' + name.replace('/', '\\').replace('$', '$$') + '"'
             lines += ['ClearErrors', 'FileOpen $0 ' + target + ' r', 'IfErrors failed_install',
@@ -254,6 +256,10 @@ def build_installer(manifest, output, script):
             subprocess.run([archive_compiler, 'a', '-t7z', '-mx=5', '-m0=LZMA2:d1m', '-mmt=2', '-ms=off',
                             '-mtc=off', '-mta=off', '-mtm=off', '-scsUTF-8', '-bd', '-bso0', '-bsp0',
                             str(payload), '@' + str(listing)], cwd=app, env=environment, check=True)
+            methods = subprocess.run([archive_compiler, 'l', '-slt', str(payload)], env=environment,
+                                     capture_output=True, text=True, check=True).stdout
+            if any('BCJ2' in line for line in methods.splitlines() if line.startswith('Method = ')):
+                raise ValueError('NSIS extraction does not support BCJ2 payload streams')
         text = installer_script(output=destination, **options)
         script_path.write_text(text, encoding='utf-8')
         subprocess.run([compiler, '-NOCONFIG', '-V2', str(script_path.resolve())], env=environment, check=True)
