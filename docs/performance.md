@@ -130,6 +130,18 @@ and [consumer](https://formatjs.buildbuddy.io/invocation/9432732a-4bff-49ce-8cba
 passed with this split. No client-download byte delta or latency speedup has
 been measured yet.
 
+The successful [PartitionAlloc archive-build phase](https://formatjs.buildbuddy.io/invocation/962f5cb8-f930-48e9-b317-f8b4a1cb83b4)
+recorded 68 remote executions, 25.229 CPU-seconds, 144,891,904 bytes maximum
+per-action peak memory, 8,629,907 worker input bytes and 7,254,225 worker output
+bytes. Archive inputs remained unchanged through the fully passing 5b7f211
+validation. These are build-phase observations, excluding cache hits,
+repository fetching and native tests; concurrent workflows shared cached work.
+They do not establish a controlled cold-build cost.
+
+V8's repository BUILD template now delegates to a stable source macro. New
+generator/library rule definitions can change without editing that template.
+No fetch-time reduction has been measured.
+
 ## Smoke transport
 
 The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)

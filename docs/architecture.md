@@ -65,40 +65,32 @@ installation permissions. Native runtime smoke must use a working sandbox.
 
 ## Source integration
 
-The [Electron overlay](https://github.com/formatjs/electron/blob/main/docs/source-build.md)
-currently builds source components, including builtin JS, webpack bundles,
-patched libuv/BoringSSL, V8 base/task libraries and eleven pinned Node support
-libraries (136 C/C++ units plus Postject headers, with a linked behavior probe). The
-[source and consumer builds at 9395812](https://github.com/formatjs/electron/commit/9395812)
-passed on BB.
+Source-built Electron remains unlinked. The
+[Electron overlay](https://github.com/formatjs/electron/blob/main/docs/source-build.md)
+builds builtin JS, webpack bundles, patched libuv/BoringSSL, V8 base/task libraries
+and eleven Node support libraries (136 C/C++ units plus Postject headers).
 
-The captured Torque compiler now builds 25 C++ units and generates all 1,250
-outputs from 246 inputs. Its
-[93dc092 component and consumer checks](https://github.com/formatjs/electron/commit/93dc092)
-passed on BB, including byte equality across different paths/input mtimes,
-engine/Intl/Temporal interfaces and malformed-input diagnostics. Generation uses
-declared execution tools and stable relative source locations.
+Its captured V8 generators include 25-unit Torque, translating 246 inputs into
+1,250 outputs, the three-unit bytecode handler tool, and regexp special-case
+generation. Probes check path/mtime reproducibility, engine/Intl/Temporal
+interfaces, every bytecode operand scale and Unicode regexp case-folding
+boundaries. Declared execution tools preserve Electron's captured profile.
 
-The [1395ef7 bytecode producer](https://github.com/formatjs/electron/commit/1395ef7)
-also passed component/consumer tests on BB. Its three captured C++ units generate
-the real handler header; a compiled probe checks every opcode and operand scale,
-including dense wide dispatch and generation under different output paths.
+Matching ICU builds 445 common/i18n C++ units. Its probe disables ambient data
+loading, rejects corrupt data and checks declared-data Unicode/locale behavior.
+PartitionAlloc adds 66 captured C++ units and the real malloc shim. Its probe
+checks heap ownership, alignment, zeroing, realloc preservation, failure returns
+and arithmetic-overflow traps. Both
+[5b7f211 components](https://formatjs.buildbuddy.io/invocation/c0fd8cbf-f5c9-4994-a64a-c6dec789b10b)
+and [BCR consumer](https://formatjs.buildbuddy.io/invocation/e50d8faf-cf75-49ac-8891-b726caf63db5)
+passed. These new profiles remain Linux AMD64.
 
-The [fe62420 ICU profile](https://github.com/formatjs/electron/commit/fe62420)
-adds all 445 captured common/i18n C++ units from Chromium's matching ICU revision.
-Component and BCR consumer tests passed with ambient data-file access disabled:
-the probe rejects corrupt data, loads declared `icudtl.dat`, then checks Unicode,
-collation, locale formatting and Chromium word breaks. This source profile is
-Linux AMD64; full V8/Electron linking remains pending.
-
-Its next pieces include patched libnode, electron_lib, matching Chromium content
-dependencies, snapshots and runtime packaging. The
-[Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser,
-but its runtime cannot substitute for Electron's patched closure.
-
-Chromium's V8 overlay uses the same `bb294624702efbb17691b642333f06bf5108e600`
-base revision as Electron. Its complete native rules can inform the next V8
-integration; Electron's V8 patch and captured engine configuration still apply.
+Remaining source work includes the Temporal Rust allocator bridge/closure,
+full V8 and snapshots, patched libnode, electron_lib, matching Chromium content
+libraries and runtime packaging. The
+[Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
+and uses the same V8 base revision, `bb294624702efbb17691b642333f06bf5108e600`.
+Reuse its native machinery with Electron's patches and captured configuration.
 
 Once linking works, upstream should expose executable plus complete runtime file
 outputs with stable relative paths. Adapt those outputs here; run a relocated
