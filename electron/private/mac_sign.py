@@ -12,14 +12,8 @@ def sign_bundle(signer, source, output):
     config = output.parent / "rcodesign.toml"
     config.write_text("")
     subprocess.run([signer, "sign", "--config-file", str(config), str(source), str(output)], check=True)
-    magic = {b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xce\xfa\xed\xfe", b"\xfe\xed\xfa\xce", b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca"}
-    for path in sorted(output.rglob("*")):
-        if path.is_symlink() or not path.is_file():
-            continue
-        with path.open("rb") as file:
-            is_macho = file.read(4) in magic
-        if is_macho:
-            subprocess.run([signer, "verify", "--config-file", str(config), str(path)], check=True)
+    # rcodesign 0.29 verify requires CMS; ad hoc signatures have none.
+    # Native smoke checks the full bundle with Apple's codesign instead.
     normalize(output)
 
 
