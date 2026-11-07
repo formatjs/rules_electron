@@ -1,6 +1,7 @@
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_electron//electron:defs.bzl", "electron_app", "electron_runtime")
+load("@rules_electron//electron:update.bzl", "electron_update_config", "electron_update_feed")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//tools:cross_bundle.bzl", "cross_smoke_bundle")
 
@@ -11,7 +12,9 @@ cross_smoke_bundle(
 
 exports_files([
     "bootstrap_runtime.BUILD.bazel",
+    "npm.bzl",
     "node_api.BUILD.bazel",
+    "updater-package-lock.json",
 ])
 
 [
@@ -125,6 +128,8 @@ electron_app(
         "native-package/index.cjs": "node_modules/example-native/index.cjs",
         "native-package/package.json": "node_modules/example-native/package.json",
         ":native_addon": "node_modules/example-native/addon.node",
+        "@updater_npm//:runtime": "node_modules",
+        "updater-smoke.cjs": "updater-smoke.cjs",
     },
     app_id = "org.example.sample-desktop",
     asar = True,
@@ -133,10 +138,14 @@ electron_app(
     extra_resources = select({
         ":windows": {
             ":helper": "native/helper.exe",
+            ":update_config": "app-update.yml",
+            ":update_smoke_feed": "update-smoke-feed",
             "resources/settings.json": "config/settings.json",
         },
         "//conditions:default": {
             ":helper": "native/helper",
+            ":update_config": "app-update.yml",
+            ":update_smoke_feed": "update-smoke-feed",
             "resources/settings.json": "config/settings.json",
         },
     }),
@@ -158,6 +167,32 @@ electron_app(
     product_name = "Sample Desktop",
     remove_package_scripts = True,
     runtime = ":runtime",
+)
+
+electron_update_config(
+    name = "update_config",
+    cache_name = "sample-desktop-updater",
+    url = "https://updates.example.invalid/sample-desktop/",
+)
+
+# Metadata fixture only. No installer execution or installability claim.
+electron_update_feed(
+    name = "update_smoke_feed",
+    architecture = select({
+        ":windows_arm64": "arm64",
+        ":linux_arm64": "arm64",
+        ":macos_arm64": "arm64",
+        "//conditions:default": "x64",
+    }),
+    artifacts = {"assets/message.json": "Sample-2.0.0.zip"},
+    blockmaps = ["Sample-2.0.0.zip"],
+    package_json = "update-package.json",
+    platform = select({
+        ":windows": "windows",
+        ":macos": "macos",
+        "//conditions:default": "linux",
+    }),
+    release_date = "2026-01-02T03:04:05Z",
 )
 
 # Execute only on a matching native OS/CPU host; build actions remain remote.

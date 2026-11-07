@@ -3,6 +3,13 @@ load("@rules_python//python:defs.bzl", "py_test")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
 
 py_test(
+    name = "update_test",
+    size = "small",
+    srcs = ["update_test.py"],
+    deps = ["//electron/private:updates"],
+)
+
+py_test(
     name = "artifact_handoff_test",
     size = "small",
     srcs = ["artifact_handoff_test.py"],

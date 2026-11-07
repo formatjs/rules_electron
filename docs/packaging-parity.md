@@ -23,6 +23,7 @@ electron-builder replacement.
 | Installers | None | Linux packages/hooks, macOS disk images, Windows APPX/MSIX and host-specific packaging |
 | Prepackaged release stages | Internal ad hoc Mac signing stage only | Public sign/package-prepackaged APIs and verification policy |
 | Distribution archives | Mac app ZIP and aggregate smoke ZIP | General release archive API and compression controls |
+| electron-updater | Generic feed config, channel manifests, final-artifact SHA-512/size, external v2 blockmaps; example client discovery/planning smoke | Installable update targets, installed-app upgrades, embedded AppImage maps, provider/publishing adapters |
 | Native smoke | Scripts/workflows for four native host types | Hosted results establish actual execution coverage |
 
 All compilation, generators, assembly and ad hoc signing run on BB Linux
@@ -33,3 +34,4 @@ variants run on the corresponding CPU host. No emulation substitutes for smoke.
 
 Keep this checklist current as each contract gains a concrete rule and meaningful
 validation. Production migration requires closing the relevant release gaps.
+See the [release plan](release-plan.md) and [updater contract](updates.md).

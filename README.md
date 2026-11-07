@@ -95,3 +95,9 @@ ZIP adapters accept `archive`, optional `exclude_files`, and non-macOS `language
 See the [parity checklist](docs/packaging-parity.md) for remaining release work.
 
 See [design](docs/architecture.md) for source integration and next milestones.
+
+`electron_update_config` and `electron_update_feed` generate electron-updater
+configuration, channel manifests, SHA-512 metadata and external blockmaps from
+declared final artifacts. See [updater support](docs/updates.md) and the
+[release parity plan](docs/release-plan.md). Installer execution and release
+signing remain pending.

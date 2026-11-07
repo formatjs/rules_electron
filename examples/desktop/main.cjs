@@ -71,8 +71,9 @@ app.whenReady().then(async () => {
       assert.equal(require('./package.json').scripts, undefined);
       const environment = await window.webContents.executeJavaScript('({node: typeof require, bridge: typeof window.desktop.read, ...window.desktop.environment})');
       assert.deepEqual(environment, { node: 'undefined', bridge: 'function', sandboxed: true, contextIsolated: true });
+      const update_version = await require('./updater-smoke.cjs')();
       clearTimeout(watchdog);
-      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify({ ...result, architecture: process.arch, platform: process.platform }));
+      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify({ ...result, architecture: process.arch, platform: process.platform, update_version }));
       app.quit();
     } catch (error) {
       console.error(error);
