@@ -492,6 +492,20 @@ also passed real native UI and generated-module probes. Cache hits, repository
 fetching and BB-host test execution remain outside those remote resource totals.
 These phases establish coverage and resource observations, not a measured speedup.
 
+## Native Ozone/GL source build
+
+The [a6469fa source aggregate](https://formatjs.buildbuddy.io/invocation/85cc8487-a8b3-48f3-88d9-3bd196ca972e)
+built in 222.281 seconds: 1,656 tracked executions, 3,802.833 CPU seconds,
+1,538,920,448-byte maximum action peak memory, 2,675,640,958 input download bytes
+and 88,897,171 output upload bytes. Earlier attempts and concurrent consumers
+had populated caches; this is a mixed-cache build, not a cold baseline.
+
+This covers compilation and declared generators for 2,147 native Ozone/GL units.
+The subsequent test phase stopped at link because desktop SDK dependencies need
+newer glibc symbols than the default target supplied. Upstream now selects its
+explicit glibc 2.31 source platform; runtime validation remains pending. These
+figures establish build coverage, not graphics correctness or a speedup.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

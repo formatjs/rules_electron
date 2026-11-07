@@ -242,3 +242,19 @@ RBE uses top-level output downloads and compressed cache transport, matching
 hermeticbuild/nodejs. Intermediate compiler outputs stay remote; required
 top-level artifacts and runfiles remain available. This changes transport, not
 product bytes. Subsequent profiles must establish the actual performance effect.
+
+## Ozone/GL source boundary
+
+The upstream source aggregate now builds the captured Ozone/GL closure with native
+Bazel rules and original generators. Fifteen source repositories retain exact
+Chromium/Dawn DEPS commits. Native generator data is declared in the execution
+configuration beside the original executable; its C++ executable provider stays
+intact. Khronos headers and compression include paths retain their original
+source ownership. The action audit found no CMake/foreign-cc actions.
+
+Desktop ABI libraries remain 53 declared files from 49 checksum-pinned Debian
+packages matching the Chromium SDK. They are SDK inputs, not source-built library
+claims. The Linux desktop source platform selects glibc 2.31 to match that SDK;
+BB runtime validation of this alignment remains pending. The graphics test keeps
+explicit SwiftShader selection and real framebuffer byte checks. Full Electron
+and non-Linux source profiles remain unfinished.
