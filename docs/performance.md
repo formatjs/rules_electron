@@ -89,6 +89,19 @@ x64 downloaded 776,681 of 96,256,700 bytes (0.81%); ARM64 downloaded 760,466 of
 uninstall. These measure the sample's version-only update; broader application
 changes need separate measurements. The 50% native transfer gate remains active.
 
+## Source dependency baseline
+
+The Electron overlay's [4cdf425 BCR consumer build](https://formatjs.buildbuddy.io/invocation/70b2e6ab-afea-43f1-9eeb-4b68b00000b5)
+validated eight newly declared Node dependencies (133 C/C++ units) and their
+linked behavior probe. BB recorded 135 completed remote executions, 35.390
+CPU-seconds and maximum per-action peak memory of 224,722,944 bytes. Worker
+input/output totals were 125,700,457 and 8,663,136 bytes. These cover the consumer
+source-test build, not only the eight libraries; local test execution on the BB
+workflow host and repository fetching are outside those remote-action totals.
+The parallel component build reused cached work, so these observations do not
+establish a controlled cold-build duration or speedup. Full Electron linking and
+its performance baseline remain pending.
+
 ## Smoke transport
 
 The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)
