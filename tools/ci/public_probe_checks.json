@@ -223,5 +223,23 @@
     "singular transform rejection",
     "truncated geometry wire rejection",
     "truncated resource pack rejection"
+  ],
+  "display": [
+    "absent selected screen wire rejection",
+    "declared ICU argument",
+    "declared ICU initialization",
+    "default feature initialization",
+    "duplicate screen identifier wire rejection",
+    "empty screen list wire rejection",
+    "native Mojo IO thread",
+    "native display enumeration and observer additions",
+    "native display removal notification",
+    "native display rotation update notification",
+    "native multi-screen wire roundtrip",
+    "native primary display transition",
+    "original display wire roundtrip",
+    "scaled native and logical display coordinates",
+    "truncated display wire rejection",
+    "work area insets survive scale and relocation"
   ]
 }
