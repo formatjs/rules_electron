@@ -334,6 +334,22 @@ Mojo headers totaling 1,411,365 source bytes. Other consumers retain their neede
 headers. These are declared source inventories; transfer costs depend on shared
 inputs and worker caches. No build-latency speedup is claimed.
 
+## Typed Mojo baseline
+
+[8261fc4 source phase](https://formatjs.buildbuddy.io/invocation/21e101da-a6db-4da6-9fa2-451eb147674c)
+passed in 42.804 seconds: 256 tracked remote executions, 288.125 CPU-seconds,
+428,400,640 bytes maximum per-action peak memory, 391,488,475 worker input bytes
+and 36,153,170 worker output bytes. The added closure contains 214 C++ units,
+29 original generator actions and 694 declared generated outputs. Existing
+native dependencies remain shared. Cache reuse and the concurrent consumer
+prevent treating this as a cold-build baseline.
+
+The [source-test phase](https://formatjs.buildbuddy.io/invocation/42e4bab2-6a1a-4331-86c4-b67de1391b5e)
+passed in 5.067 seconds with zero tracked remote executions. Tests execute on
+the matching native BB host; these resource totals exclude host test work,
+cache hits and repository fetching. Sharing all 345 Mojo headers avoids a
+second source projection; no latency speedup is claimed.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

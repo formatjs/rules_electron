@@ -133,6 +133,14 @@ checks both sides of its original 70-day expiry with a scoped test clock.
 Production clocks and runtime randomness remain unchanged. This validates the
 Linux AMD64 source closure; full Electron still needs linking.
 
+Typed Mojo generators retain original parser inputs, response files, typemaps
+and literal GN metadata. All 29 actions compare output bytes across changed
+paths/mtimes with empty child `PATH`. The 345 shared Mojo headers retain their
+existing file identity.
+[8261fc4 components](https://formatjs.buildbuddy.io/invocation/7616e6df-a464-4d31-9870-8675906e3d6c)
+and independent consumer checks passed; runtime coverage includes real native
+child-process IPC and generated typed dispatch. Full Electron remains unfinished.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.

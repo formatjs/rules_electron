@@ -112,7 +112,16 @@ passed binary messages, data pipes, shared mappings, SQL, URL/IDNA, suffix/HSTS
 lookups and original NSS integrity verification, including corruption rejection.
 HSTS tests retain its 70-day expiry policy. This full profile remains Linux AMD64.
 
-Remaining source work includes typed Mojo bindings, electron_lib, Chromium Blink/content
+Typed Mojo bindings now add 214 C++ units and 29 original Python actions for
+Mojo base types and service-manager interfaces.
+[8261fc4 consumer](https://formatjs.buildbuddy.io/invocation/9a5dbde4-c22d-47b1-a9b9-c86ec8564d44)
+passed real parent/child invitation transport, generated InterfaceProvider
+dispatch with embedded-NUL strings, transferred shared-memory coherence,
+reply-pipe transfer and malformed-message rejection. Original source headers
+stay shared with networking; no substitute transport participates. This full
+profile remains Linux AMD64.
+
+Remaining source work includes electron_lib, Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
 and uses the same V8 base revision, `bb294624702efbb17691b642333f06bf5108e600`.
