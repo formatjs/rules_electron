@@ -58,6 +58,7 @@ def classify(log):
         "LLVM_ATOMIC_LIBRARY": r"(?:cannot find|not found|missing|unsupported|does not exist)[^\r\n]{0,100}atomic|atomic[^\r\n]{0,100}(?:not found|missing|unsupported|does not exist)",
         "LINKER_UNDEFINED_SYMBOL": r"undefined symbol|undefined reference",
         "NODE_JS_EXCEPTION": r"\b(?:ReferenceError|TypeError|SyntaxError|RangeError|Error):",
+        "EMBEDDER_RUNTIME_TEST": r"check failed: embedder",
         "LIBNODE_RUNTIME_TEST": r"check failed: patched libnode",
         "LIBNODE_ASSERTION": r"AssertionError|ERR_ASSERTION",
         "LIBNODE_MODULE_MISSING": r"Cannot find module|ERR_UNKNOWN_BUILTIN_MODULE",
@@ -153,6 +154,7 @@ def source_test_diagnostics(identifier, key):
         "//source:v8_engine_test": "v8_engine",
         "//source:base_test": "base",
         "//source:libnode_test": "libnode",
+        "//source:embedder_test": "embedder",
     }
     public_files = set(json.loads(Path(__file__).with_name("public_source_files.json").read_text()))
     public_basenames = {path.rsplit("/", 1)[-1] for path in public_files}
@@ -195,8 +197,8 @@ def source_test_diagnostics(identifier, key):
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[:])" + re.escape(name) + r"[:(]([0-9]{1,4})(?::|\]|\s|\))", log) if 0 < int(line) < 5000][:8]
-                if probe == "libnode":
-                    details["stages"] = [stage for stage in ["atomic", "icu", "snapshot", "node", "platform", "isolate", "modules", "loop", "shutdown", "done"] if "libnode probe stage: " + stage + "\n" in log]
+                if probe in ("libnode", "embedder"):
+                    details["stages"] = [stage for stage in ["atomic", "icu", "i18n", "snapshot", "node", "gin", "platform", "isolate", "modules", "callback", "gc", "loop", "shutdown", "done"] if probe + " probe stage: " + stage + "\n" in log]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name, line in re.findall(r"([A-Za-z_0-9.-]+\.(?:h|cc|cpp))[:(]([0-9]{1,5})", log) if name in public_basenames and 0 < int(line) < 10000][:8]
                     fatal = [line for line in log.splitlines() if re.search(r"FATAL|ERROR|Check failed|Assertion|assertion|\b(?:ReferenceError|TypeError|SyntaxError|RangeError|Error):", line)]
                     details["public_fatal_identifiers"] = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line) if word in public_identifiers))[:20] for line in fatal[:6]]
