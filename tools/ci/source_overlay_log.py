@@ -253,7 +253,7 @@ def source_test_diagnostics(identifier, key):
                 log = data.decode("utf-8", errors="replace")
                 details = {"probe": probe, "result": test_result(action["targetLabel"]), "log_bytes": len(data), "diagnostics": classify(log)}
                 if probe == "platform_graphics":
-                    details["debug_stages"] = [stage for stage in ["entry", "egl", "gles", "platform", "display_handle", "display", "context", "render", "teardown", "done"] if "[DEBUG-native-graphics] " + stage + "\n" in log]
+                    details["debug_stages"] = [stage for stage in ["entry", "vulkan", "egl", "gles", "platform", "display_handle", "display", "context", "render", "teardown", "done"] if "[DEBUG-native-graphics] " + stage + "\n" in log]
                     details["debug_symbolizer_exit_codes"] = [int(code) for code in re.findall(r"\[DEBUG-native-graphics\] symbolizer exit (-?[0-9]{1,3})\b", log) if -255 <= int(code) <= 255][:4]
                     details["debug_signals"] = [int(code) for code in re.findall(r"\[DEBUG-native-graphics\] signal ([0-9]{1,2})\b", log) if 0 < int(code) < 65][:4]
                     details["debug_fault_pc"] = re.findall(r"\[DEBUG-native-graphics\] fault_pc (zero|nonzero)\b", log)[:4]

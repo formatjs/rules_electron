@@ -290,6 +290,8 @@
     "native software rendering context",
     "original EGL and GLES exports",
     "source SwiftShader display initialization",
+    "source Vulkan loader dispatch",
+    "source Vulkan loader export",
     "source software framebuffer bytes",
     "source-built graphics library loading"
   ],
