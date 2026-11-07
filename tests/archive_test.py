@@ -102,7 +102,7 @@ class ArchiveTest(unittest.TestCase):
                     self.assertEqual(archive.extractfile("Sample.app/Contents/_CodeSignature/CodeResources").read(), b"signed resource manifest")
 
     def test_invalid_archive_graphs_fail(self):
-        for target in ("/outside", "../outside", "missing", "link", "C:/outside", "empty/../../outside"):
+        for target in ("/outside", "../outside", "missing", "link", "C:/outside", "empty/../../outside", "sample/../resource 世界"):
             (self.app / "link").unlink()
             (self.app / "link").symlink_to(target)
             with self.subTest(target=target), self.assertRaises(ValueError):
@@ -118,6 +118,15 @@ class ArchiveTest(unittest.TestCase):
         for entries in bad_inputs:
             with self.subTest(entries=entries), self.assertRaises(ValueError):
                 self.archive(source=self.mac_input(entries), platform="macos", root_name="Sample.app")
+
+    def test_symlink_parent_components_follow_directory_links(self):
+        (self.app / "folder/sub").mkdir(parents=True)
+        (self.app / "folder/data").write_bytes(b"data")
+        (self.app / "alias").symlink_to("folder/sub")
+        (self.app / "relative").symlink_to("alias/../data")
+        output = self.archive()
+        with ZipFile(output) as archive:
+            self.assertEqual(archive.read("Sample 世界/relative"), b"alias/../data")
 
     def test_bazel_rule_outputs_contain_actual_app(self):
         self.assertEqual(len(RULE_OUTPUTS), 2, "Expected ZIP and tar.gz rule outputs")

@@ -6,7 +6,6 @@ import gzip
 import json
 import os
 from pathlib import Path, PurePosixPath
-import posixpath
 import shutil
 import stat
 import sys
@@ -44,30 +43,33 @@ def validate(entries, platform):
             raise ValueError(f"Archive file/directory collision: {name}")
         if entry.kind != "symlink":
             continue
-        current = name
-        seen = set()
-        while True:
-            parts = PurePosixPath(current).parts
-            for index in range(1, len(parts) + 1):
-                prefix = "/".join(parts[:index])
-                node = entries.get(prefix)
-                if node is None:
-                    raise ValueError(f"Dangling archive symlink: {name}")
-                if node.kind == "symlink":
-                    if prefix in seen or len(seen) >= 40:
-                        raise ValueError(f"Cyclic archive symlink: {name}")
-                    seen.add(prefix)
-                    target = node.target
-                    if not target or PurePosixPath(target).is_absolute() or any(c in target for c in ("\\", ":", "\0")):
-                        raise ValueError(f"Invalid archive symlink: {name}")
-                    current = posixpath.normpath(posixpath.join(posixpath.dirname(prefix), target, *parts[index:]))
-                    if current != ".":
-                        relative(current)
-                    break
-                if index != len(parts) and node.kind != "directory":
-                    raise ValueError(f"Archive symlink traverses a file: {name}")
+        pending = list(PurePosixPath(name).parts)
+        resolved = []
+        expansions = 0
+        while pending:
+            component = pending.pop(0)
+            if component in ("", "."):
+                continue
+            if component == "..":
+                if not resolved:
+                    raise ValueError(f"Escaping archive symlink: {name}")
+                resolved.pop()
+                continue
+            node = entries.get("/".join(resolved + [component]))
+            if node is None:
+                raise ValueError(f"Dangling archive symlink: {name}")
+            if node.kind == "symlink":
+                expansions += 1
+                if expansions > 40:
+                    raise ValueError(f"Cyclic archive symlink: {name}")
+                target = node.target
+                if not target or PurePosixPath(target).is_absolute() or any(c in target for c in ("\\", ":", "\0")):
+                    raise ValueError(f"Invalid archive symlink: {name}")
+                pending = target.split("/") + pending
             else:
-                break
+                if pending and node.kind != "directory":
+                    raise ValueError(f"Archive symlink traverses a file: {name}")
+                resolved.append(component)
 
 
 @contextmanager
