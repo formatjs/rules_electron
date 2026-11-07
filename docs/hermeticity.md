@@ -51,6 +51,15 @@ compilation. All three hosted checks passed: [source components](https://formatj
 and [BCR consumer](https://formatjs.buildbuddy.io/invocation/f409e74a-0e0b-4129-818e-85a44a15c9cb).
 These validate existing source components, not a complete Electron executable.
 
+Temporal now uses `hermeticbuild/rules_rs` with a pinned nightly SDK. Its captured
+57-target closure projects individual files from the matching Chromium archive;
+Cargo does not resolve or download dependencies. Original build scripts and
+bindgen use declared inputs. Rust keeps captured allocator settings, backed by
+real PartitionAlloc FFI. Calendar/DST tests disable ambient ICU file loading.
+[Component](https://formatjs.buildbuddy.io/invocation/df7fed7a-c08b-46f4-be2d-dcb6467631df)
+and [consumer](https://formatjs.buildbuddy.io/invocation/75b513b8-c73b-4fb4-a035-0122c0ed452d)
+checks passed with the fresh network-denial gate.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.

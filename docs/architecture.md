@@ -85,8 +85,17 @@ and arithmetic-overflow traps. Both
 and [BCR consumer](https://formatjs.buildbuddy.io/invocation/e50d8faf-cf75-49ac-8891-b726caf63db5)
 passed. These new profiles remain Linux AMD64.
 
-Remaining source work includes the Temporal Rust allocator bridge/closure,
-full V8 and snapshots, patched libnode, electron_lib, matching Chromium content
+Temporal adds 57 Rust targets from 44 pinned vendor packages, six original build
+scripts and three allocator/error-handler C++ bridges through
+`hermeticbuild/rules_rs`. Its probe checks actual PartitionAlloc-backed Rust
+allocation, calendar behavior and DST using V8's real ZoneInfo64Provider with
+declared ICU data.
+[3278609 components](https://formatjs.buildbuddy.io/invocation/df7fed7a-c08b-46f4-be2d-dcb6467631df)
+and [BCR consumer](https://formatjs.buildbuddy.io/invocation/75b513b8-c73b-4fb4-a035-0122c0ed452d)
+passed. This slice remains Linux AMD64.
+
+Remaining source work includes full V8 and snapshots, patched libnode,
+electron_lib, matching Chromium content
 libraries and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
 and uses the same V8 base revision, `bb294624702efbb17691b642333f06bf5108e600`.

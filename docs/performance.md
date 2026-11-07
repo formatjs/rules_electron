@@ -142,6 +142,15 @@ V8's repository BUILD template now delegates to a stable source macro. New
 generator/library rule definitions can change without editing that template.
 No fetch-time reduction has been measured.
 
+The [3278609 Temporal archive phase](https://formatjs.buildbuddy.io/invocation/7fe1b48b-5a13-4131-b657-68cac3c348f9)
+recorded 435 remote executions, 114.034 CPU-seconds, 734,355,456 bytes maximum
+per-action peak memory, 10,308,441,961 worker input bytes and 87,548,240 worker
+output bytes. This includes executed prerequisite/tool actions; it is not a
+Temporal-only compile cost. Worker input totals count transfers across actions,
+not unique source bytes. Concurrent component/consumer builds shared cached work.
+These totals exclude cache hits, repository fetches and tests on the BB host;
+no controlled cold/warm speedup has been measured.
+
 ## Smoke transport
 
 The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)
