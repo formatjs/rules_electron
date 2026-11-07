@@ -90,5 +90,30 @@
     "shared buffer mappings",
     "source-built NSS random generation",
     "source-built NSS version"
+  ],
+  "mojo": [
+    "IPC thread failed",
+    "child failed to exit cleanly",
+    "child invitation missing pipe",
+    "child launch failed",
+    "child reply missing",
+    "child shared buffer missing",
+    "child shared bytes changed",
+    "cross-process mapping lost coherence",
+    "cross-process payload changed",
+    "data pipe bytes changed",
+    "ipcz core not selected",
+    "malformed message dispatched",
+    "message bytes changed",
+    "parent completion missing",
+    "peer closure missing",
+    "shared buffer bytes changed",
+    "shared buffer handle lost",
+    "shared mapping lost coherence",
+    "typed reply missing",
+    "typed request not dispatched",
+    "typed string changed",
+    "unexpected attached handles",
+    "unexpected typed dispatch"
   ]
 }
