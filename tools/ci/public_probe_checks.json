@@ -241,5 +241,25 @@
     "scaled native and logical display coordinates",
     "truncated display wire rejection",
     "work area insets survive scale and relocation"
+  ],
+  "events": [
+    "declared ICU argument",
+    "declared ICU initialization",
+    "default feature initialization",
+    "invalid XCB display rejection",
+    "invalid keyboard layout rejection",
+    "key clone preserves independent modifier state",
+    "native ISO physical key mapping and invalid key rejection",
+    "native Snappy binary roundtrip",
+    "native XCB display string parsing",
+    "native control character and physical key conversion",
+    "native keyboard base state",
+    "native keyboard context without host includes",
+    "native keyboard shift release",
+    "native keyboard shift transition",
+    "native parser compiles explicit keyboard layout",
+    "native wheel transform and clone semantics",
+    "original X11 keyboard wire decoding",
+    "truncated Snappy stream rejection"
   ]
 }
