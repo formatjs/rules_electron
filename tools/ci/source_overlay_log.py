@@ -158,6 +158,7 @@ def source_test_diagnostics(identifier, key):
     }
     public_files = set(json.loads(Path(__file__).with_name("public_source_files.json").read_text()))
     public_basenames = {path.rsplit("/", 1)[-1] for path in public_files}
+    public_checks = json.loads(Path(__file__).with_name("public_probe_checks.json").read_text())
     public_identifiers = set(json.loads(Path(__file__).with_name("public_source_identifiers.json").read_text()))
     token, seen, count = "", set(), 0
     for _ in range(8):
@@ -198,6 +199,8 @@ def source_test_diagnostics(identifier, key):
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[:])" + re.escape(name) + r"[:(]([0-9]{1,4})(?::|\]|\s|\))", log) if 0 < int(line) < 5000][:8]
                 if probe in ("libnode", "embedder"):
+                    prefix = "patched libnode" if probe == "libnode" else "embedder"
+                    details["failed_checks"] = [message for message in public_checks.get(probe, []) if "check failed: " + prefix + " " + message + "\n" in log]
                     details["stages"] = [stage for stage in ["atomic", "icu", "i18n", "snapshot", "node", "gin", "platform", "isolate", "modules", "callback", "gc", "loop", "shutdown", "done"] if probe + " probe stage: " + stage + "\n" in log]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name, line in re.findall(r"([A-Za-z_0-9.-]+\.(?:h|cc|cpp))[:(]([0-9]{1,5})", log) if name in public_basenames and 0 < int(line) < 10000][:8]
                     fatal = [line for line in log.splitlines() if re.search(r"FATAL|ERROR|Check failed|Assertion|assertion|\b(?:ReferenceError|TypeError|SyntaxError|RangeError|Error):", line)]

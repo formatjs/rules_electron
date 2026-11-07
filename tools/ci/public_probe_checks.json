@@ -1,0 +1,35 @@
+{
+  "libnode": [
+    "V8 initialization",
+    "asynchronous filesystem and inspector completion",
+    "builtin module execution",
+    "compiler-rt generic atomic mismatch and load",
+    "compiler-rt generic atomic update",
+    "declared ICU data",
+    "declared ICU, snapshot, fixture and addon arguments",
+    "environment creation",
+    "process initialization"
+  ],
+  "embedder": [
+    "C++ to JS string conversion",
+    "Gin binding survives collection",
+    "Gin mapped generated snapshot",
+    "Gin rejects invalid native argument",
+    "ICU descriptor initialization",
+    "ICU word boundaries",
+    "JS calls native Gin method",
+    "JS to C++ string conversion",
+    "Unicode full case folding",
+    "combining mark and emoji grapheme boundaries",
+    "declared ICU and snapshot arguments",
+    "declared ICU file",
+    "default feature initialization",
+    "grapheme iterator initialization",
+    "legacy encoding conversion",
+    "malformed UTF-8 rejected",
+    "native CED UTF-8 detection",
+    "native binding installation",
+    "sandboxed Gin array buffer",
+    "word iterator initialization"
+  ]
+}
