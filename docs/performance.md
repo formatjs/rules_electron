@@ -262,6 +262,12 @@ CPU-seconds, 116,781,056 bytes maximum per-action peak memory, 43,998 worker inp
 bytes and 109,462,531 worker output bytes. Runtime tests execute on the matching
 Linux BB workflow host; their resources are outside remote-execution totals.
 
+The documentation-only [7df70c4 warm repeat](https://formatjs.buildbuddy.io/invocation/f9dfc3a8-0dbb-414d-aa80-5776f48e9d9b)
+used the same product inputs: source phase 17.614 seconds, tests 3.160 seconds,
+zero tracked remote executions in either phase. The independent fresh network
+gate still executed two remote actions. Cached successes do not measure a fresh
+runtime execution or a cold source build.
+
 Header groups keep Brotli/Zstd independent from Node header changes. The isolate
 lifecycle fix changes one owned C++ source; existing V8 and Base compiler inputs
 stay shared. No cold-build speedup or complete Electron baseline is claimed.
