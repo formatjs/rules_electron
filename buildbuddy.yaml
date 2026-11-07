@@ -1,0 +1,38 @@
+actions:
+  - name: "Test Linux assembly"
+    container_image: "ubuntu-20.04"
+    triggers:
+      push:
+        branches: ["main", "gh-readonly-queue/*"]
+      pull_request:
+        branches: ["main"]
+    resource_requests:
+      memory: 4GB
+      disk: 16GB
+    steps:
+      - run: |
+          set -euo pipefail
+          bazel test --config=bb-workflow //...
+          bazel run --config=bb-workflow @buildifier_prebuilt//:buildifier -- -mode=check -r .
+
+  - name: "Cross-build native fixture"
+    container_image: "ubuntu-20.04"
+    triggers:
+      push:
+        branches: ["main", "gh-readonly-queue/*"]
+      pull_request:
+        branches: ["main"]
+    resource_requests:
+      memory: 4GB
+      disk: 16GB
+    steps:
+      - run: |
+          set -euo pipefail
+          for platform in linux_x86_64 linux_aarch64 macos_x86_64 macos_aarch64 windows_x86_64; do
+            bazel build --config=bb-workflow \
+              --platforms="//platforms:$platform" //tests:runtime_probe
+          done
+          for platform in linux_x86_64 linux_aarch64; do
+            bazel build --config=bb-workflow \
+              --platforms="//platforms:$platform" //tests:app
+          done

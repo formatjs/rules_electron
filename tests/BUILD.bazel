@@ -1,0 +1,38 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_python//python:defs.bzl", "py_test")
+load("//electron:defs.bzl", "electron_app", "electron_runtime")
+
+cc_binary(
+    name = "runtime_probe",
+    srcs = ["fixtures/runtime.cc"],
+)
+
+electron_runtime(
+    name = "runtime",
+    binary = ":runtime_probe",
+    files = {"fixtures/icudtl.dat": "icudtl.dat"},
+)
+
+electron_app(
+    name = "app",
+    srcs = {"fixtures/main.js": "main.js"},
+    package_json = "fixtures/package.json",
+    runtime = ":runtime",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+py_test(
+    name = "assembly_test",
+    size = "small",
+    srcs = ["assembly_test.py"],
+    deps = ["//electron/private:assembly"],
+)
+
+py_test(
+    name = "relocation_test",
+    size = "small",
+    srcs = ["relocation_test.py"],
+    args = ["$(rootpath :app)"],
+    data = [":app"],
+    target_compatible_with = ["@platforms//os:linux"],
+)

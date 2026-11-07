@@ -1,0 +1,31 @@
+package(default_visibility = ["//visibility:public"])
+
+platform(
+    name = "buildbuddy_linux_x86_64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    exec_properties = {
+        "Arch": "amd64",
+        "OSFamily": "Linux",
+        "container-image": "docker://gcr.io/flame-public/rbe-ubuntu22-04:latest",
+    },
+)
+
+[
+    platform(
+        name = name,
+        constraint_values = [
+            "@platforms//cpu:" + cpu,
+            "@platforms//os:" + os,
+        ],
+    )
+    for name, cpu, os in [
+        ("linux_x86_64", "x86_64", "linux"),
+        ("linux_aarch64", "aarch64", "linux"),
+        ("macos_x86_64", "x86_64", "osx"),
+        ("macos_aarch64", "aarch64", "osx"),
+        ("windows_x86_64", "x86_64", "windows"),
+    ]
+]
