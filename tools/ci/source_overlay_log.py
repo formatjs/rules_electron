@@ -213,6 +213,7 @@ def failed_action_diagnostics(identifier, key):
                 raise ValueError("Test log exceeds limit")
             log += content.decode("utf-8", errors="replace")
         # Only exact filenames already present in public source leave memory.
+        log = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", log)
         missing = {name for name in re.findall(r"fatal error: ['\"]([^'\"\n]+)['\"] file not found", log) if name in public_headers}
         print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8]}, sort_keys=True))
 
