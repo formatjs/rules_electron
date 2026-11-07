@@ -151,6 +151,14 @@ not unique source bytes. Concurrent component/consumer builds shared cached work
 These totals exclude cache hits, repository fetches and tests on the BB host;
 no controlled cold/warm speedup has been measured.
 
+The [687dc7f Protobuf archive phase](https://formatjs.buildbuddy.io/invocation/e04577a8-3b54-4f2f-81df-4da0306ebe58)
+recorded 129 remote executions, 293.384 CPU-seconds, 493,834,240 bytes maximum
+per-action peak memory, 955,499,002 worker input bytes and 47,699,407 worker
+output bytes. These are executed-action phase totals, including prerequisites;
+they exclude cache hits, repository fetching and tests on the BB host.
+Concurrent consumer builds shared cached work. They do not establish a cold-build
+cost, per-library cost or speedup.
+
 ## Smoke transport
 
 The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)

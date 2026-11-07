@@ -101,6 +101,15 @@ boundaries. [51e5642 components](https://formatjs.buildbuddy.io/invocation/37462
 and [consumer](https://formatjs.buildbuddy.io/invocation/11a4a3fd-25ce-4651-8115-0773a0923553)
 passed. These profiles remain Linux AMD64.
 
+Matching Protobuf now builds 129 original C/C++ units, including full/lite
+runtimes, protoc and its language/plugin dependencies. Source-built protoc
+generates integration schemas; matching runtimes pass wire-format, reflection,
+presence and malformed-input probes.
+[687dc7f components](https://formatjs.buildbuddy.io/invocation/a70db8a5-8eee-417a-9cfd-53c1564ad657)
+and [consumer](https://formatjs.buildbuddy.io/invocation/e87c3f3f-4c89-4a11-9d22-0ce75b75d180)
+passed. This Linux AMD64 prerequisite keeps embedded Protobuf 32.0; Perfetto
+translation remains open.
+
 Remaining source work includes full V8 and snapshots, patched libnode,
 electron_lib, matching Chromium content
 libraries and runtime packaging. The
