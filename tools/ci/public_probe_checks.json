@@ -175,5 +175,25 @@
     "invalid WebP rejection",
     "native GIF pixel decoding",
     "native JPEG SIMD dispatch"
+  ],
+  "skia": [
+    "Rust CXX glyph path bridge",
+    "Rust PNG RGBA alpha roundtrip",
+    "Rust PNG signature",
+    "Rust font glyph mapping",
+    "SkSL raster pixel vector",
+    "declared ICU and font arguments",
+    "declared ICU initialization",
+    "declared Skia font bytes",
+    "invalid Rust PNG rejection",
+    "invalid SkSL rejection",
+    "invalid Skia font rejection",
+    "native raster surface",
+    "native runtime shader",
+    "original Rust PNG decoding",
+    "original Rust PNG encoding",
+    "original SkSL compilation",
+    "original Skia fontations typeface",
+    "raster pixel readback"
   ]
 }

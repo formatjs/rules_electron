@@ -64,6 +64,7 @@ def classify(log):
         "MOJO_RUNTIME_TEST": r"check failed: mojo",
         "FONTS_RUNTIME_TEST": r"check failed: fonts",
         "CODECS_RUNTIME_TEST": r"check failed: codecs",
+        "SKIA_RUNTIME_TEST": r"check failed: skia",
         "GRIT_REPRODUCIBILITY": r"Generator output differs across source paths and mtimes: tools/grit/grit.py",
         "GRIT_IDS_REPRODUCIBILITY": r"Generator output differs[^\r\n]*; [^\r\n]*gen/tools/gritsettings/default_resource_ids(?:,|$)",
         "GRIT_INFO_REPRODUCIBILITY": r"Generator output differs[^\r\n]*; [^\r\n]*gen/net/net_resources\.pak\.info(?:,|$)",
@@ -179,6 +180,7 @@ def source_test_diagnostics(identifier, key):
         "//source:mojo_test": "mojo",
         "//source:fonts_test": "fonts",
         "//source:codecs_test": "codecs",
+        "//source:skia_test": "skia",
         "//electron/private:nss_integrity_test": "nss_integrity",
         "//tests:prepare_source_test": "prepare_source",
     }
@@ -224,7 +226,7 @@ def source_test_diagnostics(identifier, key):
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[:])" + re.escape(name) + r"[:(]([0-9]{1,4})(?::|\]|\s|\))", log) if 0 < int(line) < 5000][:8]
-                if probe in ("libnode", "embedder", "ipcz", "network", "mojo", "fonts", "codecs"):
+                if probe in ("libnode", "embedder", "ipcz", "network", "mojo", "fonts", "codecs", "skia"):
                     prefix = "patched libnode" if probe == "libnode" else probe
                     details["failed_checks"] = [message for message in public_checks.get(probe, []) if "check failed: " + prefix + " " + message + "\n" in log]
                     details["stages"] = [stage for stage in ["atomic", "icu", "i18n", "snapshot", "node", "gin", "platform", "isolate", "modules", "integrity", "callback", "gc", "loop", "shutdown", "done"] if probe + " probe stage: " + stage + "\n" in log]
@@ -297,7 +299,7 @@ def failed_action_diagnostics(identifier, key):
         cpp_errors = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", message) if word in public_identifiers))[:20] for message in re.findall(r"(?:fatal )?error(?:\[E[0-9]{4}\])?: ([^\r\n]+)", log)[:12]]
         for path, line in re.findall(r"([^\s:]+):([0-9]{1,5}):[0-9]{1,4}: (?:fatal )?error:", log):
             candidates = [path]
-            for prefix in ("v8/", "third_party/", "gen/", "src/", "include/", "base/", "source/", "build/", "testing/", "net/", "mojo/", "crypto/", "sql/", "url/", "components/", "electron/"):
+            for prefix in ("v8/", "third_party/", "gen/", "src/", "include/", "base/", "source/", "build/", "testing/", "net/", "mojo/", "crypto/", "sql/", "url/", "components/", "electron/", "skia/", "gpu/", "ui/"):
                 if "/" + prefix in path:
                     candidates.append(prefix + path.split("/" + prefix, 1)[1])
             name = next((name for name in candidates if name in public_files), None)
