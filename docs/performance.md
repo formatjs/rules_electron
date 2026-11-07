@@ -181,6 +181,14 @@ concurrent consumer populated a shared cache, so this is not a controlled cold
 build or speedup comparison. Phase duration includes frontend/orchestration work
 that the remote CPU totals do not measure.
 
+A [documentation-only 9332ee8 repeat](https://formatjs.buildbuddy.io/invocation/fbb682d8-bce5-4b30-b743-02739be00e1c)
+kept engine/product inputs and the source-component target set unchanged. Its
+warm build phase completed in 16.234 seconds with zero tracked remote executions;
+source-test phase completed in 1.377 seconds, also without remote executions.
+The separate fresh network-denial gate still executed two actions. This records
+warm-cache behavior, not a controlled cold/warm speedup or absence of frontend,
+repository or BB-host work.
+
 ## Smoke transport
 
 The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)
