@@ -1,0 +1,4 @@
+:root { color-scheme: light dark; font: 16px/1.5 system-ui, sans-serif; }
+body { margin: 0; }
+main { max-width: 42rem; margin: 3rem auto; padding: 0 2rem; }
+pre { padding: 1.25rem; background: light-dark(#f1f3f5, #25282c); border-radius: .5rem; }

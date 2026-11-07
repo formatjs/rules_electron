@@ -1,0 +1,24 @@
+load("@rules_electron//electron:defs.bzl", "electron_runtime")
+
+electron_runtime(
+    name = "runtime",
+    binary = "electron",
+    files = {
+        path: path
+        for path in glob(
+            [
+                "*",
+            ],
+            # Use the kernel user-namespace sandbox; setuid installation is separate.
+            exclude = [
+                "electron",
+                "chrome-sandbox",
+                "BUILD.bazel",
+                "MODULE.bazel",
+                "WORKSPACE",
+                "WORKSPACE.bazel",
+            ],
+        ) + ["locales/en-US.pak"]
+    },
+    visibility = ["//visibility:public"],
+)

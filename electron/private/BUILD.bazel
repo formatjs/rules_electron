@@ -2,12 +2,18 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 py_library(
     name = "assembly",
-    srcs = ["assemble.py"],
+    srcs = [
+        "asar.py",
+        "assemble.py",
+        "fuses.py",
+    ],
     visibility = ["//tests:__pkg__"],
 )
 
 py_binary(
     name = "assemble",
-    srcs = ["assemble.py"],
+    srcs = ["cli.py"],
+    main = "cli.py",
     visibility = ["//electron:__pkg__"],
+    deps = [":assembly"],
 )

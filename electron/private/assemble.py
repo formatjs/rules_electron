@@ -4,7 +4,9 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import shutil
-import sys
+
+from electron.private.asar import create_archive
+from electron.private.fuses import set_fuses
 
 
 def relative_path(value):
@@ -16,11 +18,43 @@ def relative_path(value):
     return path
 
 
-def assemble(entries, output):
-    paths = {}
+def _walk_error(error):
+    raise error
+
+
+def _expand(entries):
     for entry in entries:
+        destination = relative_path(entry["path"])
+        if not entry.get("directory", False):
+            yield entry
+            continue
+        source = Path(entry["source"])
+        if not source.is_dir():
+            raise ValueError(f"Expected input tree: {source}")
+        for directory, directories, files in os.walk(source, followlinks=False, onerror=_walk_error):
+            for name in directories:
+                if (Path(directory) / name).is_symlink():
+                    raise ValueError("Directory symlinks inside input trees are not supported")
+            for name in files:
+                file = Path(directory) / name
+                # Bazel's sandbox projects declared tree files as symlink leaves.
+                relative = file.relative_to(source).as_posix()
+                relative_path(relative)
+                if not file.is_file():
+                    raise ValueError(f"Expected regular tree file: {relative}")
+                yield {"source": str(file), "path": str(destination / relative), "executable": False}
+
+
+def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
+             executable_name="electron", remove_package_scripts=False):
+    if not asar and asar_unpacked:
+        raise ValueError("asar_unpacked requires asar=True")
+    if not asar and (fuses or {}).get("onlyLoadAppFromAsar") == "on":
+        raise ValueError("onlyLoadAppFromAsar requires asar=True")
+    paths = {}
+    for entry in _expand(entries):
         path = relative_path(entry["path"])
-        if path == PurePosixPath("resources/app.asar"):
+        if path.parts[:2] in [("resources", "app.asar"), ("resources", "app.asar.unpacked")]:
             raise ValueError("Runtime app.asar would shadow resources/app")
         if path in paths:
             raise ValueError(f"Duplicate destination: {path}")
@@ -35,6 +69,13 @@ def assemble(entries, output):
     if PurePosixPath("resources/app") / main not in paths:
         raise ValueError(f"App entry point missing: {main}")
 
+    app_prefix = PurePosixPath("resources/app")
+    app_files = {str(path.relative_to(app_prefix)): path for path in paths if path.is_relative_to(app_prefix)}
+    for name in asar_unpacked:
+        relative_path(name)
+        if name not in app_files:
+            raise ValueError(f"ASAR unpacked path not declared: {name}")
+
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     for path, entry in sorted(paths.items()):
@@ -44,11 +85,20 @@ def assemble(entries, output):
         shutil.copyfile(source, destination)
         executable = entry.get("executable", False) or bool(source.stat().st_mode & 0o111)
         destination.chmod(0o755 if executable else 0o644)
-        os.utime(destination, (0, 0))
+    if remove_package_scripts:
+        package.pop("scripts", None)
+        (output / package_path).write_text(json.dumps(package, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+        (output / package_path).chmod(0o644)
+    if asar:
+        archive = output / "resources/app.asar"
+        create_archive({name: output / path for name, path in app_files.items()}, archive, asar_unpacked)
+        archive.chmod(0o644)
+        shutil.rmtree(output / app_prefix)
+    if fuses:
+        set_fuses(output / str(relative_path(executable_name)), fuses)
+    for directory, _, files in os.walk(output):
+        for name in files:
+            os.utime(Path(directory) / name, (0, 0))
     for directory, _, _ in os.walk(output, topdown=False):
         Path(directory).chmod(0o755)
         os.utime(directory, (0, 0))
-
-
-if __name__ == "__main__":
-    assemble(json.loads(Path(sys.argv[1]).read_text()), sys.argv[2])

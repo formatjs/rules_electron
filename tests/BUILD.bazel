@@ -29,6 +29,13 @@ py_test(
 )
 
 py_test(
+    name = "fuses_test",
+    size = "small",
+    srcs = ["fuses_test.py"],
+    deps = ["//electron/private:assembly"],
+)
+
+py_test(
     name = "relocation_test",
     size = "small",
     srcs = ["relocation_test.py"],

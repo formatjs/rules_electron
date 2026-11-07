@@ -1,6 +1,6 @@
 # RFC: native Electron app rules
 
-Status: initial Linux assembly implemented; source runtime integration pending.
+Status: Linux assembly, ASAR and generic runtime smoke implemented; source runtime integration pending.
 
 Build Electron apps as Bazel targets. Cache compiler, generator, app and packaging
 actions independently. Build inputs come from declared files and pinned repositories.
@@ -16,8 +16,9 @@ flowchart TD
     Runtime --> Adapter[electron_runtime]
     Adapter --> App[electron_app]
     AppFiles --> App
+    Native[Target Node-API addon + helper] --> App
     App --> Directory[Linux unpacked directory]
-    Directory --> Future[Future ASAR / archives / installers]
+    Directory --> Future[Future archives / installers]
 ```
 
 ## Ownership
@@ -42,11 +43,19 @@ root. Explicit runtime dependency keeps source version visible at the app target
 runtime toolchain selection can follow once a real source runtime exists.
 
 `electron_app(runtime, package_json, srcs)` writes one directory artifact. App
-files map to `resources/app`, retaining renderer/preload paths. Assembly copies
+files map to `resources/app`, retaining renderer/preload paths. Optional ASAR
+packs those files with per-file SHA256 block hashes; explicit unpacked files sit
+alongside the archive. Extra resources remain outside ASAR. Assembly copies
 inputs, rejects traversal and overlapping destinations, normalizes modes and
 timestamps. No host filesystem discovery or target execution. Pinned Python
-executes the assembly action. Inputs use explicit file mappings initially;
-tree-artifact and symlink-aware runtime adapters need a separate contract.
+executes the assembly action. App/resource mappings accept declared tree artifacts;
+their regular files expand under the mapped prefix. Directory symlinks fail;
+Bazel input-projection file symlinks are dereferenced into regular output files.
+Runtime adapters still require explicit regular-file mappings.
+
+Linux v1 fuse settings patch only the output binary, leaving source inputs alone.
+Unknown, removed, truncated or ambiguous fuse wires fail. Only supported settings
+are exposed; embedded ASAR integrity/signature metadata is outside this feature.
 
 Linux layout only. macOS needs framework/helper app structure and signing order;
 Windows needs executable metadata and installer support. These need dedicated
@@ -86,6 +95,15 @@ Linux tests execute assembled fixture after relocation. No cross-target test
 execution implied. Add real Electron targets to this matrix as each upstream
 source profile becomes available; keep unsupported profiles explicit.
 
+The independent `examples/desktop` workspace provides a generic app built from
+scratch, with a real Node-API addon and helper compiled by LLVM. An explicitly
+labeled official Electron bootstrap makes the example runnable before the source
+runtime exists. Its x86_64 smoke relocates the output and exercises sandboxed
+renderer/preload IPC, ASAR, unpacked native loading, extra resources and fuse
+behavior. BuildBuddy executes this GUI test on its workflow host after installing
+system libraries/Xvfb; target compilation and assembly still use remote execution.
+Both Linux target architectures build the actual example.
+
 No credentials checked in. Hosted CI requires repository hookup and BuildBuddy
 access. Larger source-runtime jobs need separate memory/disk budgets; fixture
 budgets do not estimate Chromium compilation costs.
@@ -93,7 +111,7 @@ budgets do not estimate Chromium compilation costs.
 ## Next milestones
 
 1. Complete upstream Linux source runtime; consume stable outputs here.
-2. Add real sandboxed Electron relocation smoke and independent consumer workspace.
-3. Add deterministic ASAR with unpacked native modules and integrity metadata.
-4. Add platform layouts, source-built addons and distribution archives.
+2. Run the existing real sandboxed relocation smoke against that source runtime.
+3. Add OS metadata/protocol registration and distribution archives.
+4. Add macOS/Windows layouts and Electron-specific Node/V8 addon toolchains.
 5. Add signing/notarization and installers with explicit release credentials.

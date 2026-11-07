@@ -3,8 +3,8 @@ build:bb-workflow --build_metadata=ROLE=BB_WORKFLOW
 build:bb-workflow --build_metadata=VISIBILITY=PUBLIC
 build:bb-workflow --config=rbe
 
-build:rbe --extra_execution_platforms=//platforms:buildbuddy_linux_x86_64
-build:rbe --platforms=//platforms:buildbuddy_linux_x86_64
+build:rbe --extra_execution_platforms=@rules_electron//platforms:buildbuddy_linux_x86_64
+build:rbe --platforms=@rules_electron//platforms:buildbuddy_linux_x86_64
 build:rbe --bes_backend=grpcs://formatjs.buildbuddy.io
 build:rbe --bes_results_url=https://formatjs.buildbuddy.io/invocation/
 build:rbe --remote_cache=grpcs://formatjs.buildbuddy.io

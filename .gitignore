@@ -1,4 +1,4 @@
-/bazel-*
-/.bazelrc.user
+bazel-*
+.bazelrc.user
 __pycache__/
 *.pyc

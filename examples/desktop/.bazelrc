@@ -1,0 +1,2 @@
+import %workspace%/../../tools/buildbuddy.bazelrc
+try-import %workspace%/.bazelrc.user

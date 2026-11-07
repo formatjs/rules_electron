@@ -1,7 +1,9 @@
 """Behavior checks for distribution layout and rejected manifests."""
 
 import json
+import hashlib
 from pathlib import Path
+import struct
 import tempfile
 import unittest
 
@@ -58,6 +60,79 @@ class AssemblyTest(unittest.TestCase):
             with self.subTest(main=main), self.assertRaises(ValueError):
                 assemble(self.entries, self.root / "out")
         self.assertFalse((self.root / "out").exists())
+
+    def test_asar_preserves_content_and_unpacked_native_files(self):
+        self.package.write_text(json.dumps({"main": "main.js", "scripts": {"build": "private development command"}}))
+        self.main.write_text("console.log('世界')", encoding="utf-8")
+        empty = self.root / "empty"
+        empty.write_bytes(b"")
+        entries = self.entries + [
+            {"source": str(self.runtime), "path": "resources/app/node_modules/example/addon.node"},
+            {"source": str(empty), "path": "resources/app/empty"},
+            {"source": str(self.main), "path": "resources/config/settings.json"},
+        ]
+        output = self.root / "first"
+        assemble(entries, output, asar=True,
+                 asar_unpacked=["node_modules/example/addon.node"], remove_package_scripts=True)
+        archive = (output / "resources/app.asar").read_bytes()
+        size_size, header_size, payload_size, json_size = struct.unpack("<IIII", archive[:16])
+        self.assertEqual(size_size, 4)
+        self.assertEqual(payload_size + 4, header_size)
+        header = json.loads(archive[16:16 + json_size])
+
+        def contents(entry):
+            start = 8 + header_size + int(entry["offset"])
+            return archive[start:start + entry["size"]]
+
+        main = header["files"]["main.js"]
+        self.assertEqual(contents(main), self.main.read_bytes())
+        self.assertEqual(main["integrity"]["hash"], hashlib.sha256(self.main.read_bytes()).hexdigest())
+        self.assertEqual(contents(header["files"]["empty"]), b"")
+        self.assertNotIn("scripts", json.loads(contents(header["files"]["package.json"])))
+        addon = header["files"]["node_modules"]["files"]["example"]["files"]["addon.node"]
+        self.assertTrue(addon["unpacked"])
+        self.assertNotIn("offset", addon)
+        self.assertEqual((output / "resources/app.asar.unpacked/node_modules/example/addon.node").read_bytes(), b"runtime")
+        self.assertEqual((output / "resources/config/settings.json").read_bytes(), self.main.read_bytes())
+        self.assertFalse((output / "resources/app").exists())
+        second = self.root / "second"
+        assemble(list(reversed(entries)), second, asar=True,
+                 asar_unpacked=["node_modules/example/addon.node"], remove_package_scripts=True)
+        self.assertEqual(archive, (second / "resources/app.asar").read_bytes())
+
+    def test_rejects_missing_unpacked_paths_and_inconsistent_fuses(self):
+        for options in [
+            {"asar_unpacked": ["main.js"]},
+            {"asar": True, "asar_unpacked": ["missing.node"]},
+            {"asar": True, "asar_unpacked": ["../escape"]},
+            {"fuses": {"onlyLoadAppFromAsar": "on"}},
+        ]:
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                assemble(self.entries, self.root / "out", **options)
+        self.assertFalse((self.root / "out").exists())
+
+    def test_generated_tree_expansion_and_collisions(self):
+        bundle = self.root / "bundle"
+        (bundle / "assets").mkdir(parents=True)
+        (bundle / "index.html").write_text("<h1>Example</h1>")
+        (bundle / "assets/style.css").write_text("body { margin: 0 }")
+        entry = {"source": str(bundle), "path": "resources/app/renderer", "directory": True}
+        output = self.root / "valid"
+        assemble(self.entries + [entry], output)
+        self.assertEqual((output / "resources/app/renderer/assets/style.css").read_text(), "body { margin: 0 }")
+        conflict = {"source": str(self.main), "path": "resources/app/renderer/index.html"}
+        with self.assertRaisesRegex(ValueError, "Duplicate destination"):
+            assemble(self.entries + [entry, conflict], self.root / "conflict")
+        (bundle / "projected.js").symlink_to(self.main)
+        assemble(self.entries + [entry], self.root / "projected")
+        projected = self.root / "projected/resources/app/renderer/projected.js"
+        self.assertEqual(projected.read_bytes(), b"app")
+        self.assertFalse(projected.is_symlink())
+        (bundle / "escape").symlink_to(self.root, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "Directory symlinks"):
+            assemble(self.entries + [entry], self.root / "symlink")
+        self.assertFalse((self.root / "conflict").exists())
+        self.assertFalse((self.root / "symlink").exists())
 
 
 if __name__ == "__main__":

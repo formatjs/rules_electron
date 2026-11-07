@@ -1,0 +1,13 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+cc_library(
+    name = "headers",
+    hdrs = [
+        "js_native_api.h",
+        "js_native_api_types.h",
+        "node_api.h",
+        "node_api_types.h",
+    ],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,106 @@
+load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_electron//electron:defs.bzl", "electron_app")
+load("@rules_python//python:defs.bzl", "py_test")
+
+exports_files([
+    "bootstrap_runtime.BUILD.bazel",
+    "node_api.BUILD.bazel",
+])
+
+config_setting(
+    name = "linux_x64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+config_setting(
+    name = "linux_arm64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+    ],
+)
+
+alias(
+    name = "runtime",
+    actual = select({
+        ":linux_x64": "@bootstrap_electron_linux_x64//:runtime",
+        ":linux_arm64": "@bootstrap_electron_linux_arm64//:runtime",
+    }),
+)
+
+cc_binary(
+    name = "helper",
+    srcs = ["native/helper.cc"],
+)
+
+# Stand-in for a bundler's declared directory output.
+copy_to_directory(
+    name = "renderer_bundle",
+    srcs = [
+        "renderer/index.html",
+        "renderer/index.js",
+        "renderer/style.css",
+    ],
+    root_paths = ["renderer"],
+)
+
+cc_binary(
+    name = "addon.node",
+    srcs = ["native/addon.c"],
+    linkshared = True,
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = ["@node_api_headers//:headers"],
+)
+
+electron_app(
+    name = "app",
+    srcs = {
+        "main.cjs": "main.cjs",
+        "preload.cjs": "preload.cjs",
+        ":renderer_bundle": "renderer",
+        "assets/message.json": "assets/message.json",
+        "native-package/index.cjs": "node_modules/example-native/index.cjs",
+        "native-package/package.json": "node_modules/example-native/package.json",
+        ":addon.node": "node_modules/example-native/addon.node",
+    },
+    asar = True,
+    asar_unpacked = ["node_modules/example-native/addon.node"],
+    executable_name = "sample-desktop",
+    extra_resources = {
+        ":helper": "native/helper",
+        "resources/settings.json": "config/settings.json",
+    },
+    fuses = {
+        "runAsNode": "off",
+        "enableNodeOptionsEnvironmentVariable": "off",
+        "enableNodeCliInspectArguments": "off",
+        "onlyLoadAppFromAsar": "on",
+        "grantFileProtocolExtraPrivileges": "off",
+    },
+    package_json = "package.json",
+    remove_package_scripts = True,
+    runtime = ":runtime",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+# Runs a real Chromium sandbox and display server on the test host.
+py_test(
+    name = "smoke_test",
+    size = "medium",
+    srcs = ["tools/smoke_test.py"],
+    args = ["$(rootpath :app)"],
+    data = [":app"],
+    main = "tools/smoke_test.py",
+    tags = [
+        "local",
+        "manual",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)
