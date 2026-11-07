@@ -226,6 +226,22 @@ per-action peak memory 1,408,147,456 bytes. These are whole-matrix execution
 statistics, not bundle-only resources. Cache populations differ from earlier
 runs; the transfer reduction does not establish a build-latency improvement.
 
+## Chromium base baseline
+
+The [4746f81 source build](https://formatjs.buildbuddy.io/invocation/9cc4e6a6-ac49-484f-9f2b-592a8fceefe0)
+passed in 42.111 seconds. BB tracked 431 remote executions, 471.481 CPU-seconds,
+389,984,256 bytes maximum per-action peak memory, 1,812,107 worker input bytes
+and 1,378,391 worker output bytes. The following source-test phase took 8.202
+seconds and passed original Rust JSON and native GLib dispatch checks, alongside
+the existing source probes. Its two remote executions include compile/link work;
+tests execute on the matching Linux BB workflow host.
+
+These are phase observations with shared caches and prior compilation attempts,
+not a cold Base/Electron benchmark. PartitionAlloc's added two-unit `raw_ptr`
+target keeps its headers separate from the existing allocator target, preserving
+full V8 compiler inputs. Actual cold/warm comparisons remain required before
+claiming a build speedup.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

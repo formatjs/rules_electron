@@ -78,6 +78,17 @@ fix applies to an owned projection file and records its provenance.
 passed JS, Wasm, Intl, Temporal and inspector execution with generated startup
 data. This validates the Linux AMD64 V8 engine; full Electron still needs linking.
 
+Chromium base now builds its captured 425-unit root and support libraries with
+pinned native GLib, matching ICU/BoringSSL headers and the original Rust CXX
+bridges. The combined Temporal/base closure uses 85 Rust targets from 65 vendored
+packages. Fixed build dates and declared version files replace ambient clock/git
+inputs. CXX configuration comes from the pinned target Rust compiler; its native
+compiler runs in execution configuration. Original Python generators retain
+path/mtime byte checks. [4746f81 consumer](https://formatjs.buildbuddy.io/invocation/37a9576f-eea3-4c65-8205-6dabc9b3426e)
+passed Rust JSON parsing, invalid-input rejection, serialization, Base64 and
+native GLib task/idle dispatch after the fresh network-denial gate. Base remains
+Linux AMD64; full source-built Electron still needs linking.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.
