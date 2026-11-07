@@ -40,3 +40,15 @@ flowchart LR
 The [parity checklist](packaging-parity.md) tracks remaining contracts. Source
 runtime availability, successful cross-builds, native launch, installer behavior
 and successful updates are separate claims; each needs its own evidence.
+
+Hermeticity is an acceptance gate, following [hermeticbuild/nodejs](https://github.com/hermeticbuild/nodejs):
+pinned source/tool archives and lockfiles, declared execution toolchains and
+sysroots, target/exec separation, explicit action inputs/environment, no network
+or host-tool discovery inside build actions, deterministic product bytes. Native
+installers and updater execution are tested separately on matching disposable
+hosts. Bootstrap runtimes remain labeled until source-built outputs replace them.
+
+After each contract passes that gate, profile it on BB: cold and warm action
+times, peak memory, action/cache counts, bytes transferred and artifact sizes.
+Optimize measured bottlenecks while retaining reproducibility and behavior tests.
+Benchmark/profile data may contain timing; product artifacts may not read clocks.

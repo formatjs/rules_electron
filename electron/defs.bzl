@@ -1,5 +1,17 @@
 """Native Electron app assembly. Runtime sources belong to the electron overlay."""
 
+ElectronAppInfo = provider(
+    doc = "Assembled target app and identity for downstream packaging rules.",
+    fields = {
+        "artifact": "App directory or macOS bundle ZIP.",
+        "platform": "linux, macos or windows.",
+        "package_json": "App package manifest.",
+        "executable_name": "Main executable basename.",
+        "product_name": "Display name.",
+        "app_id": "Application identifier.",
+    },
+)
+
 ElectronRuntimeInfo = provider(
     doc = "Target-platform runtime files, relative to the distribution root.",
     fields = {
@@ -113,7 +125,17 @@ def _app_impl(ctx):
         mnemonic = "ElectronApp",
         progress_message = "Assembling Electron app %{label}",
     )
-    return [DefaultInfo(files = depset([output]))]
+    return [
+        ElectronAppInfo(
+            artifact = output,
+            platform = platform,
+            package_json = ctx.file.package_json,
+            executable_name = executable_name,
+            product_name = ctx.attr.product_name or ctx.label.name,
+            app_id = ctx.attr.app_id,
+        ),
+        DefaultInfo(files = depset([output])),
+    ]
 
 electron_app = rule(
     implementation = _app_impl,

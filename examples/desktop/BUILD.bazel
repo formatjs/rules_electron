@@ -1,13 +1,16 @@
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
-load("@rules_electron//electron:defs.bzl", "electron_app", "electron_runtime")
+load("@rules_electron//electron:defs.bzl", "electron_runtime")
+load("@rules_electron//electron:linux.bzl", "electron_deb")
 load("@rules_electron//electron:update.bzl", "electron_update_config", "electron_update_feed")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//tools:cross_bundle.bzl", "cross_smoke_bundle")
+load(":desktop_app.bzl", "desktop_app")
 
 cross_smoke_bundle(
     name = "cross_build_smoke_bundle",
     app = ":app",
+    linux_packages = ":linux_release_files",
 )
 
 exports_files([
@@ -118,55 +121,64 @@ alias(
     }),
 )
 
-electron_app(
+desktop_app(
     name = "app",
-    srcs = {
-        "main.cjs": "main.cjs",
-        "preload.cjs": "preload.cjs",
-        ":renderer_bundle": "renderer",
-        "assets/message.json": "assets/message.json",
-        "native-package/index.cjs": "node_modules/example-native/index.cjs",
-        "native-package/package.json": "node_modules/example-native/package.json",
-        ":native_addon": "node_modules/example-native/addon.node",
-        "@updater_npm//:runtime": "node_modules",
-        "updater-smoke.cjs": "updater-smoke.cjs",
-    },
-    app_id = "org.example.sample-desktop",
-    asar = True,
-    asar_unpacked = ["node_modules/example-native/addon.node"],
-    executable_name = "sample-desktop",
-    extra_resources = select({
-        ":windows": {
-            ":helper": "native/helper.exe",
-            ":update_config": "app-update.yml",
-            ":update_smoke_feed": "update-smoke-feed",
-            "resources/settings.json": "config/settings.json",
-        },
-        "//conditions:default": {
-            ":helper": "native/helper",
-            ":update_config": "app-update.yml",
-            ":update_smoke_feed": "update-smoke-feed",
-            "resources/settings.json": "config/settings.json",
-        },
-    }),
-    fuses = select({
-        ":macos": {},
-        "//conditions:default": {
-            "runAsNode": "off",
-            "enableNodeOptionsEnvironmentVariable": "off",
-            "enableNodeCliInspectArguments": "off",
-            "onlyLoadAppFromAsar": "on",
-            "grantFileProtocolExtraPrivileges": "off",
-        },
-    }),
-    macos_signer = select({
-        ":macos": "@rcodesign_linux_x64//:rcodesign",
-        "//conditions:default": None,
-    }),
     package_json = "package.json",
-    product_name = "Sample Desktop",
-    remove_package_scripts = True,
-    runtime = ":runtime",
+)
+
+desktop_app(
+    name = "app_v2",
+    package_json = "package-v2.json",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+[
+    electron_deb(
+        name = name,
+        package_name = "rules-electron-sample-desktop",
+        app = app,
+        depends = [
+            "libc6 (>= 2.31)",
+            "libgtk-3-0",
+            "libnss3",
+            "libasound2",
+            "libgbm1",
+            "desktop-file-utils",
+            "shared-mime-info",
+            "hicolor-icon-theme",
+        ],
+        description = "Generic Bazel Electron packaging example",
+        file_associations = {"application/x-sample-desktop": ["*.sample-desktop"]},
+        icons = {"assets/sample.svg": "scalable"},
+        maintainer = "Example Maintainers <maintainers@example.invalid>",
+        protocols = ["sample-desktop"],
+    )
+    for name, app in [
+        ("deb_v1", ":app"),
+        ("deb_v2", ":app_v2"),
+    ]
+]
+
+electron_update_feed(
+    name = "deb_v2_feed",
+    architecture = select({
+        ":linux_arm64": "arm64",
+        "//conditions:default": "x64",
+    }),
+    artifacts = {":deb_v2": "Sample-2.0.0.deb"},
+    package_json = "package-v2.json",
+    platform = "linux",
+    release_date = "2026-01-02T03:04:05Z",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+filegroup(
+    name = "linux_release_files",
+    srcs = [
+        ":deb_v1",
+        ":deb_v2_feed",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
 )
 
 electron_update_config(

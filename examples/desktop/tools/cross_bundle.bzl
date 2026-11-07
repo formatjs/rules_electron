@@ -27,6 +27,19 @@ _targets = transition(
     outputs = ["//command_line_option:platforms", "//command_line_option:features"],
 )
 
+def _linux_split(settings, attr):
+    _ = settings, attr
+    return {
+        name: {"//command_line_option:platforms": ["//platforms:" + name]}
+        for name in ["linux_x86_64", "linux_aarch64"]
+    }
+
+_linux_targets = transition(
+    implementation = _linux_split,
+    inputs = [],
+    outputs = ["//command_line_option:platforms"],
+)
+
 def _impl(ctx):
     inputs = []
     entries = []
@@ -37,6 +50,10 @@ def _impl(ctx):
         file = files[0]
         inputs.append(file)
         entries.append({"variant": variant, "source": file.path, "directory": file.is_directory})
+    for variant, target in ctx.split_attr.linux_packages.items():
+        for file in target[DefaultInfo].files.to_list():
+            inputs.append(file)
+            entries.append({"variant": variant, "source": file.path, "directory": file.is_directory, "package": True})
     manifest = ctx.actions.declare_file(ctx.label.name + ".json")
     ctx.actions.write(manifest, json.encode(entries))
     output = ctx.actions.declare_file("electron-cross-smoke.zip")
@@ -53,6 +70,7 @@ cross_smoke_bundle = rule(
     implementation = _impl,
     attrs = {
         "app": attr.label(mandatory = True, cfg = _targets),
+        "linux_packages": attr.label(mandatory = True, cfg = _linux_targets),
         "_bundle": attr.label(default = Label("//tools:bundle"), executable = True, cfg = "exec"),
         "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },

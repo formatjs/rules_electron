@@ -67,7 +67,9 @@ Linux/Windows v1 `fuses` accepts `"on"`/`"off"` for `runAsNode`,
 remain unchanged; missing/removed fuses fail. `onlyLoadAppFromAsar = "on"` requires
 ASAR. This does not embed platform ASAR-integrity metadata or sign binaries.
 macOS bundle/helper metadata and ad hoc signing are supported. Release signing,
-installers, icons and OS integration remain pending.
+macOS/Windows installers, icons and OS integration remain pending. Linux DEB
+packaging supplies desktop/MIME/protocol/icon metadata and declared package hooks;
+see [Linux packages](docs/linux-packages.md).
 
 ## Development
 
@@ -99,5 +101,5 @@ See [design](docs/architecture.md) for source integration and next milestones.
 `electron_update_config` and `electron_update_feed` generate electron-updater
 configuration, channel manifests, SHA-512 metadata and external blockmaps from
 declared final artifacts. See [updater support](docs/updates.md) and the
-[release parity plan](docs/release-plan.md). Installer execution and release
-signing remain pending.
+[release parity plan](docs/release-plan.md). Linux DEB install/update smoke is
+supported; release signing and other installer formats remain pending.

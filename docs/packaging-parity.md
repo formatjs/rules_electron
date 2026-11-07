@@ -15,15 +15,15 @@ electron-builder replacement.
 | Manifest scripts | Root package scripts removable | General dependency manifest rewriting |
 | Runtime locales | Explicit file mappings or non-macOS ZIP locale selection | Broader runtime-provider integration |
 | Fuses | Supported Linux/Windows v1 settings | Signed macOS fuse mutation; additional fuse settings |
-| Linux app | Relocatable unpacked directory | Desktop metadata/icons, package dependencies, sandbox installation |
+| Linux app | Relocatable directory, DEB desktop/MIME/protocol/icon metadata, explicit package dependencies and hooks | Setuid sandbox installation, distribution-specific confinement |
 | macOS app | Branded bundle/helper metadata, framework links, ad hoc signing, deterministic ZIP | Icons, Developer ID, entitlements policy, notarization/stapling |
 | Windows app | Renamed executable, current-process Node-API exports, four compiler/CPU variants | General addon delay-load/import-library tooling, PE version/icon resources, Authenticode |
 | App version/build number | Package version; macOS bundle version | Override/validation API and separate build number |
-| OS protocol registration | None; sample custom scheme is internal renderer transport | OS registration metadata |
-| Installers | None | Linux packages/hooks, macOS disk images, Windows APPX/MSIX and host-specific packaging |
+| OS protocol registration | Linux desktop and MIME declarations | macOS/Windows registration metadata |
+| Installers | Linux DEB for amd64/arm64 with declared maintainer scripts | RPM/AppImage, macOS disk images, Windows NSIS/MSIX and other host-specific packaging |
 | Prepackaged release stages | Internal ad hoc Mac signing stage only | Public sign/package-prepackaged APIs and verification policy |
 | Distribution archives | Mac app ZIP and aggregate smoke ZIP | General release archive API and compression controls |
-| electron-updater | Generic feed config, channel manifests, final-artifact SHA-512/size, external v2 blockmaps; example client discovery/planning smoke | Installable update targets, installed-app upgrades, embedded AppImage maps, provider/publishing adapters |
+| electron-updater | Generic config/manifests, SHA-512/size, external blockmaps, real client discovery/planning; Linux DEB install/upgrade/hash-rejection smoke | Other installed-app update targets, embedded AppImage maps, provider/publishing adapters |
 | Native smoke | Scripts/workflows for four native host types | Hosted results establish actual execution coverage |
 
 All compilation, generators, assembly and ad hoc signing run on BB Linux
@@ -35,3 +35,4 @@ variants run on the corresponding CPU host. No emulation substitutes for smoke.
 Keep this checklist current as each contract gains a concrete rule and meaningful
 validation. Production migration requires closing the relevant release gaps.
 See the [release plan](release-plan.md) and [updater contract](updates.md).
+Linux package behavior and its native validation live in [Linux packages](linux-packages.md).

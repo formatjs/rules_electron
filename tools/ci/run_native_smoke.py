@@ -61,3 +61,5 @@ if __name__ == "__main__":
                 sys.executable, "examples/desktop/tools/smoke_test.py", str(app),
                 "--target-os", target_os, "--target-arch", target_arch,
             ], check=True)
+            if variant == "linux_x86_64":
+                subprocess.run([sys.executable, "tools/ci/linux_deb_smoke.py", str(directory / variant / "packages")], check=True)

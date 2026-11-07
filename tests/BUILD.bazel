@@ -3,6 +3,13 @@ load("@rules_python//python:defs.bzl", "py_test")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
 
 py_test(
+    name = "linux_package_test",
+    size = "small",
+    srcs = ["linux_package_test.py"],
+    deps = ["//electron/private:linux_packaging"],
+)
+
+py_test(
     name = "update_test",
     size = "small",
     srcs = ["update_test.py"],

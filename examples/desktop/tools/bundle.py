@@ -45,13 +45,17 @@ if __name__ == "__main__":
     entries = json.loads(Path(sys.argv[1]).read_text())
     with ZipFile(sys.argv[2], "w", compression=ZIP_DEFLATED, compresslevel=6) as archive:
         for entry in sorted(entries, key=lambda e: e["variant"]):
-            check_app(entry)
+            if not entry.get("package"):
+                check_app(entry)
             source = Path(entry["source"])
             files = sorted(source.rglob("*")) if entry["directory"] else [source]
             for file in files:
                 if file.is_dir():
                     continue
-                name = entry["variant"] + "/" + ("app/" + file.relative_to(source).as_posix() if entry["directory"] else "app.zip")
+                if entry.get("package"):
+                    name = entry["variant"] + "/packages/" + source.name + ("/" + file.relative_to(source).as_posix() if entry["directory"] else "")
+                else:
+                    name = entry["variant"] + "/" + ("app/" + file.relative_to(source).as_posix() if entry["directory"] else "app.zip")
                 info = ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
                 info.create_system = 3
                 info.external_attr = file.stat().st_mode << 16

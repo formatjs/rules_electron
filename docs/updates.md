@@ -57,8 +57,9 @@ after insertions. Embedded AppImage maps require a separate packaging stage.
 The desktop example pins electron-updater 6.6.2 and its script-free npm closure
 through an integrity-checked lockfile. Native smoke exercises discovery, channel
 routing, artifact hashes and actual updater blockmap planning over local HTTP.
-Its metadata fixture is not an installer. Install, restart, signature rejection
-and installed-app upgrade tests remain pending with the installer/signing work.
+Its metadata fixture is not an installer. A separate [Linux DEB test](linux-packages.md)
+uses real v1/v2 packages, hash rejection and installed-app upgrades. Other targets,
+signature rejection and release-identity verification remain pending.
 
 Protocol references: [auto update](https://www.electron.build/v26/docs/features/auto-update/),
 [channel routing](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/providers/Provider.ts),

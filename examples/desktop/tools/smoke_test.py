@@ -63,6 +63,8 @@ if __name__ == "__main__":
     parser.add_argument("app")
     parser.add_argument("--target-os", choices=["linux", "macos", "windows"], required=True)
     parser.add_argument("--target-arch", choices=["x64", "arm64"], required=True)
+    parser.add_argument("--installed", action="store_true")
+    parser.add_argument("--expected-version")
     args = parser.parse_args()
     host_os = {"Linux": "linux", "Darwin": "macos", "Windows": "windows"}.get(platform.system())
     host_arch = {"x86_64": "x64", "amd64": "x64", "arm64": "arm64", "aarch64": "arm64"}.get(platform.machine().lower())
@@ -76,7 +78,11 @@ if __name__ == "__main__":
     with relocation_directory() as directory:
         directory = Path(directory)
         app = directory / "relocated desktop app"
-        if host_os == "macos":
+        if args.installed:
+            if host_os != "linux":
+                raise ValueError("Installed-path smoke currently supports Linux only")
+            executable = source
+        elif host_os == "macos":
             subprocess.run(["/usr/bin/ditto", "-x", "-k", str(source), str(app)], check=True)
             bundles = list(app.glob("*.app"))
             if len(bundles) != 1:
@@ -112,5 +118,7 @@ if __name__ == "__main__":
         report = json.loads(lines[0].removeprefix("EXAMPLE_SMOKE_OK "))
         assert report["architecture"] == args.target_arch, report
         assert report["update_version"] == "2.0.0", report
+        if args.expected_version:
+            assert report["app_version"] == args.expected_version, report
         assert report["platform"] == {"linux": "linux", "macos": "darwin", "windows": "win32"}[args.target_os], report
         print("EXAMPLE_SMOKE_OK " + json.dumps(report, ensure_ascii=True))

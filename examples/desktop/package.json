@@ -4,6 +4,11 @@
   "version": "1.0.0",
   "description": "Generic Bazel Electron migration example",
   "main": "main.cjs",
-  "scripts": {"development-only": "echo not shipped"},
-  "dependencies": {"example-native": "1.0.0"}
+  "scripts": {
+    "development-only": "echo not shipped"
+  },
+  "dependencies": {
+    "example-native": "1.0.0",
+    "electron-updater": "6.6.2"
+  }
 }

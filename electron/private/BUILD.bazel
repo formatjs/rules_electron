@@ -1,5 +1,10 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
+exports_files(
+    ["linux-maintainer.sh"],
+    visibility = ["//visibility:public"],
+)
+
 py_library(
     name = "assembly",
     srcs = [
@@ -31,4 +36,19 @@ py_binary(
     srcs = ["update.py"],
     main = "update.py",
     visibility = ["//electron:__pkg__"],
+)
+
+py_library(
+    name = "linux_packaging",
+    srcs = ["linux.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [":updates"],
+)
+
+py_binary(
+    name = "linux_payload",
+    srcs = ["linux.py"],
+    main = "linux.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":updates"],
 )

@@ -18,6 +18,10 @@ function ownFrame(event) {
 }
 
 app.whenReady().then(async () => {
+  if (process.argv.includes('--install-update-smoke') || process.argv.includes('--reject-update-smoke')) {
+    await require('./installed-update-smoke.cjs')(process.argv.includes('--reject-update-smoke'));
+    return;
+  }
   const rendererFiles = {
     '/index.html': ['index.html', 'text/html; charset=utf-8'],
     '/index.js': ['index.js', 'text/javascript; charset=utf-8'],
@@ -73,7 +77,7 @@ app.whenReady().then(async () => {
       assert.deepEqual(environment, { node: 'undefined', bridge: 'function', sandboxed: true, contextIsolated: true });
       const update_version = await require('./updater-smoke.cjs')();
       clearTimeout(watchdog);
-      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify({ ...result, architecture: process.arch, platform: process.platform, update_version }));
+      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify({ ...result, architecture: process.arch, platform: process.platform, update_version, app_version: app.getVersion() }));
       app.quit();
     } catch (error) {
       console.error(error);
