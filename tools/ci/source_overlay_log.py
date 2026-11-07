@@ -66,8 +66,9 @@ def classify(log):
         "PARTITION_ALLOC_BYTES": r"check failed: PartitionAlloc preserved bytes",
         "PARTITION_ALLOC_FAILURE_BOUNDARY": r"check failed: PartitionAlloc (?:failed realloc returns null|calloc overflow rejected|oversized allocation rejected)",
         "PARTITION_ALLOC_ALIGNMENT": r"check failed: PartitionAlloc (?:requested alignment|realloc alignment)",
+        "PARTITION_ALLOC_NATIVE_CHECK": r"Check failed:|Check failure",
         "ASSERTION_FAILURE": r"AssertionError:",
-        "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction",
+        "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction|SIGILL|SIGTRAP|Trace/breakpoint trap|Received signal [456711]",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
         "SOURCE_VALIDATION": r"fingerprint mismatch|Patched file differs",
         "EXECUTABLE_NOT_FOUND": r"not found|No such file or directory|ENOENT",
@@ -80,6 +81,14 @@ def classify(log):
 
 
 def source_test_diagnostics(identifier, key):
+    probes = {
+        "//source:node_dependencies_test": "node_dependencies",
+        "//tests:v8_torque_test": "torque",
+        "//source:v8_bytecodes_test": "bytecodes",
+        "//source:icu_test": "icu",
+        "//source:v8_regexp_test": "regexp",
+        "//source:partition_alloc_test": "partition_alloc",
+    }
     token, seen, count = "", set(), 0
     for _ in range(8):
         if token in seen:
@@ -91,7 +100,8 @@ def source_test_diagnostics(identifier, key):
             raise ValueError("Test action metadata exceeds limit")
         page = json.loads(content)
         for action in page.get("action", []):
-            if not action.get("targetLabel", "").endswith(("//source:node_dependencies_test", "//tests:v8_torque_test", "//source:v8_bytecodes_test", "//source:icu_test", "//source:v8_regexp_test", "//source:partition_alloc_test")):
+            probe = next((name for suffix, name in probes.items() if action.get("targetLabel", "").endswith(suffix)), None)
+            if probe is None:
                 continue
             for file in action.get("file", []):
                 if file.get("name", "").rsplit("/", 1)[-1] != "test.log":
@@ -111,7 +121,13 @@ def source_test_diagnostics(identifier, key):
                     if len(data) != int(digest[2]) or hashlib.sha256(data).hexdigest() != digest[1]:
                         raise ValueError("Test log digest mismatch")
                 count += 1
-                print("Source probe test diagnostics:", json.dumps({"log_bytes": len(data), "diagnostics": classify(data.decode("utf-8", errors="replace"))}, sort_keys=True))
+                log = data.decode("utf-8", errors="replace")
+                details = {"probe": probe, "log_bytes": len(data), "diagnostics": classify(log)}
+                if probe == "partition_alloc":
+                    # Only public source basenames and bounded line numbers leave memory.
+                    sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
+                    details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[])" + re.escape(name) + r":([0-9]{1,4})(?::|\]|\s)", log) if 0 < int(line) < 5000][:8]
+                print("Source probe test diagnostics:", json.dumps(details, sort_keys=True))
         token = page.get("nextPageToken", "")
         if not token:
             break
