@@ -68,6 +68,19 @@ def classify(log):
         "PARTITION_ALLOC_CHILD_PROCESS": r"check failed: PartitionAlloc overflow child",
         "PARTITION_ALLOC_ALIGNMENT": r"check failed: PartitionAlloc (?:requested alignment|realloc alignment)",
         "PARTITION_ALLOC_NATIVE_CHECK": r"Check failed:|Check failure",
+        "RUST_UNRESOLVED_IMPORT": r"error\[E043[23]\]|unresolved import|unresolved module",
+        "RUST_MISSING_CRATE": r"error\[E0463\]|can't find crate for",
+        "RUST_TYPE_ERROR": r"error\[E0308\]|error\[E0277\]",
+        "RUST_UNSTABLE_OPTION": r"error\[E0554\]|unknown unstable option|feature.*not.*allowed",
+        "RUST_BUILD_SCRIPT": r"failed to run custom build command|build script process failed|failed to execute build script",
+        "RUST_BUILD_ENV": r"environment variable.*not defined at compile time|OUT_DIR.*not defined|CARGO_MANIFEST_DIR.*not defined",
+        "RUST_PROC_MACRO": r"proc-macro panicked|could not load proc macro",
+        "RUST_PANIC": r"thread .* panicked at|panic in a function that cannot unwind",
+        "BINDGEN_TOOL": r"unable to find libclang|clang diagnosed error|bindgen.*panicked",
+        "TEMPORAL_ALLOCATOR": r"check failed: Temporal (?:Rust heap ownership|Rust buffer bytes|Rust unchecked allocation failure|object heap ownership)",
+        "TEMPORAL_CALENDAR": r"check failed: Temporal (?:leap date|invalid leap date|constrained date|duration parsing|calendar|Japanese)",
+        "TEMPORAL_TIMEZONE": r"check failed: Temporal (?:unknown timezone|timezone parsing|hour duration|DST)",
+        "TEMPORAL_ICU_DATA": r"check failed: Temporal declared ICU data",
         "ASSERTION_FAILURE": r"AssertionError:",
         "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction|SIGILL|SIGTRAP|Trace/breakpoint trap|Received signal [456711]",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
@@ -90,6 +103,7 @@ def source_test_diagnostics(identifier, key):
         "//source:icu_test": "icu",
         "//source:v8_regexp_test": "regexp",
         "//source:partition_alloc_test": "partition_alloc",
+        "//source:temporal_test": "temporal",
     }
     token, seen, count = "", set(), 0
     for _ in range(8):
@@ -144,13 +158,17 @@ def failed_action_diagnostics(identifier, key):
         data = response.read(64 * 1024**2 + 1)
     if len(data) > 64 * 1024**2:
         raise ValueError("Execution diagnostics exceed limit")
-    for execution in json.loads(data).get("execution", [])[:32]:
+    failures = 0
+    for execution in json.loads(data).get("execution", []):
         response = execution.get("executeResponse", {})
         result = response.get("result", {})
         status = execution.get("status", {})
         exit_code = result.get("exitCode", execution.get("exitCode", 0))
         if not exit_code and not status.get("code"):
             continue
+        failures += 1
+        if failures > 32:
+            break
         log = status.get("message", "") + response.get("status", {}).get("message", "")
         for name in ("stdoutRaw", "stderrRaw"):
             log += base64.b64decode(result.get(name, ""), validate=True).decode("utf-8", errors="replace")
