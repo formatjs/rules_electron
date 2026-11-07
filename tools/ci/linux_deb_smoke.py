@@ -78,7 +78,9 @@ def main(directory):
             temporary = Path(temporary)
             probe = temporary / "document.sample-desktop"
             probe.write_text("sample document")
-            assert command("xdg-mime", "query", "filetype", str(probe)) == "application/x-sample-desktop"
+            content_type = command("gio", "info", "--attributes=standard::content-type", str(probe))
+            assert "standard::content-type: application/x-sample-desktop" in content_type, content_type
+            assert APP_ID + ".desktop" in command("gio", "mime", "application/x-sample-desktop")
             broker = temporary / "bin"
             broker.mkdir()
             # Headless elevation adapter. Downloader and dpkg installation remain real.
