@@ -64,6 +64,24 @@ class UpdateTest(unittest.TestCase):
             with self.subTest(platform=platform, architecture=arch):
                 self.assertEqual(channel_filename(platform, arch, "beta"), expected)
 
+    def test_blockmaps_resynchronize_after_insertions_and_deletions(self):
+        name = "installer.exe"
+        original = hashlib.shake_256(b"deterministic installer-like data").digest(1024 * 1024)
+        self.artifact.write_bytes(original)
+        self.feed(output="old", artifacts=[{"source": self.artifact, "name": name}], blockmaps=[name])
+        old = json.loads(gzip.decompress((self.root / "old" / (name + ".blockmap")).read_bytes()))["files"][0]
+        known = dict(zip(old["checksums"], old["sizes"]))
+        for index, changed in enumerate([b"prefix" + original, original[:400000] + b"inserted" + original[400000:], original[:400000] + original[400037:]]):
+            self.artifact.write_bytes(changed)
+            directory = "new" + str(index)
+            self.feed(output=directory, artifacts=[{"source": self.artifact, "name": name}], blockmaps=[name])
+            new = json.loads(gzip.decompress((self.root / directory / (name + ".blockmap")).read_bytes()))["files"][0]
+            reused = sum(size for checksum, size in zip(new["checksums"], new["sizes"]) if known.get(checksum) == size)
+            with self.subTest(change=index):
+                self.assertGreater(reused, len(original) * 0.75)
+                self.assertEqual(sum(new["sizes"]), len(changed))
+                self.assertTrue(all(16 * 1024 <= size <= 64 * 1024 for size in new["sizes"][:-1]))
+
     def test_invalid_release_inputs_and_output_collisions_fail(self):
         for kwargs in [
             {"artifacts": []}, {"channel": "../latest"}, {"release_date": "now"},

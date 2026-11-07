@@ -11,6 +11,26 @@ import re
 import sys
 from urllib.parse import quote
 
+_CHUNK_MIN = 16 * 1024
+_CHUNK_MAX = 64 * 1024
+_GEAR = tuple(int.from_bytes(hashlib.sha256(b"rules_electron/blockmap/v1/" + bytes([i])).digest()[:4], "little") for i in range(256))
+
+
+def _content_chunks(reader):
+    data = reader.read(_CHUNK_MAX)
+    while data:
+        boundary = len(data)
+        state = 0
+        # A 32-bit gear state forgets earlier bytes after 32 shifts.
+        for index in range(min(_CHUNK_MIN - 32, len(data)), len(data)):
+            state = ((state << 1) + _GEAR[data[index]]) & 0xFFFFFFFF
+            if index + 1 >= _CHUNK_MIN and state & 0x3FFF == 0:
+                boundary = index + 1
+                break
+        yield data[:boundary]
+        tail = data[boundary:]
+        data = tail + reader.read(_CHUNK_MAX - len(tail))
+
 
 def channel_filename(platform, architecture, channel):
     if platform not in ("linux", "macos", "windows") or architecture not in ("x64", "arm64"):
@@ -67,9 +87,9 @@ def create_feed(artifacts, package_json, output, platform, architecture,
         source = Path(entry["source"])
         digest = hashlib.sha512()
         checksums, sizes = [], []
-        # Fixed chunks are valid v2 maps. Content-defined chunks can improve reuse later.
         with source.open("rb") as reader, (output / name).open("wb") as writer:
-            while chunk := reader.read(64 * 1024):
+            chunks = _content_chunks(reader) if name in blockmaps else iter(lambda: reader.read(1024 * 1024), b"")
+            for chunk in chunks:
                 writer.write(chunk)
                 digest.update(chunk)
                 if name in blockmaps:

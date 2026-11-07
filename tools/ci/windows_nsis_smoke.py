@@ -186,7 +186,7 @@ if __name__ == "__main__":
             assert registry_value(REGISTRY, "InstallLocation") == str(install)
             assert server.transfers and all(ranged for ranged, _ in server.transfers), server.transfers
             transferred = sum(size for _, size in server.transfers)
-            assert transferred < second.stat().st_size, (transferred, second.stat().st_size)
+            assert transferred < second.stat().st_size // 2, (transferred, second.stat().st_size)
             assert digest(cache / "installer.exe") == digest(second)
             assert (install / "keep-user-data.txt").read_text() == "keep"
             smoke(executable, architecture, "2.0.0")
