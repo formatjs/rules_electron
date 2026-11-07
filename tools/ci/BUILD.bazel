@@ -1,4 +1,24 @@
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+py_library(
+    name = "smoke_shards",
+    srcs = ["smoke_shards.py"],
+)
+
+py_library(
+    name = "smoke_bundling",
+    srcs = ["smoke_bundle.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [":smoke_shards"],
+)
+
+py_binary(
+    name = "smoke_bundle",
+    srcs = ["smoke_bundle.py"],
+    main = "smoke_bundle.py",
+    visibility = ["//visibility:public"],
+    deps = [":smoke_shards"],
+)
 
 py_library(
     name = "profiles",
@@ -13,4 +33,5 @@ py_library(
         "run_native_smoke.py",
     ],
     visibility = ["//tests:__pkg__"],
+    deps = [":smoke_shards"],
 )

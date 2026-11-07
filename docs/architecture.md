@@ -91,7 +91,7 @@ execution, shared cache/BES, five-platform cross-build matrix. Hermetic LLVM
 cross-links a native fixture for Linux x86_64/arm64, macOS x86_64/arm64 and Windows
 x86_64 (MinGW fixture). Electron's actual Windows runtime needs MSVC; that
 toolchain requires an explicitly approved Visual Studio runtime license setting.
-MSVC validation remains pending. Assembly runs with Linux execution tools for both Linux target CPUs.
+Both MSVC CPU variants have native smoke coverage. Assembly uses Linux execution tools.
 Linux tests execute assembled fixture after relocation. No cross-target test
 execution implied. Add real Electron targets to this matrix as each upstream
 source profile becomes available; keep unsupported profiles explicit.
@@ -100,7 +100,7 @@ The independent `examples/desktop` workspace provides a generic app built from
 scratch, with a real Node-API addon and helper compiled by LLVM. Explicitly
 labeled official Electron bootstraps make it runnable before the source runtime
 exists. BB Linux workers compile and package every variant. GH downloads the
-verified aggregate artifact, then native Linux x64, macOS ARM64 and Windows
+verified host-specific archives, then native Linux x64, macOS ARM64 and Windows
 x64/ARM64 hosts execute sandboxed relocation smoke. Both Windows compiler
 variants run on their matching CPU host. Linux ARM64 is cross-built only.
 
@@ -119,8 +119,9 @@ budgets do not estimate Chromium compilation costs.
 ## Seven-variant CI handoff
 
 The example split transition builds Linux x86_64/ARM64, macOS ARM64 and Windows
-x86_64/ARM64 with GNU LLVM and MSVC. BB Linux executes every build action. An
-aggregate artifact verifies binary architectures before GH downloads it using
-validated invocation metadata and a read-only BB key. GH hosted native runners
+x86_64/ARM64 with GNU LLVM and MSVC. BB Linux executes every build action. One
+action verifies all seven binary architectures before emitting four native-host
+archives. GH downloads each using validated invocation metadata, CAS digests and
+a read-only BB key. GH hosted native runners
 only execute smoke; Linux ARM64 remains cross-build only. This follows the public
 formatjs/formatjs artifact handoff. See [packaging parity](packaging-parity.md).

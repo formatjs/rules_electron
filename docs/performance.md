@@ -97,9 +97,15 @@ hosts each download that full archive: roughly 6.71 GB of archive payload across
 those hosts, excluding the bridge and protocol overhead. All four
 [native jobs passed](https://github.com/formatjs/rules_electron/actions/runs/42352517657),
 including the public macOS release ZIP. Build host-specific transport shards on
-BB next; preserve all seven architecture checks, exact installer bytes and both
+BB; preserve all seven architecture checks, exact installer bytes and both
 Windows compiler variants. Linux ARM64 must remain cross-built and checked even
 without a native consumer.
+
+The current handoff emits four BB-built archives and routes each to its matching
+native host. One action checks all seven apps before writing any shard; Linux
+ARM64 apps/packages remain declared inputs. Repository/commit/success/CAS checks
+apply separately to each download. Hosted sizes and native lifecycle results must
+establish the transfer reduction before claiming a performance result.
 
 Repeat the same target set and product inputs with explicit cold/warm cache
 conditions. Record workflow and child build durations, analysis time, actual

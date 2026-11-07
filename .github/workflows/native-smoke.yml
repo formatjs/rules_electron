@@ -45,21 +45,26 @@ jobs:
       (github.event.context == 'Cross-build Electron Apps' &&
       github.event.sender.login == 'buildbuddy-io[bot]' && github.event.state == 'success'))
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [linux-x64, macos-arm64, windows-x64, windows-arm64]
     steps:
       - uses: actions/checkout@v7
         with:
           ref: main
           persist-credentials: false
-      - name: Download verified BB matrix artifact
+      - name: Download verified BB smoke shard
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_RO_PUBLIC_KEY }}
           INVOCATION_URL: ${{ inputs.invocation_url || github.event.target_url }}
           BUILD_SHA: ${{ inputs.commit_sha || github.event.sha }}
+          SMOKE_SHARD: ${{ matrix.shard }}
         run: python3 tools/ci/buildbuddy_artifacts.py
       - uses: actions/upload-artifact@v7
         with:
-          name: electron-cross-smoke
-          path: artifacts/electron-cross-smoke.zip
+          name: electron-smoke-${{ matrix.shard }}
+          path: artifacts/electron-smoke-${{ matrix.shard }}.zip
           compression-level: 0
           retention-days: 7
 
@@ -72,15 +77,19 @@ jobs:
         include:
           - runner: ubuntu-22.04
             architecture: x64
+            shard: linux-x64
             variants: [linux_x86_64]
           - runner: macos-15
             architecture: arm64
+            shard: macos-arm64
             variants: [macos_aarch64]
           - runner: windows-latest
             architecture: x64
+            shard: windows-x64
             variants: [windows_x86_64_gnullvm, windows_x86_64_msvc]
           - runner: windows-11-arm
             architecture: arm64
+            shard: windows-arm64
             variants: [windows_aarch64_gnullvm, windows_aarch64_msvc]
     runs-on: ${{ matrix.runner }}
     steps:
@@ -94,7 +103,7 @@ jobs:
           architecture: ${{ matrix.architecture }}
       - uses: actions/download-artifact@v8
         with:
-          name: electron-cross-smoke
+          name: electron-smoke-${{ matrix.shard }}
           path: artifacts
       - name: Install Linux GUI test libraries
         if: runner.os == 'Linux'
@@ -104,6 +113,7 @@ jobs:
       - name: Smoke BB-built apps on native host
         env:
           SMOKE_VARIANTS: ${{ toJSON(matrix.variants) }}
+          SMOKE_SHARD: ${{ matrix.shard }}
         run: python tools/ci/run_native_smoke.py
 
   publish_status:

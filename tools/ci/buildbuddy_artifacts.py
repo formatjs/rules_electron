@@ -1,4 +1,4 @@
-"""Download the successful BB matrix artifact for an exact repository commit.
+"""Download one successful BB smoke shard for an exact repository commit.
 
 API handoff follows formatjs/formatjs tools/ci/buildbuddy_artifacts.py.
 """
@@ -10,6 +10,11 @@ from pathlib import Path, PurePosixPath
 import re
 import urllib.parse
 import urllib.request
+
+try:
+    from .smoke_shards import archive_name
+except ImportError:
+    from smoke_shards import archive_name
 
 API = "https://formatjs.buildbuddy.io/api/v1/"
 ARCHIVE = "electron-cross-smoke.zip"
@@ -68,9 +73,10 @@ if __name__ == "__main__":
     if not key or not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("BuildBuddy read-only key and valid commit SHA required")
     identifier = invocation_id(os.environ["INVOCATION_URL"])
+    name = archive_name(os.environ["SMOKE_SHARD"])
     with api_request("GetInvocation", {"selector": {"invocation_id": identifier}, "include_artifacts": True}, key) as response:
-        uri, digest, size = artifact_uri(json.load(response), sha)
-    output = Path("artifacts") / ARCHIVE
+        uri, digest, size = artifact_uri(json.load(response), sha, artifact_name=name)
+    output = Path("artifacts") / name
     output.parent.mkdir(exist_ok=True)
     hasher = hashlib.sha256()
     received = 0
@@ -84,4 +90,4 @@ if __name__ == "__main__":
     if received != size or hasher.hexdigest() != digest:
         output.unlink()
         raise ValueError("Artifact digest or size mismatch")
-    print(f"Downloaded verified Electron matrix for {sha}")
+    print(f"Downloaded verified Electron shard {name} for {sha}: {size} bytes")

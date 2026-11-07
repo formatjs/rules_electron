@@ -1,9 +1,7 @@
-load("@rules_python//python:defs.bzl", "py_binary")
-
 exports_files(["smoke_test.py"])
 
-py_binary(
+alias(
     name = "bundle",
-    srcs = ["bundle.py"],
+    actual = "@rules_electron//tools/ci:smoke_bundle",
     visibility = ["//:__pkg__"],
 )

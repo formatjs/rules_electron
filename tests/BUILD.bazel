@@ -4,6 +4,16 @@ load("//electron:archive.bzl", "electron_archive")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
 load(":cross_build.bzl", "cross_build")
 
+py_test(
+    name = "smoke_bundle_test",
+    size = "small",
+    srcs = ["smoke_bundle_test.py"],
+    deps = [
+        "//tools/ci:artifacts",
+        "//tools/ci:smoke_bundling",
+    ],
+)
+
 electron_archive(
     name = "release_zip",
     app = ":app",

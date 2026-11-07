@@ -10,6 +10,11 @@ import sys
 import tempfile
 from zipfile import ZipFile
 
+try:
+    from .smoke_shards import SHARDS, archive_name
+except ImportError:
+    from smoke_shards import SHARDS, archive_name
+
 VARIANTS = {
     "linux_x86_64": ("linux", "x64"),
     "macos_aarch64": ("macos", "arm64"),
@@ -48,10 +53,12 @@ def extract_variant(archive, destination, variant):
 
 
 if __name__ == "__main__":
+    shard = os.environ["SMOKE_SHARD"]
+    name = archive_name(shard)
     variants = json.loads(os.environ["SMOKE_VARIANTS"])
-    if not variants or any(v not in VARIANTS for v in variants):
-        raise ValueError("Unsupported native smoke variants")
-    with ZipFile("artifacts/electron-cross-smoke.zip") as archive, tempfile.TemporaryDirectory() as directory:
+    if tuple(variants) != SHARDS[shard] or any(v not in VARIANTS for v in variants):
+        raise ValueError("Native smoke variants must match the complete shard")
+    with ZipFile(Path("artifacts") / name) as archive, tempfile.TemporaryDirectory() as directory:
         directory = Path(directory)
         for variant in variants:
             extract_variant(archive, directory, variant)

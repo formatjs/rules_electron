@@ -1,0 +1,127 @@
+import os
+from pathlib import Path
+import shutil
+import struct
+import tempfile
+import unittest
+from zipfile import ZipFile
+
+from tools.ci.run_native_smoke import extract_variant
+from tools.ci.smoke_bundle import build_bundles
+from tools.ci.smoke_shards import ALL_VARIANTS, SHARDS, archive_name
+
+
+class SmokeBundleTest(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.inputs = self.root / "inputs"
+        self.inputs.mkdir()
+        self.entries = []
+        for variant in sorted(ALL_VARIANTS):
+            target_os = variant.split("_")[0]
+            arm64 = "aarch64" in variant
+            header = bytearray(70)
+            if target_os == "linux":
+                header[:4] = b"\x7fELF"
+                struct.pack_into("<H", header, 18, 183 if arm64 else 62)
+            elif target_os == "macos":
+                header[:4] = b"\xcf\xfa\xed\xfe"
+                struct.pack_into("<I", header, 4, 0x0100000C)
+            else:
+                header[:2] = b"MZ"
+                struct.pack_into("<I", header, 60, 64)
+                header[64:68] = b"PE\0\0"
+                struct.pack_into("<H", header, 68, 0xAA64 if arm64 else 0x8664)
+            base = self.inputs / variant
+            base.mkdir()
+            prefix = "Contents/Resources/" if target_os == "macos" else "resources/"
+            main = "Contents/MacOS/sample-desktop" if target_os == "macos" else "sample-desktop" + (".exe" if target_os == "windows" else "")
+            paths = [main, prefix + "native/helper" + (".exe" if target_os == "windows" else ""), prefix + "app.asar.unpacked/node_modules/example-native/addon.node"]
+            if target_os == "macos":
+                source = base / "release.zip"
+                with ZipFile(source, "w") as archive:
+                    for path in paths:
+                        archive.writestr("Sample Desktop.app/" + path, header)
+            else:
+                source = base / "app"
+                for name in paths:
+                    path = source / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(header)
+                    path.chmod(0o755)
+                (source / "data").write_bytes(b"resource\0bytes")
+                (source / "data").chmod(0o644)
+            self.entries.append({"variant": variant, "source": str(source), "directory": source.is_dir()})
+            if variant.endswith("_msvc") or target_os == "linux":
+                feed = base / "feed"
+                feed.mkdir()
+                (feed / "Sample.exe").write_bytes(b"installer fixture bytes\0" + variant.encode())
+                (feed / "latest.yml").write_bytes(b"channel fixture bytes\n")
+                self.entries.append({"variant": variant, "source": str(feed), "directory": True, "package": True})
+
+    def outputs(self, directory):
+        directory.mkdir()
+        return {shard: str(directory / archive_name(shard)) for shard in SHARDS}
+
+    def test_shards_keep_exact_bytes_and_modes_without_foreign_variants(self):
+        outputs = self.outputs(self.root / "outputs")
+        build_bundles(self.entries, outputs)
+        unpacked = self.root / "unpacked"
+        unpacked.mkdir()
+        seen = set()
+        for shard, variants in SHARDS.items():
+            with ZipFile(outputs[shard]) as archive:
+                self.assertEqual({name.split("/")[0] for name in archive.namelist()}, set(variants))
+                for variant in variants:
+                    extract_variant(archive, unpacked, variant)
+                    seen.add(variant)
+                    entry = next(entry for entry in self.entries if entry["variant"] == variant and not entry.get("package"))
+                    source = Path(entry["source"])
+                    if entry["directory"]:
+                        for file in source.rglob("*"):
+                            if file.is_file():
+                                output = unpacked / variant / "app" / file.relative_to(source)
+                                self.assertEqual(output.read_bytes(), file.read_bytes())
+                                self.assertEqual(output.stat().st_mode & 0o777, file.stat().st_mode & 0o777)
+                    else:
+                        self.assertEqual((unpacked / variant / "app.zip").read_bytes(), source.read_bytes())
+                    if variant.endswith("_msvc") or variant == "linux_x86_64":
+                        source = self.inputs / variant / "feed/Sample.exe"
+                        output = unpacked / variant / "packages/feed/Sample.exe"
+                        self.assertEqual(output.read_bytes(), source.read_bytes())
+        self.assertEqual(seen, ALL_VARIANTS - {"linux_aarch64"})
+
+    def test_changed_input_paths_mtimes_and_order_preserve_archive_bytes(self):
+        first = self.outputs(self.root / "first")
+        build_bundles(self.entries, first)
+        relocated = self.root / "relocated inputs"
+        shutil.copytree(self.inputs, relocated)
+        for path in relocated.rglob("*"):
+            os.utime(path, (1234567890, 1234567890))
+        entries = [dict(entry, source=str(relocated / Path(entry["source"]).relative_to(self.inputs))) for entry in reversed(self.entries)]
+        second = self.outputs(self.root / "second")
+        build_bundles(entries, second)
+        for shard in SHARDS:
+            self.assertEqual(Path(first[shard]).read_bytes(), Path(second[shard]).read_bytes())
+
+    def test_wrong_architecture_in_build_only_linux_arm64_stops_all_shards(self):
+        source = self.inputs / "linux_aarch64/app/sample-desktop"
+        data = bytearray(source.read_bytes())
+        struct.pack_into("<H", data, 18, 62)
+        source.write_bytes(data)
+        outputs = self.outputs(self.root / "outputs")
+        with self.assertRaisesRegex(ValueError, "wrong binary architecture"):
+            build_bundles(self.entries, outputs)
+        self.assertFalse(any(Path(path).exists() for path in outputs.values()))
+
+    def test_missing_or_duplicate_app_variant_stops_all_shards(self):
+        outputs = self.outputs(self.root / "outputs")
+        for entries in (self.entries[1:], self.entries + [self.entries[0]]):
+            with self.assertRaisesRegex(ValueError, "exactly seven"):
+                build_bundles(entries, outputs)
+
+
+if __name__ == "__main__":
+    unittest.main()

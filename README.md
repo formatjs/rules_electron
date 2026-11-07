@@ -100,7 +100,7 @@ configurations respectively. Configure BuildBuddy credentials through CI setting
 or `.bazelrc.user`; credentials do not belong in source.
 
 The independent desktop workspace declares all seven target/compiler variants.
-BB Linux workers compile and assemble an aggregate artifact; GH hosted Linux x64,
+BB Linux workers compile all variants and emit four native-host smoke archives; GH hosted Linux x64,
 macOS ARM64 and Windows x64/ARM64 jobs execute native smoke without building.
 Linux ARM64 is cross-build only. macOS uses a pinned execution-platform rcodesign
 for ad hoc signing and deterministic ZIP transport of framework symlinks. Runtime

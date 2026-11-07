@@ -27,8 +27,9 @@ bazel build --config=bb-workflow --config=msvc-license --lockfile_mode=error //:
 
 MSVC configuration acknowledges the Visual Studio runtime license and must only
 run on licensed hosts. Target transitions select static CRT and disable the
-default dynamic CRT feature for MSVC variants. The aggregate output checks the
-runtime, addon and helper binary architectures before packaging.
+default dynamic CRT feature for MSVC variants. Before emitting any smoke archive,
+the BB action checks runtime, addon and helper architectures for all seven apps,
+including Linux ARM64 without a native host.
 
 **Temporary bootstrap:** official Electron 39.0.0 distributions are SHA256-pinned
 test runtimes, not source-built Electron or a production release recommendation.
@@ -52,7 +53,11 @@ Node/V8 internals still need Electron-specific headers, flags and ABI handling.
 
 ## Native smoke handoff
 
-BB publishes `electron-cross-smoke.zip`. The GH workflow follows
+BB publishes `electron-smoke-{linux-x64,macos-arm64,windows-x64,windows-arm64}.zip`.
+Each native job downloads only its host's archive. Both Windows compiler variants
+and that CPU's installers share one archive. Linux ARM64 apps/packages remain
+declared cross-build inputs but are omitted from native transport.
+The GH workflow follows
 [formatjs/formatjs](https://github.com/formatjs/formatjs/blob/main/.github/workflows/native-smoke.yml):
 trusted downloader checks repository, exact commit, successful invocation, artifact
 store, size and SHA256. GH jobs only download/extract/execute; they run no builds.

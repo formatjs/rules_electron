@@ -39,4 +39,4 @@ actions:
             --experimental_profile_additional_tasks=remote_download \
             --experimental_profile_additional_tasks=remote_cache_check \
             //:cross_build_smoke_bundle
-          cp bazel-bin/electron-cross-smoke.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/electron-cross-smoke.zip"
+          cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"

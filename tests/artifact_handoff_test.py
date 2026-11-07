@@ -7,6 +7,7 @@ from zipfile import ZipFile, ZipInfo
 
 from tools.ci.buildbuddy_artifacts import artifact_uri, invocation_id
 from tools.ci.run_native_smoke import extract_variant
+from tools.ci.smoke_shards import SHARDS, archive_name
 
 
 class ArtifactHandoffTest(unittest.TestCase):
@@ -39,6 +40,19 @@ class ArtifactHandoffTest(unittest.TestCase):
         for host in ["https://untrusted.example", "http://formatjs.buildbuddy.io", "https://formatjs.buildbuddy.io@untrusted.example"]:
             with self.subTest(host=host), self.assertRaises(ValueError):
                 invocation_id(host + "/invocation/" + identifier)
+
+    def test_each_shard_requires_its_own_bound_artifact(self):
+        response = self.response()
+        artifacts = response["invocation"][0]["artifacts"]
+        artifacts[:] = [{"name": archive_name(shard), "uri": "bytestream://formatjs.buildbuddy.io/blobs/" + str(index) * 64 + "/12"}
+                        for index, shard in enumerate(SHARDS)]
+        for index, shard in enumerate(SHARDS):
+            self.assertEqual(artifact_uri(response, "a" * 40, artifact_name=archive_name(shard))[1], str(index) * 64)
+        with self.assertRaises(ValueError):
+            archive_name("../other")
+        artifacts.pop()
+        with self.assertRaisesRegex(ValueError, "one matching"):
+            artifact_uri(response, "a" * 40, artifact_name=archive_name("windows-arm64"))
 
     def test_variant_extraction_rejects_escape_and_links(self):
         for name, mode in [("windows_x86_64_msvc/../../escape", 0o100644), ("windows_x86_64_msvc/app/link", 0o120777)]:

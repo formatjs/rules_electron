@@ -60,8 +60,9 @@ def profile_diagnostics(invocation, key, sha):
             raise ValueError("Profile digest or size mismatch")
         print("Verified BB profile " + name + ":", json.dumps(summarize(decode_profile(data)), sort_keys=True))
     for artifact in invocation.get("artifacts", []):
-        if artifact.get("name", "").endswith("electron-cross-smoke.zip"):
-            print("Matrix archive bytes:", artifact["uri"].rsplit("/", 1)[-1])
+        name = artifact.get("name", "").rsplit("/", 1)[-1]
+        if name == "electron-cross-smoke.zip" or (name.startswith("electron-smoke-") and name.endswith(".zip")):
+            print("Smoke archive bytes:", name, artifact["uri"].rsplit("/", 1)[-1])
     builds = []
     for child in invocation.get("childInvocations", []):
         with api_request("GetInvocation", {"selector": {"invocation_id": child["invocationId"]}}, key) as response:

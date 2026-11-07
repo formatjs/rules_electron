@@ -1,4 +1,4 @@
-"""One BB artifact containing all target variants; no target binaries execute."""
+"""BB-built native smoke shards; all seven target variants remain checked."""
 
 _VARIANTS = [
     "linux_x86_64",
@@ -64,16 +64,22 @@ def _impl(ctx):
             inputs.append(file)
             entries.append({"variant": variant, "source": file.path, "directory": file.is_directory, "package": True})
     manifest = ctx.actions.declare_file(ctx.label.name + ".json")
-    ctx.actions.write(manifest, json.encode(entries))
-    output = ctx.actions.declare_file("electron-cross-smoke.zip")
+    outputs = {
+        shard: ctx.actions.declare_file("electron-smoke-" + shard + ".zip")
+        for shard in ["linux-x64", "macos-arm64", "windows-x64", "windows-arm64"]
+    }
+    ctx.actions.write(manifest, json.encode({
+        "entries": entries,
+        "outputs": {shard: file.path for shard, file in outputs.items()},
+    }))
     ctx.actions.run(
         executable = ctx.executable._bundle,
-        arguments = [manifest.path, output.path],
+        arguments = [manifest.path],
         inputs = inputs + [manifest],
-        outputs = [output],
+        outputs = outputs.values(),
         mnemonic = "ElectronCrossSmokeBundle",
     )
-    return [DefaultInfo(files = depset([output]))]
+    return [DefaultInfo(files = depset(outputs.values()))]
 
 cross_smoke_bundle = rule(
     implementation = _impl,
