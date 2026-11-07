@@ -152,6 +152,6 @@ if __name__ == "__main__":
         log = read_log({"invocation_id": identifier}, key)
         print("Source child:", json.dumps({"id": identifier, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log)}, sort_keys=True))
         resource_diagnostics(identifier, key)
-        if value.get("success") is False:
+        if value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and not value.get("success"):
             failed_action_diagnostics(identifier, key)
             node_test_diagnostics(identifier, key)
