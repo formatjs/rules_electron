@@ -261,7 +261,12 @@ if __name__ == "__main__":
         identifier = child["invocationId"]
         value = invocation(identifier)
         log = read_log({"invocation_id": identifier}, key)
-        print("Source child:", json.dumps({"id": identifier, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log)}, sort_keys=True))
+        status = {"COMPLETE_INVOCATION_STATUS": "complete", "PARTIAL_INVOCATION_STATUS": "running", "DISCONNECTED_INVOCATION_STATUS": "disconnected"}.get(value.get("invocationStatus"), "unknown")
+        duration = int(value.get("durationUsec", 0))
+        if not 0 <= duration <= 7 * 24 * 3600 * 1000000:
+            raise ValueError("Source phase duration exceeds limit")
+        command = value.get("command") if value.get("command") in ("build", "test") else "unknown"
+        print("Source child:", json.dumps({"id": identifier, "state": status, "command": command, "duration_usec": duration, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log)}, sort_keys=True))
         resource_diagnostics(identifier, key)
         if value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and not value.get("success"):
             failed_action_diagnostics(identifier, key)
