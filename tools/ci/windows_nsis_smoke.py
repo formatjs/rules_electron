@@ -171,6 +171,7 @@ if __name__ == "__main__":
             assert all(p.is_file() for p in shortcuts)
             assert digest(cache / "installer.exe") == digest(first)
             smoke(executable, architecture, "1.0.0")
+            (install / "keep-user-data.txt").write_text("keep")
             rejected = command(str(executable), "--reject-update-smoke", "--disable-gpu", "--user-data-dir=" + str(directory / "update-profile"), env=environment)
             assert "UPDATE_HASH_REJECTED" in rejected, rejected
             assert registry_value(REGISTRY, "DisplayVersion") == "1.0.0"
@@ -187,8 +188,8 @@ if __name__ == "__main__":
             transferred = sum(size for _, size in server.transfers)
             assert transferred < second.stat().st_size, (transferred, second.stat().st_size)
             assert digest(cache / "installer.exe") == digest(second)
+            assert (install / "keep-user-data.txt").read_text() == "keep"
             smoke(executable, architecture, "2.0.0")
-            (install / "keep-user-data.txt").write_text("keep")
             command(str(install / "Uninstall.exe"), "/S")
             wait_for(lambda: registry_value(REGISTRY, "DisplayVersion") is None and not executable.exists() and not (install / "Uninstall.exe").exists())
             assert registry_value(PROTOCOL, "") is None

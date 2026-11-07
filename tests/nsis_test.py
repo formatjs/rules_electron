@@ -1,8 +1,9 @@
 from pathlib import Path
 import tempfile
+import struct
 import unittest
 
-from electron.private.nsis import installer_script, literal
+from electron.private.nsis import build_installer, installer_script, literal
 
 
 class NsisTest(unittest.TestCase):
@@ -44,6 +45,20 @@ class NsisTest(unittest.TestCase):
         self.package.write_text('{"version":"65536.0.0"}')
         with self.assertRaisesRegex(ValueError, "0..65535"):
             self.render()
+
+    def test_rejects_wrong_payload_cpu_before_invoking_compiler(self):
+        header = bytearray(70)
+        header[:2] = b"MZ"
+        struct.pack_into("<I", header, 60, 64)
+        header[64:68] = b"PE\0\0"
+        struct.pack_into("<H", header, 68, 0xaa64)
+        (self.app / "sample.exe").write_bytes(header)
+        with self.assertRaisesRegex(ValueError, "architecture mismatch"):
+            build_installer({
+                "app": str(self.app), "package_json": str(self.package),
+                "app_id": "org.example.sample", "product_name": "Sample", "executable_name": "sample",
+                "compiler": str(self.root / "unavailable"), "data": str(self.root), "architecture": "x64",
+            }, self.root / "setup.exe", self.root / "setup.nsi")
 
 
 if __name__ == "__main__":
