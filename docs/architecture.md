@@ -60,7 +60,7 @@ are exposed; embedded ASAR integrity/signature metadata is outside this feature.
 Linux/Windows directory layouts and macOS framework/helper bundle structure have
 dedicated assembly paths. macOS re-signs ad hoc using an execution-platform tool
 and returns a ZIP preserving framework symlinks. Release signing, Windows PE
-metadata and platform installers still need dedicated rules. Setuid sandbox packaging also needs a format that carries
+icons and remaining platform installers still need dedicated rules. Setuid sandbox packaging also needs a format that carries
 installation permissions. Native runtime smoke must use a working sandbox.
 
 ## Source integration
@@ -71,6 +71,12 @@ patched libuv/BoringSSL, V8 base/task libraries and eleven pinned Node support
 libraries (136 C/C++ units plus Postject headers, with a linked behavior probe). The
 [source and consumer builds at 9395812](https://github.com/formatjs/electron/commit/9395812)
 passed on BB. No full runtime links.
+The captured Torque compiler now builds 25 C++ units and generates all 1,250
+outputs from 246 inputs. Its
+[93dc092 component and consumer checks](https://github.com/formatjs/electron/commit/93dc092)
+passed on BB, including byte equality across different paths/input mtimes,
+engine/Intl/Temporal interfaces and malformed-input diagnostics. Generation uses
+declared execution tools and stable relative source locations.
 Its next pieces include patched libnode, electron_lib, matching Chromium content
 dependencies, snapshots and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser,

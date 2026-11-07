@@ -102,6 +102,16 @@ The parallel component build reused cached work, so these observations do not
 establish a controlled cold-build duration or speedup. Full Electron linking and
 its performance baseline remain pending.
 
+The [93dc092 Torque consumer](https://formatjs.buildbuddy.io/invocation/e338b62e-75ae-4a3e-b5fd-21279b2f4cd3)
+passed full generation and reproducibility checks. Its source-test child recorded
+one remote execution: 17.370 CPU-seconds, 182,996,992 bytes peak memory,
+4,961,706 bytes downloaded and 18,232,433 bytes uploaded by the worker.
+Compiler work was already cached; these totals exclude cache hits and tests
+executed on the BB workflow host. They establish an observation for this warm
+consumer run, not a cold compiler-build cost or measured speedup. The producer
+currently runs Torque twice to enforce path/mtime reproducibility; any future
+reduction must retain that check in hosted validation.
+
 ## Smoke transport
 
 The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)
