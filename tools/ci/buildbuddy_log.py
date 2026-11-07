@@ -11,18 +11,27 @@ from profile_summary import decode_profile, summarize
 
 
 def profile_diagnostics(invocation, key, sha):
-    name = "cross-build-profile.json.gz"
-    if not invocation.get("success") or not any(a.get("name", "").endswith(name) for a in invocation.get("artifacts", [])):
-        return
-    uri, digest, size = artifact_uri({"invocation": [invocation]}, sha, artifact_name=name, max_bytes=64 * 1024**2)
-    with api_request("GetFile", {"uri": uri}, key) as response:
-        data = response.read(size + 1)
-    if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
-        raise ValueError("Profile digest or size mismatch")
-    print("Verified BB profile:", json.dumps(summarize(decode_profile(data)), sort_keys=True))
+    for name in ["cross-build-profile.json.gz", "fixture-profile.json.gz"]:
+        if not invocation.get("success") or not any(a.get("name", "").endswith(name) for a in invocation.get("artifacts", [])):
+            continue
+        uri, digest, size = artifact_uri({"invocation": [invocation]}, sha, artifact_name=name, max_bytes=64 * 1024**2)
+        with api_request("GetFile", {"uri": uri}, key) as response:
+            data = response.read(size + 1)
+        if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
+            raise ValueError("Profile digest or size mismatch")
+        print("Verified BB profile " + name + ":", json.dumps(summarize(decode_profile(data)), sort_keys=True))
     for artifact in invocation.get("artifacts", []):
         if artifact.get("name", "").endswith("electron-cross-smoke.zip"):
             print("Matrix archive bytes:", artifact["uri"].rsplit("/", 1)[-1])
+    builds = []
+    for child in invocation.get("childInvocations", []):
+        with api_request("GetInvocation", {"selector": {"invocation_id": child["invocationId"]}}, key) as response:
+            values = json.load(response).get("invocation", [])
+        if len(values) != 1 or values[0].get("commitSha") != sha or values[0].get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron":
+            raise ValueError("Child invocation does not match this repository and commit")
+        value = values[0]
+        builds.append({"pattern": value.get("pattern"), "duration_seconds": round(int(value.get("durationUsec", 0)) / 1000000, 3), "reported_action_count": value.get("actionCount")})
+    print("BB child builds:", json.dumps(builds))
 
 
 def execution_diagnostics(log, key, expected_sha):
@@ -54,7 +63,7 @@ if __name__ == "__main__":
         raise ValueError("BuildBuddy read-only key is not configured")
     identifier = invocation_id(os.environ["INVOCATION_URL"])
     selector = {"invocation_id": identifier}
-    with api_request("GetInvocation", {"selector": selector, "include_artifacts": True}, key) as response:
+    with api_request("GetInvocation", {"selector": selector, "include_artifacts": True, "include_child_invocations": True}, key) as response:
         invocations = json.load(response).get("invocation", [])
     if len(invocations) != 1:
         raise ValueError("Expected one invocation")
@@ -73,7 +82,7 @@ if __name__ == "__main__":
         if not token:
             break
     print(tail)
-    print("Bazel elapsed seconds:", re.findall(r"Elapsed time: ([0-9.]+)s", tail))
+    print("Recent Bazel elapsed seconds:", re.findall(r"Elapsed time: ([0-9.]+)s", tail))
     if invocation.get("pattern") == "Test Linux assembly":
         execution_diagnostics(tail, key, os.environ["BUILD_SHA"])
     else:
