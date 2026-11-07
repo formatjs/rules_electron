@@ -5,6 +5,7 @@ import hashlib
 import os
 import re
 import urllib.request
+from collections import Counter
 
 from buildbuddy_artifacts import NoRedirect, api_request, artifact_uri, invocation_id
 from profile_summary import decode_profile, summarize
@@ -23,6 +24,29 @@ def read_log(selector, key):
         if not token:
             break
     return tail
+
+
+def resource_diagnostics(identifier, key):
+    request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
+                                     data=json.dumps({"execution_lookup": {"invocation_id": identifier}}).encode(),
+                                     headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
+    with urllib.request.build_opener(NoRedirect()).open(request, timeout=60) as response:
+        data = response.read(64 * 1024**2 + 1)
+    if len(data) > 64 * 1024**2:
+        raise ValueError("Execution diagnostics exceed 64 MiB")
+    executions = json.loads(data).get("execution", [])
+    metadata = [value.get("executedActionMetadata", {}) for value in executions]
+    usage = [value.get("usageStats", {}) for value in metadata]
+    io = [value.get("ioStats", {}) for value in metadata]
+    print("BB tracked execution resources:", json.dumps({
+        "invocation_id": identifier,
+        "stages": dict(Counter(str(value.get("stage", "UNKNOWN")) for value in executions)),
+        "actions_with_usage": sum(bool(value) for value in usage),
+        "cpu_seconds": round(sum(int(value.get("cpuNanos", 0)) for value in usage) / 1000000000, 3),
+        "max_action_peak_memory_bytes": max((int(value.get("peakMemoryBytes", 0)) for value in usage), default=0),
+        "worker_input_download_bytes": sum(int(value.get("fileDownloadSizeBytes", 0)) for value in io),
+        "worker_output_upload_bytes": sum(int(value.get("fileUploadSizeBytes", 0)) for value in io),
+    }, sort_keys=True))
 
 
 def profile_diagnostics(invocation, key, sha):
@@ -50,6 +74,7 @@ def profile_diagnostics(invocation, key, sha):
         if not duration:
             print("Active BB child log:", child["invocationId"])
             print(read_log({"invocation_id": child["invocationId"]}, key)[-8000:])
+        resource_diagnostics(child["invocationId"], key)
     print("BB child builds:", json.dumps(builds))
 
 
