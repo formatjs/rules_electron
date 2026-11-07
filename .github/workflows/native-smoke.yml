@@ -16,6 +16,11 @@ on:
         description: Read BB logs without downloading artifacts or running smoke
         type: boolean
         default: false
+      build_repository:
+        description: Repository for read-only diagnostics
+        type: choice
+        default: formatjs/rules_electron
+        options: [formatjs/rules_electron, formatjs/electron]
 
 permissions:
   contents: read
@@ -33,11 +38,19 @@ jobs:
         with:
           persist-credentials: false
       - name: Read verified BB invocation logs
+        if: inputs.build_repository != 'formatjs/electron'
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_RO_PUBLIC_KEY }}
           INVOCATION_URL: ${{ inputs.invocation_url }}
           BUILD_SHA: ${{ inputs.commit_sha }}
         run: python3 tools/ci/buildbuddy_log.py
+      - name: Read verified Electron source-overlay logs
+        if: inputs.build_repository == 'formatjs/electron'
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_RO_PUBLIC_KEY }}
+          INVOCATION_URL: ${{ inputs.invocation_url }}
+          BUILD_SHA: ${{ inputs.commit_sha }}
+        run: python3 tools/ci/source_overlay_log.py
 
   download:
     if: >-
