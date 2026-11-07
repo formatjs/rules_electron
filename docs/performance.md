@@ -35,6 +35,13 @@ Both runs produced a 1,226,193,950-byte smoke archive. Size equality alone does
 not establish byte equality. Native launch, DEB install, checksum rejection,
 two-version update and uninstall checks remain required.
 
+For the same verified BB archive from `30adfbd`, the GH upload step took
+[37 seconds with default compression](https://github.com/formatjs/rules_electron/actions/runs/42344250651)
+and [13 seconds with compression disabled](https://github.com/formatjs/rules_electron/actions/runs/42344491193).
+Outer artifact sizes were 1,224,404,379 and 1,226,194,112 bytes respectively:
+about 1.8 MB more transport for avoiding the extra compression pass. These are
+individual hosted-run observations, not a guaranteed latency reduction.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache
