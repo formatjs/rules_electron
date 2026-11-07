@@ -4,6 +4,7 @@ import json
 import base64
 import hashlib
 import os
+import posixpath
 import re
 import urllib.request
 import urllib.parse
@@ -233,6 +234,14 @@ def failed_action_diagnostics(identifier, key):
         # Only exact filenames already present in public source leave memory.
         log = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", log)
         missing = {name for name in re.findall(r"fatal error: ['\"]([^'\"\n]+)['\"] file not found", log) if name in public_headers}
+        missing_inputs = set()
+        for path in re.findall(r"FileNotFoundError: [^\r\n]*?: [\"']([^\"'\r\n]{1,1000})[\"']", log):
+            path = posixpath.normpath(path)
+            candidates = [path]
+            for prefix in ("v8/", "third_party/", "gen/", "source/", "build/"):
+                if "/" + prefix in path:
+                    candidates.append(prefix + path.split("/" + prefix, 1)[1])
+            missing_inputs.update(name for name in candidates if name in public_files)
         undefined = []
         for symbol in re.findall(r"undefined symbol: ([^\r\n]+)", log)[:12]:
             identifiers = [word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", symbol) if word in public_identifiers]
@@ -246,7 +255,7 @@ def failed_action_diagnostics(identifier, key):
             name = next((name for name in candidates if name in public_files), None)
             if name is not None and 0 < int(line) < 10000:
                 sites.append({"file": name, "line": int(line)})
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_undefined_identifiers": undefined}, sort_keys=True))
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8]}, sort_keys=True))
 
 
 if __name__ == "__main__":
