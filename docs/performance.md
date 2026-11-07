@@ -42,6 +42,14 @@ Outer artifact sizes were 1,224,404,379 and 1,226,194,112 bytes respectively:
 about 1.8 MB more transport for avoiding the extra compression pass. These are
 individual hosted-run observations, not a guaranteed latency reduction.
 
+A [fresh packaging run at c940051](https://formatjs.buildbuddy.io/invocation/c27517cc-eeca-4e1e-8f49-e14bb2736a05)
+recorded 122.001 seconds for the smoke ZIP action, versus 6.279 seconds for the
+slowest app assembly action. Matrix build time was 156.966 seconds. The smoke
+transport now uses deflate level 1 and stores already-compressed DEB members.
+macOS app ZIP members still need outer compression: their inner ZIP uses stored
+entries to preserve the signed bundle transport. Installer member bytes remain
+unchanged. Subsequent BB profiles must measure runtime and size tradeoffs.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache
@@ -50,7 +58,7 @@ executed/cache-hit counts, executor CPU/peak memory and transfer bytes. Keep
 fixture and desktop workspaces separate in reports.
 
 The smoke archive duplicates runtime bytes across unpacked apps, DEBs and Windows
-compiler variants. It also recompresses existing ZIP/DEB files. Measure execution
+compiler variants. Measure execution
 time and transferred bytes before changing compression or transport layout;
 preserve every target, exact installer bytes, symlink/mode metadata and native
 coverage. Source-runtime compilation needs its own baseline once the complete

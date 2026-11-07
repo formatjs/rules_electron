@@ -3,7 +3,7 @@ from pathlib import Path
 import shutil
 import sys
 import struct
-from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
+from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED, ZIP_STORED
 
 
 def check_binary(source, target_os, arm64):
@@ -43,7 +43,7 @@ def check_app(entry):
 
 if __name__ == "__main__":
     entries = json.loads(Path(sys.argv[1]).read_text())
-    with ZipFile(sys.argv[2], "w", compression=ZIP_DEFLATED, compresslevel=6) as archive:
+    with ZipFile(sys.argv[2], "w", compression=ZIP_DEFLATED, compresslevel=1) as archive:
         for entry in sorted(entries, key=lambda e: e["variant"]):
             if not entry.get("package"):
                 check_app(entry)
@@ -59,6 +59,8 @@ if __name__ == "__main__":
                 info = ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
                 info.create_system = 3
                 info.external_attr = file.stat().st_mode << 16
-                info.compress_type = ZIP_DEFLATED
+                info.compress_type = ZIP_STORED if entry.get("package") and file.suffix == ".deb" else ZIP_DEFLATED
+                # Python 3.11 ZipFile.open uses ZipInfo's level, not the archive's.
+                info._compresslevel = 1
                 with file.open("rb") as content, archive.open(info, "w", force_zip64=True) as destination:
                     shutil.copyfileobj(content, destination)
