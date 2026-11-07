@@ -37,5 +37,11 @@ actions:
               --platforms="//platforms:$platform" //tests:app
           done
           cd examples/desktop
-          bazel build --config=bb-workflow --config=msvc-license --lockfile_mode=error --remote_download_toplevel //:cross_build_smoke_bundle
+          bazel build --config=bb-workflow --config=msvc-license --lockfile_mode=error --remote_download_toplevel \
+            --profile="$BUILDBUDDY_ARTIFACTS_DIRECTORY/cross-build-profile.json.gz" \
+            --experimental_profile_additional_tasks=remote_queue \
+            --experimental_profile_additional_tasks=remote_process_time \
+            --experimental_profile_additional_tasks=remote_download \
+            --experimental_profile_additional_tasks=remote_cache_check \
+            //:cross_build_smoke_bundle
           cp bazel-bin/electron-cross-smoke.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/electron-cross-smoke.zip"

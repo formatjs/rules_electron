@@ -40,3 +40,8 @@ Performance follows this gate. Compare BB action profiles, cache reuse, peak
 memory, transfer bytes and artifact sizes; preserve behavior and reproducibility
 when changing implementations. Profiles may record clocks; product actions may not
 read wall-clock time to choose their output bytes.
+
+The BB cross-build workflow uploads `cross-build-profile.json.gz` with its
+artifacts, including remote queue, process, download and cache-check events.
+Use that trace and per-action BB resource stats for the performance baseline;
+compare equivalent cold/warm builds before changing compression or action layout.
