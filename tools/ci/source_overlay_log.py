@@ -335,6 +335,7 @@ def failed_action_diagnostics(identifier, key):
         check_sites = [{"file": name, "line": int(line)} for name, line in re.findall(r"([A-Za-z_0-9.-]+\.(?:h|cc|cpp))[:(]([0-9]{1,5})", log) if name in public_basenames and 0 < int(line) < 10000][:8]
         fatal_lines = [line for line in log.splitlines() if re.search(r"FATAL|ERROR|Check failed|Assertion|assertion", line)]
         fatal_identifiers = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line) if word in public_identifiers))[:20] for line in fatal_lines[:6]]
+        missing_shared_libraries = sorted({name for name in re.findall(r"error while loading shared libraries: ([A-Za-z0-9_.+-]{1,120}):", log) if name in public_basenames})[:8]
         ts_codes = sorted(set(re.findall(r"\berror (TS[0-9]{4,5}):", log)))[:16]
         ts_locations = re.findall(r"([^\s()]+)\(([0-9]{1,5}),([0-9]{1,4})\): error (TS[0-9]{4,5}):", log)
         ts_locations += re.findall(r"([^\s:]+):([0-9]{1,5}):([0-9]{1,4}) - error (TS[0-9]{4,5}):", log)
@@ -347,7 +348,7 @@ def failed_action_diagnostics(identifier, key):
             known = next((name for name in candidates if name in public_files), None)
             if known and 0 < int(line) < 10000 and 0 < int(column) < 10000:
                 ts_sites.append({"file": known, "line": int(line), "column": int(column), "code": code})
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers}, sort_keys=True))
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers, "public_missing_shared_libraries": missing_shared_libraries}, sort_keys=True))
 
 
 if __name__ == "__main__":
