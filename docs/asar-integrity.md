@@ -37,5 +37,7 @@ signature and launches the sandboxed app with hostile Node environment flags.
 It then changes one valid header hash byte and, separately, one payload version
 byte. Each launch must terminate with Electron's integrity failure diagnostic.
 After restoring bytes, Apple's deep/strict signature verification must pass.
+The [native macOS run](https://github.com/formatjs/rules_electron/actions/runs/42345084890/job/128321847848)
+passed all three launches and restored signature verification against BB output.
 These checks use the pinned bootstrap Electron runtime; source-runtime launch
 remains a separate goal.

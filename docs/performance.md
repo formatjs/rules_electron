@@ -47,8 +47,16 @@ recorded 122.001 seconds for the smoke ZIP action, versus 6.279 seconds for the
 slowest app assembly action. Matrix build time was 156.966 seconds. The smoke
 transport now uses deflate level 1 and stores already-compressed DEB members.
 macOS app ZIP members still need outer compression: their inner ZIP uses stored
-entries to preserve the signed bundle transport. Installer member bytes remain
-unchanged. Subsequent BB profiles must measure runtime and size tradeoffs.
+entries. ZIP transport preserves the signed bundle's symlinks and modes.
+Installer member bytes remain unchanged.
+
+The [first run at 034b88e](https://formatjs.buildbuddy.io/invocation/86c05464-b927-4a36-b6e8-fa685fbb4c46)
+recorded 63.334 seconds for that action and a 1,305,277,354-byte archive,
+versus 122.001 seconds and 1,226,193,952 bytes before the compression change.
+That trades about 79 MB more transport for lower observed packaging latency.
+Whole-build cache populations differed; these action observations do not prove
+an equivalent whole-workflow speedup. Native handoff and download costs still
+need measurement across repeated runs.
 
 ## Next measurements
 
