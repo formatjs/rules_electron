@@ -16,7 +16,7 @@ from buildbuddy_log import read_log, resource_diagnostics
 
 def classify(log):
     patterns = {
-        "UNKNOWN_OPTION": r"Unrecognized option",
+        "UNKNOWN_OPTION": r"Unrecognized option|unrecognized flag|bad option",
         "TOOLCHAIN_RESOLUTION": r"No matching toolchains|Unable to find an execution platform",
         "IMAGE_PULL": r"failed to pull|pull access denied|manifest unknown",
         "AUTHORIZATION": r"Unauthenticated|PermissionDenied|unauthorized",
@@ -57,6 +57,7 @@ def classify(log):
         "LINKER_OUTPUT_EXTENSION": r"file extension|filename extension|output extension",
         "LLVM_ATOMIC_LIBRARY": r"(?:cannot find|not found|missing|unsupported|does not exist)[^\r\n]{0,100}atomic|atomic[^\r\n]{0,100}(?:not found|missing|unsupported|does not exist)",
         "LINKER_UNDEFINED_SYMBOL": r"undefined symbol|undefined reference",
+        "NODE_JS_EXCEPTION": r"\b(?:ReferenceError|TypeError|SyntaxError|RangeError|Error):",
         "LIBNODE_RUNTIME_TEST": r"check failed: patched libnode",
         "LIBNODE_ASSERTION": r"AssertionError|ERR_ASSERTION",
         "LIBNODE_MODULE_MISSING": r"Cannot find module|ERR_UNKNOWN_BUILTIN_MODULE",
@@ -196,7 +197,7 @@ def source_test_diagnostics(identifier, key):
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[:])" + re.escape(name) + r"[:(]([0-9]{1,4})(?::|\]|\s|\))", log) if 0 < int(line) < 5000][:8]
                 if probe == "libnode":
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name, line in re.findall(r"([A-Za-z_0-9.-]+\.(?:h|cc|cpp))[:(]([0-9]{1,5})", log) if name in public_basenames and 0 < int(line) < 10000][:8]
-                    fatal = [line for line in log.splitlines() if re.search(r"FATAL|Check failed|Assertion|assertion", line)]
+                    fatal = [line for line in log.splitlines() if re.search(r"FATAL|ERROR|Check failed|Assertion|assertion|\b(?:ReferenceError|TypeError|SyntaxError|RangeError|Error):", line)]
                     details["public_fatal_identifiers"] = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line) if word in public_identifiers))[:20] for line in fatal[:6]]
                 print("Source probe test diagnostics:", json.dumps(details, sort_keys=True))
         token = page.get("nextPageToken", "")
