@@ -295,6 +295,11 @@ def failed_action_diagnostics(identifier, key):
                 if "/" + prefix in path:
                     candidates.append(prefix + path.split("/" + prefix, 1)[1])
             missing_inputs.update(name for name in candidates if name in public_files)
+        nonreproducible = []
+        for script, outputs in re.findall(r"Generator output differs across source paths and mtimes: ([^;\r\n]+); ([^\r\n]+)", log):
+            if script in public_files:
+                known = [path for path in outputs.split(", ") if path in public_files]
+                nonreproducible.append({"script": script, "outputs": known[:8]})
         undefined = []
         for symbol in re.findall(r"undefined symbol: ([^\r\n]+)", log)[:12]:
             identifiers = [word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", symbol) if word in public_identifiers]
@@ -314,7 +319,7 @@ def failed_action_diagnostics(identifier, key):
             name = next((name for name in candidates if name in public_files), None)
             if name is not None and 0 < int(line) < 10000:
                 sites.append({"file": name, "line": int(line)})
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8]}, sort_keys=True))
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_nonreproducible_outputs": nonreproducible[:8]}, sort_keys=True))
 
 
 if __name__ == "__main__":
