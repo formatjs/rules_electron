@@ -292,5 +292,18 @@
     "source SwiftShader display initialization",
     "source software framebuffer bytes",
     "source-built graphics library loading"
+  ],
+  "partition_alloc": [
+    "C++ new value",
+    "allocation overflow traps",
+    "calloc overflow traps",
+    "failed realloc returns null",
+    "heap ownership",
+    "overflow child starts",
+    "overflow child waited",
+    "oversized allocation rejected",
+    "preserved bytes",
+    "realloc alignment",
+    "requested alignment"
   ]
 }
