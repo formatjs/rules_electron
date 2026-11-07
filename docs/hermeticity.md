@@ -69,6 +69,15 @@ passed real tracing/decoding and captured JsonCpp failure behavior; the
 [component workflow](https://formatjs.buildbuddy.io/invocation/3072778c-6b5f-4d26-ad16-aa721e45c7f4)
 also passed. These native profiles remain Linux AMD64.
 
+The complete patched V8 engine now links source-built dependencies and generated
+snapshots. Original `mksnapshot` disables host CPU probing; captured target flags,
+predictable mode and fixed seed remain explicit. Snapshot/inspector generators
+verify output bytes across changed paths/mtimes. Wasm's direct standard-header
+fix applies to an owned projection file and records its provenance.
+[4516ed7 consumer](https://formatjs.buildbuddy.io/invocation/ec9a0537-868a-4182-9ec0-ded5e613b4ef)
+passed JS, Wasm, Intl, Temporal and inspector execution with generated startup
+data. This validates the Linux AMD64 V8 engine; full Electron still needs linking.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.

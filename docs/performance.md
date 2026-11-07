@@ -170,6 +170,17 @@ These are separate phase observations sharing a cache, excluding cache hits,
 repository fetching and tests on the BB host. Neither phase measures a controlled
 cold-build cost or latency improvement.
 
+The [4516ed7 full V8 component phase](https://formatjs.buildbuddy.io/invocation/05b4ba5f-3c5e-444b-b9c1-b05160073fb9)
+completed in 356.592 seconds. BB recorded 2,744 remote executions totaling
+20,648.053 CPU-seconds, 1,845,444,608 bytes maximum per-action peak memory,
+792,480,712 worker input bytes and 638,456,960 worker output bytes. The phase
+includes prerequisites, target/execution configurations and reproducibility
+runs; it is not a per-library compiler benchmark. Remote totals exclude cache
+hits, repository fetching and tests on the BB host. Prior attempts and the
+concurrent consumer populated a shared cache, so this is not a controlled cold
+build or speedup comparison. Phase duration includes frontend/orchestration work
+that the remote CPU totals do not measure.
+
 ## Smoke transport
 
 The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)
@@ -218,5 +229,4 @@ The smoke archive duplicates runtime bytes across unpacked apps, DEBs and Window
 compiler variants. Measure execution
 time and transferred bytes before changing compression or transport layout;
 preserve every target, exact installer bytes, symlink/mode metadata and native
-coverage. Source-runtime compilation needs its own baseline once the complete
-runtime links.
+coverage. Complete Electron compilation needs its own baseline once that runtime links.

@@ -66,74 +66,39 @@ installation permissions. Native runtime smoke must use a working sandbox.
 ## Source integration
 
 Source-built Electron remains unlinked. The
-[Electron overlay](https://github.com/formatjs/electron/blob/main/docs/source-build.md)
-builds builtin JS, webpack bundles, patched libuv/BoringSSL, V8 base/task libraries
-and eleven Node support libraries (136 C/C++ units plus Postject headers).
+[Electron overlay](https://github.com/formatjs/electron/blob/main/docs/source-build.md#full-v8-engine-and-snapshots)
+now builds and runs the complete patched V8 engine, inspector and generated
+snapshots. Its new native targets contain 1,453 C++/assembly units, reusing
+existing base libraries and native generators. Matching source-built dependencies
+include ICU, PartitionAlloc, Temporal Rust, Protobuf, Perfetto and compression/SIMD
+libraries. Electron builtin JS, webpack bundles, patched libuv/BoringSSL and
+eleven Node support libraries also build.
 
-Its captured V8 generators include 25-unit Torque, translating 246 inputs into
-1,250 outputs, the three-unit bytecode handler tool, and regexp special-case
-generation. Probes check path/mtime reproducibility, engine/Intl/Temporal
-interfaces, every bytecode operand scale and Unicode regexp case-folding
-boundaries. Declared execution tools preserve Electron's captured profile.
+[4516ed7 components](https://formatjs.buildbuddy.io/invocation/4d39e515-418d-4f13-a1ec-2a4b5484c4d0),
+[BCR consumer](https://formatjs.buildbuddy.io/invocation/ec9a0537-868a-4182-9ec0-ded5e613b4ef)
+and [cross checks](https://formatjs.buildbuddy.io/invocation/4340b427-110a-46b5-a4be-84f4828020d0)
+passed. The runtime probe uses actual generated snapshots and declared ICU data;
+it executes JS, Wasm, Intl, Rust-backed Temporal and inspector evaluation, then
+checks context state after collection. Captured pointer compression, sandbox
+and tracing flags stay enabled. Generators verify path/mtime reproducibility;
+snapshot code generation disables host CPU probing. These full source profiles
+remain Linux AMD64.
 
-Matching ICU builds 445 common/i18n C++ units. Its probe disables ambient data
-loading, rejects corrupt data and checks declared-data Unicode/locale behavior.
-PartitionAlloc adds 66 captured C++ units and the real malloc shim. Its probe
-checks heap ownership, alignment, zeroing, realloc preservation, failure returns
-and arithmetic-overflow traps. Both
-[5b7f211 components](https://formatjs.buildbuddy.io/invocation/c0fd8cbf-f5c9-4994-a64a-c6dec789b10b)
-and [BCR consumer](https://formatjs.buildbuddy.io/invocation/e50d8faf-cf75-49ac-8891-b726caf63db5)
-passed. These new profiles remain Linux AMD64.
-
-Temporal adds 57 Rust targets from 44 pinned vendor packages, six original build
-scripts and three allocator/error-handler C++ bridges through
-`hermeticbuild/rules_rs`. Its probe checks actual PartitionAlloc-backed Rust
-allocation, calendar behavior and DST using V8's real ZoneInfo64Provider with
-declared ICU data.
-[3278609 components](https://formatjs.buildbuddy.io/invocation/df7fed7a-c08b-46f4-be2d-dcb6467631df)
-and [BCR consumer](https://formatjs.buildbuddy.io/invocation/75b513b8-c73b-4fb4-a035-0122c0ed452d)
-passed. This slice remains Linux AMD64.
-
-V8 support libraries add 29 C/C++ units across captured Highway, simdutf and
-Chromium zlib profiles, with pinned Dragonbox/fast_float headers. Actual probes
-check number/Unicode conversion, aligned memory and compression/checksum failure
-boundaries. [51e5642 components](https://formatjs.buildbuddy.io/invocation/37462791-7cbe-4105-8610-3bfde508c7bc)
-and [consumer](https://formatjs.buildbuddy.io/invocation/11a4a3fd-25ce-4651-8115-0773a0923553)
-passed. These profiles remain Linux AMD64.
-
-Matching Protobuf now builds 129 original C/C++ units, including full/lite
-runtimes, protoc and its language/plugin dependencies. Source-built protoc
-generates integration schemas; matching runtimes pass wire-format, reflection,
-presence and malformed-input probes.
-[687dc7f components](https://formatjs.buildbuddy.io/invocation/a70db8a5-8eee-417a-9cfd-53c1564ad657)
-and [consumer](https://formatjs.buildbuddy.io/invocation/e87c3f3f-4c89-4a11-9d22-0ce75b75d180)
-passed. This Linux AMD64 prerequisite keeps embedded Protobuf 32.0.
-
-Perfetto now translates its complete captured closure plus matching JsonCpp:
-68 original generator actions, 721 outputs and 564 C++ compilation units.
-Generators use declared Python/native tools and require byte equality across
-changed paths/mtimes. Actual tracing tests decode interned event names and
-annotations, check category filtering and preserve JsonCpp failure semantics.
-[7177c35 components](https://formatjs.buildbuddy.io/invocation/3072778c-6b5f-4d26-ad16-aa721e45c7f4)
-and [consumer](https://formatjs.buildbuddy.io/invocation/781d378c-801e-46f9-a1a9-45bfd2007deb)
-passed. These profiles remain Linux AMD64.
-
-Remaining source work includes full V8 and snapshots, patched libnode,
-electron_lib, matching Chromium content
-libraries and runtime packaging. The
+Remaining source work includes patched libnode (171 C/C++ units), electron_lib,
+matching Chromium Blink/content libraries and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
 and uses the same V8 base revision, `bb294624702efbb17691b642333f06bf5108e600`.
 Reuse its native machinery with Electron's patches and captured configuration.
 
-Once linking works, upstream should expose executable plus complete runtime file
-outputs with stable relative paths. Adapt those outputs here; run a relocated
-app creating a BrowserWindow, loading local renderer assets and exercising a
-preload IPC roundtrip. Fixtures remain a fast packaging regression suite.
+Once Electron links, expose executable plus complete runtime files with stable
+relative paths. Consume them here; run a relocated app creating a BrowserWindow,
+loading local renderer assets and exercising a preload IPC roundtrip. Existing
+fixtures remain the fast packaging regression suite.
 
 Source builds should eventually use the
-[source Node toolchain](https://github.com/hermeticbuild/nodejs) for execution tools.
-Bootstrap runtimes, if needed by that compiler graph, must remain explicit.
-This initial assembler itself needs no Node toolchain.
+[source Node toolchain](https://github.com/hermeticbuild/nodejs) for execution
+tools. Required bootstrap runtimes must stay explicit. The assembler itself
+needs no Node toolchain.
 
 ## CI
 
