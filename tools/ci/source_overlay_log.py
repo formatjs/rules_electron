@@ -81,6 +81,10 @@ def classify(log):
         "TEMPORAL_CALENDAR": r"check failed: Temporal (?:leap date|invalid leap date|constrained date|duration parsing|calendar|Japanese)",
         "TEMPORAL_TIMEZONE": r"check failed: Temporal (?:unknown timezone|timezone parsing|hour duration|DST)",
         "TEMPORAL_ICU_DATA": r"check failed: Temporal declared ICU data",
+        "V8_SUPPORT_NUMBER": r"check failed: V8 support number",
+        "V8_SUPPORT_UNICODE": r"check failed: V8 support (?:UTF8|UTF16|Unicode|invalid UTF8)",
+        "V8_SUPPORT_SIMD": r"check failed: V8 support (?:CPU target|SIMD)",
+        "V8_SUPPORT_COMPRESSION": r"check failed: V8 support (?:compression|short output|corrupt compression|checksum)",
         "ASSERTION_FAILURE": r"AssertionError:",
         "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction|SIGILL|SIGTRAP|Trace/breakpoint trap|Received signal [456711]",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
@@ -104,6 +108,7 @@ def source_test_diagnostics(identifier, key):
         "//source:v8_regexp_test": "regexp",
         "//source:partition_alloc_test": "partition_alloc",
         "//source:temporal_test": "temporal",
+        "//source:v8_support_test": "v8_support",
     }
     token, seen, count = "", set(), 0
     for _ in range(8):
