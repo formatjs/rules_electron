@@ -195,5 +195,33 @@
     "original SkSL compilation",
     "original Skia fontations typeface",
     "raster pixel readback"
+  ],
+  "gfx": [
+    "binary resource and duplicate value lookup",
+    "buffer row overflow rejection",
+    "declared ICU argument",
+    "declared ICU initialization",
+    "default feature initialization",
+    "generated DRM modifier table",
+    "geometry wire payload",
+    "gfx PNG RGBA alpha roundtrip",
+    "gfx PNG encoding",
+    "invalid gfx PNG rejection",
+    "inverse point mapping",
+    "native DRM format name",
+    "native Mojo IO thread",
+    "native NV12 plane layout",
+    "native resource pack loading",
+    "native reversed range intersection",
+    "native transform composition",
+    "native transform inverse",
+    "original geometry wire roundtrip",
+    "original resource pack writing",
+    "original reversed range wire roundtrip",
+    "resource pack path independent bytes",
+    "resource pack scratch directory",
+    "singular transform rejection",
+    "truncated geometry wire rejection",
+    "truncated resource pack rejection"
   ]
 }
