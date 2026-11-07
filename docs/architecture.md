@@ -84,8 +84,16 @@ and tracing flags stay enabled. Generators verify path/mtime reproducibility;
 snapshot code generation disables host CPU probing. These full source profiles
 remain Linux AMD64.
 
-Remaining source work includes patched libnode (171 C/C++ units), electron_lib,
-matching Chromium Blink/content libraries and runtime packaging. The
+Patched libnode now builds its 171 C/C++ units with original inspector and
+compression dependencies (239 new units total). [40b2baf consumer](https://formatjs.buildbuddy.io/invocation/257b7fb2-b546-4a98-8b6a-6e1cfb45fa73)
+passed actual Node environment startup/shutdown, ABI 140, Node-API 10 shared-addon
+loading, original-fs, async FS, crypto, Brotli/Zstd, SQLite and inspector evaluation.
+A declared compatibility patch keeps the Node platform registered during V8
+isolate disposal, matching Electron's existing main-instance ordering. Parent
+source trees stay unchanged.
+
+Remaining source work includes electron_lib, matching Chromium Blink/content
+libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
 and uses the same V8 base revision, `bb294624702efbb17691b642333f06bf5108e600`.
 Reuse its native machinery with Electron's patches and captured configuration.

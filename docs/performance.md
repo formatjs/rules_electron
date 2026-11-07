@@ -247,6 +247,25 @@ target keeps its headers separate from the existing allocator target, preserving
 full V8 compiler inputs. Actual cold/warm comparisons remain required before
 claiming a build speedup.
 
+## Patched libnode baseline
+
+The [40b2baf source phase](https://formatjs.buildbuddy.io/invocation/fff21035-a502-4b76-bd47-f8381b43a554)
+passed in 19.759 seconds. BB tracked two remote executions, 1.958 CPU-seconds,
+205,860,864 bytes maximum per-action peak memory, 54,217 worker input bytes and
+27,114,272 worker output bytes. Most compilation was cached from prior attempts;
+these are phase totals, not a cold 239-unit libnode build.
+
+The following [source-test phase](https://formatjs.buildbuddy.io/invocation/1666c188-b18d-4ff3-b11c-2da7548b85b8)
+took 5.609 seconds and passed native Node API, addon, event-loop and shutdown
+checks alongside existing probes. Two tracked remote executions used 1.257
+CPU-seconds, 116,781,056 bytes maximum per-action peak memory, 43,998 worker input
+bytes and 109,462,531 worker output bytes. Runtime tests execute on the matching
+Linux BB workflow host; their resources are outside remote-execution totals.
+
+Header groups keep Brotli/Zstd independent from Node header changes. The isolate
+lifecycle fix changes one owned C++ source; existing V8 and Base compiler inputs
+stay shared. No cold-build speedup or complete Electron baseline is claimed.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

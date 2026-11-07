@@ -89,6 +89,18 @@ passed Rust JSON parsing, invalid-input rejection, serialization, Base64 and
 native GLib task/idle dispatch after the fresh network-denial gate. Base remains
 Linux AMD64; full source-built Electron still needs linking.
 
+Patched libnode now uses its original Chromium inspector generators and matching
+Brotli/Zstd sources. Actual PDL inputs and imported `Runtime.h` are declared;
+generators retain path/mtime byte checks. GNU `-latomic` maps to source-built LLVM
+compiler-rt, verified through generic 24-byte atomics. Native shared-addon bytes
+materialize in a regular `.node` file through pinned Python: Node resolves
+symlinks before selecting its loader. The lifecycle compatibility patch applies
+to an owned source copy and records provenance. [40b2baf components](https://formatjs.buildbuddy.io/invocation/db60fdd2-5715-468b-aad5-05013a89fa46)
+and [consumer](https://formatjs.buildbuddy.io/invocation/257b7fb2-b546-4a98-8b6a-6e1cfb45fa73)
+passed actual Node startup, module APIs, native-addon loading and shutdown, after
+the fresh network-denial gate. This validates Linux AMD64 libnode; full Electron
+and other complete source profiles remain pending.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.
