@@ -19,11 +19,11 @@ electron-builder replacement.
 | macOS app | Branded bundle/helper metadata, framework links, ad hoc signing, deterministic ZIP | Icons, Developer ID, entitlements policy, notarization/stapling |
 | Windows app | Renamed executable, current-process Node-API exports, four compiler/CPU variants; PE version/product strings and ASAR integrity through declared source Node/resedit tooling | General addon delay-load/import-library tooling, PE icons, Authenticode |
 | App version/build number | Package version; macOS bundle version | Override/validation API and separate build number |
-| OS protocol registration | Linux desktop and MIME declarations | macOS/Windows registration metadata |
-| Installers | Linux DEB for amd64/arm64 with declared maintainer scripts | RPM/AppImage, macOS disk images, Windows NSIS/MSIX and other host-specific packaging |
+| OS protocol registration | Linux desktop/MIME declarations; per-user Windows NSIS URI schemes | macOS registration; Windows file associations and shortcut AppUserModelID |
+| Installers | Linux DEB for amd64/arm64; per-user Windows NSIS with declared tools and owned-file uninstall | RPM/AppImage, macOS disk images, Windows per-machine NSIS/MSIX and other packaging |
 | Prepackaged release stages | Internal ad hoc Mac signing stage only | Public sign/package-prepackaged APIs and verification policy |
 | Distribution archives | Mac app ZIP and aggregate smoke ZIP | General release archive API and compression controls |
-| electron-updater | Generic config/manifests, SHA-512/size, external blockmaps, real client discovery/planning; Linux DEB install/upgrade/hash-rejection smoke | Other installed-app update targets, embedded AppImage maps, provider/publishing adapters |
+| electron-updater | Generic config/manifests, SHA-512/size, external blockmaps, real client discovery/planning; Linux DEB lifecycle smoke; NSIS differential cache seeding and lifecycle smoke implementation | Hosted NSIS lifecycle result; other installed-app update targets, embedded AppImage maps, provider/publishing adapters |
 | Native smoke | Scripts/workflows for four native host types | Hosted results establish actual execution coverage |
 
 All compilation, generators, assembly and ad hoc signing run on BB Linux
@@ -36,3 +36,4 @@ Keep this checklist current as each contract gains a concrete rule and meaningfu
 validation. Production migration requires closing the relevant release gaps.
 See the [release plan](release-plan.md) and [updater contract](updates.md).
 Linux package behavior and its native validation live in [Linux packages](linux-packages.md).
+Windows installer scope and validation live in [Windows installers](windows-installers.md).

@@ -74,9 +74,11 @@ to enforce it. Windows embeds the same hash in PE resources when a declared
 `windows_resource_tool` is supplied. See [ASAR integrity](docs/asar-integrity.md)
 and [Windows resources](docs/windows-resources.md).
 macOS bundle/helper metadata and ad hoc signing are supported. Release signing,
-macOS/Windows installers, icons and OS integration remain pending. Linux DEB
+macOS installers, release signing, icons and broader OS integration remain pending. Linux DEB
 packaging supplies desktop/MIME/protocol/icon metadata and declared package hooks;
 see [Linux packages](docs/linux-packages.md).
+Per-user Windows NSIS packaging supplies shortcuts, URI schemes and updater cache
+seeding; see [Windows installers](docs/windows-installers.md).
 
 ## Development
 

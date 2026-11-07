@@ -34,6 +34,10 @@ Current enforcement:
   input. Payload reproducibility tests change input mtimes before comparing bytes.
 - Pinned `rules_pkg` writes the DEB container from declared payload/control inputs;
   it does not invoke host `dpkg`. Maintainer scripts are data until installation.
+- NSIS uses a declared execution compiler and SDK tree, disables external
+  configuration, and fixes its environment and file-date policy. Example v1
+  installers compile twice with changed source paths/mtimes and require byte
+  equality. Installer stubs/plugins execute only during native lifecycle tests.
 
 The official Electron runtime remains an explicit bootstrap dependency. It is
 integrity-pinned but does not satisfy the separate source-built runtime goal.

@@ -2,8 +2,10 @@
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import struct
 import sys
@@ -27,6 +29,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     _filename(product_name)
     executable = executable_name if executable_name.endswith(".exe") else executable_name + ".exe"
     _filename(executable)
+    command_executable = executable.replace('$', '$$').replace("'", "$\\'")
     version = _version(json.loads(Path(package_json).read_text(encoding="utf-8"))["version"])
     numeric = version.split("-", 1)[0].split("+", 1)[0].split(".")
     if any(int(part) > 65535 for part in numeric):
@@ -165,7 +168,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         lines += ['WriteRegStr HKCU ' + q(key) + ' "" ' + q('URL:' + product_name),
                   'WriteRegStr HKCU ' + q(key) + ' "URL Protocol" ""',
                   'WriteRegStr HKCU ' + q(key) + ' "RulesElectronOwner" ' + q(app_id),
-                  'WriteRegStr HKCU ' + q(key + '\\shell\\open\\command') + ' "" \'"$INSTDIR\\' + executable.replace('$', '$$') + '" "%1"\'']
+                  'WriteRegStr HKCU ' + q(key + '\\shell\\open\\command') + ' "" \'"$INSTDIR\\' + command_executable + '" "%1"\'']
     if updater_cache_name:
         lines += ['CreateDirectory "' + cache + '"',
                   'StrCmp $EXEPATH "' + cache + '\\installer.exe" seeded',
@@ -177,7 +180,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
               'IfErrors failed_install', 'SetErrorLevel 0', 'Goto installed',
               'failed_install:', 'SetErrorLevel 1', 'Abort "Installation failed."', 'installed:',
               '${GetParameters} $0', 'ClearErrors', '${GetOptions} $0 "--force-run" $1',
-              'IfErrors no_launch', 'Exec \'"$INSTDIR\\' + executable.replace('$', '$$') + '"\'',
+              'IfErrors no_launch', 'Exec \'"$INSTDIR\\' + command_executable + '"\'',
               'no_launch:', 'SectionEnd', 'Section "Uninstall"', 'ClearErrors']
     for name, _ in files:
         lines += ['Delete "$INSTDIR\\' + name.replace('/', '\\').replace('$', '$$') + '"']
@@ -191,7 +194,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         lines += ['ReadRegStr $0 HKCU ' + q(key) + ' "RulesElectronOwner"',
                   'StrCmp $0 ' + q(app_id) + ' 0 un_protocol_' + str(index),
                   'ReadRegStr $0 HKCU ' + q(key + '\\shell\\open\\command') + ' ""',
-                  'StrCmp $0 \'"$INSTDIR\\' + executable.replace('$', '$$') + '" "%1"\' 0 un_protocol_' + str(index),
+                  'StrCmp $0 \'"$INSTDIR\\' + command_executable + '" "%1"\' 0 un_protocol_' + str(index),
                   'DeleteRegKey HKCU ' + q(key), 'un_protocol_' + str(index) + ':']
     for name in sorted(directories, key=lambda n: (-n.count('/'), n)):
         lines += ['RMDir "$INSTDIR\\' + name.replace('/', '\\').replace('$', '$$') + '"']
@@ -227,9 +230,14 @@ def build_installer(manifest, output, script):
     subprocess.run([compiler, '-NOCONFIG', '-V2', str(Path(script).resolve())], env=environment, check=True)
     if verify:
         with tempfile.TemporaryDirectory() as directory:
+            mirror = Path(directory) / 'payload'
+            shutil.copytree(manifest['app'], mirror)
+            for path in mirror.rglob('*'):
+                if path.is_file():
+                    os.utime(path, (1234567890, 1234567890))
             second = Path(directory) / output.name
             other = Path(directory) / 'installer.nsi'
-            other.write_text(installer_script(output=second, **manifest), encoding='utf-8')
+            other.write_text(installer_script(output=second, **dict(manifest, app=str(mirror))), encoding='utf-8')
             subprocess.run([compiler, '-NOCONFIG', '-V2', str(other)], env=environment, check=True)
             def digest(path):
                 with path.open('rb') as source:
