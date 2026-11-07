@@ -84,7 +84,22 @@ def main(directory):
             broker = temporary / "bin"
             broker.mkdir()
             # Headless elevation adapter. Downloader and dpkg installation remain real.
-            (broker / "gksudo").write_text('#!/bin/sh\nif [ "$1" = "--message" ]; then shift 2; fi\nexec sudo -n "$@"\n')
+            (broker / "gksudo").write_text("#!" + sys.executable + "\n" + '''import os, pathlib, shlex, subprocess, sys
+args = sys.argv[1:]
+assert args[0] == "--message"
+args = args[2:]
+assert args[:2] == ["/bin/bash", "-c"] and len(args) == 3
+command = shlex.split(args[2])
+assert command[:2] == ["dpkg", "-i"]
+assert command[3:] == ["||", "apt-get", "install", "-f", "-y"]
+package = pathlib.Path(command[2]).resolve()
+assert package.is_file() and package.name == "Sample-2.0.0.deb"
+assert package.is_relative_to(pathlib.Path(os.environ["XDG_CACHE_HOME"]).resolve())
+result = subprocess.run(["/usr/bin/sudo", "-n", "dpkg", "-i", str(package)])
+if result.returncode:
+    result = subprocess.run(["/usr/bin/sudo", "-n", "apt-get", "install", "-f", "-y"])
+sys.exit(result.returncode)
+''')
             (broker / "gksudo").chmod(0o755)
             server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(FeedHandler, directory=str(feed)))
             thread = threading.Thread(target=server.serve_forever, daemon=True)
