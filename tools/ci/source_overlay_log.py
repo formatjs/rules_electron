@@ -31,6 +31,7 @@ def classify(log):
         "EXECUTABLE_PERMISSION": r"Permission denied|EACCES",
         "SHARED_LIBRARY_LOAD": r"error while loading shared libraries|GLIBC_[0-9.]+.*not found",
         "PROCESS_START": r"Failed to start|Could not execute|cannot execute",
+        "EXEC_FORMAT": r"exec format error",
     }
     return {category: len(re.findall(pattern, log, re.IGNORECASE)) for category, pattern in patterns.items() if re.search(pattern, log, re.IGNORECASE)}
 
@@ -44,10 +45,13 @@ def failed_action_diagnostics(identifier, key):
     if len(data) > 64 * 1024**2:
         raise ValueError("Execution diagnostics exceed limit")
     for execution in json.loads(data).get("execution", [])[:32]:
-        result = execution.get("executeResponse", {}).get("result", {})
-        if not result.get("exitCode"):
+        response = execution.get("executeResponse", {})
+        result = response.get("result", {})
+        status = execution.get("status", {})
+        exit_code = result.get("exitCode", execution.get("exitCode", 0))
+        if not exit_code and not status.get("code"):
             continue
-        log = ""
+        log = status.get("message", "") + response.get("status", {}).get("message", "")
         for name in ("stdoutRaw", "stderrRaw"):
             log += base64.b64decode(result.get(name, ""), validate=True).decode("utf-8", errors="replace")
         digests = [result.get(name) for name in ("stdoutDigest", "stderrDigest")]
@@ -61,7 +65,7 @@ def failed_action_diagnostics(identifier, key):
             if len(content) > 1024**2:
                 raise ValueError("Test log exceeds limit")
             log += content.decode("utf-8", errors="replace")
-        print("Failed action diagnostics:", json.dumps({"exit_code": result["exitCode"], "log_bytes": len(log.encode()), "diagnostics": classify(log)}, sort_keys=True))
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log)}, sort_keys=True))
 
 
 if __name__ == "__main__":
@@ -81,11 +85,13 @@ if __name__ == "__main__":
     root = invocation(identifier)
     if root.get("pattern") not in ("Electron source components", "Electron source cross-compile", "Electron BCR consumer"):
         raise ValueError("Expected an Electron source-overlay CI workflow")
-    print("Source workflow diagnostics:", json.dumps(classify(read_log({"invocation_id": identifier}, key)), sort_keys=True))
+    log = read_log({"invocation_id": identifier}, key)
+    print("Source workflow diagnostics:", json.dumps({"log_bytes": len(log.encode()), "diagnostics": classify(log)}, sort_keys=True))
     for child in root.get("childInvocations", [])[:32]:
         identifier = child["invocationId"]
         value = invocation(identifier)
-        print("Source child:", json.dumps({"id": identifier, "success": value.get("success") is True, "diagnostics": classify(read_log({"invocation_id": identifier}, key))}, sort_keys=True))
+        log = read_log({"invocation_id": identifier}, key)
+        print("Source child:", json.dumps({"id": identifier, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log)}, sort_keys=True))
         resource_diagnostics(identifier, key)
         if value.get("success") is False:
             failed_action_diagnostics(identifier, key)
