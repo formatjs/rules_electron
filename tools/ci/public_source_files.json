@@ -16829,6 +16829,7 @@
   "out/bazel-import/obj/ui/strings/ax_strings_expected_outputs.txt",
   "out/bazel-import/obj/ui/strings/ui_strings_expected_outputs.txt",
   "out/bazel-import/obj/ui/webui/resources/resources_expected_outputs.txt",
+  "platform_graphics_probe",
   "present.c",
   "present.h",
   "pyproto/components/variations/proto/client_variations_pb2.py",
