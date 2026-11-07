@@ -152,5 +152,28 @@
     "one declared application font",
     "original ligature shaping vector",
     "shaped ligature rasterization"
+  ],
+  "codecs": [
+    "GIF bounded work buffer",
+    "GIF frame completion",
+    "GIF frame configuration",
+    "GIF image configuration",
+    "GIF pixel buffer",
+    "JPEG decoded color tolerance",
+    "JPEG decoded dimensions",
+    "JPEG decoder completion",
+    "JPEG encoded stream",
+    "JPEG header decoding",
+    "JPEG scanline decoding",
+    "JPEG scanline encoding",
+    "WebP RGBA alpha roundtrip",
+    "WebP encoded dimensions",
+    "WebP lossless encoding",
+    "Wuffs GIF decoder allocation",
+    "invalid GIF decoder allocation",
+    "invalid GIF rejection",
+    "invalid WebP rejection",
+    "native GIF pixel decoding",
+    "native JPEG SIMD dispatch"
   ]
 }
