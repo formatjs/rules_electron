@@ -1,6 +1,6 @@
 # RFC: native Electron app rules
 
-Status: seven-variant app matrix and native smoke handoff implemented; hosted execution and source runtime integration pending.
+Status: seven cross-built variants and four native host types verified. Full source-built Electron remains pending.
 
 Build Electron apps as Bazel targets. Cache compiler, generator, app and packaging
 actions independently. Build inputs come from declared files and pinned repositories.

@@ -89,23 +89,44 @@ x64 downloaded 776,681 of 96,256,700 bytes (0.81%); ARM64 downloaded 760,466 of
 uninstall. These measure the sample's version-only update; broader application
 changes need separate measurements. The 50% native transfer gate remains active.
 
-## Next measurements
+## Smoke transport
 
 The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)
 produced a 1,676,779,799-byte smoke ZIP, verified before GH handoff. Four native
 hosts each download that full archive: roughly 6.71 GB of archive payload across
 those hosts, excluding the bridge and protocol overhead. All four
 [native jobs passed](https://github.com/formatjs/rules_electron/actions/runs/42352517657),
-including the public macOS release ZIP. Build host-specific transport shards on
-BB; preserve all seven architecture checks, exact installer bytes and both
-Windows compiler variants. Linux ARM64 must remain cross-built and checked even
-without a native consumer.
+including the public macOS release ZIP. This established the repeated-download
+baseline before splitting transport.
 
 The current handoff emits four BB-built archives and routes each to its matching
 native host. One action checks all seven apps before writing any shard; Linux
 ARM64 apps/packages remain declared inputs. Repository/commit/success/CAS checks
-apply separately to each download. Hosted sizes and native lifecycle results must
-establish the transfer reduction before claiming a performance result.
+apply separately to each download.
+
+The [be8daa1 BB run](https://formatjs.buildbuddy.io/invocation/ba65c2ed-02c5-461d-a911-615b2735de11)
+produced these verified archive sizes:
+
+- Linux x64: 316,255,386 bytes.
+- macOS ARM64: 124,103,453 bytes.
+- Windows ARM64: 450,950,508 bytes.
+- Windows x64: 468,552,784 bytes.
+
+Native-host archive payload totals 1,359,862,131 bytes, versus 6,707,119,196 bytes
+for four copies of the previous aggregate: 79.7% less. This excludes bridge and
+protocol overhead. Both Windows compiler variants remain in each CPU's shard;
+Linux ARM64 apps/packages remain BB inputs without native transport.
+[All four native jobs passed](https://github.com/formatjs/rules_electron/actions/runs/42353252280),
+including DEB/NSIS lifecycle checks, integrity enforcement and macOS signatures.
+NSIS differential byte counts remained 776,681 on x64 and 760,466 on ARM64.
+
+The matrix took 114.329 seconds; its bundle trace event lasted 72.136 seconds.
+BB reported two completed executions totaling 58.680 CPU-seconds, with maximum
+per-action peak memory 1,408,147,456 bytes. These are whole-matrix execution
+statistics, not bundle-only resources. Cache populations differ from earlier
+runs; the transfer reduction does not establish a build-latency improvement.
+
+## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache
 conditions. Record workflow and child build durations, analysis time, actual
