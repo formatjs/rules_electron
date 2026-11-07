@@ -67,7 +67,10 @@ installation permissions. Native runtime smoke must use a working sandbox.
 
 The [Electron overlay](https://github.com/formatjs/electron/blob/main/docs/source-build.md)
 currently builds source components, including builtin JS, webpack bundles,
-patched libuv/BoringSSL and V8 base/task libraries. No full runtime links.
+patched libuv/BoringSSL, V8 base/task libraries and eight pinned Node dependencies
+(133 C/C++ units, with a linked behavior probe). The
+[source and consumer builds at 4cdf425](https://github.com/formatjs/electron/commit/4cdf425)
+passed on BB. No full runtime links.
 Its next pieces include patched libnode, electron_lib, matching Chromium content
 dependencies, snapshots and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser,
