@@ -312,6 +312,28 @@ fresh network gate executed two actions.
 Concurrent component/consumer workflows shared caches. These phase totals exclude
 cache hits and repository fetching; they do not establish a cold-build speedup.
 
+## Mojo and network baseline
+
+The [9b5017c source phase](https://formatjs.buildbuddy.io/invocation/c1c044c9-0be1-4d3a-83ee-e165892c18f0)
+passed in 82.057 seconds. BB tracked 1,021 remote executions, 1,785.958
+CPU-seconds, 860,741,632 bytes maximum per-action peak memory, 146,799,856 worker
+input bytes and 16,969,031 worker output bytes. This includes the captured
+1,124-unit closure and its native dependencies, with shared work cached from
+earlier attempts and the concurrent consumer. It is not a cold-build baseline.
+
+After probe API/import fixes, [122f977's source phase](https://formatjs.buildbuddy.io/invocation/7716389a-94a9-44d1-8e68-57b03159492d)
+passed in 33.257 seconds with zero tracked remote executions. Its
+[source-test phase](https://formatjs.buildbuddy.io/invocation/e7cd4545-a09e-4db4-b3ad-35ddcc1b17d2)
+passed in 5.537 seconds, also with zero tracked remote executions. Source library
+inputs stayed the same; runtime results and the nonce conformance test passed.
+The separate fresh network gate executed two actions. Cache hits, repository
+fetches and tests on the BB host are outside remote-resource totals.
+
+The construction-tag target now declares one 1,359-byte header, previously 345
+Mojo headers totaling 1,411,365 source bytes. Other consumers retain their needed
+headers. These are declared source inventories; transfer costs depend on shared
+inputs and worker caches. No build-latency speedup is claimed.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

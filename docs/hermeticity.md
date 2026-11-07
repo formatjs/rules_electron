@@ -117,6 +117,22 @@ is test-only. [c961819 consumer](https://formatjs.buildbuddy.io/invocation/3afba
 passed real portal transfer and binary messaging after the fresh network-denial
 gate; no separate IPCz source revision or standalone shim enters the build.
 
+Mojo/networking now declares source/public headers and included compiler inputs,
+including SQLite's original shim/amalgamation. Matching source-built protoc,
+root-store and HSTS tools run in execution configuration. Native NSS/NSPR build
+rules come from pinned `formatjs/chromium`; CMake and `rules_foreign_cc` remain
+absent from the resolved module and action graphs. Owned GRIT adaptations remove
+temporary paths from resource metadata without changing resource bytes.
+
+NSS integrity metadata uses a public build key and RFC 6979 nonces with original
+NSS arithmetic. Actions compare bytes across paths/mtimes; published nonce
+vectors pass. The [122f977 consumer](https://formatjs.buildbuddy.io/invocation/376c61c9-c0a3-471b-b9a7-2d07d498f510)
+passed original NSS verification of generated/relocated checksums and rejection
+of changed module/signature bytes after the fresh network-denial gate. HSTS
+checks both sides of its original 70-day expiry with a scoped test clock.
+Production clocks and runtime randomness remain unchanged. This validates the
+Linux AMD64 source closure; full Electron still needs linking.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.

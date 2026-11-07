@@ -102,10 +102,17 @@ Chromium-configured IPCz adds its complete 36-unit core, shared Base/Abseil and
 original source-set linkage. [c961819 consumer](https://formatjs.buildbuddy.io/invocation/3afbac9c-cb0e-4445-a246-0b6d499ffcde)
 passed broker/client binary messaging, receive-capacity errors, portal transfer,
 peer closure and cleanup with the original synchronous reference driver. No
-standalone IPCz implementation replaces Chromium's configuration. Mojo still
-needs its core/platform libraries and matching networking closure.
+standalone IPCz implementation replaces Chromium's configuration.
 
-Remaining source work includes electron_lib, matching Chromium Blink/content
+Mojo core/platform/embedder and networking now build their captured closure:
+1,124 new C/C++ units plus 34 matching BoringSSL PKI units, original generators
+and native NSS/NSPR. Shared Base, ICU, IPCz, Protobuf and compression targets stay
+reused. [122f977 consumer](https://formatjs.buildbuddy.io/invocation/376c61c9-c0a3-471b-b9a7-2d07d498f510)
+passed binary messages, data pipes, shared mappings, SQL, URL/IDNA, suffix/HSTS
+lookups and original NSS integrity verification, including corruption rejection.
+HSTS tests retain its 70-day expiry policy. This full profile remains Linux AMD64.
+
+Remaining source work includes typed Mojo bindings, electron_lib, Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
 and uses the same V8 base revision, `bb294624702efbb17691b642333f06bf5108e600`.
