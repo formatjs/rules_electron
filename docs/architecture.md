@@ -137,6 +137,13 @@ passed explicit-config fontations scanning, metadata/charset checks, native
 matching, invalid-font rejection and inventory cleanup using only declared
 font bytes. Native BCR libuuid supplies UUID support.
 
+Native JPEG, WebP and Wuffs GIF now add 213 product C units. JPEG retains
+27 original SIMD assembly runs, using all 81 captured C units of its matching
+NASM 2.17rc0 on the execution platform. Assembly output bytes match across
+changed paths/mtimes. [a4c1c6a consumer](https://formatjs.buildbuddy.io/invocation/3539d526-2758-4b59-8fc0-06b5fc20d11f)
+passed real JPEG SIMD/color, lossless WebP alpha, GIF pixel/frame completion
+and invalid-stream checks. This full profile remains Linux AMD64.
+
 Remaining source work includes complete Skia,
 electron_lib, Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The

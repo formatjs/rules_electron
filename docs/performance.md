@@ -380,6 +380,23 @@ cache hits and repository fetching. Concurrent consumer/cache reuse prevent a
 cold-build claim; worker-input totals do not measure unique source bytes. Keep
 this transport baseline when evaluating Rust/header input reduction.
 
+## Native codec baseline
+
+The [first successful codec source phase](https://formatjs.buildbuddy.io/invocation/7264cf87-dad1-48e3-9be6-c6142e577ca9)
+passed in 33.586 seconds: 108 tracked remote executions, 22.374 CPU-seconds,
+127,188,992 bytes maximum per-action peak memory, 622,645,539 worker input bytes
+and 6,402,976 worker output bytes. The declared closure contains 213 product C
+units, 81 execution-tool C units and 27 SIMD assembly actions. Shared cache and
+the concurrent consumer make this partial execution coverage, not a cold build.
+
+After correcting C linkage in the probe, [a4c1c6a's source phase](https://formatjs.buildbuddy.io/invocation/1c5227bb-2570-4d87-94c2-04fcfb6192ef)
+passed in 28.449 seconds and its [source-test phase](https://formatjs.buildbuddy.io/invocation/98600e49-1567-4058-b418-772667add439)
+passed in 3.907 seconds, both with zero tracked remote executions. Native BB-host
+test work, cache hits and repository fetching remain outside these remote totals.
+The aggregate excludes a redundant target-platform NASM build; execution-platform
+NASM remains required by the original assembler actions. No timing speedup is
+claimed from that dependency choice.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

@@ -158,6 +158,15 @@ passed native fontations scanning/matching with explicit empty configuration,
 declared font bytes and invalid-input rejection. New closure action audit
 found no CMake or foreign-cc actions. Full source profiles remain Linux AMD64.
 
+JPEG and NASM retain exact Chromium fork commits through pinned Git fetches;
+WebP/Wuffs archives retain exact DEPS commits and checksums. Original NASM
+2.17rc0 builds on the execution platform; no host executable lookup participates.
+All 27 original SIMD runs retain `--reproducible`, declared inputs and changed
+path/mtime object-byte equality.
+[a4c1c6a consumer](https://formatjs.buildbuddy.io/invocation/3539d526-2758-4b59-8fc0-06b5fc20d11f)
+passed native JPEG/WebP/GIF runtime probes. The new closure action audit found
+no CMake or foreign-cc actions.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.
