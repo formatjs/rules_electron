@@ -88,6 +88,8 @@ def main(directory):
 args = sys.argv[1:]
 assert args[0] == "--message"
 args = args[2:]
+if len(args) == 1:
+    args = shlex.split(args[0])
 assert args[:2] == ["/bin/bash", "-c"] and len(args) == 3
 command = shlex.split(args[2])
 assert command[:2] == ["dpkg", "-i"]
