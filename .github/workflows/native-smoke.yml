@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: native-electron-${{ github.event.context || 'Cross-build Electron Apps' }}-${{ inputs.commit_sha || github.event.sha }}
+  group: native-electron-${{ inputs.logs_only && 'diagnostics' || github.event.context || 'Cross-build Electron Apps' }}-${{ inputs.commit_sha || github.event.sha }}
   cancel-in-progress: true
 
 jobs:

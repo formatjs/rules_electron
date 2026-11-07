@@ -94,4 +94,4 @@ if __name__ == "__main__":
         report = json.loads(lines[0].removeprefix("EXAMPLE_SMOKE_OK "))
         assert report["architecture"] == args.target_arch, report
         assert report["platform"] == {"linux": "linux", "macos": "darwin", "windows": "win32"}[args.target_os], report
-        print(lines[0])
+        print("EXAMPLE_SMOKE_OK " + json.dumps(report, ensure_ascii=True))
