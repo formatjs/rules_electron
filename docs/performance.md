@@ -397,6 +397,24 @@ The aggregate excludes a redundant target-platform NASM build; execution-platfor
 NASM remains required by the original assembler actions. No timing speedup is
 claimed from that dependency choice.
 
+## Complete matching Skia baseline
+
+[3d7a5d1 source phase](https://formatjs.buildbuddy.io/invocation/6d4a85bd-1ea5-4f41-aa66-730257cf4ff3)
+passed in 128.073 seconds: 1,559 tracked remote executions, 3,246.895 CPU-seconds,
+855,576,576 bytes maximum per-action peak memory, 1,780,802,357 worker input bytes
+and 66,725,155 worker output bytes. The added closure contains 1,158 C++ units,
+15 original generator actions and 12 Rust targets. Shared header-provider fixes
+also affect existing consumers. Earlier attempts and the concurrent consumer
+supply cache reuse, so this is not a cold-build baseline.
+
+The [source-test phase](https://formatjs.buildbuddy.io/invocation/117fe0b2-28c9-44c0-ab64-7d460f467448)
+passed in 5.853 seconds with zero tracked remote executions. Native BB-host test
+work, cache hits and repository fetching remain outside these remote totals.
+The shared Rust profile retains its previous 95 target records; shared Base,
+fonts and codecs keep their native implementations. Compare equivalent cache
+conditions before reducing header contexts or parallelizing generators; preserve
+all GPU build configuration, runtime probes and generator byte checks.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

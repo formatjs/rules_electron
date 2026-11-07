@@ -144,8 +144,18 @@ changed paths/mtimes. [a4c1c6a consumer](https://formatjs.buildbuddy.io/invocati
 passed real JPEG SIMD/color, lossless WebP alpha, GIF pixel/frame completion
 and invalid-stream checks. This full profile remains Linux AMD64.
 
-Remaining source work includes complete Skia,
-electron_lib, Chromium Blink/content
+The complete matching Skia root now adds 1,158 C++ units in 27 native targets,
+15 original generator actions and original Rust PNG/fontations bridges. The
+shared Rust profile contains 107 targets from 80 packages; previous 95 Rust
+records remain unchanged. Exact DEPS archive pins retain Skia/Dawn/Vulkan
+configuration; existing fonts/codecs/Base stay shared. PartitionAlloc exports
+62 original pointer headers, and Wuffs exports its original public include path.
+[3d7a5d1 consumer](https://formatjs.buildbuddy.io/invocation/eb13ad3b-8467-451d-8ff5-41aaafca7a66)
+passed exact SkSL raster pixels, invalid shaders, Rust PNG RGBA/alpha, invalid
+PNG/font input and original fontations glyph paths through CXX. This complete
+profile remains Linux AMD64; hardware GPU contexts remain untested.
+
+Remaining source work includes electron_lib, Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
 and uses the same V8 base revision, `bb294624702efbb17691b642333f06bf5108e600`.

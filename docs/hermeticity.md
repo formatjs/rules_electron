@@ -167,6 +167,17 @@ path/mtime object-byte equality.
 passed native JPEG/WebP/GIF runtime probes. The new closure action audit found
 no CMake or foreign-cc actions.
 
+Skia/Dawn/Vulkan headers use exact DEPS revisions and SHA-256 archive pins.
+All 15 original generators retain changed-path/mtime byte checks. Dawn expected
+outputs derive from captured extractor declarations, with source provenance
+recorded; original validation still runs. A declared pinned revision supplies
+`DAWN_VERSION`, removing checkout-hook/Git dependence from actions. Native CXX
+reuses the pinned compiler configuration and executable. Shared PartitionAlloc
+and Wuffs providers export original headers/include paths without replacement
+implementations. [3d7a5d1 consumer](https://formatjs.buildbuddy.io/invocation/eb13ad3b-8467-451d-8ff5-41aaafca7a66)
+passed CPU raster/SkSL and Rust PNG/fontations probes; hardware GPU contexts
+remain untested. The source action audit found no CMake or foreign-cc actions.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.
