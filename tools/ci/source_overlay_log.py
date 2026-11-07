@@ -87,6 +87,12 @@ def classify(log):
         "V8_SUPPORT_COMPRESSION": r"check failed: V8 support (?:compression|short output|corrupt compression|checksum)",
         "PROTOBUF_WIRE": r"check failed: Protobuf (?:full|lite|unknown|malformed|truncated|invalid UTF8)",
         "PROTOBUF_REFLECTION": r"check failed: Protobuf (?:dynamic|oneof)",
+        "PERFETTO_JSON": r"check failed: Perfetto JsonCpp",
+        "PERFETTO_TRACE": r"check failed: Perfetto (?:trace bytes|decoded trace|disabled category)",
+        "GENERATOR_REPRODUCIBILITY": r"Generator output differs across source paths and mtimes",
+        "GENERATOR_LAYOUT": r"Invalid generator logical path|Duplicate generator logical input|Unresolved generator argument",
+        "GENERATOR_PYTHON_IMPORT": r"ModuleNotFoundError:|ImportError:",
+        "PROTOC_PLUGIN": r"Plugin failed with status code|program not found or is not executable|protoc-gen-plugin:",
         "ASSERTION_FAILURE": r"AssertionError:",
         "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction|SIGILL|SIGTRAP|Trace/breakpoint trap|Received signal [456711]",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
@@ -112,6 +118,7 @@ def source_test_diagnostics(identifier, key):
         "//source:temporal_test": "temporal",
         "//source:v8_support_test": "v8_support",
         "//source:protobuf_test": "protobuf",
+        "//source:perfetto_test": "perfetto",
     }
     token, seen, count = "", set(), 0
     for _ in range(8):
