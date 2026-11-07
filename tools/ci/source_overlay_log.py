@@ -70,6 +70,7 @@ def classify(log):
         "EVENTS_RUNTIME_TEST": r"check failed: events",
         "UI_RUNTIME_TEST": r"check failed: ui ",
         "WEBUI_RUNTIME_TEST": r"check failed: ui_webui ",
+        "PLATFORM_GRAPHICS_RUNTIME_TEST": r"check failed: platform_graphics ",
         "TYPESCRIPT_COMPILATION": r"error TS[0-9]{4,5}:",
         "NODE_MODULE_RESOLUTION": r"Cannot find module|Cannot find package|ERR_MODULE_NOT_FOUND|Could not resolve entry module",
         "GRIT_REPRODUCIBILITY": r"Generator output differs across source paths and mtimes: tools/grit/grit.py",
@@ -193,6 +194,7 @@ def source_test_diagnostics(identifier, key):
         "//source:events_test": "events",
         "//source:ui_test": "ui",
         "//source:ui_webui_test": "ui_webui",
+        "//source:platform_graphics_test": "platform_graphics",
         "//electron/private:nss_integrity_test": "nss_integrity",
         "//tests:prepare_source_test": "prepare_source",
     }
@@ -238,7 +240,7 @@ def source_test_diagnostics(identifier, key):
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[:])" + re.escape(name) + r"[:(]([0-9]{1,4})(?::|\]|\s|\))", log) if 0 < int(line) < 5000][:8]
-                if probe in ("libnode", "embedder", "ipcz", "network", "mojo", "fonts", "codecs", "skia", "gfx", "display", "events", "ui", "ui_webui"):
+                if probe in ("libnode", "embedder", "ipcz", "network", "mojo", "fonts", "codecs", "skia", "gfx", "display", "events", "ui", "ui_webui", "platform_graphics"):
                     prefix = "patched libnode" if probe == "libnode" else probe
                     details["failed_checks"] = [message for message in public_checks.get(probe, []) if "check failed: " + prefix + " " + message + "\n" in log]
                     details["stages"] = [stage for stage in ["atomic", "icu", "i18n", "snapshot", "node", "gin", "platform", "isolate", "modules", "integrity", "callback", "gc", "loop", "shutdown", "done"] if probe + " probe stage: " + stage + "\n" in log]

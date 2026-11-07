@@ -277,5 +277,20 @@
   ],
   "ui_webui": [
     "generated module semantics"
+  ],
+  "platform_graphics": [
+    "declared graphics library arguments",
+    "explicit software renderer selection",
+    "native ANGLE client dispatch",
+    "native ANGLE platform entry",
+    "native GLES API binding",
+    "native graphics resource teardown",
+    "native software framebuffer configuration",
+    "native software pixel readback",
+    "native software rendering context",
+    "original EGL and GLES exports",
+    "source SwiftShader display initialization",
+    "source software framebuffer bytes",
+    "source-built graphics library loading"
   ]
 }
