@@ -62,6 +62,10 @@ def classify(log):
         "REGEXP_MATCHING_CONTRACT": r"check failed: regexp (?:ICU Unicode closure|Kelvin matching|long s matching|sharp s matching|Greek mu matching|ordinary matching|canonicalization boundaries)",
         "REGEXP_REPRODUCIBILITY": r"check failed: regexp generation path reproducibility",
         "REGEXP_INPUT_FILES": r"check failed: regexp (?:generated file|ambient data access disabled)",
+        "PARTITION_ALLOC_OWNERSHIP": r"check failed: PartitionAlloc heap ownership|check failed: PartitionAlloc C\+\+ new value",
+        "PARTITION_ALLOC_BYTES": r"check failed: PartitionAlloc preserved bytes",
+        "PARTITION_ALLOC_FAILURE_BOUNDARY": r"check failed: PartitionAlloc (?:failed realloc returns null|calloc overflow rejected|oversized allocation rejected)",
+        "PARTITION_ALLOC_ALIGNMENT": r"check failed: PartitionAlloc (?:requested alignment|realloc alignment)",
         "ASSERTION_FAILURE": r"AssertionError:",
         "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
@@ -87,7 +91,7 @@ def source_test_diagnostics(identifier, key):
             raise ValueError("Test action metadata exceeds limit")
         page = json.loads(content)
         for action in page.get("action", []):
-            if not action.get("targetLabel", "").endswith(("//source:node_dependencies_test", "//tests:v8_torque_test", "//source:v8_bytecodes_test", "//source:icu_test", "//source:v8_regexp_test")):
+            if not action.get("targetLabel", "").endswith(("//source:node_dependencies_test", "//tests:v8_torque_test", "//source:v8_bytecodes_test", "//source:icu_test", "//source:v8_regexp_test", "//source:partition_alloc_test")):
                 continue
             for file in action.get("file", []):
                 if file.get("name", "").rsplit("/", 1)[-1] != "test.log":
