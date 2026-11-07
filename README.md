@@ -98,6 +98,7 @@ See the [parity checklist](docs/packaging-parity.md) for remaining release work.
 
 See [design](docs/architecture.md) for source integration and next milestones.
 Build isolation and reproducibility gates are documented in [hermeticity](docs/hermeticity.md).
+BB profiling and measured limits are tracked in [performance](docs/performance.md).
 
 `electron_update_config` and `electron_update_feed` generate electron-updater
 configuration, channel manifests, SHA-512 metadata and external blockmaps from
