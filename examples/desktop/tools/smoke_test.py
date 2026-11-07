@@ -224,6 +224,7 @@ if __name__ == "__main__":
                 environment["DISPLAY"] = display
             result = subprocess.run([
                 str(executable), "--smoke", "--disable-gpu", "--disable-dev-shm-usage",
+                "--user-data-dir=" + str(directory / "profile"),
             ], cwd=directory, env=environment, capture_output=True, encoding="utf-8", errors="replace", timeout=45)
         if result.returncode:
             raise RuntimeError(f"Electron exited {result.returncode}:\n{result.stdout}\n{result.stderr}")

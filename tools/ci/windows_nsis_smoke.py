@@ -165,14 +165,14 @@ if __name__ == "__main__":
             assert all(p.is_file() for p in shortcuts)
             assert digest(cache / "installer.exe") == digest(first)
             smoke(executable, architecture, "1.0.0")
-            rejected = command(str(executable), "--reject-update-smoke", "--disable-gpu", env=environment)
+            rejected = command(str(executable), "--reject-update-smoke", "--disable-gpu", "--user-data-dir=" + str(directory / "update-profile"), env=environment)
             assert "UPDATE_HASH_REJECTED" in rejected, rejected
             assert registry_value(REGISTRY, "DisplayVersion") == "1.0.0"
             assert digest(cache / "installer.exe") == digest(first)
             with server.lock:
                 server.corrupt = False
                 server.transfers.clear()
-            updated = command(str(executable), "--install-update-smoke", "--disable-gpu", env=environment)
+            updated = command(str(executable), "--install-update-smoke", "--disable-gpu", "--user-data-dir=" + str(directory / "update-profile"), env=environment)
             assert "INSTALLED_UPDATE_SMOKE_OK" in updated, updated
             assert "Cannot download differentially" not in updated, updated
             wait_for(lambda: registry_value(REGISTRY, "DisplayVersion") == "2.0.0")
