@@ -61,6 +61,7 @@
     "declared NSS integrity files",
     "default feature initialization",
     "empty message pipe waits",
+    "expired HSTS preload rejected",
     "generated HSTS preload lookup",
     "generated public suffix lookup",
     "invalid Mojo handle rejected",
