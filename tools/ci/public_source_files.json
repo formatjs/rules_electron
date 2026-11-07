@@ -1809,6 +1809,7 @@
   "gen/third_party/electron_node/src/node/inspector/protocol/NodeWorker.h",
   "gen/third_party/electron_node/src/node/inspector/protocol/Protocol.cpp",
   "gen/third_party/electron_node/src/node/inspector/protocol/Protocol.h",
+  "gen/third_party/electron_node/src/node/inspector/protocol/Runtime.h",
   "gen/third_party/electron_node/src/node/inspector/protocol/Target.cpp",
   "gen/third_party/electron_node/src/node/inspector/protocol/Target.h",
   "gen/third_party/electron_node/src/node_protocol.json",

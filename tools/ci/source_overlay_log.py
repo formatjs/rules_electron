@@ -199,6 +199,10 @@ def failed_action_diagnostics(identifier, key):
     public_headers = set(json.loads(Path(__file__).with_name("public_source_headers.json").read_text()))
     public_files = set(json.loads(Path(__file__).with_name("public_source_files.json").read_text()))
     public_identifiers = set(json.loads(Path(__file__).with_name("public_source_identifiers.json").read_text()))
+    for path in public_files:
+        if path.endswith((".h", ".hpp", ".inc", ".inl")):
+            parts = path.split("/")
+            public_headers.update("/".join(parts[index:]) for index in range(len(parts)))
     request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
                                      data=json.dumps({"execution_lookup": {"invocation_id": identifier}, "inline_execute_response": True}).encode(),
                                      headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
