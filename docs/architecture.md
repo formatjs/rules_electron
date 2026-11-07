@@ -94,6 +94,13 @@ declared ICU data.
 and [BCR consumer](https://formatjs.buildbuddy.io/invocation/75b513b8-c73b-4fb4-a035-0122c0ed452d)
 passed. This slice remains Linux AMD64.
 
+V8 support libraries add 29 C/C++ units across captured Highway, simdutf and
+Chromium zlib profiles, with pinned Dragonbox/fast_float headers. Actual probes
+check number/Unicode conversion, aligned memory and compression/checksum failure
+boundaries. [51e5642 components](https://formatjs.buildbuddy.io/invocation/37462791-7cbe-4105-8610-3bfde508c7bc)
+and [consumer](https://formatjs.buildbuddy.io/invocation/11a4a3fd-25ce-4651-8115-0773a0923553)
+passed. These profiles remain Linux AMD64.
+
 Remaining source work includes full V8 and snapshots, patched libnode,
 electron_lib, matching Chromium content
 libraries and runtime packaging. The
