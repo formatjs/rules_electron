@@ -318,6 +318,7 @@ def failed_action_diagnostics(identifier, key):
             known = next((name for name in public_files if path == name or path.endswith("/" + name)), None)
             if known and 0 < int(line) < 10000:
                 stack.append({"file": known, "line": int(line)})
+        stack = stack[-8:]
         cpp_errors = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", message) if word in public_identifiers))[:20] for message in re.findall(r"(?:fatal )?error(?:\[E[0-9]{4}\])?: ([^\r\n]+)", log)[:12]]
         for path, line in re.findall(r"([^\s:]+):([0-9]{1,5}):[0-9]{1,4}: (?:fatal )?error:", log):
             candidates = [path]
