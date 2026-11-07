@@ -432,6 +432,24 @@ repository fetching remain outside these remote totals. Large shared header
 contexts are a candidate for measurement once full Electron links; preserve
 original configuration, assembly includes and generator reproducibility checks.
 
+## Native display baseline
+
+[81686a0 consumer source-test phase](https://formatjs.buildbuddy.io/invocation/54e83ecb-cff0-4833-b22a-324dbd0b4d35)
+passed in 63.484 seconds: 144 tracked remote executions, 208.432 CPU-seconds,
+428,597,248 bytes maximum per-action peak memory, 666,914,846 worker input bytes
+and 28,028,320 worker output bytes. The closure adds 118 native units and 21
+original generators. Source-relative Mojo AST metadata and the corrected Python
+hash-seed launcher also affect existing generator consumers.
+
+The concurrent [source phase](https://formatjs.buildbuddy.io/invocation/24265d9e-f877-4771-bb1a-f7d58a101e8d)
+passed in 77.068 seconds with 13 tracked remote executions, 0.183 CPU-seconds,
+109,076,480 bytes maximum per-action peak memory, 1,203,211 worker input bytes
+and 1,376,349 worker output bytes. Its [source-test phase](https://formatjs.buildbuddy.io/invocation/90e71786-a985-4a0f-a2d0-3ebdaf4d4b8b)
+passed in 8.077 seconds with zero tracked remote executions. Earlier attempts
+and the consumer populated shared caches; these are not cold-build measurements.
+Native BB-host tests, cache hits and repository fetching remain outside the
+remote resource totals. No speedup is claimed from these mixed-cache runs.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

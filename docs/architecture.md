@@ -163,6 +163,13 @@ packs retain original sources. Skia/Mojo/fonts/Base providers remain shared.
 passed transform/wire, PNG alpha, buffer layout/overflow, DRM metadata and
 deterministic binary data-pack checks. This full profile remains Linux AMD64.
 
+Native display adds 118 units in 22 library/group targets, 21 original generators
+and three literal GN metadata targets. Full display/gfx wire bindings reuse
+existing gfx/Skia/Mojo/Base providers. [81686a0 consumer](https://formatjs.buildbuddy.io/invocation/8c32e657-744a-4257-b51d-53ba5f139a24)
+passed logical/native scaling, relocated work areas, monitor change notifications,
+wire roundtrips and malformed screen-list rejection. Physical display/GPU
+execution remains untested; full source profiles remain Linux AMD64.
+
 Remaining source work includes electron_lib, Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser

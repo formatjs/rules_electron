@@ -188,6 +188,17 @@ passed real gfx runtime checks. No CMake/foreign-cc actions matched the gfx acti
 audit. Full source profiles remain Linux AMD64; GPU/device and Crashpad process
 execution remain untested.
 
+Native display reuses matching Chromium/gfx sources and all existing dependency
+identities. Its 21 original generators retain changed-path/mtime byte checks.
+Compound Mojo `EnableIf` AST nodes retain parser filenames in serialized modules;
+the shared source projection now passes source-relative diagnostic filenames,
+preserving feature evaluation and wire semantics. Generator children use `-s -P`
+with an explicit clean environment, honoring `PYTHONHASHSEED=0` while disabling
+user site/current-directory imports. The [81686a0 consumer](https://formatjs.buildbuddy.io/invocation/8c32e657-744a-4257-b51d-53ba5f139a24)
+passed native display and existing source runtime checks. Action analysis found
+no CMake/foreign-cc actions. Display tests use explicit model values without host
+monitor discovery; physical-device execution remains separate coverage.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.
