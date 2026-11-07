@@ -45,3 +45,7 @@ The BB cross-build workflow uploads `cross-build-profile.json.gz` with its
 artifacts, including remote queue, process, download and cache-check events.
 Use that trace and per-action BB resource stats for the performance baseline;
 compare equivalent cold/warm builds before changing compression or action layout.
+RBE uses top-level output downloads and compressed cache transport, matching
+hermeticbuild/nodejs. Intermediate compiler outputs stay remote; required
+top-level artifacts and runfiles remain available. This changes transport, not
+product bytes. Subsequent profiles must establish the actual performance effect.

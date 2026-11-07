@@ -10,4 +10,6 @@ build:rbe --bes_results_url=https://formatjs.buildbuddy.io/invocation/
 build:rbe --remote_cache=grpcs://formatjs.buildbuddy.io
 build:rbe --remote_executor=grpcs://formatjs.buildbuddy.io
 build:rbe --remote_timeout=10m
+build:rbe --remote_download_toplevel
+build:rbe --remote_cache_compression
 build:rbe --jobs=50
