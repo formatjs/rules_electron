@@ -252,6 +252,10 @@ def source_test_diagnostics(identifier, key):
                 count += 1
                 log = data.decode("utf-8", errors="replace")
                 details = {"probe": probe, "result": test_result(action["targetLabel"]), "log_bytes": len(data), "diagnostics": classify(log)}
+                if probe == "platform_graphics":
+                    details["debug_stages"] = [stage for stage in ["entry", "egl", "gles", "platform", "display", "context", "render", "teardown", "done"] if "[DEBUG-native-graphics] " + stage + "\n" in log]
+                    details["debug_exit_codes"] = [int(code) for code in re.findall(r"\[DEBUG-native-graphics\] exit (-?[0-9]{1,3})\b", log) if -255 <= int(code) <= 255][:4]
+                    details["public_loader_libraries"] = sorted({name for name in re.findall(r"\b([A-Za-z0-9_+-][A-Za-z0-9_.+-]{0,100}\.so(?:\.[A-Za-z0-9_.+-]{1,80})?)\b", log) if name in public_basenames})[:8]
                 if probe == "partition_alloc":
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
