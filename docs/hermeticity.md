@@ -42,6 +42,15 @@ Current enforcement:
 The official Electron runtime remains an explicit bootstrap dependency. It is
 integrity-pinned but does not satisfy the separate source-built runtime goal.
 
+The [Electron source overlay at 8148c8f](https://github.com/formatjs/electron/commit/8148c8f)
+now uses the same pinned offline OCI execution settings, disables C++/Apple/Swift
+host toolchain discovery and enables compressed remote-cache transport. Its
+development and BCR consumer workflows run fresh remote TLS-denial probes before
+compilation. All three hosted checks passed: [source components](https://formatjs.buildbuddy.io/invocation/6e7cffa3-fb36-4227-93f1-b0608a0f8e98),
+[cross-compile](https://formatjs.buildbuddy.io/invocation/0f7d2e3f-c599-4a3a-b79d-3bb4ba3b09fe)
+and [BCR consumer](https://formatjs.buildbuddy.io/invocation/f409e74a-0e0b-4129-818e-85a44a15c9cb).
+These validate existing source components, not a complete Electron executable.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.
