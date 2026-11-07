@@ -167,7 +167,7 @@ def classify(log):
     return {category: len(re.findall(pattern, log, re.IGNORECASE)) for category, pattern in patterns.items() if re.search(pattern, log, re.IGNORECASE)}
 
 
-def source_test_diagnostics(identifier, key):
+def source_test_diagnostics(identifier, key, build_log):
     probes = {
         "//source:node_dependencies_test": "node_dependencies",
         "//tests:v8_torque_test": "torque",
@@ -235,7 +235,9 @@ def source_test_diagnostics(identifier, key):
                         raise ValueError("Test log digest mismatch")
                 count += 1
                 log = data.decode("utf-8", errors="replace")
-                details = {"probe": probe, "log_bytes": len(data), "diagnostics": classify(log)}
+                suffix = next(label for label, name in probes.items() if name == probe)
+                results = re.findall(re.escape(suffix) + r"\s+(?:\(cached\)\s+)?(PASSED|FAILED|TIMEOUT|FLAKY)\b", build_log)
+                details = {"probe": probe, "result": results[-1] if results else "unknown", "log_bytes": len(data), "diagnostics": classify(log)}
                 if probe == "partition_alloc":
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
@@ -384,4 +386,4 @@ if __name__ == "__main__":
         resource_diagnostics(identifier, key)
         if value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and not value.get("success"):
             failed_action_diagnostics(identifier, key)
-            source_test_diagnostics(identifier, key)
+            source_test_diagnostics(identifier, key, log)
