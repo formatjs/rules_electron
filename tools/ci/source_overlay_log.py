@@ -40,7 +40,17 @@ def classify(log):
         "BUILD_FAILED": r"Build did NOT complete successfully",
         "TEST_FAILED": r"\bFAILED\b",
         "CPP_MISSING_HEADER": r"fatal error: .*file not found",
-        "CPP_TYPE_ERROR": r"no matching function|cannot initialize|cannot convert|invalid operands",
+        "CPP_TYPE_ERROR": r"no matching function|no matching member function|no matching constructor|cannot initialize|cannot convert|invalid operands",
+        "CPP_STATIC_ASSERT": r"static assertion failed",
+        "CPP_CONSTEXPR": r"not a constant expression|constexpr.*never produces",
+        "CPP_REDEFINITION": r"redefinition of|duplicate definition|already defined",
+        "CPP_TEMPLATE_DEPTH": r"recursive template instantiation|template instantiation depth|bracket nesting level exceeded",
+        "CPP_TARGET_FEATURE": r"requires target feature|target specific option mismatch",
+        "CPP_TEMPLATE_ARGUMENT": r"template argument|no template named|not a template|parameter pack",
+        "CPP_ACCESS_CONTROL": r"is a private member|is protected within",
+        "CPP_TOKEN_ERROR": r"unknown type name|extraneous|error: expected",
+        "CPP_AMBIGUOUS": r"error:.*ambiguous",
+        "CPP_INCOMPLETE_TYPE": r"error:.*incomplete type",
         "CPP_UNDECLARED_IDENTIFIER": r"undeclared identifier|no member named",
         "LINKER_UNDEFINED_SYMBOL": r"undefined symbol|undefined reference",
         "NODE_HKDF_VECTOR": r"check failed: Node crypto HKDF vector",
@@ -180,6 +190,7 @@ def source_test_diagnostics(identifier, key):
 
 def failed_action_diagnostics(identifier, key):
     public_headers = set(json.loads(Path(__file__).with_name("public_source_headers.json").read_text()))
+    public_files = set(json.loads(Path(__file__).with_name("public_source_files.json").read_text()))
     request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
                                      data=json.dumps({"execution_lookup": {"invocation_id": identifier}, "inline_execute_response": True}).encode(),
                                      headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
@@ -215,7 +226,16 @@ def failed_action_diagnostics(identifier, key):
         # Only exact filenames already present in public source leave memory.
         log = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", log)
         missing = {name for name in re.findall(r"fatal error: ['\"]([^'\"\n]+)['\"] file not found", log) if name in public_headers}
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8]}, sort_keys=True))
+        sites = []
+        for path, line in re.findall(r"([^\s:]+):([0-9]{1,5}):[0-9]{1,4}: (?:fatal )?error:", log):
+            candidates = [path]
+            for prefix in ("v8/", "third_party/", "gen/v8/", "src/", "include/"):
+                if "/" + prefix in path:
+                    candidates.append(prefix + path.split("/" + prefix, 1)[1])
+            name = next((name for name in candidates if name in public_files), None)
+            if name is not None and 0 < int(line) < 10000:
+                sites.append({"file": name, "line": int(line)})
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8]}, sort_keys=True))
 
 
 if __name__ == "__main__":
