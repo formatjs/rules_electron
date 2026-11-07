@@ -40,6 +40,15 @@ _linux_targets = transition(
     outputs = ["//command_line_option:platforms"],
 )
 
+def _windows_split(settings, attr):
+    return {name: value for name, value in _split(settings, attr).items() if name.endswith("_msvc")}
+
+_windows_targets = transition(
+    implementation = _windows_split,
+    inputs = ["//command_line_option:features"],
+    outputs = ["//command_line_option:platforms", "//command_line_option:features"],
+)
+
 def _impl(ctx):
     inputs = []
     entries = []
@@ -50,7 +59,7 @@ def _impl(ctx):
         file = files[0]
         inputs.append(file)
         entries.append({"variant": variant, "source": file.path, "directory": file.is_directory})
-    for variant, target in ctx.split_attr.linux_packages.items():
+    for variant, target in dict(ctx.split_attr.linux_packages, **ctx.split_attr.windows_packages).items():
         for file in target[DefaultInfo].files.to_list():
             inputs.append(file)
             entries.append({"variant": variant, "source": file.path, "directory": file.is_directory, "package": True})
@@ -71,6 +80,7 @@ cross_smoke_bundle = rule(
     attrs = {
         "app": attr.label(mandatory = True, cfg = _targets),
         "linux_packages": attr.label(mandatory = True, cfg = _linux_targets),
+        "windows_packages": attr.label(mandatory = True, cfg = _windows_targets),
         "_bundle": attr.label(default = Label("//tools:bundle"), executable = True, cfg = "exec"),
         "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },

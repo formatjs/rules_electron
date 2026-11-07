@@ -63,3 +63,5 @@ if __name__ == "__main__":
             ], check=True)
             if variant == "linux_x86_64":
                 subprocess.run([sys.executable, "tools/ci/linux_deb_smoke.py", str(directory / variant / "packages")], check=True)
+            if variant.endswith("_msvc"):
+                subprocess.run([sys.executable, "tools/ci/windows_nsis_smoke.py", str(directory / variant / "packages"), target_arch], check=True)

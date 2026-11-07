@@ -2,6 +2,7 @@ load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_electron//electron:defs.bzl", "electron_runtime")
 load("@rules_electron//electron:linux.bzl", "electron_deb")
+load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool")
 load("@rules_electron//electron:update.bzl", "electron_update_config", "electron_update_feed")
 load("@rules_electron//electron:windows.bzl", "electron_windows_resource_tool")
 load("@rules_python//python:defs.bzl", "py_test")
@@ -12,6 +13,7 @@ cross_smoke_bundle(
     name = "cross_build_smoke_bundle",
     app = ":app",
     linux_packages = ":linux_release_files",
+    windows_packages = ":windows_release_files",
 )
 
 exports_files([
@@ -137,7 +139,62 @@ desktop_app(
 desktop_app(
     name = "app_v2",
     package_json = "package-v2.json",
-    target_compatible_with = ["@platforms//os:linux"],
+    target_compatible_with = select({
+        ":macos": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
+)
+
+electron_nsis_tool(
+    name = "nsis_tool",
+    compiler = "@nsis_linux_x64//:linux/x64/makensis",
+    data = "@nsis_linux_x64//:data",
+)
+
+[
+    electron_nsis(
+        name = name,
+        app = app,
+        desktop_shortcut = True,
+        protocols = ["sample-desktop"],
+        target_compatible_with = ["@platforms//os:windows"],
+        tool = ":nsis_tool",
+        updater_cache_name = "sample-desktop-updater",
+        verify_reproducible = name == "nsis_v1",
+    )
+    for name, app in [
+        ("nsis_v1", ":app"),
+        ("nsis_v2", ":app_v2"),
+    ]
+]
+
+[
+    electron_update_feed(
+        name = name,
+        architecture = select({
+            ":windows_arm64": "arm64",
+            "//conditions:default": "x64",
+        }),
+        artifacts = {installer: filename},
+        blockmaps = [filename],
+        package_json = manifest,
+        platform = "windows",
+        release_date = "2026-01-02T03:04:05Z",
+        target_compatible_with = ["@platforms//os:windows"],
+    )
+    for name, installer, filename, manifest in [
+        ("nsis_v1_feed", ":nsis_v1", "Sample-1.0.0.exe", "package.json"),
+        ("nsis_v2_feed", ":nsis_v2", "Sample-2.0.0.exe", "package-v2.json"),
+    ]
+]
+
+filegroup(
+    name = "windows_release_files",
+    srcs = [
+        ":nsis_v1_feed",
+        ":nsis_v2_feed",
+    ],
+    target_compatible_with = ["@platforms//os:windows"],
 )
 
 [

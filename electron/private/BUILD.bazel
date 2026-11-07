@@ -29,6 +29,21 @@ py_binary(
 )
 
 py_library(
+    name = "nsis",
+    srcs = ["nsis.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [":updates"],
+)
+
+py_binary(
+    name = "nsis_packager",
+    srcs = ["nsis.py"],
+    main = "nsis.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":nsis"],
+)
+
+py_library(
     name = "updates",
     srcs = ["update.py"],
     visibility = ["//tests:__pkg__"],

@@ -88,6 +88,23 @@ http_file(
 
 # Linux execution tool; macOS target binaries never execute during assembly.
 http_archive(
+    name = "nsis_linux_x64",
+    build_file_content = """load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+exports_files(["linux/x64/makensis"])
+copy_to_directory(
+    name = "data",
+    srcs = glob(["windows/Include/**", "windows/Contrib/**", "windows/Stubs/**", "windows/Plugins/**"]),
+    root_paths = ["windows"],
+    include_external_repositories = ["*"],
+    visibility = ["//visibility:public"],
+)
+""",
+    sha256 = "c18e9ad9684cf4c5bbd7b768cbf1b056d40771d7bd9ae1b513346452decf89d2",
+    strip_prefix = "nsis-bundle",
+    urls = ["https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis%402.0.4/nsis-bundle-3.13.tar.gz"],
+)
+
+http_archive(
     name = "rcodesign_linux_x64",
     build_file_content = "exports_files([\"rcodesign\"])\n",
     sha256 = "dbe85cedd8ee4217b64e9a0e4c2aef92ab8bcaaa41f20bde99781ff02e600002",

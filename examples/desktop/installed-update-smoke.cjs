@@ -1,16 +1,17 @@
 const assert = require('node:assert/strict');
 const { app } = require('electron');
-const { autoUpdater, DebUpdater } = require('electron-updater');
+const { autoUpdater, DebUpdater, NsisUpdater } = require('electron-updater');
 
-// Installed-app CI path. Uses the real downloader and Debian installer.
+// Installed-app CI path. Uses the real downloader and platform installer.
 module.exports = async function installUpdate(expectFailure) {
-  assert.equal(process.platform, 'linux');
+  assert.ok(['linux', 'win32'].includes(process.platform));
   assert.equal(app.getVersion(), '1.0.0');
-  assert.ok(autoUpdater instanceof DebUpdater);
+  assert.ok(autoUpdater instanceof (process.platform === 'win32' ? NsisUpdater : DebUpdater));
   const feed = new URL(process.env.RULES_ELECTRON_UPDATE_FEED);
   assert.equal(feed.protocol, 'http:');
   assert.equal(feed.hostname, '127.0.0.1');
-  autoUpdater.setFeedURL({ provider: 'generic', url: feed.href });
+  autoUpdater.setFeedURL({ provider: 'generic', url: feed.href, useMultipleRangeRequest: false });
+  autoUpdater.disableDifferentialDownload = expectFailure;
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.autoRunAppAfterInstall = false;

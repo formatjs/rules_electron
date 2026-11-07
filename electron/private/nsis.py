@@ -1,0 +1,217 @@
+"""Deterministic NSIS input generation; installer removes only owned files."""
+
+import hashlib
+import json
+from pathlib import Path
+import re
+import subprocess
+import sys
+import tempfile
+
+from electron.private.update import _filename, _version
+
+
+def literal(value):
+    if any(ord(c) < 32 for c in value) or "${" in value or "$%" in value:
+        raise ValueError("NSIS literals cannot contain controls or preprocessor expressions")
+    return '"' + value.replace("$", "$$").replace('"', '$\\"') + '"'
+
+
+def installer_script(app, package_json, app_id, product_name, executable_name,
+                     output, protocols=(), desktop_shortcut=False, compression="zlib",
+                     updater_cache_name=""):
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", app_id):
+        raise ValueError("NSIS app_id must be an ASCII application identifier")
+    _filename(app_id)
+    _filename(product_name)
+    executable = executable_name if executable_name.endswith(".exe") else executable_name + ".exe"
+    _filename(executable)
+    version = _version(json.loads(Path(package_json).read_text(encoding="utf-8"))["version"])
+    numeric = version.split("-", 1)[0].split("+", 1)[0].split(".")
+    if any(int(part) > 65535 for part in numeric):
+        raise ValueError("NSIS version components must fit 0..65535")
+    if len(set(protocols)) != len(protocols) or any(not re.fullmatch(r"[a-z][a-z0-9+.-]*", scheme) for scheme in protocols):
+        raise ValueError("Invalid or duplicate protocol")
+    app = Path(app)
+    if compression not in ("zlib", "bzip2", "lzma", "off"):
+        raise ValueError("Unsupported NSIS compressor")
+    if updater_cache_name:
+        _filename(updater_cache_name)
+        literal(updater_cache_name)
+        config = json.loads((app / 'resources/app-update.yml').read_text(encoding='utf-8'))
+        if config.get('updaterCacheDirName') != updater_cache_name:
+            raise ValueError('Installer updater cache must match app-update.yml')
+    files = []
+    directories = set()
+    seen = set()
+    for path in sorted(app.rglob("*")):
+        if path.is_symlink():
+            raise ValueError("Windows installer payload cannot contain symlinks")
+        relative = path.relative_to(app)
+        for part in relative.parts:
+            _filename(part)
+        name = relative.as_posix()
+        literal(name)
+        if name.casefold() in seen:
+            raise ValueError("Case-insensitive Windows payload collision")
+        seen.add(name.casefold())
+        if path.is_dir():
+            directories.add(name)
+        elif path.is_file():
+            files.append((name, path))
+        else:
+            raise ValueError("Windows installer requires regular payload files")
+    if not any(name == executable for name, _ in files):
+        raise ValueError("Windows app executable missing")
+    if seen.intersection({"uninstall.exe", ".rules-electron.ini"}):
+        raise ValueError("Runtime occupies installer-owned path")
+    registry = "Software\\" + app_id
+    uninstall_registry = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" + app_id
+    q = literal
+    lines = [
+        '# -*- coding: utf-8 -*-', 'Unicode true', 'RequestExecutionLevel user',
+        *(['SetCompress off'] if compression == 'off' else ['SetCompressor /SOLID ' + compression]),
+        *(['SetCompressorDictSize 8'] if compression == 'lzma' else []), 'SetDateSave off',
+        '!include "FileFunc.nsh"', '!include "LogicLib.nsh"',
+        'Name ' + q(product_name), 'OutFile ' + q(str(Path(output).resolve())),
+        'InstallDir "$LOCALAPPDATA\\Programs\\' + app_id + '"',
+        'InstallDirRegKey HKCU ' + q(registry) + ' "InstallLocation"',
+        'VIProductVersion ' + '.'.join(numeric + ['0']),
+        'VIAddVersionKey "ProductName" ' + q(product_name),
+        'VIAddVersionKey "FileDescription" ' + q(product_name + ' Installer'),
+        'VIAddVersionKey "FileVersion" ' + q(version),
+        'VIAddVersionKey "LegalCopyright" ""',
+        'Page directory', 'Page instfiles', 'UninstPage uninstConfirm', 'UninstPage instfiles',
+    ]
+    for prefix in ['', 'un.']:
+        lines += [
+            'Function ' + prefix + 'WaitForApp', 'StrCpy $R1 150',
+            'wait:', 'nsProcess::_FindProcess ' + q(executable), 'Pop $R0',
+            'StrCmp $R0 603 done', 'StrCmp $R0 0 0 failed',
+            'Sleep 200', 'IntOp $R1 $R1 - 1', 'IntCmp $R1 0 failed wait wait',
+            'failed:', 'SetErrorLevel 1', 'Abort "Close the application before continuing."',
+            'done:', 'FunctionEnd',
+        ]
+    lines += [
+        'Function .onInit', 'SetShellVarContext current', 'SetRegView 64',
+        'FunctionEnd', 'Function un.onInit', 'SetShellVarContext current', 'SetRegView 64',
+        'ReadINIStr $0 "$INSTDIR\\.rules-electron.ini" "app" "id"',
+        'StrCmp $0 ' + q(app_id) + ' +3', 'SetErrorLevel 1', 'Abort "Installation ownership mismatch."',
+        'Call un.WaitForApp', 'FunctionEnd', 'Section "Install"', 'Call WaitForApp',
+    ]
+    for index, scheme in enumerate(protocols):
+        key = 'Software\\Classes\\' + scheme
+        lines += [
+            'ReadRegStr $0 HKCU ' + q(key) + ' "RulesElectronOwner"',
+            'StrCmp $0 ' + q(app_id) + ' protocol_ok_' + str(index),
+            'ClearErrors', 'EnumRegValue $1 HKCU ' + q(key) + ' 0',
+            'IfErrors protocol_subkey_' + str(index),
+            'SetErrorLevel 1', 'Abort "Protocol already registered by another application."',
+            'protocol_subkey_' + str(index) + ':',
+            'ClearErrors', 'EnumRegKey $1 HKCU ' + q(key) + ' 0',
+            'IfErrors protocol_ok_' + str(index),
+            'SetErrorLevel 1', 'Abort "Protocol already registered by another application."',
+            'protocol_ok_' + str(index) + ':',
+        ]
+    if updater_cache_name:
+        cache = '$LOCALAPPDATA\\' + updater_cache_name.replace('$', '$$')
+        lines += ['ReadINIStr $0 "' + cache + '\\.rules-electron.ini" "app" "id"',
+                  'StrCmp $0 ' + q(app_id) + ' cache_owned',
+                  'IfFileExists "' + cache + '\\installer.exe" 0 cache_owned',
+                  'SetErrorLevel 1', 'Abort "Updater cache ownership mismatch."', 'cache_owned:']
+    lines += [
+        'IfFileExists "$INSTDIR\\.rules-electron.ini" existing fresh',
+        'existing:', 'ReadINIStr $0 "$INSTDIR\\.rules-electron.ini" "app" "id"',
+        'StrCmp $0 ' + q(app_id) + ' owned', 'SetErrorLevel 1', 'Abort "Installation ownership mismatch."',
+        'owned:', 'IfFileExists "$INSTDIR\\Uninstall.exe" 0 failed_install',
+        'ClearErrors', 'ExecWait \'"$INSTDIR\\Uninstall.exe" /S _?=$INSTDIR\' $0',
+        'IfErrors failed_install', 'StrCmp $0 0 unpack failed_install',
+        'fresh:', 'FindFirst $0 $1 "$INSTDIR\\*.*"', 'check_empty:',
+        'StrCmp $1 "" empty', 'StrCmp $1 "." next', 'StrCmp $1 ".." next',
+        'FindClose $0', 'SetErrorLevel 1', 'Abort "Refusing to overwrite an unowned directory."',
+        'next:', 'FindNext $0 $1', 'Goto check_empty', 'empty:', 'FindClose $0',
+        'unpack:', 'SetOverwrite try', 'ClearErrors',
+    ]
+    for name, path in files:
+        parent = str(Path(name).parent).replace('/', '\\').replace('$', '$$')
+        lines += ['SetOutPath "$INSTDIR' + ('\\' + parent if parent != '.' else '') + '"',
+                  'File ' + q('/oname=' + Path(name).name) + ' ' + q(str(path.resolve())),
+                  'IfErrors failed_install']
+    lines += [
+        'SetOutPath "$INSTDIR"', 'WriteUninstaller "$INSTDIR\\Uninstall.exe"',
+        'WriteINIStr "$INSTDIR\\.rules-electron.ini" "app" "id" ' + q(app_id),
+        'WriteRegStr HKCU ' + q(registry) + ' "InstallLocation" "$INSTDIR"',
+        'WriteRegStr HKCU ' + q(uninstall_registry) + ' "InstallLocation" "$INSTDIR"',
+        'WriteRegStr HKCU ' + q(uninstall_registry) + ' "DisplayName" ' + q(product_name),
+        'WriteRegStr HKCU ' + q(uninstall_registry) + ' "UninstallString" \'"$INSTDIR\\Uninstall.exe"\'',
+        'WriteRegStr HKCU ' + q(uninstall_registry) + ' "QuietUninstallString" \'"$INSTDIR\\Uninstall.exe" /S\'',
+        'WriteRegDWORD HKCU ' + q(uninstall_registry) + ' "NoModify" 1',
+        'WriteRegDWORD HKCU ' + q(uninstall_registry) + ' "NoRepair" 1',
+        'CreateShortcut "$SMPROGRAMS\\' + product_name.replace('$', '$$') + '.lnk" "$INSTDIR\\' + executable.replace('$', '$$') + '"',
+    ]
+    if desktop_shortcut:
+        lines += ['CreateShortcut "$DESKTOP\\' + product_name.replace('$', '$$') + '.lnk" "$INSTDIR\\' + executable.replace('$', '$$') + '"']
+    for scheme in protocols:
+        key = 'Software\\Classes\\' + scheme
+        lines += ['WriteRegStr HKCU ' + q(key) + ' "" ' + q('URL:' + product_name),
+                  'WriteRegStr HKCU ' + q(key) + ' "URL Protocol" ""',
+                  'WriteRegStr HKCU ' + q(key) + ' "RulesElectronOwner" ' + q(app_id),
+                  'WriteRegStr HKCU ' + q(key + '\\shell\\open\\command') + ' "" \'"$INSTDIR\\' + executable.replace('$', '$$') + '" "%1"\'']
+    if updater_cache_name:
+        lines += ['CreateDirectory "' + cache + '"',
+                  'CopyFiles /SILENT "$EXEPATH" "' + cache + '\\installer.exe"',
+                  'WriteINIStr "' + cache + '\\.rules-electron.ini" "app" "id" ' + q(app_id)]
+    lines += ['IfErrors failed_install',
+              'WriteRegStr HKCU ' + q(uninstall_registry) + ' "DisplayVersion" ' + q(version),
+              'IfErrors failed_install', 'SetErrorLevel 0', 'Goto installed',
+              'failed_install:', 'SetErrorLevel 1', 'Abort "Installation failed."', 'installed:',
+              '${GetParameters} $0', 'ClearErrors', '${GetOptions} $0 "--force-run" $1',
+              'IfErrors no_launch', 'Exec \'"$INSTDIR\\' + executable.replace('$', '$$') + '"\'',
+              'no_launch:', 'SectionEnd', 'Section "Uninstall"', 'ClearErrors']
+    for name, _ in files:
+        lines += ['Delete "$INSTDIR\\' + name.replace('/', '\\').replace('$', '$$') + '"']
+    lines += ['IfErrors uninstall_failed', 'Delete "$INSTDIR\\Uninstall.exe"', 'Delete "$INSTDIR\\.rules-electron.ini"',
+              'DeleteRegKey HKCU ' + q(registry), 'DeleteRegKey HKCU ' + q(uninstall_registry),
+              'Delete "$SMPROGRAMS\\' + product_name.replace('$', '$$') + '.lnk"']
+    if desktop_shortcut:
+        lines += ['Delete "$DESKTOP\\' + product_name.replace('$', '$$') + '.lnk"']
+    for index, scheme in enumerate(protocols):
+        key = 'Software\\Classes\\' + scheme
+        lines += ['ReadRegStr $0 HKCU ' + q(key) + ' "RulesElectronOwner"',
+                  'StrCmp $0 ' + q(app_id) + ' 0 un_protocol_' + str(index),
+                  'ReadRegStr $0 HKCU ' + q(key + '\\shell\\open\\command') + ' ""',
+                  'StrCmp $0 \'"$INSTDIR\\' + executable.replace('$', '$$') + '" "%1"\' 0 un_protocol_' + str(index),
+                  'DeleteRegKey HKCU ' + q(key), 'un_protocol_' + str(index) + ':']
+    for name in sorted(directories, key=lambda n: (-n.count('/'), n)):
+        lines += ['RMDir "$INSTDIR\\' + name.replace('/', '\\').replace('$', '$$') + '"']
+    lines += ['RMDir "$INSTDIR"', 'SetErrorLevel 0', 'Goto uninstalled',
+              'uninstall_failed:', 'SetErrorLevel 1', 'Abort "Unable to remove application files."',
+              'uninstalled:', 'SectionEnd']
+    return '\n'.join(lines) + '\n'
+
+
+def build_installer(manifest, output, script):
+    manifest = dict(manifest)
+    compiler = str(Path(manifest.pop('compiler')).resolve())
+    data = str(Path(manifest.pop('data')).resolve())
+    verify = manifest.pop('verify_reproducible', False)
+    output = Path(output).resolve()
+    environment = {'NSISDIR': data, 'LC_ALL': 'C.UTF-8', 'TZ': 'UTC', 'SOURCE_DATE_EPOCH': '0'}
+    text = installer_script(output=output, **manifest)
+    Path(script).write_text(text, encoding='utf-8')
+    subprocess.run([compiler, '-NOCONFIG', '-V2', str(Path(script).resolve())], env=environment, check=True)
+    if verify:
+        with tempfile.TemporaryDirectory() as directory:
+            second = Path(directory) / output.name
+            other = Path(directory) / 'installer.nsi'
+            other.write_text(installer_script(output=second, **manifest), encoding='utf-8')
+            subprocess.run([compiler, '-NOCONFIG', '-V2', str(other)], env=environment, check=True)
+            def digest(path):
+                with path.open('rb') as source:
+                    return hashlib.file_digest(source, 'sha256').digest()
+            if digest(output) != digest(second):
+                raise ValueError('NSIS output is not reproducible across output directories')
+
+
+if __name__ == '__main__':
+    build_installer(json.loads(Path(sys.argv[1]).read_text()), sys.argv[2], sys.argv[3])

@@ -61,7 +61,7 @@ def display_server():
                 server.wait()
 
 
-def windows_resources(executable):
+def windows_resources(executable, expected_version):
     import ctypes
     from ctypes import wintypes
 
@@ -108,8 +108,8 @@ def windows_resources(executable):
     language, codepage = struct.unpack("<HH", ctypes.string_at(address, 4))
     for key, expected in {
         "CompanyName": "Example", "ProductName": "Sample Desktop",
-        "FileDescription": "Sample Desktop", "FileVersion": "1.0.0",
-        "ProductVersion": "1.0.0", "InternalName": "sample-desktop",
+        "FileDescription": "Sample Desktop", "FileVersion": expected_version,
+        "ProductVersion": expected_version, "InternalName": "sample-desktop",
         "OriginalFilename": "sample-desktop.exe",
     }.items():
         if not query(buffer, f"\\StringFileInfo\\{language:04x}{codepage:04x}\\{key}", ctypes.byref(address), ctypes.byref(length)):
@@ -118,7 +118,7 @@ def windows_resources(executable):
     return integrity
 
 
-def check_asar_integrity(app, executable, environment, directory, target_os):
+def check_asar_integrity(app, executable, environment, directory, target_os, expected_version):
     archive = app / ("Contents/Resources/app.asar" if target_os == "macos" else "resources/app.asar")
     with archive.open("rb") as source:
         prefix = source.read(16)
@@ -132,7 +132,7 @@ def check_asar_integrity(app, executable, environment, directory, target_os):
             "Resources/app.asar": {"algorithm": "SHA256", "hash": digest},
         }
     else:
-        assert windows_resources(executable) == [{"file": "resources\\app.asar", "alg": "SHA256", "value": digest}]
+        assert windows_resources(executable, expected_version) == [{"file": "resources\\app.asar", "alg": "SHA256", "value": digest}]
     entry = header["files"]["package.json"]
     payload_offset = 8 + header_size + int(entry["offset"])
     with archive.open("rb") as source:
@@ -192,9 +192,11 @@ if __name__ == "__main__":
         directory = Path(directory)
         app = directory / "relocated desktop app"
         if args.installed:
-            if host_os != "linux":
-                raise ValueError("Installed-path smoke currently supports Linux only")
+            if host_os not in ("linux", "windows"):
+                raise ValueError("Installed-path smoke supports Linux/Windows")
             executable = source
+            if host_os == "windows":
+                app = source.parent
         elif host_os == "macos":
             subprocess.run(["/usr/bin/ditto", "-x", "-k", str(source), str(app)], check=True)
             bundles = list(app.glob("*.app"))
@@ -211,9 +213,9 @@ if __name__ == "__main__":
             "HOME": str(directory),
             "XDG_CONFIG_HOME": str(directory / "config"),
             "XDG_CACHE_HOME": str(directory / "cache"),
-            "APPDATA": str(directory / "appdata"),
-            "LOCALAPPDATA": str(directory / "localappdata"),
         })
+        if not args.installed or host_os != "windows":
+            environment.update(APPDATA=str(directory / "appdata"), LOCALAPPDATA=str(directory / "localappdata"))
         for name in ["ELECTRON_RUN_AS_NODE", "NODE_OPTIONS"]:
             environment.pop(name, None)
         environment.update(ELECTRON_RUN_AS_NODE="1", NODE_OPTIONS="--not-a-valid-node-option")
@@ -235,4 +237,4 @@ if __name__ == "__main__":
         assert report["platform"] == {"linux": "linux", "macos": "darwin", "windows": "win32"}[args.target_os], report
         print("EXAMPLE_SMOKE_OK " + json.dumps(report, ensure_ascii=True))
         if host_os in ("macos", "windows"):
-            check_asar_integrity(app, executable, environment, directory, host_os)
+            check_asar_integrity(app, executable, environment, directory, host_os, report["app_version"])

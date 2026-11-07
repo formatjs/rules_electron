@@ -11,6 +11,13 @@ cross_build(
 )
 
 py_test(
+    name = "nsis_test",
+    size = "small",
+    srcs = ["nsis_test.py"],
+    deps = ["//electron/private:nsis"],
+)
+
+py_test(
     name = "profile_test",
     size = "small",
     srcs = ["profile_test.py"],
