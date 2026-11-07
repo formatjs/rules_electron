@@ -192,6 +192,7 @@ def source_test_diagnostics(identifier, key):
 def failed_action_diagnostics(identifier, key):
     public_headers = set(json.loads(Path(__file__).with_name("public_source_headers.json").read_text()))
     public_files = set(json.loads(Path(__file__).with_name("public_source_files.json").read_text()))
+    public_identifiers = set(json.loads(Path(__file__).with_name("public_source_identifiers.json").read_text()))
     request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
                                      data=json.dumps({"execution_lookup": {"invocation_id": identifier}, "inline_execute_response": True}).encode(),
                                      headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
@@ -227,6 +228,10 @@ def failed_action_diagnostics(identifier, key):
         # Only exact filenames already present in public source leave memory.
         log = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", log)
         missing = {name for name in re.findall(r"fatal error: ['\"]([^'\"\n]+)['\"] file not found", log) if name in public_headers}
+        undefined = []
+        for symbol in re.findall(r"undefined symbol: ([^\r\n]+)", log)[:12]:
+            identifiers = [word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", symbol) if word in public_identifiers]
+            undefined.append(list(dict.fromkeys(identifiers))[:16])
         sites = []
         for path, line in re.findall(r"([^\s:]+):([0-9]{1,5}):[0-9]{1,4}: (?:fatal )?error:", log):
             candidates = [path]
@@ -236,7 +241,7 @@ def failed_action_diagnostics(identifier, key):
             name = next((name for name in candidates if name in public_files), None)
             if name is not None and 0 < int(line) < 10000:
                 sites.append({"file": name, "line": int(line)})
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8]}, sort_keys=True))
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_undefined_identifiers": undefined}, sort_keys=True))
 
 
 if __name__ == "__main__":
