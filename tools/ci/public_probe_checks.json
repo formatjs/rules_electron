@@ -115,5 +115,27 @@
     "typed string changed",
     "unexpected attached handles",
     "unexpected typed dispatch"
+  ],
+  "fonts": [
+    "FreeType declared font loading",
+    "PNG dimensions",
+    "PNG encoded size",
+    "PNG memory encoding",
+    "RGBA alpha roundtrip",
+    "XML UTF8 parsing",
+    "caf\\xc3\\xa9 & tea",
+    "declared ICU and font arguments",
+    "declared ICU initialization",
+    "declared font bytes",
+    "disabled ligature shaping vector",
+    "fixture ligature glyph",
+    "invalid PNG rejection",
+    "invalid font rejection",
+    "ligature feature parsing",
+    "malformed XML rejection",
+    "native XPath selection",
+    "nonempty ligature pixels",
+    "original ligature shaping vector",
+    "shaped ligature rasterization"
   ]
 }
