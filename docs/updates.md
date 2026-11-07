@@ -50,15 +50,20 @@ merges compatible artifacts. Keep the same updater cache name across versions.
 `publisher_names` records the expected Windows signing certificate publisher names;
 it does not sign artifacts. `staging_percentage` emits optional rollout metadata.
 
-External maps use gzip-compressed v2 JSON with fixed 64 KiB chunks. They support
-the updater's copy/download planner; content-defined chunks may reuse more bytes
-after insertions. Embedded AppImage maps require a separate packaging stage.
+External maps use gzip-compressed v2 JSON with content-defined gear chunks,
+16–64 KiB except the final tail, and SHA-256 checksums. Boundaries depend on
+content so unchanged data can be reused after byte insertions/deletions. The
+updater's copy/download planner consumes the same v2 format; final SHA-512 still
+verifies the complete downloaded artifact. Embedded AppImage maps require a
+separate packaging stage.
 
 The desktop example pins electron-updater 6.6.2 and its script-free npm closure
 through an integrity-checked lockfile. Native smoke exercises discovery, channel
 routing, artifact hashes and actual updater blockmap planning over local HTTP.
 Its metadata fixture is not an installer. A separate [Linux DEB test](linux-packages.md)
-uses real v1/v2 packages, hash rejection and installed-app upgrades. Other targets,
+uses real v1/v2 packages, hash rejection and installed-app upgrades.
+[Windows NSIS smoke](windows-installers.md) adds real installer lifecycle and
+differential range downloads. Other targets,
 signature rejection and release-identity verification remain pending.
 
 Protocol references: [auto update](https://www.electron.build/v26/docs/features/auto-update/),

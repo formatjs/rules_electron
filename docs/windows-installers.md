@@ -71,3 +71,9 @@ launch, reject corrupted bytes, download v2 through HTTP ranges, install/launch
 v2, then uninstall while preserving a user-created file. It requires actual
 differential reuse, not a full-download fallback. Hosted results establish
 whether this contract passes.
+
+Initial [x64/ARM64 lifecycle validation](https://github.com/formatjs/rules_electron/actions/runs/42349256215)
+passed install, hash rejection, upgrade, v2 launch and uninstall. Fixed-size maps
+reused only 64 KiB of roughly 125 MB installers. Content-defined maps and a
+stronger native reuse threshold address that measured gap; their hosted result
+must establish the performance effect.

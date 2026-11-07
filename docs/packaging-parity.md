@@ -23,7 +23,7 @@ electron-builder replacement.
 | Installers | Linux DEB for amd64/arm64; per-user Windows NSIS with declared tools and owned-file uninstall | RPM/AppImage, macOS disk images, Windows per-machine NSIS/MSIX and other packaging |
 | Prepackaged release stages | Internal ad hoc Mac signing stage only | Public sign/package-prepackaged APIs and verification policy |
 | Distribution archives | Mac app ZIP and aggregate smoke ZIP | General release archive API and compression controls |
-| electron-updater | Generic config/manifests, SHA-512/size, external blockmaps, real client discovery/planning; Linux DEB lifecycle smoke; NSIS differential cache seeding and lifecycle smoke implementation | Hosted NSIS lifecycle result; other installed-app update targets, embedded AppImage maps, provider/publishing adapters |
+| electron-updater | Generic config/manifests, SHA-512/size, content-defined external blockmaps, real client discovery/planning; Linux DEB and Windows NSIS lifecycle smoke | Hosted content-defined NSIS reuse measurement; other installed-app update targets, embedded AppImage maps, provider/publishing adapters |
 | Native smoke | Scripts/workflows for four native host types | Hosted results establish actual execution coverage |
 
 All compilation, generators, assembly and ad hoc signing run on BB Linux

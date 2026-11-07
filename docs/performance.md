@@ -73,6 +73,14 @@ querying execution metadata, and print aggregate metrics rather than commands,
 worker identities or environment. Test/cache counts still need separate
 interpretation: remote execution records omit ordinary remote action-cache hits.
 
+The first NSIS lifecycle run exposed weak differential reuse with fixed chunks:
+x64 downloaded 125,250,761 of 125,316,297 installer bytes; ARM64 downloaded
+124,890,889 of 124,956,425 bytes. Each reused only one 64 KiB chunk. Installer
+header length changes shift subsequent byte offsets, so block boundaries must
+resynchronize on content. New v2 maps use bounded gear chunks with SHA-256;
+the native gate now requires fewer than half the installer bytes over ranges,
+with no full-download fallback. Hosted measurements must establish that result.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache
