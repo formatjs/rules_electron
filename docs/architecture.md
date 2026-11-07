@@ -181,6 +181,14 @@ roundtrip/truncation checks. Test data does not discover a host keyboard layout
 or X server. Full profiles remain Linux AMD64; physical-device execution and
 complete Electron remain unfinished.
 
+Native UI adds 96 units in 76 library/group targets, 339 original Python actions,
+24 GN metadata targets and 15 copy steps. The source closure retains original
+TypeScript, ESLint, minification, GRIT and locale producers. Pinned execution
+Node and prepatched npm sources are separate from Electron's embedded Node.
+[2b46400 consumer](https://formatjs.buildbuddy.io/invocation/c1ddb72f-d5fb-446f-8cb4-ea7e8e39da31)
+passed relocated locale reloads, packed WebUI byte checks, native color mixing
+and generated JavaScript execution.
+
 Remaining source work includes electron_lib, Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser

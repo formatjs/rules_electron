@@ -470,6 +470,28 @@ arguments. These mixed-cache phases establish coverage and resource observations
 not a cold-build baseline or speedup. Preserve full protocol generation and
 byte checks when measuring narrower header contexts later.
 
+## Native UI/WebUI resource baseline
+
+The complete UI closure retains original typecheck/lint/minification and resource
+generation, including byte checks across source paths and mtimes. Shared npm
+source groups avoid repeating package file lists in each action. Generated
+predecessor outputs, TypeScript declarations and static resource bytes remain
+declared inputs.
+
+[db647f4 source build](https://formatjs.buildbuddy.io/invocation/61774164-a340-4eb5-83dd-19e8760b868e)
+passed in 44.835 seconds with 121 tracked remote executions, 118.213 CPU seconds,
+450,105,344-byte maximum action peak memory, 1,285,751,929 input download bytes
+and 16,189,921 output upload bytes. Earlier attempts and concurrent consumers
+had populated caches; this is not a cold-build measurement.
+
+The final [2b46400 source build](https://formatjs.buildbuddy.io/invocation/4c6921c7-c5fc-4616-9a2b-7c9c65a6725f)
+passed in 37.979 seconds and its [source tests](https://formatjs.buildbuddy.io/invocation/6cba1c36-a27e-4725-9368-45cdeb1c234f)
+passed in 6.358 seconds, both with zero tracked remote executions. The
+[BCR consumer](https://formatjs.buildbuddy.io/invocation/c1ddb72f-d5fb-446f-8cb4-ea7e8e39da31)
+also passed real native UI and generated-module probes. Cache hits, repository
+fetching and BB-host test execution remain outside those remote resource totals.
+These phases establish coverage and resource observations, not a measured speedup.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

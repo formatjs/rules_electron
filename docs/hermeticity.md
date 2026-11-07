@@ -217,6 +217,18 @@ Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.
 
+The native UI/WebUI closure retains original TypeScript, ESLint, minification,
+GRIT and locale generation. Chromium DEPS pins execution Node 22.11.0 and the
+prepatched npm archive; no package install hooks or host Node discovery run.
+Directory tools receive declared predecessor outputs, source declarations and
+static resource assets. Generator byte checks remain enabled. Native probes
+reload relocated English/French packs, compare packed module bytes, exercise
+color mixing and execute the actual generated JavaScript.
+[2b46400 components](https://formatjs.buildbuddy.io/invocation/589e4e60-43b7-410f-b0c4-afd40ab9c125)
+and [consumer](https://formatjs.buildbuddy.io/invocation/c1ddb72f-d5fb-446f-8cb4-ea7e8e39da31)
+passed. The UI action audit found no CMake/foreign-cc actions. Complete source
+profiles remain Linux AMD64; full Electron still does not link.
+
 Performance follows this gate. Compare BB action profiles, cache reuse, peak
 memory, transfer bytes and artifact sizes; preserve behavior and reproducibility
 when changing implementations. Profiles may record clocks; product actions may not
