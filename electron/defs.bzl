@@ -151,7 +151,7 @@ electron_app = rule(
         "app_id": attr.string(),
         "macos_signer": attr.label(executable = True, allow_single_file = True, cfg = "exec", doc = "Execution-platform rcodesign; required on macOS. Ad hoc signing only."),
         "remove_package_scripts": attr.bool(default = False),
-        "fuses": attr.string_dict(doc = "Linux v1 fuse names mapped to on/off; see README."),
+        "fuses": attr.string_dict(doc = "Electron v1 fuse names mapped to on/off; macOS edits its framework before signing. See README."),
         "_assembler": attr.label(default = Label("//electron/private:assemble"), executable = True, cfg = "exec"),
         "_linux": attr.label(default = Label("@platforms//os:linux")),
         "_macos": attr.label(default = Label("@platforms//os:osx")),

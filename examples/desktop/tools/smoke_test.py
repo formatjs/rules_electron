@@ -4,11 +4,14 @@ import json
 import argparse
 import os
 import platform
+import hashlib
+import plistlib
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
 import select
 import shutil
 import subprocess
+import struct
 import sys
 import tempfile
 import time
@@ -58,6 +61,47 @@ def display_server():
                 server.wait()
 
 
+def check_asar_integrity(app, executable, environment, directory):
+    archive = app / "Contents/Resources/app.asar"
+    with archive.open("rb") as source:
+        prefix = source.read(16)
+        header_size = struct.unpack_from("<I", prefix, 4)[0]
+        raw_header = source.read(struct.unpack_from("<I", prefix, 12)[0])
+    header = json.loads(raw_header)
+    metadata = plistlib.loads((app / "Contents/Info.plist").read_bytes())
+    assert metadata["ElectronAsarIntegrity"] == {
+        "Resources/app.asar": {"algorithm": "SHA256", "hash": hashlib.sha256(raw_header).hexdigest()},
+    }
+    entry = header["files"]["package.json"]
+    payload_offset = 8 + header_size + int(entry["offset"])
+    with archive.open("rb") as source:
+        source.seek(payload_offset)
+        package = source.read(entry["size"])
+    offsets = {
+        "header": 16 + raw_header.index(entry["integrity"]["hash"].encode()),
+        "payload": payload_offset + package.index(b'"version":"') + len(b'"version":"'),
+    }
+    for label, offset in offsets.items():
+        with archive.open("r+b") as file:
+            file.seek(offset)
+            original = file.read(1)
+            file.seek(offset)
+            file.write(b"0" if original != b"0" else b"1")
+        try:
+            result = subprocess.run([
+                str(executable), "--smoke", "--disable-gpu", "--disable-dev-shm-usage",
+            ], cwd=directory, env=environment, capture_output=True, encoding="utf-8", errors="replace", timeout=30)
+            assert result.returncode != 0, label
+            assert "Integrity check failed for asar archive" in result.stderr, result.stdout + result.stderr
+            assert "EXAMPLE_SMOKE_OK" not in result.stdout, result.stdout
+            print("EXAMPLE_ASAR_REJECTED " + label)
+        finally:
+            with archive.open("r+b") as file:
+                file.seek(offset)
+                file.write(original)
+    subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("app")
@@ -103,8 +147,7 @@ if __name__ == "__main__":
         })
         for name in ["ELECTRON_RUN_AS_NODE", "NODE_OPTIONS"]:
             environment.pop(name, None)
-        if host_os != "macos":
-            environment.update(ELECTRON_RUN_AS_NODE="1", NODE_OPTIONS="--not-a-valid-node-option")
+        environment.update(ELECTRON_RUN_AS_NODE="1", NODE_OPTIONS="--not-a-valid-node-option")
         with (display_server() if host_os == "linux" else nullcontext()) as display:
             if display:
                 environment["DISPLAY"] = display
@@ -122,3 +165,5 @@ if __name__ == "__main__":
             assert report["app_version"] == args.expected_version, report
         assert report["platform"] == {"linux": "linux", "macos": "darwin", "windows": "win32"}[args.target_os], report
         print("EXAMPLE_SMOKE_OK " + json.dumps(report, ensure_ascii=True))
+        if host_os == "macos":
+            check_asar_integrity(app, executable, environment, directory)

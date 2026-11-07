@@ -1,14 +1,18 @@
-"""Linux/Windows v1 fuse wire, defined by electron/fuses src/{config,constants}.ts."""
+"""Electron v1 fuse wire, defined by electron/fuses src/{config,constants}.ts."""
 
 import mmap
 
 SENTINEL = b"dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX"
 OPTIONS = {
     "runAsNode": 0,
+    "enableCookieEncryption": 1,
     "enableNodeOptionsEnvironmentVariable": 2,
     "enableNodeCliInspectArguments": 3,
+    "enableEmbeddedAsarIntegrityValidation": 4,
     "onlyLoadAppFromAsar": 5,
+    "loadBrowserProcessSpecificV8Snapshot": 6,
     "grantFileProtocolExtraPrivileges": 7,
+    "wasmTrapHandlers": 8,
 }
 
 

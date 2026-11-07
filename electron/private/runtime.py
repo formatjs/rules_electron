@@ -76,7 +76,7 @@ def extract_runtime(archive, output, platform, exclude_files, occupied, language
                 raise ValueError(f"Invalid runtime symlink chain: {path}") from error
 
 
-def brand_macos(output, executable_name, product_name, app_id, version):
+def brand_macos(output, executable_name, product_name, app_id, version, asar_header_hash=None):
     if not app_id:
         raise ValueError("macOS app_id required")
     plist = output / "Contents/Info.plist"
@@ -86,6 +86,11 @@ def brand_macos(output, executable_name, product_name, app_id, version):
     metadata.update(CFBundleExecutable=executable_name, CFBundleName=product_name,
                     CFBundleDisplayName=product_name, CFBundleIdentifier=app_id,
                     CFBundleShortVersionString=version, CFBundleVersion=version)
+    metadata.pop("ElectronAsarIntegrity", None)
+    if asar_header_hash:
+        metadata["ElectronAsarIntegrity"] = {
+            "Resources/app.asar": {"algorithm": "SHA256", "hash": asar_header_hash},
+        }
     plist.write_bytes(plistlib.dumps(metadata, sort_keys=True))
     frameworks = output / "Contents/Frameworks"
     for helper in sorted(frameworks.glob("Electron Helper*.app")):

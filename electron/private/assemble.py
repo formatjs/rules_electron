@@ -52,8 +52,9 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              product_name="Electron", app_id="", runtime_languages=()):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
-    if platform == "macos" and fuses:
-        raise ValueError("macOS fuse mutation is not supported")
+    embedded_integrity = (fuses or {}).get("enableEmbeddedAsarIntegrityValidation") == "on"
+    if embedded_integrity and (not asar or platform != "macos"):
+        raise ValueError("enableEmbeddedAsarIntegrityValidation requires macOS and asar=True")
     resources = "Contents/Resources" if platform == "macos" else "resources"
     if not asar and asar_unpacked:
         raise ValueError("asar_unpacked requires asar=True")
@@ -95,9 +96,19 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         shutil.copyfile(source, destination)
         executable = entry.get("executable", False) or bool(source.stat().st_mode & 0o111)
         destination.chmod(0o755 if executable else 0o644)
+    if remove_package_scripts:
+        package.pop("scripts", None)
+        (output / package_path).write_text(json.dumps(package, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+        (output / package_path).chmod(0o644)
+    header_hash = None
+    if asar:
+        archive = output / resources / "app.asar"
+        header_hash = create_archive({name: output / path for name, path in app_files.items()}, archive, asar_unpacked)
+        archive.chmod(0o644)
+        shutil.rmtree(output / app_prefix)
     if platform == "macos":
-        brand_macos(output, executable_name, product_name, app_id, package["version"])
-        binary = output / "Contents/MacOS" / executable_name
+        brand_macos(output, executable_name, product_name, app_id, package["version"], header_hash)
+        binary = output / "Contents/Frameworks/Electron Framework.framework/Electron Framework"
     else:
         original = "electron.exe" if platform == "windows" else "electron"
         name = executable_name + (".exe" if platform == "windows" and not executable_name.endswith(".exe") else "")
@@ -106,15 +117,6 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
             if binary.exists():
                 raise ValueError(f"Executable destination already occupied: {name}")
             (output / original).rename(binary)
-    if remove_package_scripts:
-        package.pop("scripts", None)
-        (output / package_path).write_text(json.dumps(package, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
-        (output / package_path).chmod(0o644)
-    if asar:
-        archive = output / resources / "app.asar"
-        create_archive({name: output / path for name, path in app_files.items()}, archive, asar_unpacked)
-        archive.chmod(0o644)
-        shutil.rmtree(output / app_prefix)
     if fuses:
         set_fuses(binary, fuses)
     normalize(output)

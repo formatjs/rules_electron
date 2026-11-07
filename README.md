@@ -61,11 +61,17 @@ trees beneath `resources/`, outside the app archive. Set `remove_package_scripts
 to drop development scripts from the packaged manifest. No implicit file filtering
 or native-addon rebuilds occur.
 
-Linux/Windows v1 `fuses` accepts `"on"`/`"off"` for `runAsNode`,
+V1 `fuses` accepts `"on"`/`"off"` for `runAsNode`, `enableCookieEncryption`,
 `enableNodeOptionsEnvironmentVariable`, `enableNodeCliInspectArguments`,
-`onlyLoadAppFromAsar` and `grantFileProtocolExtraPrivileges`. Unspecified fuses
+`enableEmbeddedAsarIntegrityValidation`, `onlyLoadAppFromAsar`,
+`loadBrowserProcessSpecificV8Snapshot`, `grantFileProtocolExtraPrivileges` and
+`wasmTrapHandlers`. Unspecified fuses
 remain unchanged; missing/removed fuses fail. `onlyLoadAppFromAsar = "on"` requires
-ASAR. This does not embed platform ASAR-integrity metadata or sign binaries.
+ASAR. macOS mutates the single-architecture framework before ad hoc signing.
+macOS ASAR assembly embeds the raw JSON header's SHA-256 in `Info.plist`;
+enable `enableEmbeddedAsarIntegrityValidation` and `onlyLoadAppFromAsar` together
+to enforce it. Enabling embedded validation requires macOS and ASAR; Windows PE
+integrity resources remain pending. See [ASAR integrity](docs/asar-integrity.md).
 macOS bundle/helper metadata and ad hoc signing are supported. Release signing,
 macOS/Windows installers, icons and OS integration remain pending. Linux DEB
 packaging supplies desktop/MIME/protocol/icon metadata and declared package hooks;

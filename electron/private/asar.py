@@ -25,7 +25,7 @@ def _integrity(path):
 
 
 def create_archive(files, destination, unpacked=()):
-    """files maps validated relative POSIX paths to regular source files."""
+    """Write declared regular files; return SHA-256 of the raw JSON header."""
     unpacked = set(unpacked)
     missing = unpacked - files.keys()
     if missing:
@@ -68,3 +68,4 @@ def create_archive(files, destination, unpacked=()):
         output.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(files[name], output)
         output.chmod(files[name].stat().st_mode & 0o777)
+    return hashlib.sha256(encoded).hexdigest()

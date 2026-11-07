@@ -9,12 +9,12 @@ electron-builder replacement.
 | Target selection | Seven example OS/CPU/compiler variants | Full source-built Electron runtime |
 | Main/preload/renderer inputs | Explicit files and generated directories | Rich package-provider adapters |
 | Runtime dependencies | Explicit Node-API package, target-built helper/addon | General npm closure handling; Electron Node/V8 ABI toolchains |
-| ASAR | Deterministic header, hashes, unpacked native files | Platform embedded integrity metadata |
+| ASAR | Deterministic header, hashes, unpacked native files; macOS embedded header integrity and runtime enforcement | Windows PE integrity resources |
 | Extra resources | File/tree mappings, normalized modes | Arbitrary resource-tree directory symlinks |
 | File selection | Explicit whitelist; generated tree contents retained | Include/exclude glob rules and map filtering |
 | Manifest scripts | Root package scripts removable | General dependency manifest rewriting |
 | Runtime locales | Explicit file mappings or non-macOS ZIP locale selection | Broader runtime-provider integration |
-| Fuses | Supported Linux/Windows v1 settings | Signed macOS fuse mutation; additional fuse settings |
+| Fuses | Named v1 settings, including macOS framework mutation before ad hoc signing | Universal macOS binaries; availability depends on runtime wire |
 | Linux app | Relocatable directory, DEB desktop/MIME/protocol/icon metadata, explicit package dependencies and hooks | Setuid sandbox installation, distribution-specific confinement |
 | macOS app | Branded bundle/helper metadata, framework links, ad hoc signing, deterministic ZIP | Icons, Developer ID, entitlements policy, notarization/stapling |
 | Windows app | Renamed executable, current-process Node-API exports, four compiler/CPU variants | General addon delay-load/import-library tooling, PE version/icon resources, Authenticode |

@@ -106,6 +106,9 @@ class AssemblyTest(unittest.TestCase):
             {"asar": True, "asar_unpacked": ["missing.node"]},
             {"asar": True, "asar_unpacked": ["../escape"]},
             {"fuses": {"onlyLoadAppFromAsar": "on"}},
+            {"fuses": {"enableEmbeddedAsarIntegrityValidation": "on"}, "platform": "macos"},
+            {"asar": True, "fuses": {"enableEmbeddedAsarIntegrityValidation": "on"}},
+            {"asar": True, "fuses": {"enableEmbeddedAsarIntegrityValidation": "on"}, "platform": "windows"},
         ]:
             with self.subTest(options=options), self.assertRaises(ValueError):
                 assemble(self.entries, self.root / "out", **options)

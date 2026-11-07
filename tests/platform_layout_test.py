@@ -1,12 +1,15 @@
 import json
+import hashlib
 from pathlib import Path
 import plistlib
 import stat
+import struct
 import tempfile
 import unittest
 from zipfile import ZipFile, ZipInfo
 
 from electron.private.assemble import assemble
+from electron.private.fuses import SENTINEL
 from electron.private.mac_sign import archive_bundle
 from electron.private.runtime import extract_runtime
 
@@ -60,12 +63,22 @@ class PlatformLayoutTest(unittest.TestCase):
                 info.external_attr = (stat.S_IFLNK | 0o777) << 16
                 archive.writestr(info, target)
             archive.writestr("LICENSE", b"runtime license")
+            archive.writestr("Electron.app/Contents/Frameworks/Electron Framework.framework/Electron Framework",
+                             b"framework" + SENTINEL + b"\x01\x09111100111")
         output = self.root / "app"
         assemble(self.manifest("Contents/Resources"), output, platform="macos", runtime_archive=runtime,
-                 executable_name="sample", product_name="Sample Desktop", app_id="org.example.sample", asar=True)
+                 executable_name="sample", product_name="Sample Desktop", app_id="org.example.sample", asar=True,
+                 fuses={"enableEmbeddedAsarIntegrityValidation": "on", "onlyLoadAppFromAsar": "on"})
         metadata = plistlib.loads((output / "Contents/Info.plist").read_bytes())
         self.assertEqual(metadata["CFBundleIdentifier"], "org.example.sample")
         self.assertEqual(metadata["CFBundleVersion"], "1.2.3")
+        asar = (output / "Contents/Resources/app.asar").read_bytes()
+        header_length = struct.unpack_from("<I", asar, 12)[0]
+        self.assertEqual(metadata["ElectronAsarIntegrity"], {
+            "Resources/app.asar": {"algorithm": "SHA256", "hash": hashlib.sha256(asar[16:16 + header_length]).hexdigest()},
+        })
+        framework = output / "Contents/Frameworks/Electron Framework.framework/Electron Framework"
+        self.assertEqual(framework.read_bytes(), b"framework" + SENTINEL + b"\x01\x09111111111")
         self.assertEqual((output / "Contents/MacOS/sample").read_bytes(), b"runtime")
         self.assertTrue((output / "Contents/Frameworks/Sample Desktop Helper.app/Contents/MacOS/Sample Desktop Helper").exists())
         link = output / "Contents/Frameworks/Foo.framework/Foo"

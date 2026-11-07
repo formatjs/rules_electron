@@ -37,7 +37,14 @@ def desktop_app(name, package_json, **kwargs):
             },
         }),
         fuses = select({
-            ":macos": {},
+            ":macos": {
+                "runAsNode": "off",
+                "enableNodeOptionsEnvironmentVariable": "off",
+                "enableNodeCliInspectArguments": "off",
+                "enableEmbeddedAsarIntegrityValidation": "on",
+                "onlyLoadAppFromAsar": "on",
+                "grantFileProtocolExtraPrivileges": "off",
+            },
             "//conditions:default": {
                 "runAsNode": "off",
                 "enableNodeOptionsEnvironmentVariable": "off",
