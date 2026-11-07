@@ -8,6 +8,61 @@ import urllib.request
 from buildbuddy_artifacts import NoRedirect, api_request, invocation_id
 
 
+def proto_fields(data):
+    def integer(offset):
+        value, shift = 0, 0
+        while offset < len(data) and shift < 70:
+            byte = data[offset]
+            offset += 1
+            value |= (byte & 127) << shift
+            if byte < 128:
+                return value, offset
+            shift += 7
+        raise ValueError("Invalid protobuf varint")
+    result, offset = {}, 0
+    while offset < len(data):
+        key, offset = integer(offset)
+        wire = key & 7
+        if wire == 0:
+            value, offset = integer(offset)
+        elif wire == 2:
+            size, offset = integer(offset)
+            value = data[offset:offset + size]
+            offset += size
+        elif wire in (1, 5):
+            size = 8 if wire == 1 else 4
+            value = data[offset:offset + size]
+            offset += size
+        else:
+            raise ValueError("Unsupported protobuf wire type")
+        if offset > len(data):
+            raise ValueError("Truncated protobuf")
+        result.setdefault(key >> 3, []).append(value)
+    return result
+
+
+def action_platforms(execution, key):
+    def blob(digest):
+        uri = "bytestream://formatjs.buildbuddy.io/blobs/" + digest["hash"] + "/" + str(digest["sizeBytes"])
+        with api_request("GetFile", {"uri": uri}, key) as response:
+            data = response.read(1024**2 + 1)
+        if len(data) > 1024**2:
+            raise ValueError("Diagnostic proto exceeds limit")
+        return proto_fields(data)
+    action = blob(execution["actionDigest"])
+    digest = proto_fields(action[1][0])
+    command = blob({"hash": digest[1][0].decode(), "sizeBytes": digest[2][0]})
+    for owner, message, field in [("Action", action, 10), ("Command", command, 5)]:
+        properties = []
+        for platform in message.get(field, []):
+            for entry in proto_fields(platform).get(1, []):
+                property = proto_fields(entry)
+                name = property.get(1, [b""])[0].decode()
+                if name in ("network", "dockerNetwork", "workload-isolation-type", "container-image"):
+                    properties.append({"name": name, "value": property.get(2, [b""])[0].decode()})
+        print(owner + " execution platform:", json.dumps(properties))
+
+
 def execution_diagnostics(log, key, expected_sha):
     identifiers = list(dict.fromkeys(re.findall(r"Invocation ID: ([0-9a-f-]{36})", log)))
     for identifier in identifiers[:3]:
@@ -21,6 +76,8 @@ def execution_diagnostics(log, key, expected_sha):
         with urllib.request.build_opener(NoRedirect()).open(request, timeout=60) as response:
             data = json.load(response)
         for execution in data.get("execution", []):
+            if "test-setup.sh" in execution.get("commandSnippet", ""):
+                action_platforms(execution, key)
             result = execution.get("executeResponse", {}).get("result", {})
             metadata = result.get("executionMetadata", {})
             for auxiliary in metadata.get("auxiliaryMetadata", []):
