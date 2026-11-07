@@ -122,6 +122,14 @@ a controlled cold-build timing comparison. ICU repository setup now lives in
 its own module, keeping Node/V8 repository definition files unchanged during
 ICU-specific edits.
 
+The build-only source-component phase now uses
+`--remote_download_outputs=minimal`, keeping its compiled archives in BB CAS.
+The following test phase still downloads declared executables and runtime data.
+[598ad7f components](https://formatjs.buildbuddy.io/invocation/f44f8363-7202-48e8-bcc4-d032c436f37b)
+and [consumer](https://formatjs.buildbuddy.io/invocation/9432732a-4bff-49ce-8cba-9d8c6df348e6)
+passed with this split. No client-download byte delta or latency speedup has
+been measured yet.
+
 ## Smoke transport
 
 The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)

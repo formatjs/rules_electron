@@ -70,23 +70,27 @@ currently builds source components, including builtin JS, webpack bundles,
 patched libuv/BoringSSL, V8 base/task libraries and eleven pinned Node support
 libraries (136 C/C++ units plus Postject headers, with a linked behavior probe). The
 [source and consumer builds at 9395812](https://github.com/formatjs/electron/commit/9395812)
-passed on BB. No full runtime links.
+passed on BB.
+
 The captured Torque compiler now builds 25 C++ units and generates all 1,250
 outputs from 246 inputs. Its
 [93dc092 component and consumer checks](https://github.com/formatjs/electron/commit/93dc092)
 passed on BB, including byte equality across different paths/input mtimes,
 engine/Intl/Temporal interfaces and malformed-input diagnostics. Generation uses
 declared execution tools and stable relative source locations.
+
 The [1395ef7 bytecode producer](https://github.com/formatjs/electron/commit/1395ef7)
 also passed component/consumer tests on BB. Its three captured C++ units generate
 the real handler header; a compiled probe checks every opcode and operand scale,
 including dense wide dispatch and generation under different output paths.
+
 The [fe62420 ICU profile](https://github.com/formatjs/electron/commit/fe62420)
 adds all 445 captured common/i18n C++ units from Chromium's matching ICU revision.
 Component and BCR consumer tests passed with ambient data-file access disabled:
 the probe rejects corrupt data, loads declared `icudtl.dat`, then checks Unicode,
 collation, locale formatting and Chromium word breaks. This source profile is
 Linux AMD64; full V8/Electron linking remains pending.
+
 Its next pieces include patched libnode, electron_lib, matching Chromium content
 dependencies, snapshots and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser,
