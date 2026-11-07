@@ -1,2 +1,8 @@
+common --incompatible_strict_action_env
+common --nosandbox_default_allow_network
+common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+common --repo_env=BAZEL_NO_APPLE_CPP_TOOLCHAIN=1
+common --repo_env=BAZEL_DO_NOT_DETECT_SWIFT_TOOLCHAIN=1
+
 import %workspace%/tools/buildbuddy.bazelrc
 try-import %workspace%/.bazelrc.user

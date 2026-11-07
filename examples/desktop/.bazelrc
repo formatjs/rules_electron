@@ -1,4 +1,10 @@
 # Self-contained: BB may parse this file again while cleaning up from repo root.
+common --incompatible_strict_action_env
+common --nosandbox_default_allow_network
+common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+common --repo_env=BAZEL_NO_APPLE_CPP_TOOLCHAIN=1
+common --repo_env=BAZEL_DO_NOT_DETECT_SWIFT_TOOLCHAIN=1
+
 build:bb-workflow --build_metadata=ROLE=BB_WORKFLOW
 build:bb-workflow --build_metadata=VISIBILITY=PUBLIC
 build:bb-workflow --config=rbe
