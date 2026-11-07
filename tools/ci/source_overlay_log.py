@@ -59,6 +59,7 @@ def classify(log):
         "LINKER_UNDEFINED_SYMBOL": r"undefined symbol|undefined reference",
         "NODE_JS_EXCEPTION": r"\b(?:ReferenceError|TypeError|SyntaxError|RangeError|Error):",
         "EMBEDDER_RUNTIME_TEST": r"check failed: embedder",
+        "IPCZ_RUNTIME_TEST": r"check failed: ipcz",
         "LIBNODE_RUNTIME_TEST": r"check failed: patched libnode",
         "LIBNODE_ASSERTION": r"AssertionError|ERR_ASSERTION",
         "LIBNODE_MODULE_MISSING": r"Cannot find module|ERR_UNKNOWN_BUILTIN_MODULE",
@@ -155,6 +156,7 @@ def source_test_diagnostics(identifier, key):
         "//source:base_test": "base",
         "//source:libnode_test": "libnode",
         "//source:embedder_test": "embedder",
+        "//source:ipcz_test": "ipcz",
     }
     public_files = set(json.loads(Path(__file__).with_name("public_source_files.json").read_text()))
     public_basenames = {path.rsplit("/", 1)[-1] for path in public_files}
@@ -198,8 +200,8 @@ def source_test_diagnostics(identifier, key):
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[:])" + re.escape(name) + r"[:(]([0-9]{1,4})(?::|\]|\s|\))", log) if 0 < int(line) < 5000][:8]
-                if probe in ("libnode", "embedder"):
-                    prefix = "patched libnode" if probe == "libnode" else "embedder"
+                if probe in ("libnode", "embedder", "ipcz"):
+                    prefix = "patched libnode" if probe == "libnode" else probe
                     details["failed_checks"] = [message for message in public_checks.get(probe, []) if "check failed: " + prefix + " " + message + "\n" in log]
                     details["stages"] = [stage for stage in ["atomic", "icu", "i18n", "snapshot", "node", "gin", "platform", "isolate", "modules", "callback", "gc", "loop", "shutdown", "done"] if probe + " probe stage: " + stage + "\n" in log]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name, line in re.findall(r"([A-Za-z_0-9.-]+\.(?:h|cc|cpp))[:(]([0-9]{1,5})", log) if name in public_basenames and 0 < int(line) < 10000][:8]

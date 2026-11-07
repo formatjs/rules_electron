@@ -10,6 +10,13 @@
     "environment creation",
     "process initialization"
   ],
+  "ipcz": [
+    "binary payload changed",
+    "capacity failure lost required size",
+    "peer closure not delivered",
+    "portal transfer lost handle",
+    "transferred portal failed"
+  ],
   "embedder": [
     "C++ to JS string conversion",
     "Gin binding survives collection",
