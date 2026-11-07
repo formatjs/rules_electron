@@ -153,6 +153,9 @@ def source_test_diagnostics(identifier, key):
         "//source:base_test": "base",
         "//source:libnode_test": "libnode",
     }
+    public_files = set(json.loads(Path(__file__).with_name("public_source_files.json").read_text()))
+    public_basenames = {path.rsplit("/", 1)[-1] for path in public_files}
+    public_identifiers = set(json.loads(Path(__file__).with_name("public_source_identifiers.json").read_text()))
     token, seen, count = "", set(), 0
     for _ in range(8):
         if token in seen:
@@ -191,6 +194,10 @@ def source_test_diagnostics(identifier, key):
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[:])" + re.escape(name) + r"[:(]([0-9]{1,4})(?::|\]|\s|\))", log) if 0 < int(line) < 5000][:8]
+                if probe == "libnode":
+                    details["public_check_sites"] = [{"file": name, "line": int(line)} for name, line in re.findall(r"([A-Za-z_0-9.-]+\.(?:h|cc|cpp))[:(]([0-9]{1,5})", log) if name in public_basenames and 0 < int(line) < 10000][:8]
+                    fatal = [line for line in log.splitlines() if re.search(r"FATAL|Check failed|Assertion|assertion", line)]
+                    details["public_fatal_identifiers"] = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line) if word in public_identifiers))[:20] for line in fatal[:6]]
                 print("Source probe test diagnostics:", json.dumps(details, sort_keys=True))
         token = page.get("nextPageToken", "")
         if not token:
