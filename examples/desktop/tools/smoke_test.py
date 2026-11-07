@@ -81,6 +81,10 @@ def check_asar_integrity(app, executable, environment, directory):
         "header": 16 + raw_header.index(entry["integrity"]["hash"].encode()),
         "payload": payload_offset + package.index(b'"version":"') + len(b'"version":"'),
     }
+    diagnostics = {
+        "header": "Integrity check failed for asar archive",
+        "payload": "ASAR Integrity Violation: got a hash mismatch",
+    }
     for label, offset in offsets.items():
         with archive.open("r+b") as file:
             file.seek(offset)
@@ -92,7 +96,7 @@ def check_asar_integrity(app, executable, environment, directory):
                 str(executable), "--smoke", "--disable-gpu", "--disable-dev-shm-usage",
             ], cwd=directory, env=environment, capture_output=True, encoding="utf-8", errors="replace", timeout=30)
             assert result.returncode != 0, label
-            assert "Integrity check failed for asar archive" in result.stderr, result.stdout + result.stderr
+            assert diagnostics[label] in result.stderr, result.stdout + result.stderr
             assert "EXAMPLE_SMOKE_OK" not in result.stdout, result.stdout
             print("EXAMPLE_ASAR_REJECTED " + label)
         finally:
