@@ -236,6 +236,11 @@ seconds and passed original Rust JSON and native GLib dispatch checks, alongside
 the existing source probes. Its two remote executions include compile/link work;
 tests execute on the matching Linux BB workflow host.
 
+The documentation-only [7e1a046 repeat](https://formatjs.buildbuddy.io/invocation/9b63799e-e08c-4df8-9848-e4d91d42ba10)
+used the same product inputs: source build 26.952 seconds, tests 1.711 seconds,
+zero tracked remote executions in either phase. The separate fresh network gate
+still executed two remote actions.
+
 These are phase observations with shared caches and prior compilation attempts,
 not a cold Base/Electron benchmark. PartitionAlloc's added two-unit `raw_ptr`
 target keeps its headers separate from the existing allocator target, preserving
