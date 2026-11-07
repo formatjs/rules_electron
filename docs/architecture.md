@@ -77,6 +77,10 @@ outputs from 246 inputs. Its
 passed on BB, including byte equality across different paths/input mtimes,
 engine/Intl/Temporal interfaces and malformed-input diagnostics. Generation uses
 declared execution tools and stable relative source locations.
+The [1395ef7 bytecode producer](https://github.com/formatjs/electron/commit/1395ef7)
+also passed component/consumer tests on BB. Its three captured C++ units generate
+the real handler header; a compiled probe checks every opcode and operand scale,
+including dense wide dispatch and generation under different output paths.
 Its next pieces include patched libnode, electron_lib, matching Chromium content
 dependencies, snapshots and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser,

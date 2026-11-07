@@ -55,6 +55,9 @@ def classify(log):
         "BYTECODE_WIDE_DISPATCH": r"check failed: bytecode (?:illegal wide encoding|dense index bounds|wide dispatch mapping)",
         "BYTECODE_REPRODUCIBILITY": r"check failed: bytecode generation path reproducibility",
         "BYTECODE_INPUT_FILES": r"check failed: bytecode generated file (?:readable|arguments)",
+        "ICU_DATA_CONTRACT": r"check failed: ICU (?:declared data|ambient file access disabled|corrupt data rejected|pinned version)",
+        "ICU_UNICODE_CONTRACT": r"check failed: ICU (?:normalization data|NFC composition|case fold preflight|Unicode case fold)",
+        "ICU_LOCALE_CONTRACT": r"check failed: ICU (?:collation data|primary collation|tertiary collation|number locale data|French number formatting|word break data|Chromium word boundaries)",
         "ASSERTION_FAILURE": r"AssertionError:",
         "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
@@ -80,7 +83,7 @@ def source_test_diagnostics(identifier, key):
             raise ValueError("Test action metadata exceeds limit")
         page = json.loads(content)
         for action in page.get("action", []):
-            if not action.get("targetLabel", "").endswith(("//source:node_dependencies_test", "//tests:v8_torque_test", "//source:v8_bytecodes_test")):
+            if not action.get("targetLabel", "").endswith(("//source:node_dependencies_test", "//tests:v8_torque_test", "//source:v8_bytecodes_test", "//source:icu_test")):
                 continue
             for file in action.get("file", []):
                 if file.get("name", "").rsplit("/", 1)[-1] != "test.log":
