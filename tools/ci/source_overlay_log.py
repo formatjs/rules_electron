@@ -2,9 +2,11 @@
 
 import json
 import base64
+import hashlib
 import os
 import re
 import urllib.request
+import urllib.parse
 
 from buildbuddy_artifacts import NoRedirect, api_request, invocation_id
 from buildbuddy_log import read_log, resource_diagnostics
@@ -42,6 +44,7 @@ def classify(log):
         "ELF_FIXTURE": r"check failed: ELF note retained",
         "POSTJECT_RESOURCE": r"check failed: embedded ELF resource bytes|check failed: missing embedded resource|check failed: ELF resource name override",
         "POSTJECT_FUSE": r"check failed: default Postject fuse",
+        "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
         "SOURCE_VALIDATION": r"fingerprint mismatch|Patched file differs",
         "EXECUTABLE_NOT_FOUND": r"not found|No such file or directory|ENOENT",
@@ -51,6 +54,45 @@ def classify(log):
         "EXEC_FORMAT": r"exec format error",
     }
     return {category: len(re.findall(pattern, log, re.IGNORECASE)) for category, pattern in patterns.items() if re.search(pattern, log, re.IGNORECASE)}
+
+
+def node_test_diagnostics(identifier, key):
+    token, seen, count = "", set(), 0
+    for _ in range(8):
+        if token in seen:
+            break
+        seen.add(token)
+        with api_request("GetAction", {"selector": {"invocation_id": identifier}, "page_token": token}, key) as response:
+            content = response.read(8 * 1024**2 + 1)
+        if len(content) > 8 * 1024**2:
+            raise ValueError("Test action metadata exceeds limit")
+        page = json.loads(content)
+        for action in page.get("action", []):
+            if not action.get("targetLabel", "").endswith("//source:node_dependencies_test"):
+                continue
+            for file in action.get("file", []):
+                if file.get("name", "").rsplit("/", 1)[-1] != "test.log":
+                    continue
+                if file.get("contents"):
+                    data = base64.b64decode(file["contents"], validate=True)
+                    if len(data) > 1024**2:
+                        raise ValueError("Test log exceeds limit")
+                else:
+                    uri = file.get("uri", "")
+                    parsed = urllib.parse.urlsplit(uri)
+                    digest = re.search(r"/blobs/([0-9a-f]{64})/(\d+)$", parsed.path)
+                    if parsed.scheme != "bytestream" or parsed.netloc not in ("formatjs.buildbuddy.io", "remote.buildbuddy.io") or not digest or int(digest[2]) > 1024**2:
+                        continue
+                    with api_request("GetFile", {"uri": uri}, key) as response:
+                        data = response.read(int(digest[2]) + 1)
+                    if len(data) != int(digest[2]) or hashlib.sha256(data).hexdigest() != digest[1]:
+                        raise ValueError("Test log digest mismatch")
+                count += 1
+                print("Node probe test diagnostics:", json.dumps({"log_bytes": len(data), "diagnostics": classify(data.decode("utf-8", errors="replace"))}, sort_keys=True))
+        token = page.get("nextPageToken", "")
+        if not token:
+            break
+    print("Node probe logs classified:", count)
 
 
 def failed_action_diagnostics(identifier, key):
@@ -112,3 +154,4 @@ if __name__ == "__main__":
         resource_diagnostics(identifier, key)
         if value.get("success") is False:
             failed_action_diagnostics(identifier, key)
+            node_test_diagnostics(identifier, key)
