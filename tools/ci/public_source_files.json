@@ -5083,6 +5083,7 @@
   "gpu/config/skia_limits.h",
   "gpu/config/webgpu_blocklist.h",
   "gpu/config/webgpu_blocklist_impl.h",
+  "gpu/webgpu/DAWN_VERSION",
   "include/cppgc/allocation.h",
   "include/cppgc/common.h",
   "include/cppgc/cross-thread-persistent.h",
