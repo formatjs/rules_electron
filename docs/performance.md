@@ -58,6 +58,21 @@ Whole-build cache populations differed; these action observations do not prove
 an equivalent whole-workflow speedup. Native handoff and download costs still
 need measurement across repeated runs.
 
+Adding source-built execution Node for Windows resources introduced a separate
+cold-tool cost. The [first matrix at 763bf8c](https://formatjs.buildbuddy.io/invocation/e220bf85-35ba-4c06-afde-62e9981e622a)
+took 485.690 seconds. BB reported 4,675 completed remote executions,
+11,653.833 CPU-seconds and a maximum per-action peak of 2,461,839,360 bytes.
+Those are whole-matrix observations, not Node-only totals. Worker input downloads
+were 68,089,242,198 bytes; worker output uploads were 3,531,454,080 bytes. These
+cumulative worker transfers include repeated inputs across actions and are not
+client download sizes. The smoke ZIP action took 58.851 seconds.
+
+Diagnostics now report resource snapshots and execution stages alongside trace
+profiles. They validate the child invocation's repository and commit before
+querying execution metadata, and print aggregate metrics rather than commands,
+worker identities or environment. Test/cache counts still need separate
+interpretation: remote execution records omit ordinary remote action-cache hits.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

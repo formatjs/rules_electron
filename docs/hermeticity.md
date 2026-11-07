@@ -9,6 +9,8 @@ Current enforcement:
 - BB execution uses the digest-pinned amd64 `rbe-ubuntu22-04` image declared in
   `platforms/BUILD.bazel`, with external networking disabled. The network probe
   in `tests:hermetic_execution_test` runs under that execution configuration.
+  Its `external`/`no-cache` tags force a fresh BB execution so cached success
+  cannot hide an executor networking change.
   OCI is selected explicitly with legacy `dockerNetwork=off`: BuildBuddy's
   current generic `network=off` conversion produces `none`, while the OCI
   network-enabled check compares against `off`. The verified TLS probe guards

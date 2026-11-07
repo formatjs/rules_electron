@@ -48,3 +48,6 @@ Windows smoke uses native resource/version APIs to check the embedded digest and
 product/version strings, then runs the same header/payload corruption checks on
 both compiler variants per available Windows CPU host. Hosted results establish
 runtime enforcement; analysis alone does not.
+The [Windows x64/ARM64 run](https://github.com/formatjs/rules_electron/actions/runs/42347096977)
+passed metadata inspection, normal launch and both corruption checks for all four
+Windows variants.

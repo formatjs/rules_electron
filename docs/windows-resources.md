@@ -46,3 +46,9 @@ that do not request Windows resource editing do not need that tool dependency.
 Native x64/ARM64 Windows hosts execute BB outputs; they never build the editor
 or apps. Smoke checks both compiler variants, reads resources through Windows
 APIs and requires Electron to reject header and payload corruption.
+
+The [hosted validation](https://github.com/formatjs/rules_electron/actions/runs/42347096977)
+passed Windows x64/ARM64 metadata, launch and both corruption checks for GNU LLVM
+and MSVC variants. Linux DEB install/update and macOS integrity smoke also passed.
+This proves the source-built execution tool path against bootstrap Electron;
+full source-built target Electron remains pending.

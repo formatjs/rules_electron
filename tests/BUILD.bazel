@@ -21,6 +21,10 @@ py_test(
     name = "hermetic_execution_test",
     size = "small",
     srcs = ["hermetic_execution_test.py"],
+    tags = [
+        "external",
+        "no-cache",
+    ],
 )
 
 py_test(
