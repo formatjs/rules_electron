@@ -9,8 +9,17 @@ from electron.private.runtime import normalize
 
 
 def sign_bundle(signer, source, output):
-    subprocess.run([signer, "sign", str(source), str(output)], check=True)
-    subprocess.run([signer, "verify", str(output)], check=True)
+    config = output.parent / "rcodesign.toml"
+    config.write_text("")
+    subprocess.run([signer, "sign", "--config-file", str(config), str(source), str(output)], check=True)
+    magic = {b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xce\xfa\xed\xfe", b"\xfe\xed\xfa\xce", b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca"}
+    for path in sorted(output.rglob("*")):
+        if path.is_symlink() or not path.is_file():
+            continue
+        with path.open("rb") as file:
+            is_macho = file.read(4) in magic
+        if is_macho:
+            subprocess.run([signer, "verify", "--config-file", str(config), str(path)], check=True)
     normalize(output)
 
 
