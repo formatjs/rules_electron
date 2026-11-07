@@ -121,7 +121,15 @@ reply-pipe transfer and malformed-message rejection. Original source headers
 stay shared with networking; no substitute transport participates. This full
 profile remains Linux AMD64.
 
-Remaining source work includes electron_lib, Chromium Blink/content
+Native rendering dependencies now include the full captured FreeType, HarfBuzz,
+libpng and libxml roots: 142 C/C++ units with original Chromium settings.
+[854f6a7 consumer](https://formatjs.buildbuddy.io/invocation/be89e67e-3a77-4364-917e-c8cd913427de)
+passed ligature shaping, glyph rasterization, RGBA PNG roundtrip and XML/XPath
+checks. Source archives use exact DEPS commits plus checksums; ICU and zlib stay
+shared. This profile remains Linux AMD64.
+
+Remaining source work includes Fontconfig/Rust fontations, complete Skia,
+electron_lib, Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
 and uses the same V8 base revision, `bb294624702efbb17691b642333f06bf5108e600`.

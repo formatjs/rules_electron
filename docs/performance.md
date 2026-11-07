@@ -350,6 +350,20 @@ the matching native BB host; these resource totals exclude host test work,
 cache hits and repository fetching. Sharing all 345 Mojo headers avoids a
 second source projection; no latency speedup is claimed.
 
+## Font and XML dependency baseline
+
+[854f6a7 source phase](https://formatjs.buildbuddy.io/invocation/abdd8cc4-aa16-46fe-83b7-fd9c8420b9ac)
+passed in 46.576 seconds: 73 tracked remote executions, 157.227 CPU-seconds,
+411,340,800 bytes maximum per-action peak memory, 70,957,745 worker input bytes
+and 13,321,016 worker output bytes. The new closure contains 142 C/C++ units;
+shared dependencies and concurrent consumer/cache reuse make this a partial
+execution baseline, not a cold build.
+
+The [source-test phase](https://formatjs.buildbuddy.io/invocation/aecf0d4b-3b16-40fe-b259-794623a61722)
+passed in 3.879 seconds with zero tracked remote executions. Native BB-host test
+work, cache hits and repository fetching are outside these remote totals. These
+numbers establish cost for this added closure; they do not establish a speedup.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

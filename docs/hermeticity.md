@@ -141,6 +141,14 @@ existing file identity.
 and independent consumer checks passed; runtime coverage includes real native
 child-process IPC and generated typed dispatch. Full Electron remains unfinished.
 
+FreeType/HarfBuzz archives use exact DEPS commits with SHA-256 pins. All 959
+external source inputs match their original checkout bytes; changing Gitiles
+archive bytes triggered checksum rejection during setup, so stable GitHub
+mirrors supply these archives. Native font, PNG and XML probes use declared ICU
+data and font bytes, without host font discovery.
+[854f6a7 consumer](https://formatjs.buildbuddy.io/invocation/be89e67e-3a77-4364-917e-c8cd913427de)
+passed the Linux AMD64 runtime checks.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.
