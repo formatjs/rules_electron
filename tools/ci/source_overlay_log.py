@@ -51,6 +51,10 @@ def classify(log):
         "TORQUE_INTL_INTERFACE": r"Regex didn't match:.*JSCollator",
         "TORQUE_TEMPORAL_INTERFACE": r"Regex didn't match:.*JSTemporalPlainDate",
         "TORQUE_TEST_EXCEPTION": r"ERROR: test_complete_engine_interfaces_and_reproducibility|ERROR: test_malformed_torque_(?:fails_cleanly|reports_parse_error)",
+        "BYTECODE_HANDLER_CONTRACT": r"check failed: bytecode handler (?:unique|name|coverage|counts)",
+        "BYTECODE_WIDE_DISPATCH": r"check failed: bytecode (?:illegal wide encoding|dense index bounds|wide dispatch mapping)",
+        "BYTECODE_REPRODUCIBILITY": r"check failed: bytecode generation path reproducibility",
+        "BYTECODE_INPUT_FILES": r"check failed: bytecode generated file (?:readable|arguments)",
         "ASSERTION_FAILURE": r"AssertionError:",
         "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
@@ -76,7 +80,7 @@ def source_test_diagnostics(identifier, key):
             raise ValueError("Test action metadata exceeds limit")
         page = json.loads(content)
         for action in page.get("action", []):
-            if not action.get("targetLabel", "").endswith(("//source:node_dependencies_test", "//tests:v8_torque_test")):
+            if not action.get("targetLabel", "").endswith(("//source:node_dependencies_test", "//tests:v8_torque_test", "//source:v8_bytecodes_test")):
                 continue
             for file in action.get("file", []):
                 if file.get("name", "").rsplit("/", 1)[-1] != "test.log":
