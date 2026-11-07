@@ -73,6 +73,8 @@ def classify(log):
         "NATIVE_GENERATOR_REPRODUCIBILITY": r"Generator output differs across source paths and mtimes: build/gn_run_binary.py",
         "NSS_INTEGRITY_GENERATION": r"NSS integrity generation failed",
         "NSS_INTEGRITY_REPRODUCIBILITY": r"NSS integrity output differs across paths and mtimes",
+        "NSS_INTEGRITY_IMPORT": r"No module named ['\"]nss_integrity['\"]",
+        "NSS_NONCE_VECTOR": r"FAIL: test_rfc6979_appendix_a_2_2",
         "LIBNODE_RUNTIME_TEST": r"check failed: patched libnode",
         "LIBNODE_ASSERTION": r"AssertionError|ERR_ASSERTION",
         "LIBNODE_MODULE_MISSING": r"Cannot find module|ERR_UNKNOWN_BUILTIN_MODULE",
@@ -171,6 +173,8 @@ def source_test_diagnostics(identifier, key):
         "//source:embedder_test": "embedder",
         "//source:ipcz_test": "ipcz",
         "//source:network_test": "network",
+        "//electron/private:nss_integrity_test": "nss_integrity",
+        "//tests:prepare_source_test": "prepare_source",
     }
     public_files = set(json.loads(Path(__file__).with_name("public_source_files.json").read_text()))
     public_basenames = {path.rsplit("/", 1)[-1] for path in public_files}
