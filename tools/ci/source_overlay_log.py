@@ -44,6 +44,14 @@ def classify(log):
         "ELF_FIXTURE": r"check failed: ELF note retained",
         "POSTJECT_RESOURCE": r"check failed: embedded ELF resource bytes|check failed: missing embedded resource|check failed: ELF resource name override",
         "POSTJECT_FUSE": r"check failed: default Postject fuse",
+        "TORQUE_INTERFACE_TEST": r"FAIL: test_complete_engine_interfaces_and_reproducibility",
+        "TORQUE_INVALID_INPUT_TEST": r"FAIL: test_malformed_torque_fails_cleanly",
+        "TORQUE_REPRODUCIBILITY": r"Torque output differs across paths and input mtimes",
+        "TORQUE_ARRAY_INTERFACE": r"Regex didn't match:.*JSArray",
+        "TORQUE_INTL_INTERFACE": r"Regex didn't match:.*JSCollator",
+        "TORQUE_TEMPORAL_INTERFACE": r"Regex didn't match:.*JSTemporalPlainDate",
+        "TORQUE_TEST_EXCEPTION": r"ERROR: test_complete_engine_interfaces_and_reproducibility|ERROR: test_malformed_torque_fails_cleanly",
+        "ASSERTION_FAILURE": r"AssertionError:",
         "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
         "SOURCE_VALIDATION": r"fingerprint mismatch|Patched file differs",
@@ -56,7 +64,7 @@ def classify(log):
     return {category: len(re.findall(pattern, log, re.IGNORECASE)) for category, pattern in patterns.items() if re.search(pattern, log, re.IGNORECASE)}
 
 
-def node_test_diagnostics(identifier, key):
+def source_test_diagnostics(identifier, key):
     token, seen, count = "", set(), 0
     for _ in range(8):
         if token in seen:
@@ -68,7 +76,7 @@ def node_test_diagnostics(identifier, key):
             raise ValueError("Test action metadata exceeds limit")
         page = json.loads(content)
         for action in page.get("action", []):
-            if not action.get("targetLabel", "").endswith("//source:node_dependencies_test"):
+            if not action.get("targetLabel", "").endswith(("//source:node_dependencies_test", "//tests:v8_torque_test")):
                 continue
             for file in action.get("file", []):
                 if file.get("name", "").rsplit("/", 1)[-1] != "test.log":
@@ -88,11 +96,11 @@ def node_test_diagnostics(identifier, key):
                     if len(data) != int(digest[2]) or hashlib.sha256(data).hexdigest() != digest[1]:
                         raise ValueError("Test log digest mismatch")
                 count += 1
-                print("Node probe test diagnostics:", json.dumps({"log_bytes": len(data), "diagnostics": classify(data.decode("utf-8", errors="replace"))}, sort_keys=True))
+                print("Source probe test diagnostics:", json.dumps({"log_bytes": len(data), "diagnostics": classify(data.decode("utf-8", errors="replace"))}, sort_keys=True))
         token = page.get("nextPageToken", "")
         if not token:
             break
-    print("Node probe logs classified:", count)
+    print("Source probe logs classified:", count)
 
 
 def failed_action_diagnostics(identifier, key):
@@ -154,4 +162,4 @@ if __name__ == "__main__":
         resource_diagnostics(identifier, key)
         if value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and not value.get("success"):
             failed_action_diagnostics(identifier, key)
-            node_test_diagnostics(identifier, key)
+            source_test_diagnostics(identifier, key)
