@@ -33,7 +33,9 @@ this repository. A source-built compiler can use the same tool provider.
 Default `7z` compression uses independent per-file LZMA2 streams, a 1 MiB
 dictionary, two fixed encoder threads and no stored timestamps. NSIS stores the
 archive without recompressing it and extracts through the declared plugin.
-BCJ2 streams are rejected; extracted file sizes are checked before success.
+Automatic architecture filters are disabled: the extractor predates newer ARM64
+filters. Only plain LZMA2/Copy streams are accepted; extracted file sizes are
+checked before success.
 `compression` also accepts solid `zlib`, `bzip2`, `lzma` and `off`; the direct
 NSIS LZMA mode uses an 8 MiB dictionary. `verify_reproducible = True` compiles a
 second installer using a copied input tree with changed mtimes and different

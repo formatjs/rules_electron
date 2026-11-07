@@ -253,13 +253,14 @@ def build_installer(manifest, output, script):
             listing = directory / 'files.txt'
             app = Path(options['app']).resolve()
             listing.write_text(''.join(path.relative_to(app).as_posix() + '\n' for path in sorted(app.rglob('*')) if path.is_file()), encoding='utf-8')
-            subprocess.run([archive_compiler, 'a', '-t7z', '-mx=5', '-m0=LZMA2:d1m', '-mmt=2', '-ms=off',
+            subprocess.run([archive_compiler, 'a', '-t7z', '-mx=5', '-m0=LZMA2:d1m', '-mf=off', '-mmt=2', '-ms=off',
                             '-mtc=off', '-mta=off', '-mtm=off', '-scsUTF-8', '-bd', '-bso0', '-bsp0',
                             str(payload), '@' + str(listing)], cwd=app, env=environment, check=True)
             methods = subprocess.run([archive_compiler, 'l', '-slt', str(payload)], env=environment,
                                      capture_output=True, text=True, check=True).stdout
-            if any('BCJ2' in line for line in methods.splitlines() if line.startswith('Method = ')):
-                raise ValueError('NSIS extraction does not support BCJ2 payload streams')
+            selected = {line.removeprefix('Method = ').strip() for line in methods.splitlines() if line.startswith('Method = ')}
+            if any(any(not (part == 'Copy' or part.startswith('LZMA2')) for part in method.split()) for method in selected):
+                raise ValueError('NSIS payload requires plain LZMA2 or Copy streams: ' + repr(sorted(selected)))
         text = installer_script(output=destination, **options)
         script_path.write_text(text, encoding='utf-8')
         subprocess.run([compiler, '-NOCONFIG', '-V2', str(script_path.resolve())], env=environment, check=True)
