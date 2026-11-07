@@ -60,6 +60,15 @@ real PartitionAlloc FFI. Calendar/DST tests disable ambient ICU file loading.
 and [consumer](https://formatjs.buildbuddy.io/invocation/75b513b8-c73b-4fb4-a035-0122c0ed452d)
 checks passed with the fresh network-denial gate.
 
+Perfetto's complete captured closure now uses original patched sources, matching
+source-built Protobuf 32 tools and exact JsonCpp DEPS bytes. Its 68 generators
+use declared execution tools, isolated Python, empty child `PATH` and explicit
+environments. Every generator requires byte equality across different staging
+paths and input mtimes. The [consumer](https://formatjs.buildbuddy.io/invocation/781d378c-801e-46f9-a1a9-45bfd2007deb)
+passed real tracing/decoding and captured JsonCpp failure behavior; the
+[component workflow](https://formatjs.buildbuddy.io/invocation/3072778c-6b5f-4d26-ad16-aa721e45c7f4)
+also passed. These native profiles remain Linux AMD64.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.

@@ -107,8 +107,16 @@ generates integration schemas; matching runtimes pass wire-format, reflection,
 presence and malformed-input probes.
 [687dc7f components](https://formatjs.buildbuddy.io/invocation/a70db8a5-8eee-417a-9cfd-53c1564ad657)
 and [consumer](https://formatjs.buildbuddy.io/invocation/e87c3f3f-4c89-4a11-9d22-0ce75b75d180)
-passed. This Linux AMD64 prerequisite keeps embedded Protobuf 32.0; Perfetto
-translation remains open.
+passed. This Linux AMD64 prerequisite keeps embedded Protobuf 32.0.
+
+Perfetto now translates its complete captured closure plus matching JsonCpp:
+68 original generator actions, 721 outputs and 564 C++ compilation units.
+Generators use declared Python/native tools and require byte equality across
+changed paths/mtimes. Actual tracing tests decode interned event names and
+annotations, check category filtering and preserve JsonCpp failure semantics.
+[7177c35 components](https://formatjs.buildbuddy.io/invocation/3072778c-6b5f-4d26-ad16-aa721e45c7f4)
+and [consumer](https://formatjs.buildbuddy.io/invocation/781d378c-801e-46f9-a1a9-45bfd2007deb)
+passed. These profiles remain Linux AMD64.
 
 Remaining source work includes full V8 and snapshots, patched libnode,
 electron_lib, matching Chromium content

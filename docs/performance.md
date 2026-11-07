@@ -159,6 +159,17 @@ they exclude cache hits, repository fetching and tests on the BB host.
 Concurrent consumer builds shared cached work. They do not establish a cold-build
 cost, per-library cost or speedup.
 
+The [7177c35 Perfetto consumer phase](https://formatjs.buildbuddy.io/invocation/6db0fa69-6615-4b82-b39f-b26278ecd0a7)
+recorded 669 remote executions, 480.165 CPU-seconds, 657,432,576 bytes maximum
+per-action peak memory, 981,194,544 worker input bytes and 51,709,220 worker
+output bytes. This phase includes prerequisite, compiler and generator work;
+each original generator verifies path/mtime reproducibility with two executions.
+The [component archive phase](https://formatjs.buildbuddy.io/invocation/93c83515-1a60-4739-9934-68ddaaec62c9)
+reused compiled work and recorded 113 executions totaling 1.163 CPU-seconds.
+These are separate phase observations sharing a cache, excluding cache hits,
+repository fetching and tests on the BB host. Neither phase measures a controlled
+cold-build cost or latency improvement.
+
 ## Smoke transport
 
 The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)
