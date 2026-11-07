@@ -92,7 +92,7 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
     )
     pkg_deb(
         name = name,
-        out = name + ".deb",
+        out = "_" + name + ".deb",
         package_file_name = name + ".deb",
         data = ":" + name + "_payload.tar.gz",
         version_file = ":" + name + "_payload.version",

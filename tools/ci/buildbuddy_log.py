@@ -1,4 +1,4 @@
-"""Read logs for this repository's exact BB matrix invocation."""
+"""Read logs for this repository's exact BB CI invocation."""
 
 import json
 import os
@@ -19,8 +19,8 @@ if __name__ == "__main__":
     invocation = invocations[0]
     if (invocation.get("commitSha") != os.environ["BUILD_SHA"]
             or invocation.get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron"
-            or invocation.get("pattern") != "Cross-build Electron Apps"):
-        raise ValueError("Invocation does not match this repository's matrix commit")
+            or invocation.get("pattern") not in ("Cross-build Electron Apps", "Test Linux assembly")):
+        raise ValueError("Invocation does not match this repository's CI commit")
     token = ""
     tail = ""
     for _ in range(32):

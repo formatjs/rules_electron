@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       invocation_url:
-        description: Successful Cross-build Electron Apps invocation URL
+        description: BB invocation URL (successful matrix required for native smoke)
         required: true
         type: string
       commit_sha:
