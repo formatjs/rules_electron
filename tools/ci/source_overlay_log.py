@@ -66,6 +66,8 @@ def classify(log):
         "SQL_GENERATOR_REPRODUCIBILITY": r"Generator output differs across source paths and mtimes: tools/metrics/histograms/",
         "PROTOBUF_GENERATOR_REPRODUCIBILITY": r"Generator output differs across source paths and mtimes: tools/protoc_wrapper/",
         "NATIVE_GENERATOR_REPRODUCIBILITY": r"Generator output differs across source paths and mtimes: build/gn_run_binary.py",
+        "NSS_INTEGRITY_GENERATION": r"NSS integrity generation failed",
+        "NSS_INTEGRITY_REPRODUCIBILITY": r"NSS integrity output differs across paths and mtimes",
         "LIBNODE_RUNTIME_TEST": r"check failed: patched libnode",
         "LIBNODE_ASSERTION": r"AssertionError|ERR_ASSERTION",
         "LIBNODE_MODULE_MISSING": r"Cannot find module|ERR_UNKNOWN_BUILTIN_MODULE",
