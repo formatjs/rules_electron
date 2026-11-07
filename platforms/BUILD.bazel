@@ -12,6 +12,7 @@ platform(
         "container-image": "docker://gcr.io/flame-public/rbe-ubuntu22-04@sha256:c5bd51bd7e4a40cdd8bce5a7afb8f292a02c395b7a7c0e82e1ad745cb665f9c0",
         "dockerNetwork": "off",
         "network": "off",
+        "workload-isolation-type": "oci",
     },
 )
 
