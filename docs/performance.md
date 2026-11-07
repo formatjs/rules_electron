@@ -11,6 +11,10 @@ Current changes:
   sequential builds with platform changes. Target programs never execute.
 - BB uploads separate fixture and app-matrix Chrome traces. Diagnostics verify
   their CAS digest, repository and commit before reporting timings.
+- Native smoke uploads the already-compressed BB ZIP with
+  `compression-level: 0`, avoiding another deflate pass. This follows the
+  [artifact action's guidance](https://github.com/actions/upload-artifact#altering-compressions-level-speed-v-size)
+  for large incompressible files; product bytes remain unchanged.
 
 ## Recorded observations
 
