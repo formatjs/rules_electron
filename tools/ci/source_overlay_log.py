@@ -77,6 +77,7 @@ def classify(log):
         "PROCESS_START": r"Failed to start|Could not execute|cannot execute",
         "EXEC_FORMAT": r"exec format error",
     }
+    patterns.update({"PARTITION_ALLOC_STAGE_" + stage: "PARTITION_ALLOC_" + stage + r"\b" for stage in ("ENTRY", "ALLOC", "REALLOC", "CALLOC", "ALIGNED", "LIBC", "NEW", "DONE")})
     return {category: len(re.findall(pattern, log, re.IGNORECASE)) for category, pattern in patterns.items() if re.search(pattern, log, re.IGNORECASE)}
 
 
