@@ -112,6 +112,16 @@ consumer run, not a cold compiler-build cost or measured speedup. The producer
 currently runs Torque twice to enforce path/mtime reproducibility; any future
 reduction must retain that check in hosted validation.
 
+The [fe62420 component workflow](https://formatjs.buildbuddy.io/invocation/63616e6c-424b-4f71-8962-5903b4a10113)
+validated the captured 445-unit ICU profile. Its source-test child recorded 447
+remote executions, 145.257 CPU-seconds, 119,283,712 bytes maximum per-action peak
+memory, 129,821,471 worker input bytes and 38,243,742 worker output bytes. These
+are phase totals, excluding cached actions, repository fetching and tests on the
+BB workflow host. The concurrent consumer reused compiled work; neither run is
+a controlled cold-build timing comparison. ICU repository setup now lives in
+its own module, keeping Node/V8 repository definition files unchanged during
+ICU-specific edits.
+
 ## Smoke transport
 
 The [33244d8 matrix](https://formatjs.buildbuddy.io/invocation/2862db5f-beee-4568-bb0e-0ba735d29433)

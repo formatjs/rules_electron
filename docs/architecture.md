@@ -81,6 +81,12 @@ The [1395ef7 bytecode producer](https://github.com/formatjs/electron/commit/1395
 also passed component/consumer tests on BB. Its three captured C++ units generate
 the real handler header; a compiled probe checks every opcode and operand scale,
 including dense wide dispatch and generation under different output paths.
+The [fe62420 ICU profile](https://github.com/formatjs/electron/commit/fe62420)
+adds all 445 captured common/i18n C++ units from Chromium's matching ICU revision.
+Component and BCR consumer tests passed with ambient data-file access disabled:
+the probe rejects corrupt data, loads declared `icudtl.dat`, then checks Unicode,
+collation, locale formatting and Chromium word breaks. This source profile is
+Linux AMD64; full V8/Electron linking remains pending.
 Its next pieces include patched libnode, electron_lib, matching Chromium content
 dependencies, snapshots and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser,
