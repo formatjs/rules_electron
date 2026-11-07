@@ -58,6 +58,10 @@ def classify(log):
         "ICU_DATA_CONTRACT": r"check failed: ICU (?:declared data|ambient file access disabled|corrupt data rejected|pinned version)",
         "ICU_UNICODE_CONTRACT": r"check failed: ICU (?:normalization data|NFC composition|case fold preflight|Unicode case fold)",
         "ICU_LOCALE_CONTRACT": r"check failed: ICU (?:collation data|primary collation|tertiary collation|number locale data|French number formatting|word break data|Chromium word boundaries)",
+        "REGEXP_TABLE_CONTRACT": r"check failed: regexp (?:Kelvin tables|long s tables|sharp s tables|surrogate exclusion)",
+        "REGEXP_MATCHING_CONTRACT": r"check failed: regexp (?:ICU Unicode closure|Kelvin matching|long s matching|sharp s matching|Greek mu matching|ordinary matching|canonicalization boundaries)",
+        "REGEXP_REPRODUCIBILITY": r"check failed: regexp generation path reproducibility",
+        "REGEXP_INPUT_FILES": r"check failed: regexp (?:generated file|ambient data access disabled)",
         "ASSERTION_FAILURE": r"AssertionError:",
         "PROCESS_SIGNAL": r"Segmentation fault|SIGSEGV|SIGABRT|Aborted|Illegal instruction",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
@@ -83,7 +87,7 @@ def source_test_diagnostics(identifier, key):
             raise ValueError("Test action metadata exceeds limit")
         page = json.loads(content)
         for action in page.get("action", []):
-            if not action.get("targetLabel", "").endswith(("//source:node_dependencies_test", "//tests:v8_torque_test", "//source:v8_bytecodes_test", "//source:icu_test")):
+            if not action.get("targetLabel", "").endswith(("//source:node_dependencies_test", "//tests:v8_torque_test", "//source:v8_bytecodes_test", "//source:icu_test", "//source:v8_regexp_test")):
                 continue
             for file in action.get("file", []):
                 if file.get("name", "").rsplit("/", 1)[-1] != "test.log":
