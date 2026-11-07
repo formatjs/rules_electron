@@ -287,7 +287,7 @@ def failed_action_diagnostics(identifier, key):
         for path in re.findall(r"FileNotFoundError: [^\r\n]*?: [\"']([^\"'\r\n]{1,1000})[\"']", log):
             path = posixpath.normpath(path)
             candidates = [path]
-            for prefix in ("v8/", "third_party/", "gen/", "source/", "build/"):
+            for prefix in ("v8/", "third_party/", "gen/", "source/", "build/", "gpu/", "ui/", "skia/", "electron/"):
                 if "/" + prefix in path:
                     candidates.append(prefix + path.split("/" + prefix, 1)[1])
             missing_inputs.update(name for name in candidates if name in public_files)
@@ -296,6 +296,11 @@ def failed_action_diagnostics(identifier, key):
             identifiers = [word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", symbol) if word in public_identifiers]
             undefined.append(list(dict.fromkeys(identifiers))[:16])
         sites = []
+        stack = []
+        for path, line in re.findall(r'File "([^"\n]+)", line ([0-9]{1,5})', log):
+            known = next((name for name in public_files if path == name or path.endswith("/" + name)), None)
+            if known and 0 < int(line) < 10000:
+                stack.append({"file": known, "line": int(line)})
         cpp_errors = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", message) if word in public_identifiers))[:20] for message in re.findall(r"(?:fatal )?error(?:\[E[0-9]{4}\])?: ([^\r\n]+)", log)[:12]]
         for path, line in re.findall(r"([^\s:]+):([0-9]{1,5}):[0-9]{1,4}: (?:fatal )?error:", log):
             candidates = [path]
@@ -305,7 +310,7 @@ def failed_action_diagnostics(identifier, key):
             name = next((name for name in candidates if name in public_files), None)
             if name is not None and 0 < int(line) < 10000:
                 sites.append({"file": name, "line": int(line)})
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8]}, sort_keys=True))
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8]}, sort_keys=True))
 
 
 if __name__ == "__main__":
