@@ -272,6 +272,27 @@ Header groups keep Brotli/Zstd independent from Node header changes. The isolate
 lifecycle fix changes one owned C++ source; existing V8 and Base compiler inputs
 stay shared. No cold-build speedup or complete Electron baseline is claimed.
 
+## Gin and i18n baseline
+
+The [406dda7 source phase](https://formatjs.buildbuddy.io/invocation/cb9396bb-3fbd-4a60-80c3-6f96840ac210)
+compiled the 56 new Gin/i18n/CED units in 23.678 seconds. BB tracked 61 remote
+executions, 42.931 CPU-seconds, 314,667,008 bytes maximum per-action peak memory,
+24,146,031 worker input bytes and 7,672,202 worker output bytes. The following
+runtime probe exposed caller file-API errors; these were fixed before acceptance.
+
+The [5bca689 source phase](https://formatjs.buildbuddy.io/invocation/1f47a268-a4cb-4f9e-9224-380654dfb17c)
+passed in 19.728 seconds with zero tracked remote executions. Its
+[source-test phase](https://formatjs.buildbuddy.io/invocation/b334726a-a467-458c-8719-0c59a14111d4)
+passed in 6.747 seconds: two remote executions, 3.764 CPU-seconds, 231,620,608
+bytes maximum per-action peak memory, 43,145 worker input bytes and 78,383,588
+worker output bytes. Native probes run on the matching BB Linux host; remote
+resource totals exclude their execution. The separate fresh network gate
+executed two actions.
+
+Shared Base/V8/ICU targets and separate header groups preserve existing compiler
+inputs. These phases shared caches with earlier attempts and the consumer
+workflow; they do not establish a cold-build baseline or speedup.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

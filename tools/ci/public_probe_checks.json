@@ -23,6 +23,7 @@
     "combining mark and emoji grapheme boundaries",
     "declared ICU and snapshot arguments",
     "declared ICU file",
+    "declared runtime paths",
     "default feature initialization",
     "grapheme iterator initialization",
     "legacy encoding conversion",

@@ -4,6 +4,9 @@ The bar is [hermeticbuild/nodejs](https://github.com/hermeticbuild/nodejs): decl
 toolchains/sysroots and dependency closures, source/tool integrity pins, explicit
 target versus execution platforms, deterministic product bytes.
 
+Compile source with native Bazel C/C++/Rust rules and declared generator actions.
+Do not introduce CMake or `rules_foreign_cc` build wrappers.
+
 Current enforcement:
 
 - BB execution uses the digest-pinned amd64 `rbe-ubuntu22-04` image declared in
@@ -100,6 +103,13 @@ and [consumer](https://formatjs.buildbuddy.io/invocation/257b7fb2-b546-4a98-8b6a
 passed actual Node startup, module APIs, native-addon loading and shutdown, after
 the fresh network-denial gate. This validates Linux AMD64 libnode; full Electron
 and other complete source profiles remain pending.
+
+Gin, Base i18n and CED reuse pinned V8/Base/ICU dependencies. Original buildflag
+generators retain isolated Python, explicit inputs and path/mtime byte checks.
+ICU and generated snapshot data enter through declared file APIs, without host
+asset discovery. [5bca689 consumer](https://formatjs.buildbuddy.io/invocation/93435deb-d75a-4138-a291-8f1c2c115443)
+passed actual Unicode, native callback, sandboxed allocation and shutdown checks
+after the fresh network-denial gate. This full profile remains Linux AMD64.
 
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP

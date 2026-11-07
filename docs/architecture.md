@@ -92,6 +92,12 @@ A declared compatibility patch keeps the Node platform registered during V8
 isolate disposal, matching Electron's existing main-instance ordering. Parent
 source trees stay unchanged.
 
+Matching Gin, Base i18n and CED add 56 original C++ units with shared V8/Base/ICU
+dependencies. [5bca689 consumer](https://formatjs.buildbuddy.io/invocation/93435deb-d75a-4138-a291-8f1c2c115443)
+passed native callbacks, invalid argument rejection, sandboxed ArrayBuffers,
+collection/shutdown and Unicode conversion/segmentation. Both ICU and generated
+V8 startup data are declared files. This full profile remains Linux AMD64.
+
 Remaining source work includes electron_lib, matching Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser
