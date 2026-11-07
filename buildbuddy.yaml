@@ -12,7 +12,7 @@ actions:
     steps:
       - run: |
           set -euo pipefail
-          bazel test --config=bb-workflow //...
+          bazel test --config=bb-workflow --test_output=errors //...
           bazel run --config=bb-workflow @buildifier_prebuilt//:buildifier -- -mode=check -r .
 
   - name: "Cross-build Electron Apps"
