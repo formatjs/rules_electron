@@ -64,7 +64,7 @@ def classify(log):
         "REGEXP_INPUT_FILES": r"check failed: regexp (?:generated file|ambient data access disabled)",
         "PARTITION_ALLOC_OWNERSHIP": r"check failed: PartitionAlloc heap ownership|check failed: PartitionAlloc C\+\+ new value",
         "PARTITION_ALLOC_BYTES": r"check failed: PartitionAlloc preserved bytes",
-        "PARTITION_ALLOC_FAILURE_BOUNDARY": r"check failed: PartitionAlloc (?:failed realloc returns null|calloc overflow (?:rejected|traps)|oversized allocation rejected)",
+        "PARTITION_ALLOC_FAILURE_BOUNDARY": r"check failed: PartitionAlloc (?:failed realloc returns null|calloc overflow (?:rejected|traps)|allocation overflow traps|oversized allocation rejected)",
         "PARTITION_ALLOC_CHILD_PROCESS": r"check failed: PartitionAlloc overflow child",
         "PARTITION_ALLOC_ALIGNMENT": r"check failed: PartitionAlloc (?:requested alignment|realloc alignment)",
         "PARTITION_ALLOC_NATIVE_CHECK": r"Check failed:|Check failure",
@@ -128,7 +128,7 @@ def source_test_diagnostics(identifier, key):
                 if probe == "partition_alloc":
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
-                    details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[])" + re.escape(name) + r":([0-9]{1,4})(?::|\]|\s)", log) if 0 < int(line) < 5000][:8]
+                    details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[:])" + re.escape(name) + r"[:(]([0-9]{1,4})(?::|\]|\s|\))", log) if 0 < int(line) < 5000][:8]
                 print("Source probe test diagnostics:", json.dumps(details, sort_keys=True))
         token = page.get("nextPageToken", "")
         if not token:
