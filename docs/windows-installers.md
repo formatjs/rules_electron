@@ -83,5 +83,9 @@ Initial [x64/ARM64 lifecycle validation](https://github.com/formatjs/rules_elect
 passed install, hash rejection, upgrade, v2 launch and uninstall. Fixed-size maps
 reused only 64 KiB of roughly 125 MB installers. Content-defined maps alone still
 downloaded roughly 97%: the solid compressed stream also changed throughout.
-Independent payload streams and a stronger native reuse threshold address that
-measured gap; their hosted result must establish the performance effect.
+With independent LZMA2 payload streams and content-defined maps,
+[39cda07 native validation](https://github.com/formatjs/rules_electron/actions/runs/42351884226)
+passed on both CPUs. x64 downloaded 776,681 of 96,256,700 bytes; ARM64 downloaded
+760,466 of 89,390,353 bytes. Each reused over 99% for this sample's version-only
+change. The gate requires less than 50% over ranges, with no full-download
+fallback. Application changes can produce different reuse ratios.

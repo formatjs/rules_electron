@@ -79,7 +79,15 @@ x64 downloaded 125,250,761 of 125,316,297 installer bytes; ARM64 downloaded
 header length changes shift subsequent byte offsets, so block boundaries must
 resynchronize on content. New v2 maps use bounded gear chunks with SHA-256;
 the native gate now requires fewer than half the installer bytes over ranges,
-with no full-download fallback. Hosted measurements must establish that result.
+with no full-download fallback.
+
+Content-defined maps alone still transferred about 97% with a solid compressed
+payload. Independent per-file LZMA2 streams address that second source of churn.
+In [39cda07 native smoke](https://github.com/formatjs/rules_electron/actions/runs/42351884226),
+x64 downloaded 776,681 of 96,256,700 bytes (0.81%); ARM64 downloaded 760,466 of
+89,390,353 bytes (0.85%). Both completed install, update, native launch and
+uninstall. These measure the sample's version-only update; broader application
+changes need separate measurements. The 50% native transfer gate remains active.
 
 ## Next measurements
 

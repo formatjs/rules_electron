@@ -1,7 +1,35 @@
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_python//python:defs.bzl", "py_test")
+load("//electron:archive.bzl", "electron_archive")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
 load(":cross_build.bzl", "cross_build")
+
+electron_archive(
+    name = "release_zip",
+    app = ":app",
+)
+
+electron_archive(
+    name = "release_tar",
+    app = ":app",
+    format = "tar.gz",
+)
+
+py_test(
+    name = "archive_test",
+    size = "small",
+    srcs = ["archive_test.py"],
+    args = [
+        "$(rootpath :release_zip)",
+        "$(rootpath :release_tar)",
+    ],
+    data = [
+        ":release_tar",
+        ":release_zip",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = ["//electron/private:archives"],
+)
 
 cross_build(
     name = "cross_build_fixtures",

@@ -79,6 +79,8 @@ packaging supplies desktop/MIME/protocol/icon metadata and declared package hook
 see [Linux packages](docs/linux-packages.md).
 Per-user Windows NSIS packaging supplies shortcuts, URI schemes and updater cache
 seeding; see [Windows installers](docs/windows-installers.md).
+`electron_archive` creates deterministic ZIP/tar.gz releases with explicit
+compression controls; see [release archives](docs/release-archives.md).
 
 ## Development
 

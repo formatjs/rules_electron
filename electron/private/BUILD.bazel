@@ -1,5 +1,19 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
+py_library(
+    name = "archives",
+    srcs = ["archive.py"],
+    visibility = ["//tests:__pkg__"],
+)
+
+py_binary(
+    name = "release_archive",
+    srcs = ["archive.py"],
+    main = "archive.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":archives"],
+)
+
 exports_files(
     [
         "linux-maintainer.sh",

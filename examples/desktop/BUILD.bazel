@@ -1,5 +1,6 @@
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_electron//electron:archive.bzl", "electron_archive")
 load("@rules_electron//electron:defs.bzl", "electron_runtime")
 load("@rules_electron//electron:linux.bzl", "electron_deb")
 load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool")
@@ -11,9 +12,23 @@ load(":desktop_app.bzl", "desktop_app")
 
 cross_smoke_bundle(
     name = "cross_build_smoke_bundle",
-    app = ":app",
+    app = ":smoke_app",
     linux_packages = ":linux_release_files",
     windows_packages = ":windows_release_files",
+)
+
+electron_archive(
+    name = "release_zip",
+    app = ":app",
+    compression_level = 1,
+)
+
+alias(
+    name = "smoke_app",
+    actual = select({
+        ":macos": ":release_zip",
+        "//conditions:default": ":app",
+    }),
 )
 
 exports_files([
