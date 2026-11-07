@@ -450,6 +450,26 @@ and the consumer populated shared caches; these are not cold-build measurements.
 Native BB-host tests, cache hits and repository fetching remain outside the
 remote resource totals. No speedup is claimed from these mixed-cache runs.
 
+## Native events baseline
+
+[0e175df source phase](https://formatjs.buildbuddy.io/invocation/9c68768b-b739-4e40-bd3d-25542b0cfac8)
+passed in 68.359 seconds: 429 tracked remote executions, 669.929 CPU-seconds,
+460,480,512 bytes maximum per-action peak memory, 912,670,319 worker input bytes
+and 20,338,085 worker output bytes. The captured closure adds 417 native units,
+76 original generators and protocol copies. Native XCB adds 31 original protocol
+generator runs, declared header copies and its C implementation; XKB builds its
+parser from source. Earlier attempts and concurrent consumers populated caches.
+
+[decd4f5 source phase](https://formatjs.buildbuddy.io/invocation/5488cb9f-bc8a-4f6b-bee2-6f5468833f12)
+passed in 53.771 seconds and its [source-test phase](https://formatjs.buildbuddy.io/invocation/72ccdd03-8ded-407d-870c-bd834c22f9a1)
+passed in 10.744 seconds, both with zero tracked remote executions. Native
+BB-host tests, repository fetching and cache hits remain outside the remote
+resource totals. [076dc2e consumer](https://formatjs.buildbuddy.io/invocation/3b776ef1-7a74-44e3-a5b5-474214e5a32a)
+passed the final probe including malformed-display rejection with valid output
+arguments. These mixed-cache phases establish coverage and resource observations,
+not a cold-build baseline or speedup. Preserve full protocol generation and
+byte checks when measuring narrower header contexts later.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

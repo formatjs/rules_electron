@@ -170,6 +170,17 @@ passed logical/native scaling, relocated work areas, monitor change notification
 wire roundtrips and malformed screen-list rejection. Physical display/GPU
 execution remains untested; full source profiles remain Linux AMD64.
 
+The complete native events closure adds 417 units, 76 original generators,
+seven GN metadata targets and original X11 protocol copies. It retains existing
+native tracing/Protobuf providers and execution-platform plugins. Native XCB
+reuses pinned BCR sources with declared Python generation/copy actions; native
+XKB compiles its parser from source. [076dc2e consumer](https://formatjs.buildbuddy.io/invocation/3b776ef1-7a74-44e3-a5b5-474214e5a32a)
+passed modifier/clone and coordinate transforms, explicit keyboard-state changes,
+original X11 wire decoding, native display-string parsing and binary Snappy
+roundtrip/truncation checks. Test data does not discover a host keyboard layout
+or X server. Full profiles remain Linux AMD64; physical-device execution and
+complete Electron remain unfinished.
+
 Remaining source work includes electron_lib, Chromium Blink/content
 libraries, the other full source profiles and runtime packaging. The
 [Chromium build](https://github.com/formatjs/chromium) has a validated Linux browser

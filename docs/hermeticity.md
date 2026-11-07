@@ -199,6 +199,20 @@ passed native display and existing source runtime checks. Action analysis found
 no CMake/foreign-cc actions. Display tests use explicit model values without host
 monitor discovery; physical-device execution remains separate coverage.
 
+Native events preserve all 76 original generator actions, declared execution
+protoc/plugins and original protocol-copy bytes. Matching Snappy uses its exact
+DEPS commit. Chromium's vendored X11 keysym header and three textually included
+keyboard C implementations remain original declared inputs.
+
+The native XCB projection reuses checksum-pinned BCR libxcb/xcb-proto sources,
+replacing ambient shell copies/moves with declared Python actions and changed
+path/mtime byte checks. Linux abstract sockets remain enabled, as in the Chromium
+reference. Native libxau/xkbcommon use their BCR source rules. Action analysis
+found no CMake or foreign-cc actions. [076dc2e consumer](https://formatjs.buildbuddy.io/invocation/3b776ef1-7a74-44e3-a5b5-474214e5a32a)
+passed real input/XKB/X11/XCB/compression probes. Keyboard data is explicit;
+default includes/environment names are disabled. The X11 wire probe uses public
+interfaces and needs no server. Physical X11/device execution remains untested.
+
 Native GH hosts install/run/uninstall BB outputs. Their package-manager and GUI
 setup belongs to execution testing, not product builds. The DEB test's local HTTP
 feed and elevation adapter also live only in that native test path.
