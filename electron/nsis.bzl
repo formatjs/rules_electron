@@ -29,6 +29,12 @@ def _installer_impl(ctx):
     app = ctx.attr.app[ElectronAppInfo]
     if app.platform != "windows" or not app.artifact.is_directory:
         fail("electron_nsis requires a Windows electron_app directory")
+    architecture = None
+    for name in ["x64", "arm64"]:
+        if ctx.target_platform_has_constraint(getattr(ctx.attr, "_" + name)[platform_common.ConstraintValueInfo]):
+            architecture = name
+    if not architecture:
+        fail("Unsupported NSIS payload architecture")
     tool = ctx.attr.tool[ElectronNsisToolInfo]
     manifest = ctx.actions.declare_file(ctx.label.name + ".json")
     output = ctx.actions.declare_file(ctx.label.name + ".exe")
@@ -46,6 +52,7 @@ def _installer_impl(ctx):
         "verify_reproducible": ctx.attr.verify_reproducible,
         "compression": ctx.attr.compression,
         "updater_cache_name": ctx.attr.updater_cache_name,
+        "architecture": architecture,
     }))
     ctx.actions.run(
         executable = ctx.executable._packager,
@@ -69,6 +76,8 @@ electron_nsis = rule(
         "updater_cache_name": attr.string(doc = "Stable app-update.yml cache name; seed current installer for differential updates."),
         "verify_reproducible": attr.bool(default = False, doc = "Compile twice in different directories and require identical installer bytes."),
         "_packager": attr.label(default = Label("//electron/private:nsis_packager"), executable = True, cfg = "exec"),
+        "_x64": attr.label(default = Label("@platforms//cpu:x86_64")),
+        "_arm64": attr.label(default = Label("@platforms//cpu:aarch64")),
     },
     doc = "Build an unsigned per-user NSIS installer/uninstaller. Release signing follows packaging.",
 )

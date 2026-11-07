@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import struct
 import sys
 import tempfile
 
@@ -19,7 +20,7 @@ def literal(value):
 
 def installer_script(app, package_json, app_id, product_name, executable_name,
                      output, protocols=(), desktop_shortcut=False, compression="zlib",
-                     updater_cache_name=""):
+                     updater_cache_name="", architecture="x64"):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", app_id):
         raise ValueError("NSIS app_id must be an ASCII application identifier")
     _filename(app_id)
@@ -35,6 +36,8 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     app = Path(app)
     if compression not in ("zlib", "bzip2", "lzma", "off"):
         raise ValueError("Unsupported NSIS compressor")
+    if architecture not in ("x64", "arm64"):
+        raise ValueError("Unsupported Windows payload architecture")
     if updater_cache_name:
         _filename(updater_cache_name)
         literal(updater_cache_name)
@@ -72,10 +75,9 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         '# -*- coding: utf-8 -*-', 'Unicode true', 'RequestExecutionLevel user',
         *(['SetCompress off'] if compression == 'off' else ['SetCompressor /SOLID ' + compression]),
         *(['SetCompressorDictSize 8'] if compression == 'lzma' else []), 'SetDateSave off',
-        '!include "FileFunc.nsh"', '!include "LogicLib.nsh"',
+        '!include "FileFunc.nsh"', '!include "LogicLib.nsh"', '!include "x64.nsh"',
         'Name ' + q(product_name), 'OutFile ' + q(str(Path(output).resolve())),
         'InstallDir "$LOCALAPPDATA\\Programs\\' + app_id + '"',
-        'InstallDirRegKey HKCU ' + q(registry) + ' "InstallLocation"',
         'VIProductVersion ' + '.'.join(numeric + ['0']),
         'VIAddVersionKey "ProductName" ' + q(product_name),
         'VIAddVersionKey "FileDescription" ' + q(product_name + ' Installer'),
@@ -94,6 +96,12 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         ]
     lines += [
         'Function .onInit', 'SetShellVarContext current', 'SetRegView 64',
+        '${Unless} ${' + ('IsNativeARM64' if architecture == 'arm64' else 'IsNativeAMD64') + '}',
+        'SetErrorLevel 1', 'Abort "Installer requires matching native Windows architecture."', '${EndUnless}',
+        '${GetParameters} $0', 'ClearErrors', '${GetOptions} $0 "/D=" $1',
+        'IfErrors registered_directory', 'StrCpy $INSTDIR $1', 'Goto initialized',
+        'registered_directory:', 'ReadRegStr $0 HKCU ' + q(registry) + ' "InstallLocation"',
+        'StrCmp $0 "" initialized', 'StrCpy $INSTDIR $0', 'initialized:', 'ClearErrors',
         'FunctionEnd', 'Function un.onInit', 'SetShellVarContext current', 'SetRegView 64',
         'ReadINIStr $0 "$INSTDIR\\.rules-electron.ini" "app" "id"',
         'StrCmp $0 ' + q(app_id) + ' +3', 'SetErrorLevel 1', 'Abort "Installation ownership mismatch."',
@@ -117,8 +125,9 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         cache = '$LOCALAPPDATA\\' + updater_cache_name.replace('$', '$$')
         lines += ['ReadINIStr $0 "' + cache + '\\.rules-electron.ini" "app" "id"',
                   'StrCmp $0 ' + q(app_id) + ' cache_owned',
+                  'IfFileExists "' + cache + '\\.rules-electron.ini" cache_conflict',
                   'IfFileExists "' + cache + '\\installer.exe" 0 cache_owned',
-                  'SetErrorLevel 1', 'Abort "Updater cache ownership mismatch."', 'cache_owned:']
+                  'cache_conflict:', 'SetErrorLevel 1', 'Abort "Updater cache ownership mismatch."', 'cache_owned:']
     lines += [
         'IfFileExists "$INSTDIR\\.rules-electron.ini" existing fresh',
         'existing:', 'ReadINIStr $0 "$INSTDIR\\.rules-electron.ini" "app" "id"',
@@ -159,7 +168,9 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
                   'WriteRegStr HKCU ' + q(key + '\\shell\\open\\command') + ' "" \'"$INSTDIR\\' + executable.replace('$', '$$') + '" "%1"\'']
     if updater_cache_name:
         lines += ['CreateDirectory "' + cache + '"',
+                  'StrCmp $EXEPATH "' + cache + '\\installer.exe" seeded',
                   'CopyFiles /SILENT "$EXEPATH" "' + cache + '\\installer.exe"',
+                  'seeded:',
                   'WriteINIStr "' + cache + '\\.rules-electron.ini" "app" "id" ' + q(app_id)]
     lines += ['IfErrors failed_install',
               'WriteRegStr HKCU ' + q(uninstall_registry) + ' "DisplayVersion" ' + q(version),
@@ -195,6 +206,20 @@ def build_installer(manifest, output, script):
     compiler = str(Path(manifest.pop('compiler')).resolve())
     data = str(Path(manifest.pop('data')).resolve())
     verify = manifest.pop('verify_reproducible', False)
+    executable = manifest['executable_name']
+    if not executable.endswith('.exe'):
+        executable += '.exe'
+    with (Path(manifest['app']) / executable).open('rb') as source:
+        header = source.read(64)
+        if len(header) < 64 or header[:2] != b'MZ':
+            raise ValueError('NSIS payload requires a Windows PE executable')
+        offset = struct.unpack_from('<I', header, 60)[0]
+        if offset > 1024**2:
+            raise ValueError('Invalid PE header offset')
+        source.seek(offset)
+        pe = source.read(6)
+        if len(pe) != 6 or pe[:4] != b'PE\0\0' or struct.unpack_from('<H', pe, 4)[0] != {'x64': 0x8664, 'arm64': 0xaa64}[manifest['architecture']]:
+            raise ValueError('NSIS payload architecture mismatch')
     output = Path(output).resolve()
     environment = {'NSISDIR': data, 'LC_ALL': 'C.UTF-8', 'TZ': 'UTC', 'SOURCE_DATE_EPOCH': '0'}
     text = installer_script(output=output, **manifest)

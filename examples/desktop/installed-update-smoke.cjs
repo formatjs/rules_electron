@@ -12,6 +12,7 @@ module.exports = async function installUpdate(expectFailure) {
   assert.equal(feed.hostname, '127.0.0.1');
   autoUpdater.setFeedURL({ provider: 'generic', url: feed.href, useMultipleRangeRequest: false });
   autoUpdater.disableDifferentialDownload = expectFailure;
+  if (process.platform === 'win32') autoUpdater.installDirectory = require('node:path').dirname(process.execPath);
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.autoRunAppAfterInstall = false;

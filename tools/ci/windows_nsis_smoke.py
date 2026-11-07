@@ -30,6 +30,14 @@ def registry_value(key, name):
         return None
 
 
+def registry_exists(key):
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY):
+            return True
+    except FileNotFoundError:
+        return False
+
+
 def known_folder(identifier):
     buffer = ctypes.create_unicode_buffer(32768)
     if ctypes.windll.shell32.SHGetFolderPathW(None, identifier, None, 0, buffer):
@@ -37,8 +45,10 @@ def known_folder(identifier):
     return Path(buffer.value)
 
 
-def command(*args, env=None, success=True):
-    result = subprocess.run(args, env=env, capture_output=True, encoding="utf-8", errors="replace", timeout=180)
+def command(*args, env=None, success=True, nsis_directory=None):
+    # NSIS requires /D last and unquoted, including paths containing spaces.
+    arguments = subprocess.list2cmdline(args) + " /D=" + str(nsis_directory) if nsis_directory else args
+    result = subprocess.run(arguments, env=env, capture_output=True, encoding="utf-8", errors="replace", timeout=180)
     if (result.returncode == 0) != success:
         raise RuntimeError(f"Unexpected exit {result.returncode}: {args}\n{result.stdout[-3000:]}\n{result.stderr[-3000:]}")
     return result.stdout
@@ -116,7 +126,7 @@ if __name__ == "__main__":
     cache = Path(os.environ["LOCALAPPDATA"]) / "sample-desktop-updater"
     user_data = Path(os.environ["APPDATA"]) / "Sample Desktop"
     shortcuts = [known_folder(2) / "Sample Desktop.lnk", known_folder(16) / "Sample Desktop.lnk"]
-    if registry_value(REGISTRY, "InstallLocation") or registry_value(PROTOCOL, "") or cache.exists() or user_data.exists() or any(p.exists() for p in shortcuts):
+    if registry_exists(REGISTRY) or registry_exists("Software\\" + APP_ID) or registry_exists(PROTOCOL) or cache.exists() or user_data.exists() or any(p.exists() for p in shortcuts):
         raise RuntimeError("Disposable host already contains sample state; refusing to overwrite it")
     first = packages / "nsis_v1_feed/Sample-1.0.0.exe"
     second = packages / "nsis_v2_feed/Sample-2.0.0.exe"
@@ -138,16 +148,16 @@ if __name__ == "__main__":
             unowned = directory / "unowned"
             unowned.mkdir()
             (unowned / "keep.txt").write_text("keep")
-            command(str(first), "/S", "/D=" + str(unowned), success=False)
+            command(str(first), "/S", nsis_directory=unowned, success=False)
             assert list(unowned.iterdir()) == [unowned / "keep.txt"]
             assert (unowned / "keep.txt").read_text() == "keep"
             with winreg.CreateKey(winreg.HKEY_CURRENT_USER, PROTOCOL) as key:
                 winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "foreign registration")
-            command(str(first), "/S", "/D=" + str(install), success=False)
+            command(str(first), "/S", nsis_directory=install, success=False)
             assert registry_value(PROTOCOL, "") == "foreign registration"
             assert not executable.exists()
             winreg.DeleteKey(winreg.HKEY_CURRENT_USER, PROTOCOL)
-            command(str(first), "/S", "/D=" + str(install))
+            command(str(first), "/S", nsis_directory=install)
             assert registry_value(REGISTRY, "DisplayVersion") == "1.0.0"
             assert registry_value(REGISTRY, "InstallLocation") == str(install)
             assert registry_value(REGISTRY, "QuietUninstallString") == f'"{install}\\Uninstall.exe" /S'
