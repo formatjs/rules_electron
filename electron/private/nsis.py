@@ -22,7 +22,7 @@ def literal(value):
 
 def installer_script(app, package_json, app_id, product_name, executable_name,
                      output, protocols=(), desktop_shortcut=False, compression="zlib",
-                     updater_cache_name="", architecture="x64"):
+                     updater_cache_name="", architecture="x64", payload_archive=""):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", app_id):
         raise ValueError("NSIS app_id must be an ASCII application identifier")
     _filename(app_id)
@@ -37,7 +37,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     if len(set(protocols)) != len(protocols) or any(not re.fullmatch(r"[a-z][a-z0-9+.-]*", scheme) for scheme in protocols):
         raise ValueError("Invalid or duplicate protocol")
     app = Path(app)
-    if compression not in ("zlib", "bzip2", "lzma", "off"):
+    if compression not in ("7z", "zlib", "bzip2", "lzma", "off"):
         raise ValueError("Unsupported NSIS compressor")
     if architecture not in ("x64", "arm64"):
         raise ValueError("Unsupported Windows payload architecture")
@@ -76,7 +76,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     q = literal
     lines = [
         '# -*- coding: utf-8 -*-', 'Unicode true', 'RequestExecutionLevel user',
-        *(['SetCompress off'] if compression == 'off' else ['SetCompressor /SOLID ' + compression]),
+        *(['SetCompress off'] if compression in ('7z', 'off') else ['SetCompressor /SOLID ' + compression]),
         *(['SetCompressorDictSize 8'] if compression == 'lzma' else []), 'SetDateSave off',
         '!include "FileFunc.nsh"', '!include "LogicLib.nsh"', '!include "x64.nsh"',
         'Name ' + q(product_name), 'OutFile ' + q(str(Path(output).resolve())),
@@ -144,11 +144,22 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         'next:', 'FindNext $0 $1', 'Goto check_empty', 'empty:', 'FindClose $0',
         'unpack:', 'SetOverwrite try', 'ClearErrors',
     ]
-    for name, path in files:
-        parent = str(Path(name).parent).replace('/', '\\').replace('$', '$$')
-        lines += ['SetOutPath "$INSTDIR' + ('\\' + parent if parent != '.' else '') + '"',
-                  'File ' + q('/oname=' + Path(name).name) + ' ' + q(str(path.resolve())),
-                  'IfErrors failed_install']
+    if compression == '7z':
+        lines += ['InitPluginsDir', 'SetOutPath "$PLUGINSDIR"',
+                  'File "/oname=payload.7z" ' + q(str(Path(payload_archive).resolve())),
+                  'IfErrors failed_install', 'SetOutPath "$INSTDIR"',
+                  'Nsis7z::Extract "$PLUGINSDIR\\payload.7z"']
+        for name, path in files:
+            target = '"$INSTDIR\\' + name.replace('/', '\\').replace('$', '$$') + '"'
+            lines += ['ClearErrors', 'FileOpen $0 ' + target + ' r', 'IfErrors failed_install',
+                      'FileSeek $0 0 END $1', 'FileClose $0',
+                      'IntCmp $1 ' + str(path.stat().st_size) + ' +2', 'Goto failed_install']
+    else:
+        for name, path in files:
+            parent = str(Path(name).parent).replace('/', '\\').replace('$', '$$')
+            lines += ['SetOutPath "$INSTDIR' + ('\\' + parent if parent != '.' else '') + '"',
+                      'File ' + q('/oname=' + Path(name).name) + ' ' + q(str(path.resolve())),
+                      'IfErrors failed_install']
     lines += [
         'SetOutPath "$INSTDIR"', 'WriteUninstaller "$INSTDIR\\Uninstall.exe"',
         'WriteINIStr "$INSTDIR\\.rules-electron.ini" "app" "id" ' + q(app_id),
@@ -209,6 +220,9 @@ def build_installer(manifest, output, script):
     compiler = str(Path(manifest.pop('compiler')).resolve())
     data = str(Path(manifest.pop('data')).resolve())
     verify = manifest.pop('verify_reproducible', False)
+    archive_compiler = manifest.pop('archive_compiler', '')
+    if archive_compiler:
+        archive_compiler = str(Path(archive_compiler).resolve())
     executable = manifest['executable_name']
     if not executable.endswith('.exe'):
         executable += '.exe'
@@ -225,20 +239,38 @@ def build_installer(manifest, output, script):
             raise ValueError('NSIS payload architecture mismatch')
     output = Path(output).resolve()
     environment = {'NSISDIR': data, 'LC_ALL': 'C.UTF-8', 'TZ': 'UTC', 'SOURCE_DATE_EPOCH': '0'}
-    text = installer_script(output=output, **manifest)
-    Path(script).write_text(text, encoding='utf-8')
-    subprocess.run([compiler, '-NOCONFIG', '-V2', str(Path(script).resolve())], env=environment, check=True)
-    if verify:
-        with tempfile.TemporaryDirectory() as directory:
+
+    def compile_once(options, directory, destination, script_path):
+        options = dict(options)
+        if options.get('compression') == '7z':
+            if not archive_compiler:
+                raise ValueError('7z compression requires a declared archive compiler')
+            payload = directory / 'payload.7z'
+            options['payload_archive'] = str(payload)
+            installer_script(output=destination, **options)
+            listing = directory / 'files.txt'
+            app = Path(options['app']).resolve()
+            listing.write_text(''.join(path.relative_to(app).as_posix() + '\n' for path in sorted(app.rglob('*')) if path.is_file()), encoding='utf-8')
+            subprocess.run([archive_compiler, 'a', '-t7z', '-mx=5', '-m0=LZMA2:d1m', '-mmt=2', '-ms=off',
+                            '-mtc=off', '-mta=off', '-mtm=off', '-scsUTF-8', '-bd', '-bso0', '-bsp0',
+                            str(payload), '@' + str(listing)], cwd=app, env=environment, check=True)
+        text = installer_script(output=destination, **options)
+        script_path.write_text(text, encoding='utf-8')
+        subprocess.run([compiler, '-NOCONFIG', '-V2', str(script_path.resolve())], env=environment, check=True)
+
+    with tempfile.TemporaryDirectory() as temporary:
+        directory = Path(temporary)
+        compile_once(manifest, directory, output, Path(script))
+        if verify:
             mirror = Path(directory) / 'payload'
             shutil.copytree(manifest['app'], mirror)
             for path in mirror.rglob('*'):
                 if path.is_file():
                     os.utime(path, (1234567890, 1234567890))
-            second = Path(directory) / output.name
-            other = Path(directory) / 'installer.nsi'
-            other.write_text(installer_script(output=second, **dict(manifest, app=str(mirror))), encoding='utf-8')
-            subprocess.run([compiler, '-NOCONFIG', '-V2', str(other)], env=environment, check=True)
+            repeat = directory / 'repeat'
+            repeat.mkdir()
+            second = repeat / output.name
+            compile_once(dict(manifest, app=str(mirror)), repeat, second, repeat / 'installer.nsi')
             def digest(path):
                 with path.open('rb') as source:
                     return hashlib.file_digest(source, 'sha256').digest()

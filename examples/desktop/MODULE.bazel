@@ -88,6 +88,14 @@ http_file(
 
 # Linux execution tool; macOS target binaries never execute during assembly.
 http_archive(
+    name = "sevenzip_linux_x64",
+    build_file_content = "exports_files([\"bin/7zz\"])\n",
+    sha256 = "98ac470cf076f19241b5ee259e135de0adc3c3b8076c41682d6468c2a9990845",
+    strip_prefix = "7zip",
+    urls = ["https://github.com/electron-userland/electron-builder-binaries/releases/download/7zip%401.1.0/7zip-linux-x64.tar.gz"],
+)
+
+http_archive(
     name = "nsis_linux_x64",
     build_file_content = """load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 exports_files(["linux/x64/makensis"])
