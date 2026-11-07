@@ -12,6 +12,10 @@ on:
         description: Exact BB build commit
         required: true
         type: string
+      logs_only:
+        description: Read BB logs without downloading artifacts or running smoke
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,11 +25,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  diagnostics:
+    if: github.event_name == 'workflow_dispatch' && inputs.logs_only
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Read verified BB invocation logs
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_RO_PUBLIC_KEY }}
+          INVOCATION_URL: ${{ inputs.invocation_url }}
+          BUILD_SHA: ${{ inputs.commit_sha }}
+        run: python3 tools/ci/buildbuddy_log.py
+
   download:
     if: >-
-      inputs.invocation_url != '' ||
+      !inputs.logs_only && (inputs.invocation_url != '' ||
       (github.event.context == 'Cross-build Electron Apps' &&
-      github.event.sender.login == 'buildbuddy-io[bot]' && github.event.state == 'success')
+      github.event.sender.login == 'buildbuddy-io[bot]' && github.event.state == 'success'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -45,6 +63,7 @@ jobs:
           retention-days: 7
 
   native:
+    if: '!inputs.logs_only'
     needs: download
     strategy:
       fail-fast: false
@@ -87,7 +106,7 @@ jobs:
         run: python tools/ci/run_native_smoke.py
 
   publish_status:
-    if: always() && needs.download.result != 'skipped'
+    if: always() && !inputs.logs_only && needs.download.result != 'skipped'
     needs: [download, native]
     runs-on: ubuntu-latest
     permissions:

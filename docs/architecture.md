@@ -97,13 +97,12 @@ execution implied. Add real Electron targets to this matrix as each upstream
 source profile becomes available; keep unsupported profiles explicit.
 
 The independent `examples/desktop` workspace provides a generic app built from
-scratch, with a real Node-API addon and helper compiled by LLVM. An explicitly
-labeled official Electron bootstrap makes the example runnable before the source
-runtime exists. Its x86_64 smoke relocates the output and exercises sandboxed
-renderer/preload IPC, ASAR, unpacked native loading, extra resources and fuse
-behavior. BuildBuddy executes this GUI test on its workflow host after installing
-system libraries/Xvfb; target compilation and assembly still use remote execution.
-Both Linux target architectures build the actual example.
+scratch, with a real Node-API addon and helper compiled by LLVM. Explicitly
+labeled official Electron bootstraps make it runnable before the source runtime
+exists. BB Linux workers compile and package every variant. GH downloads the
+verified aggregate artifact, then native Linux x64, macOS ARM64 and Windows
+x64/ARM64 hosts execute sandboxed relocation smoke. Both Windows compiler
+variants run on their matching CPU host. Linux ARM64 is cross-built only.
 
 No credentials checked in. Hosted CI requires repository hookup and BuildBuddy
 access. Larger source-runtime jobs need separate memory/disk budgets; fixture
