@@ -167,7 +167,7 @@ def classify(log):
     return {category: len(re.findall(pattern, log, re.IGNORECASE)) for category, pattern in patterns.items() if re.search(pattern, log, re.IGNORECASE)}
 
 
-def source_test_diagnostics(identifier, key, build_log):
+def source_test_diagnostics(identifier, key):
     probes = {
         "//source:node_dependencies_test": "node_dependencies",
         "//tests:v8_torque_test": "torque",
@@ -202,6 +202,22 @@ def source_test_diagnostics(identifier, key, build_log):
     public_basenames = {path.rsplit("/", 1)[-1] for path in public_files}
     public_checks = json.loads(Path(__file__).with_name("public_probe_checks.json").read_text())
     public_identifiers = set(json.loads(Path(__file__).with_name("public_source_identifiers.json").read_text()))
+    results = {}
+
+    def test_result(label):
+        if label not in results:
+            request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetTarget",
+                                             data=json.dumps({"invocation_id": identifier, "target_label": label}).encode(),
+                                             headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
+            with urllib.request.build_opener(NoRedirect()).open(request, timeout=120) as response:
+                content = response.read(4 * 1024**2 + 1)
+            if len(content) > 4 * 1024**2:
+                raise ValueError("Test result metadata exceeds limit")
+            states = [target.get("testSummary", {}).get("overallStatus", target.get("status")) for group in json.loads(content).get("targetGroups", []) for target in group.get("targets", []) if target.get("metadata", {}).get("label") == label]
+            allowed = {"PASSED", "FAILED", "FLAKY", "TIMEOUT", "TIMED_OUT", "INCOMPLETE", "REMOTE_FAILURE", "FAILED_TO_BUILD", "TOOL_FAILED", "CANCELLED"}
+            results[label] = states[-1] if states and states[-1] in allowed else "unknown"
+        return results[label]
+
     token, seen, count = "", set(), 0
     for _ in range(8):
         if token in seen:
@@ -235,9 +251,7 @@ def source_test_diagnostics(identifier, key, build_log):
                         raise ValueError("Test log digest mismatch")
                 count += 1
                 log = data.decode("utf-8", errors="replace")
-                suffix = next(label for label, name in probes.items() if name == probe)
-                results = re.findall(re.escape(suffix) + r"\s+(?:\(cached\)\s+)?(PASSED|FAILED|TIMEOUT|FLAKY)\b", build_log)
-                details = {"probe": probe, "result": results[-1] if results else "unknown", "log_bytes": len(data), "diagnostics": classify(log)}
+                details = {"probe": probe, "result": test_result(action["targetLabel"]), "log_bytes": len(data), "diagnostics": classify(log)}
                 if probe == "partition_alloc":
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
@@ -386,4 +400,4 @@ if __name__ == "__main__":
         resource_diagnostics(identifier, key)
         if value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and not value.get("success"):
             failed_action_diagnostics(identifier, key)
-            source_test_diagnostics(identifier, key, log)
+            source_test_diagnostics(identifier, key)
