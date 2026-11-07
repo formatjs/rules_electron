@@ -1,10 +1,12 @@
 """Classify exact Electron source CI failures without forwarding raw logs."""
 
 import json
+import base64
 import os
 import re
+import urllib.request
 
-from buildbuddy_artifacts import api_request, invocation_id
+from buildbuddy_artifacts import NoRedirect, api_request, invocation_id
 from buildbuddy_log import read_log, resource_diagnostics
 
 
@@ -25,8 +27,41 @@ def classify(log):
         "TEST_FAILED": r"FAILED in",
         "RESOURCE_EXHAUSTED": r"Out of memory|ResourceExhausted|OOMKilled",
         "SOURCE_VALIDATION": r"fingerprint mismatch|Patched file differs",
+        "EXECUTABLE_NOT_FOUND": r"not found|No such file or directory|ENOENT",
+        "EXECUTABLE_PERMISSION": r"Permission denied|EACCES",
+        "SHARED_LIBRARY_LOAD": r"error while loading shared libraries|GLIBC_[0-9.]+.*not found",
+        "PROCESS_START": r"Failed to start|Could not execute|cannot execute",
     }
     return {category: len(re.findall(pattern, log, re.IGNORECASE)) for category, pattern in patterns.items() if re.search(pattern, log, re.IGNORECASE)}
+
+
+def failed_action_diagnostics(identifier, key):
+    request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
+                                     data=json.dumps({"execution_lookup": {"invocation_id": identifier}, "inline_execute_response": True}).encode(),
+                                     headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
+    with urllib.request.build_opener(NoRedirect()).open(request, timeout=60) as response:
+        data = response.read(64 * 1024**2 + 1)
+    if len(data) > 64 * 1024**2:
+        raise ValueError("Execution diagnostics exceed limit")
+    for execution in json.loads(data).get("execution", [])[:32]:
+        result = execution.get("executeResponse", {}).get("result", {})
+        if not result.get("exitCode"):
+            continue
+        log = ""
+        for name in ("stdoutRaw", "stderrRaw"):
+            log += base64.b64decode(result.get(name, ""), validate=True).decode("utf-8", errors="replace")
+        digests = [result.get(name) for name in ("stdoutDigest", "stderrDigest")]
+        digests += [file.get("digest") for file in result.get("outputFiles", []) if file.get("path", "").rsplit("/", 1)[-1] == "test.log"]
+        for digest in digests:
+            if not digest or not re.fullmatch(r"[0-9a-f]{64}", digest.get("hash", "")) or not 0 < int(digest.get("sizeBytes", 0)) <= 1024**2:
+                continue
+            uri = "bytestream://formatjs.buildbuddy.io/blobs/" + digest["hash"] + "/" + str(digest["sizeBytes"])
+            with api_request("GetFile", {"uri": uri}, key) as response:
+                content = response.read(1024**2 + 1)
+            if len(content) > 1024**2:
+                raise ValueError("Test log exceeds limit")
+            log += content.decode("utf-8", errors="replace")
+        print("Failed action diagnostics:", json.dumps({"exit_code": result["exitCode"], "log_bytes": len(log.encode()), "diagnostics": classify(log)}, sort_keys=True))
 
 
 if __name__ == "__main__":
@@ -52,3 +87,5 @@ if __name__ == "__main__":
         value = invocation(identifier)
         print("Source child:", json.dumps({"id": identifier, "success": value.get("success") is True, "diagnostics": classify(read_log({"invocation_id": identifier}, key))}, sort_keys=True))
         resource_diagnostics(identifier, key)
+        if value.get("success") is False:
+            failed_action_diagnostics(identifier, key)
