@@ -73,6 +73,7 @@ if __name__ == "__main__":
         if not token:
             break
     print(tail)
+    print("Bazel elapsed seconds:", re.findall(r"Elapsed time: ([0-9.]+)s", tail))
     if invocation.get("pattern") == "Test Linux assembly":
         execution_diagnostics(tail, key, os.environ["BUILD_SHA"])
     else:

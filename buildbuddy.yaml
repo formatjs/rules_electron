@@ -28,14 +28,9 @@ actions:
     steps:
       - run: |
           set -euo pipefail
-          for platform in linux_x86_64 linux_aarch64 macos_x86_64 macos_aarch64 windows_x86_64; do
-            bazel build --config=bb-workflow \
-              --platforms="//platforms:$platform" //tests:runtime_probe
-          done
-          for platform in linux_x86_64 linux_aarch64; do
-            bazel build --config=bb-workflow \
-              --platforms="//platforms:$platform" //tests:app
-          done
+          bazel build --config=bb-workflow \
+            --profile="$BUILDBUDDY_ARTIFACTS_DIRECTORY/fixture-profile.json.gz" \
+            //tests:cross_build_fixtures
           cd examples/desktop
           bazel build --config=bb-workflow --config=msvc-license --lockfile_mode=error --remote_download_toplevel \
             --profile="$BUILDBUDDY_ARTIFACTS_DIRECTORY/cross-build-profile.json.gz" \

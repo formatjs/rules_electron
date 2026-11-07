@@ -13,10 +13,12 @@ class ProfileTest(unittest.TestCase):
             {"ph": "X", "cat": "action processing", "tid": 1, "ts": 0, "dur": 2000000, "args": {"mnemonic": "CppCompile"}},
             {"ph": "X", "cat": "action processing", "tid": 2, "ts": 0, "dur": 2000000, "args": {"mnemonic": "CppCompile"}},
             {"ph": "C", "name": "CPU", "ts": 99999999, "args": {"value": 5}},
+            {"ph": "X", "cat": "general information", "name": "runAnalysisPhase", "ts": 0, "dur": 1000000},
         ]}
         result = summarize(decode_profile(gzip.compress(json.dumps(profile).encode())))
         self.assertEqual(result["trace_span_seconds"], 2)
         self.assertEqual(result["critical_path_seconds"], 1)
+        self.assertEqual(result["phases_seconds"], {"runAnalysisPhase": 1})
         self.assertEqual(result["actions"]["CppCompile"], {"count": 2, "cumulative_seconds": 4, "max_seconds": 2})
 
     def test_empty_and_oversized_profiles_fail(self):

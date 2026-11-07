@@ -1,6 +1,14 @@
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
+load(":cross_build.bzl", "cross_build")
+
+cross_build(
+    name = "cross_build_fixtures",
+    app = ":app",
+    probe = ":runtime_probe",
+    tags = ["manual"],
+)
 
 py_test(
     name = "profile_test",

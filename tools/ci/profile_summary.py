@@ -45,6 +45,9 @@ def summarize(profile):
         "trace_span_seconds": round((max(e["ts"] + e["dur"] for e in complete) - min(e["ts"] for e in complete)) / 1000000, 3),
         "categories": {key: rounded(value) for key, value in sorted(categories.items(), key=lambda p: -p[1]["cumulative_seconds"])[:20]},
         "actions": {key: rounded(value) for key, value in sorted(actions.items(), key=lambda p: -p[1]["max_seconds"])[:15]},
+        "phases_seconds": {name: round(sum(e["dur"] for e in complete if e.get("name") == name) / 1000000, 3)
+                           for name in ["runAnalysisPhase", "runLoadingPhase", "evaluateTargetPatterns", "runExecutorMainPhase"]
+                           if any(e.get("name") == name for e in complete)},
     }
     if critical_threads:
         result["critical_path_seconds"] = round(critical, 3)
