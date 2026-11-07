@@ -93,7 +93,7 @@ def brand_macos(output, executable_name, product_name, app_id, version):
         name = product_name + " Helper" + suffix
         helper_plist = helper / "Contents/Info.plist"
         info = plistlib.loads(helper_plist.read_bytes())
-        binary = helper / "Contents/MacOS" / info["CFBundleExecutable"]
+        binary = helper / "Contents/MacOS" / info.get("CFBundleExecutable", helper.stem)
         binary.rename(binary.with_name(name))
         identifier_suffix = suffix.strip(" ()").lower()
         info.update(CFBundleExecutable=name, CFBundleName=name,

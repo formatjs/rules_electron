@@ -49,7 +49,8 @@ class PlatformLayoutTest(unittest.TestCase):
             for name in ["", "/Frameworks/Electron Helper.app"]:
                 prefix = "Electron.app/Contents" + name + ("/Contents" if name else "")
                 executable = "Electron Helper" if name else "Electron"
-                archive.writestr(prefix + "/Info.plist", plistlib.dumps({"CFBundleExecutable": executable}))
+                metadata = {"CFBundleIdentifier": "org.example.helper"} if name else {"CFBundleExecutable": executable}
+                archive.writestr(prefix + "/Info.plist", plistlib.dumps(metadata))
                 archive.writestr(prefix + "/MacOS/" + executable, b"runtime")
             prefix = "Electron.app/Contents/Frameworks/Foo.framework/"
             archive.writestr(prefix + "Versions/A/Foo", b"framework")
