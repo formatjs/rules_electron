@@ -252,15 +252,6 @@ def source_test_diagnostics(identifier, key):
                 count += 1
                 log = data.decode("utf-8", errors="replace")
                 details = {"probe": probe, "result": test_result(action["targetLabel"]), "log_bytes": len(data), "diagnostics": classify(log)}
-                if probe == "platform_graphics":
-                    details["debug_stages"] = [stage for stage in ["entry", "vulkan", "egl", "gles", "platform", "display_handle", "display", "context", "render", "teardown", "done"] if "[DEBUG-native-graphics] " + stage + "\n" in log]
-                    details["debug_symbolizer_exit_codes"] = [int(code) for code in re.findall(r"\[DEBUG-native-graphics\] symbolizer exit (-?[0-9]{1,3})\b", log) if -255 <= int(code) <= 255][:4]
-                    details["debug_signals"] = [int(code) for code in re.findall(r"\[DEBUG-native-graphics\] signal ([0-9]{1,2})\b", log) if 0 < int(code) < 65][:4]
-                    details["debug_fault_pc"] = re.findall(r"\[DEBUG-native-graphics\] fault_pc (zero|nonzero)\b", log)[:4]
-                    details["debug_stack_modules"] = sorted({name for name in re.findall(r"\[DEBUG-native-graphics\] module ([A-Za-z0-9_.+-]{1,120})", log) if name in public_basenames})[:12]
-                    details["debug_stack_functions"] = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line) if word in public_identifiers))[:20] for line in log.splitlines() if line.startswith("[DEBUG-native-graphics] symbol ")][:32]
-                    details["debug_exit_codes"] = [int(code) for code in re.findall(r"\[DEBUG-native-graphics\] exit (-?[0-9]{1,3})\b", log) if -255 <= int(code) <= 255][:4]
-                    details["public_loader_libraries"] = sorted({name for name in re.findall(r"\b([A-Za-z0-9_+-][A-Za-z0-9_.+-]{0,100}\.so(?:\.[A-Za-z0-9_.+-]{1,80})?)\b", log) if name in public_basenames})[:8]
                 if probe == "partition_alloc":
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]

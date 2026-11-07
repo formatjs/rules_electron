@@ -506,6 +506,29 @@ newer glibc symbols than the default target supplied. Upstream now selects its
 explicit glibc 2.31 source platform; runtime validation remains pending. These
 figures establish build coverage, not graphics correctness or a speedup.
 
+## Native graphics runtime validation
+
+The [e42592d graphics probe](https://formatjs.buildbuddy.io/invocation/e6945d5b-4ab5-42fe-929a-f983b435fc58)
+passed in 136.353 seconds with four tracked executions, 0.980 CPU seconds,
+521,826,304-byte maximum action peak memory, 71,869,219 input download bytes and
+35,802,120 output upload bytes. The actual renderer and framebuffer checks passed;
+this phase includes analysis/setup and shared-library linking, not only rendering.
+
+Its [source aggregate](https://formatjs.buildbuddy.io/invocation/2a4d8abf-2bff-4752-81c2-6473b464cc21)
+passed in 64.626 seconds and [complete suite](https://formatjs.buildbuddy.io/invocation/86c792ab-cf2a-44d2-a8b5-315e34668a45)
+in 5.170 seconds, both with zero tracked remote executions. Prior attempts and
+concurrent consumers had populated caches. These are mixed/warm observations,
+not a cold-build baseline or measured speedup. BB-host test execution remains
+outside remote CPU/memory totals. The clean
+[e677b62 components](https://formatjs.buildbuddy.io/invocation/7056db57-2403-44a5-ac43-048b82fa95ec)
+and [consumer](https://formatjs.buildbuddy.io/invocation/0109ff8b-c8e5-4faf-9cda-c333de0a4be3)
+also passed after removing crash probes and the symbolizer.
+
+SDK dependencies now import individual libraries; compilation-only providers no
+longer pull entire desktop library sets into every DSO. Native GLib and zlib
+shared owners prevent duplicated initialization state. Future measurements must
+preserve the real loader, SwiftShader selection and framebuffer checks.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

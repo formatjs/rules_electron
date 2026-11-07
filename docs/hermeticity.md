@@ -245,16 +245,32 @@ product bytes. Subsequent profiles must establish the actual performance effect.
 
 ## Ozone/GL source boundary
 
-The upstream source aggregate now builds the captured Ozone/GL closure with native
+The upstream source aggregate builds 2,147 captured Ozone/GL units with native
 Bazel rules and original generators. Fifteen source repositories retain exact
-Chromium/Dawn DEPS commits. Native generator data is declared in the execution
-configuration beside the original executable; its C++ executable provider stays
-intact. Khronos headers and compression include paths retain their original
-source ownership. The action audit found no CMake/foreign-cc actions.
+Chromium/Dawn DEPS commits. Native generator data is declared beside its original
+executable in the execution configuration. SDK/platform header providers forward
+compilation context; Rust FFI crates depend directly on their native C++ owners.
+The action audit found no CMake/foreign-cc actions.
 
-Desktop ABI libraries remain 53 declared files from 49 checksum-pinned Debian
-packages matching the Chromium SDK. They are SDK inputs, not source-built library
-claims. The Linux desktop source platform selects glibc 2.31 to match that SDK;
-BB runtime validation of this alignment remains pending. The graphics test keeps
-explicit SwiftShader selection and real framebuffer byte checks. Full Electron
-and non-Linux source profiles remain unfinished.
+Desktop ABI data remains 53 files from 49 checksum-pinned Debian packages matching
+the Chromium SDK. Native shared GLib/GObject/GModule/GIO and zlib take priority over
+their five SDK counterparts, keeping initialization state in one shared owner.
+The source platform selects glibc 2.31 to match the SDK. These SDK files are not
+source-built library claims.
+
+C/assembly members of shared targets link eagerly like C++ members. Previously,
+lazy archive groups discarded every Vulkan loader export. The direct export test
+[failed before the fix](https://formatjs.buildbuddy.io/invocation/40db6f85-9e36-463c-84c0-88d1b3550b28).
+The [fixed probe](https://formatjs.buildbuddy.io/invocation/e6945d5b-4ab5-42fe-929a-f983b435fc58)
+checks real loader dispatch, selects source SwiftShader explicitly, renders a 2×2
+framebuffer and verifies every pixel byte. Temporary crash probes are removed.
+The clean [e677b62 components](https://formatjs.buildbuddy.io/invocation/7056db57-2403-44a5-ac43-048b82fa95ec),
+[consumer](https://formatjs.buildbuddy.io/invocation/0109ff8b-c8e5-4faf-9cda-c333de0a4be3)
+and [cross probes](https://formatjs.buildbuddy.io/invocation/eb37a769-f425-4ba9-9c64-5f77a864c1a2)
+also passed.
+
+[e42592d components](https://formatjs.buildbuddy.io/invocation/9a591f26-aab9-495f-8a05-da63df40d687),
+[consumer](https://formatjs.buildbuddy.io/invocation/44781263-425a-4713-a6e2-288114a29449)
+and [cross probes](https://formatjs.buildbuddy.io/invocation/2a544517-a493-4bd2-9e08-ac3beb1bee52)
+passed. Component profiles remain Linux AMD64; full Electron and other source
+profiles remain unfinished.

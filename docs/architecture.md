@@ -230,6 +230,27 @@ No credentials checked in. Hosted CI requires repository hookup and BuildBuddy
 access. Larger source-runtime jobs need separate memory/disk budgets; fixture
 budgets do not estimate Chromium compilation costs.
 
+## Native graphics source boundary
+
+Upstream native rules now build Ozone/GL, ANGLE, SwiftShader, Vulkan and Wayland
+components. Source GLib/GObject/GModule/GIO and zlib have shared owners with their
+original SONAMEs. Platform/SDK header contexts stay separate from linking; native
+Rust FFI libraries remain explicit dependencies.
+
+```mermaid
+flowchart LR
+  GN[Captured GN declarations] --> Native[Native C/C++/Rust rules]
+  Native --> Graphics[ANGLE / SwiftShader / Vulkan]
+  Shared[Source GLib / zlib shared owners] --> Graphics
+  Graphics --> Probe[Loader exports / real framebuffer bytes]
+  Graphics --> Remaining[Compositor / content / Electron]
+```
+
+The Vulkan export regression caught C objects hidden behind lazy archive groups;
+shared C/assembly units now link eagerly. The real SwiftShader pixel probe and
+complete upstream suite pass at `e42592d` and the clean `e677b62`. Full Electron
+remains unfinished.
+
 ## Next milestones
 
 1. Complete upstream Linux source runtime; consume stable outputs here.
