@@ -7,6 +7,7 @@ import os
 import re
 import urllib.request
 import urllib.parse
+from pathlib import Path
 
 from buildbuddy_artifacts import NoRedirect, api_request, invocation_id
 from buildbuddy_log import read_log, resource_diagnostics
@@ -178,6 +179,7 @@ def source_test_diagnostics(identifier, key):
 
 
 def failed_action_diagnostics(identifier, key):
+    public_headers = set(json.loads(Path(__file__).with_name("public_source_headers.json").read_text()))
     request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
                                      data=json.dumps({"execution_lookup": {"invocation_id": identifier}, "inline_execute_response": True}).encode(),
                                      headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
@@ -210,7 +212,9 @@ def failed_action_diagnostics(identifier, key):
             if len(content) > 1024**2:
                 raise ValueError("Test log exceeds limit")
             log += content.decode("utf-8", errors="replace")
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log)}, sort_keys=True))
+        # Only exact filenames already present in public source leave memory.
+        missing = {name for name in re.findall(r"fatal error: ['\"]([^'\"\n]+)['\"] file not found", log) if name in public_headers}
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8]}, sort_keys=True))
 
 
 if __name__ == "__main__":
