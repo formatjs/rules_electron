@@ -261,5 +261,21 @@
     "native wheel transform and clone semantics",
     "original X11 keyboard wire decoding",
     "truncated Snappy stream rejection"
+  ],
+  "ui": [
+    "canonical declared resource path",
+    "declared ICU and generated resource arguments",
+    "declared ICU initialization",
+    "declared minified WebUI module",
+    "default feature initialization",
+    "native English locale pack loading",
+    "native French locale reload and translation",
+    "native color overrides aliases and postprocessing",
+    "original English GRIT resource strings",
+    "packed WebUI module equals original minifier output",
+    "relocated declared locale pack directory"
+  ],
+  "ui_webui": [
+    "generated module semantics"
   ]
 }

@@ -68,6 +68,10 @@ def classify(log):
         "GFX_RUNTIME_TEST": r"check failed: gfx",
         "DISPLAY_RUNTIME_TEST": r"check failed: display",
         "EVENTS_RUNTIME_TEST": r"check failed: events",
+        "UI_RUNTIME_TEST": r"check failed: ui ",
+        "WEBUI_RUNTIME_TEST": r"check failed: ui_webui ",
+        "TYPESCRIPT_COMPILATION": r"error TS[0-9]{4,5}:",
+        "NODE_MODULE_RESOLUTION": r"Cannot find module|Cannot find package|ERR_MODULE_NOT_FOUND",
         "GRIT_REPRODUCIBILITY": r"Generator output differs across source paths and mtimes: tools/grit/grit.py",
         "GRIT_IDS_REPRODUCIBILITY": r"Generator output differs[^\r\n]*; [^\r\n]*gen/tools/gritsettings/default_resource_ids(?:,|$)",
         "GRIT_INFO_REPRODUCIBILITY": r"Generator output differs[^\r\n]*; [^\r\n]*gen/net/net_resources\.pak\.info(?:,|$)",
@@ -187,6 +191,8 @@ def source_test_diagnostics(identifier, key):
         "//source:gfx_test": "gfx",
         "//source:display_test": "display",
         "//source:events_test": "events",
+        "//source:ui_test": "ui",
+        "//source:ui_webui_test": "ui_webui",
         "//electron/private:nss_integrity_test": "nss_integrity",
         "//tests:prepare_source_test": "prepare_source",
     }
@@ -232,7 +238,7 @@ def source_test_diagnostics(identifier, key):
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[:])" + re.escape(name) + r"[:(]([0-9]{1,4})(?::|\]|\s|\))", log) if 0 < int(line) < 5000][:8]
-                if probe in ("libnode", "embedder", "ipcz", "network", "mojo", "fonts", "codecs", "skia", "gfx", "display", "events"):
+                if probe in ("libnode", "embedder", "ipcz", "network", "mojo", "fonts", "codecs", "skia", "gfx", "display", "events", "ui", "ui_webui"):
                     prefix = "patched libnode" if probe == "libnode" else probe
                     details["failed_checks"] = [message for message in public_checks.get(probe, []) if "check failed: " + prefix + " " + message + "\n" in log]
                     details["stages"] = [stage for stage in ["atomic", "icu", "i18n", "snapshot", "node", "gin", "platform", "isolate", "modules", "integrity", "callback", "gc", "loop", "shutdown", "done"] if probe + " probe stage: " + stage + "\n" in log]
@@ -321,7 +327,18 @@ def failed_action_diagnostics(identifier, key):
             name = next((name for name in candidates if name in public_files), None)
             if name is not None and 0 < int(line) < 10000:
                 sites.append({"file": name, "line": int(line)})
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_nonreproducible_outputs": nonreproducible[:8]}, sort_keys=True))
+        ts_sites = []
+        ts_codes = sorted(set(re.findall(r"\berror (TS[0-9]{4,5}):", log)))[:16]
+        for path, line, column, code in re.findall(r"([^\s()]+)\(([0-9]{1,5}),([0-9]{1,4})\): error (TS[0-9]{4,5}):", log):
+            path = posixpath.normpath(path)
+            candidates = [path]
+            for prefix in ("third_party/", "gen/", "ui/", "tools/", "components/"):
+                if "/" + prefix in path:
+                    candidates.append(prefix + path.split("/" + prefix, 1)[1])
+            known = next((name for name in candidates if name in public_files), None)
+            if known and 0 < int(line) < 10000 and 0 < int(column) < 10000:
+                ts_sites.append({"file": known, "line": int(line), "column": int(column), "code": code})
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8]}, sort_keys=True))
 
 
 if __name__ == "__main__":
