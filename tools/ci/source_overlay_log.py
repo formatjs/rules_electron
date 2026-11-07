@@ -142,6 +142,7 @@ def source_test_diagnostics(identifier, key):
         "//source:protobuf_test": "protobuf",
         "//source:perfetto_test": "perfetto",
         "//source:v8_engine_test": "v8_engine",
+        "//source:base_test": "base",
     }
     token, seen, count = "", set(), 0
     for _ in range(8):
