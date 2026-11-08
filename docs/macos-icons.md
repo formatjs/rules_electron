@@ -19,5 +19,5 @@ assembly. [Apple's bundle icon contract](https://developer.apple.com/library/arc
 defines the resource-directory lookup.
 
 The example generates a fixed gray PNG-backed ICNS on BB with pinned Python. Its
-native macOS smoke uses `app.getFileIcon` to check icon pixels, then retains the
+native macOS smoke uses `NSWorkspace.iconForFile:` to check icon pixels, then retains the
 existing deep/strict signature verification. Hosted validation is pending.

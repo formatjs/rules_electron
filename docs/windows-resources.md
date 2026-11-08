@@ -52,3 +52,15 @@ passed Windows x64/ARM64 metadata, launch and both corruption checks for GNU LLV
 and MSVC variants. Linux DEB install/update and macOS integrity smoke also passed.
 This proves the source-built execution tool path against bootstrap Electron;
 full source-built target Electron remains pending.
+## Windows icons
+
+Set `electron_app.windows_icon` to a declared `.ico` asset and supply
+`windows_resource_tool`. Assembly validates the ICO directory and image ranges;
+the pinned `resedit` tool replaces each existing executable icon group, retaining
+its identifier and language. Icon edits precede release signing. No host image
+utility or target executable runs during cross-compilation.
+
+Supply valid ICO image representations; framing validation does not decode them.
+The generic example generates PNG-backed icons with declared Python, then uses
+Windows' native icon lookup to check executable icon pixels. Hosted validation is
+pending. Installer/uninstaller icon customization remains separate.

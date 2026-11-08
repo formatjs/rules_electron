@@ -1,4 +1,4 @@
-"""Deterministic gray ICNS fixture for native bundle icon checks."""
+"""Deterministic gray icon fixtures for native application checks."""
 
 from pathlib import Path
 import struct
@@ -17,6 +17,16 @@ def png(size):
 
 
 if __name__ == "__main__":
+    if Path(sys.argv[1]).suffix == ".ico":
+        sizes = [16, 24, 32, 48, 64, 128, 256]
+        directory, payload = bytearray(), bytearray()
+        for size in sizes:
+            image = png(size)
+            directory += struct.pack("<BBBBHHII", size % 256, size % 256, 0, 0, 1, 32,
+                                     len(image), 6 + 16 * len(sizes) + len(payload))
+            payload += image
+        Path(sys.argv[1]).write_bytes(struct.pack("<HHH", 0, 1, len(sizes)) + directory + payload)
+        sys.exit(0)
     payload = bytearray()
     for kind, size in [(b"ic07", 128), (b"ic08", 256), (b"ic09", 512), (b"ic10", 1024),
                        (b"ic11", 32), (b"ic12", 64), (b"ic13", 256), (b"ic14", 512)]:

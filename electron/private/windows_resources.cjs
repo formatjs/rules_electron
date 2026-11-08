@@ -5,7 +5,7 @@ const { createRequire } = require('node:module');
 const [modules, binary, encoded] = process.argv.slice(2);
 const load = createRequire(path.join(path.resolve(modules), 'resolve.cjs'));
 const { NtExecutable, NtExecutableResource } = load('pe-library');
-const { Resource } = load('resedit');
+const { Data, Resource } = load('resedit');
 const options = JSON.parse(encoded);
 const number = '(?:0|[1-9][0-9]*)';
 const identifier = '(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][A-Za-z0-9-]*)';
@@ -33,6 +33,15 @@ for (const [file, digest] of Object.entries(hashes)) {
 // Resource changes invalidate the runtime's old signature; release signing follows.
 const executable = NtExecutable.from(fs.readFileSync(binary), { ignoreCert: true });
 const resources = NtExecutableResource.from(executable);
+if (options.icon) {
+  const icons = Data.IconFile.from(fs.readFileSync(options.icon)).icons.map((item) => item.data);
+  if (!icons.length) throw new Error('ICO has no images');
+  const groups = Resource.IconGroupEntry.fromEntries(resources.entries);
+  if (!groups.length) throw new Error('Runtime has no icon groups');
+  for (const group of groups) {
+    Resource.IconGroupEntry.replaceIconsForResource(resources.entries, group.id, group.lang, icons);
+  }
+}
 const versions = Resource.VersionInfo.fromEntries(resources.entries);
 if (versions.length !== 1) throw new Error('Expected one Windows version resource');
 const info = versions[0];

@@ -111,6 +111,8 @@ class AssemblyTest(unittest.TestCase):
             {"asar": True, "fuses": {"enableEmbeddedAsarIntegrityValidation": "on"}, "platform": "windows"},
             {"windows_metadata": {"CompanyName": "Example"}, "platform": "windows"},
             {"windows_metadata": {"CompanyName": "Example"}},
+            {"windows_icon": "example.ico", "platform": "windows"},
+            {"windows_icon": "example.ico"},
         ]:
             with self.subTest(options=options), self.assertRaises(ValueError):
                 assemble(self.entries, self.root / "out", **options)

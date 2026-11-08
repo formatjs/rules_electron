@@ -1,7 +1,7 @@
 """Build the example's icon fixture on its execution platform."""
 
 def _impl(ctx):
-    output = ctx.actions.declare_file(ctx.label.name + ".icns")
+    output = ctx.actions.declare_file(ctx.label.name + "." + ctx.attr.format)
     ctx.actions.run(
         executable = ctx.executable._writer,
         arguments = [output.path],
@@ -10,7 +10,10 @@ def _impl(ctx):
     )
     return [DefaultInfo(files = depset([output]))]
 
-example_icns = rule(
+example_icon = rule(
     implementation = _impl,
-    attrs = {"_writer": attr.label(default = Label("//tools:icon_writer"), executable = True, cfg = "exec")},
+    attrs = {
+        "format": attr.string(default = "icns", values = ["icns", "ico"]),
+        "_writer": attr.label(default = Label("//tools:icon_writer"), executable = True, cfg = "exec"),
+    },
 )

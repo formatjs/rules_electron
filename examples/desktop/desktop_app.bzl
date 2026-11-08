@@ -76,6 +76,10 @@ def desktop_app(name, package_json, **kwargs):
             ":windows": {"CompanyName": "Example"},
             "//conditions:default": {},
         }),
+        windows_icon = select({
+            ":windows": ":example_windows_icon",
+            "//conditions:default": None,
+        }),
         macos_signer = select({
             ":macos": "@rcodesign_linux_x64//:rcodesign",
             "//conditions:default": None,

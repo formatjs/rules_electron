@@ -206,6 +206,18 @@ class PlatformLayoutTest(unittest.TestCase):
                 assemble([], self.root / "invalid-icon", platform="macos", macos_icon=icon)
         self.assertFalse((self.root / "invalid-icon").exists())
 
+    def test_windows_icon_rejects_malformed_directory_before_assembly(self):
+        icon = self.root / "invalid.ico"
+        for data in [b"", struct.pack("<HHH", 0, 2, 1), struct.pack("<HHH", 0, 1, 0),
+                     struct.pack("<HHH", 0, 1, 2) + bytes(16),
+                     struct.pack("<HHHBBBBHHII", 0, 1, 1, 32, 32, 0, 0, 1, 32, 99, 22),
+                     struct.pack("<HHHBBBBHHII", 0, 1, 1, 32, 32, 0, 0, 1, 32, 8, 0)]:
+            icon.write_bytes(data)
+            with self.subTest(data=data), self.assertRaises(ValueError):
+                assemble([], self.root / "invalid-windows-icon", platform="windows", windows_icon=icon,
+                         windows_resource_tool={"node": "not-invoked"})
+        self.assertFalse((self.root / "invalid-windows-icon").exists())
+
     def test_additional_asar_stages_sidecar_and_header_integrity(self):
         notice = self.root / "extra.txt"
         notice.write_bytes(b"archive sidecar")

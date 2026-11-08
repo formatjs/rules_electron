@@ -127,6 +127,44 @@ def windows_resources(executable, expected_version):
     return integrity
 
 
+def check_macos_icon(app):
+    import ctypes
+    from ctypes import c_void_p, c_char_p, c_long, c_double
+
+    ctypes.CDLL("/System/Library/Frameworks/AppKit.framework/AppKit")
+    objc = ctypes.CDLL("/usr/lib/libobjc.A.dylib")
+    objc.objc_getClass.argtypes, objc.objc_getClass.restype = [c_char_p], c_void_p
+    objc.sel_registerName.argtypes, objc.sel_registerName.restype = [c_char_p], c_void_p
+
+    def send(receiver, selector, result=c_void_p, *arguments):
+        function = ctypes.CFUNCTYPE(result, c_void_p, c_void_p, *[kind for kind, _ in arguments])(("objc_msgSend", objc))
+        return function(receiver, objc.sel_registerName(selector.encode()), *[value for _, value in arguments])
+
+    def class_named(name):
+        return objc.objc_getClass(name.encode())
+
+    pool = send(class_named("NSAutoreleasePool"), "new")
+    try:
+        filename = send(class_named("NSString"), "stringWithUTF8String:", c_void_p, (c_char_p, os.fsencode(app)))
+        workspace = send(class_named("NSWorkspace"), "sharedWorkspace")
+        image = send(workspace, "iconForFile:", c_void_p, (c_void_p, filename))
+        data = send(image, "TIFFRepresentation")
+        bitmap = send(class_named("NSBitmapImageRep"), "imageRepWithData:", c_void_p, (c_void_p, data))
+        assert bitmap, "Bundle icon has no bitmap representation"
+        width, height = send(bitmap, "pixelsWide", c_long), send(bitmap, "pixelsHigh", c_long)
+        assert width > 0 and height > 0
+        color = send(bitmap, "colorAtX:y:", c_void_p, (c_long, width // 2), (c_long, height // 2))
+        space = send(class_named("NSColorSpace"), "sRGBColorSpace")
+        color = send(color, "colorUsingColorSpace:", c_void_p, (c_void_p, space))
+        assert color, "Bundle icon has no RGB color"
+        pixel = [round(send(color, component, c_double) * 255) for component in
+                 ["redComponent", "greenComponent", "blueComponent", "alphaComponent"]]
+        assert pixel == [43, 43, 43, 255], pixel
+    finally:
+        send(pool, "drain", None)
+    print("EXAMPLE_ICON_SMOKE_OK")
+
+
 def check_macos_protocol(app, environment, directory, target_arch):
     applications = Path.home() / "Applications"
     applications.mkdir(exist_ok=True)
@@ -148,6 +186,7 @@ def _check_macos_protocol(app, environment, directory, target_arch):
     url = "sample-desktop://smoke/" + uuid.uuid4().hex
     subprocess.run([register, "-f", str(app)], check=True, capture_output=True, timeout=15)
     try:
+        check_macos_icon(app)
         with tempfile.TemporaryFile() as log:
             process = subprocess.Popen([
                 str(executable), "--protocol-smoke", str(report), "--disable-gpu",
@@ -170,8 +209,6 @@ def _check_macos_protocol(app, environment, directory, target_arch):
                     raise RuntimeError("macOS protocol dispatch failed: " + json.dumps(details))
                 if process.wait(timeout=25):
                     raise RuntimeError("macOS protocol receiver failed")
-                log.seek(0)
-                assert b"EXAMPLE_ICON_SMOKE_OK" in log.read()
                 assert json.loads(report.read_text()) == {
                     "url": url, "platform": "darwin", "architecture": target_arch,
                 }
@@ -185,7 +222,6 @@ def _check_macos_protocol(app, environment, directory, target_arch):
                         process.wait()
     finally:
         subprocess.run([register, "-u", str(app)], check=True, capture_output=True, timeout=15)
-    print("EXAMPLE_ICON_SMOKE_OK")
     print("EXAMPLE_PROTOCOL_SMOKE_OK")
 
 
@@ -311,6 +347,9 @@ if __name__ == "__main__":
             ], cwd=directory, env=environment, capture_output=True, encoding="utf-8", errors="replace", timeout=45)
         if result.returncode:
             raise RuntimeError(f"Electron exited {result.returncode}:\n{result.stdout}\n{result.stderr}")
+        if host_os == "windows":
+            assert "EXAMPLE_ICON_SMOKE_OK" in result.stdout
+            print("EXAMPLE_ICON_SMOKE_OK")
         lines = [line for line in result.stdout.splitlines() if line.startswith("EXAMPLE_SMOKE_OK ")]
         assert len(lines) == 1, result.stdout + result.stderr
         report = json.loads(lines[0].removeprefix("EXAMPLE_SMOKE_OK "))

@@ -9,7 +9,7 @@ from electron.private.asar import create_archive, header_hash as archive_header_
 from electron.private.files import expand as _expand, relative_path
 from electron.private.fuses import set_fuses
 from electron.private.identity import build_identity
-from electron.private.icons import validate_icns
+from electron.private.icons import validate_icns, validate_ico
 from electron.private.runtime import brand_macos, extract_runtime, normalize
 
 
@@ -19,7 +19,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              product_name="Electron", app_id="", runtime_languages=(),
              windows_resource_tool=None, windows_metadata=None,
              build_version="", build_number="", macos_protocols=None, macos_protocol_roles=None,
-             extra_files=(), extra_asars=(), macos_icon=""):
+             extra_files=(), extra_asars=(), macos_icon="", windows_icon=""):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
     if platform != "macos" and (macos_protocols or macos_protocol_roles):
@@ -31,12 +31,16 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     embedded_integrity = (fuses or {}).get("enableEmbeddedAsarIntegrityValidation") == "on"
     if embedded_integrity and (not asar or platform == "linux" or platform == "windows" and not windows_resource_tool):
         raise ValueError("enableEmbeddedAsarIntegrityValidation requires ASAR and macOS or a Windows resource tool")
-    if platform != "windows" and (windows_resource_tool or windows_metadata):
+    if platform != "windows" and (windows_resource_tool or windows_metadata or windows_icon):
         raise ValueError("Windows resource options require a Windows target")
     if platform == "windows" and (build_version or build_number) and not windows_resource_tool:
         raise ValueError("Windows build identity requires windows_resource_tool")
     if windows_metadata and not windows_resource_tool:
         raise ValueError("windows_metadata requires windows_resource_tool")
+    if windows_icon and not windows_resource_tool:
+        raise ValueError("windows_icon requires windows_resource_tool")
+    if windows_icon:
+        validate_ico(windows_icon)
     resources = "Contents/Resources" if platform == "macos" else "resources"
     if not asar and asar_unpacked:
         raise ValueError("asar_unpacked requires asar=True")
@@ -137,6 +141,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
                 "executable_name": executable_name, "header_hash": header_hash,
                 "extra_asar_hashes": extra_hashes,
                 "metadata": windows_metadata or {},
+                "icon": str(windows_icon) if windows_icon else "",
             }),
         ], check=True)
     if fuses:
