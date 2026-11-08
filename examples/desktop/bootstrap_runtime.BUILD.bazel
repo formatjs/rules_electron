@@ -9,10 +9,9 @@ electron_runtime(
             [
                 "*",
             ],
-            # Use the kernel user-namespace sandbox; setuid installation is separate.
+            # Privilege bits are assigned only by the installer.
             exclude = [
                 "electron",
-                "chrome-sandbox",
                 "BUILD.bazel",
                 "MODULE.bazel",
                 "WORKSPACE",
