@@ -395,8 +395,7 @@ core dumps are disabled. This checks the language boundary, not crash reporting.
 The full dependency action audit found zero CMake/foreign-cc actions. Its positive
 control found 20,791 CppCompile actions across platform and bridge dependencies.
 Both queries traversed `deps(...)`; local analysis executed zero build actions.
-Full source profiles remain Linux AMD64. CrabbyAVIF, Blink and full Electron are
-unfinished.
+Full source profiles remain Linux AMD64. Blink and full Electron are unfinished.
 
 ## CrabbyAVIF source integration
 
@@ -411,7 +410,12 @@ The decode probe uses Chromium's parse/frame API and decoder-owned image.
 The pinned convenience ReadMemory API shallow-copies metadata pointers; freeing
 that copied image is unsafe. The probe compares every RGB byte against the
 upstream lossless PNG fixture, then exercises separately owned RGB/YUV buffers.
-Hosted validation of this integration remains pending.
+[4cc896e components](https://formatjs.buildbuddy.io/invocation/de7eaeb8-6cfd-4177-ab99-5abd15832f99),
+[BCR consumer](https://formatjs.buildbuddy.io/invocation/bf52cd98-63f3-4b1a-b28b-4bb58dc007ad)
+and [cross probes](https://formatjs.buildbuddy.io/invocation/15a831a3-e85e-45c3-a4fd-be8090bb46e8)
+passed. Structured results report the decode probe PASSED through cleanup and
+RGB-to-YUV conversion. This validates the decoder-owned path, not the unsafe
+convenience API.
 
 A dependency action audit covering source_components and the decode probe found
 zero foreign/CMake actions, with 24,493 CppCompile actions as positive control.
