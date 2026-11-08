@@ -15,6 +15,7 @@ from buildbuddy_log import read_log, resource_diagnostics
 from profile_summary import decode_profile, summarize_source
 from network_diagnostics import network_diagnostics
 from source_headers_diagnostics import missing_headers
+from execution_diagnostics import failed_execution_lookups
 
 
 def source_profile_diagnostics(invocation, key):
@@ -343,15 +344,21 @@ def failed_action_diagnostics(identifier, key):
         if path.endswith((".h", ".hpp", ".inc", ".inl")):
             parts = path.split("/")
             public_headers.update("/".join(parts[index:]) for index in range(len(parts)))
-    request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
-                                     data=json.dumps({"execution_lookup": {"invocation_id": identifier}, "inline_execute_response": True}).encode(),
-                                     headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
-    with urllib.request.build_opener(NoRedirect()).open(request, timeout=60) as response:
-        data = response.read(64 * 1024**2 + 1)
-    if len(data) > 64 * 1024**2:
-        raise ValueError("Execution diagnostics exceed limit")
+    def executions(lookup, inline=False):
+        request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
+                                         data=json.dumps({"execution_lookup": lookup, "inline_execute_response": inline}).encode(),
+                                         headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
+        with urllib.request.build_opener(NoRedirect()).open(request, timeout=60) as response:
+            data = response.read(64 * 1024**2 + 1)
+        if len(data) > 64 * 1024**2:
+            raise ValueError("Execution diagnostics exceed limit")
+        return json.loads(data).get("execution", [])
+
+    # Full successful results can exceed the response limit on source builds.
+    inventory = executions({"invocation_id": identifier})
+    failed = [execution for lookup in failed_execution_lookups(identifier, inventory) for execution in executions(lookup, inline=True)]
     failures = 0
-    for execution in json.loads(data).get("execution", []):
+    for execution in failed:
         response = execution.get("executeResponse", {})
         result = response.get("result", {})
         status = execution.get("status", {})

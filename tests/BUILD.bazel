@@ -245,3 +245,10 @@ py_test(
     srcs = ["source_headers_diagnostics_test.py"],
     deps = ["//tools/ci:source_headers_diagnostics"],
 )
+
+py_test(
+    name = "execution_diagnostics_test",
+    size = "small",
+    srcs = ["execution_diagnostics_test.py"],
+    deps = ["//tools/ci:execution_diagnostics"],
+)

@@ -47,3 +47,9 @@ py_library(
     srcs = ["source_headers_diagnostics.py"],
     visibility = ["//tests:__pkg__"],
 )
+
+py_library(
+    name = "execution_diagnostics",
+    srcs = ["execution_diagnostics.py"],
+    visibility = ["//tests:__pkg__"],
+)
