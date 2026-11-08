@@ -474,7 +474,9 @@ def failed_action_diagnostics(identifier, key):
             name = next((name for name in candidates if name in public_files), None)
             if name is not None and 0 < int(line) < 10000:
                 sites.append({"file": name, "line": int(line)})
-        cpp_constraints = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line.split("note:", 1)[1]) if word in public_identifiers))[:40] for line in log.splitlines() if re.search(r"note:.*(?:because|constraint|candidate|invocable)", line)][:12]
+        # Pinned libc++ ranges_find.h template names identify deduction failures.
+        constraint_identifiers = public_identifiers | {"_Iter", "_Sent", "_Tp", "_Proj", "_Ip", "_Sp", "_Rp"}
+        cpp_constraints = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line.split("note:", 1)[1]) if word in constraint_identifiers))[:40] for line in log.splitlines() if re.search(r"note:.*(?:because|constraint|candidate|invocable)", line)][:24]
         ts_sites = []
         check_sites = [{"file": name, "line": int(line)} for name, line in re.findall(r"([A-Za-z_0-9.-]+\.(?:h|c|cc|cpp))[:(]([0-9]{1,5})", log) if name in public_basenames and 0 < int(line) < 10000][:8]
         fatal_lines = [line for line in log.splitlines() if re.search(r"FATAL|ERROR|Check failed|Assertion|assertion|DepsException", line)]
