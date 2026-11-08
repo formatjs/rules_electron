@@ -199,14 +199,17 @@ def check_macos_signing(app):
         flags = subprocess.run(["/usr/bin/codesign", "--display", "--verbose=4", str(target)],
                                capture_output=True, text=True, check=True)
         assert re.search(r"flags=.*\bruntime\b", flags.stderr), flags.stderr
-        result = subprocess.run(["/usr/bin/codesign", "--display", "--entitlements", "-", str(target)],
+        result = subprocess.run(["/usr/bin/codesign", "--display", "--entitlements", "-", "--xml", str(target)],
                                 capture_output=True, check=True)
         data = result.stdout
         # codesign can retain the CSMAGIC_EMBEDDED_ENTITLEMENTS blob header.
         if data[:4] == bytes.fromhex("fade7171"):
             assert len(data) >= 8 and int.from_bytes(data[4:8], "big") == len(data)
             data = data[8:]
-        entitlements = plistlib.loads(data)
+        try:
+            entitlements = plistlib.loads(data)
+        except plistlib.InvalidFileException:
+            raise AssertionError(f"Entitlement output is not a plist: stdout_bytes={len(result.stdout)} stderr_bytes={len(result.stderr)}") from None
         for name in ["allow-jit", "allow-unsigned-executable-memory", "disable-library-validation"]:
             assert entitlements.get("com.apple.security.cs." + name) is True, name
     print("EXAMPLE_HARDENED_RUNTIME_SMOKE_OK binaries=" + str(len(targets)))
