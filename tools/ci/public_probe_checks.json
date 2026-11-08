@@ -394,5 +394,29 @@
   "blink_crash": [
     "original panic aborts child with SIGABRT",
     "panic reaches original Rust crash site"
+  ],
+  "crabby_decode": [
+    "C API allocates RGB output",
+    "C API allocates conversion image",
+    "C API allocates decoder objects",
+    "C API allocates error case objects",
+    "C API owns converted YUV planes",
+    "RGB output has bounded row layout",
+    "Rust decoder reports matching native dav1d version",
+    "declared AVIF and independent PNG fixtures",
+    "declared AVIF fixture available",
+    "declared PNG reference available",
+    "decoded AVIF dimensions and depth match reference",
+    "every decoded RGB byte matches independent lossless PNG",
+    "generated libyuv binding matches source headers",
+    "independent reference is original RGB8 image",
+    "malformed AVIF returns an error across Rust FFI",
+    "original Rust RGB conversion succeeds",
+    "original Rust decoder reads lossless AVIF through native dav1d",
+    "original Rust image conversion succeeds",
+    "red conversion has BT601 limited chroma",
+    "red conversion has BT601 limited luma",
+    "source libpng allocates reference reader",
+    "source libpng reads independent reference"
   ]
 }
