@@ -15,6 +15,11 @@ class SourceHeadersDiagnosticsTest(unittest.TestCase):
         )
         self.assertEqual(missing_headers(log, {"public/header.h", "other.h"}), ["other.h", "public/header.h"])
 
+    def test_colored_compiler_diagnostics_still_require_exact_public_paths(self):
+        log = "fatal error: \x1b[1m'public/header.h'\x1b[0m file not found"
+        self.assertEqual(missing_headers(log, {"public/header.h"}), ["public/header.h"])
+        self.assertEqual(missing_headers(log, {"other.h"}), [])
+
     def test_rejects_multiline_and_unbounded_output(self):
         allowed = {f"public/{index:02}.h" for index in range(20)}
         log = "\n".join(f"fatal error: '{path}' file not found" for path in sorted(allowed, reverse=True))
