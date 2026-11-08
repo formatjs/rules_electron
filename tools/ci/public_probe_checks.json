@@ -327,5 +327,20 @@
     "released transfer handle rejected",
     "shared transfer bytes decoded into bucket",
     "truncated shader cache protobuf rejected"
+  ],
+  "symphonia": [
+    "bounded WAV reference chunk",
+    "declared audio fixture available",
+    "declared fixture and packet bounds",
+    "decoded FLAC frame shape and sample format",
+    "decoder recovers after rejected packet",
+    "failed decoder cannot return audio samples",
+    "independent 24 bit reference samples",
+    "independent WAV reference container",
+    "lossless decoded samples match independent WAV",
+    "original FLAC packet bounds",
+    "original Rust decoder initialized through CXX",
+    "truncated packet reports Rust error through CXX",
+    "unsupported codec rejected through CXX"
   ]
 }

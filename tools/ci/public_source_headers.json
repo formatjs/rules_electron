@@ -8334,6 +8334,7 @@
   "marl/waitgroup.h",
   "math.h",
   "media/NdkImageReader.h",
+  "media/filters/symphonia_glue.rs.h",
   "media/media_buildflags.h",
   "mem.h",
   "mem_intrin.def",
