@@ -289,6 +289,7 @@ def source_test_diagnostics(identifier, key, selected=None):
         "//source/content_metadata:api_features_test": "api_features",
         "//source/default_app:assets_test": "default_app",
         "//source/credits:credits_test": "credits",
+        "//source/distribution:metadata_test": "distribution_metadata",
         "//electron/private:source_action_test": "source_action",
         "//source/blink_bindings:bindings_test": "blink_bindings",
         "//source/crabbyavif:decode_test": "crabby_decode",
@@ -557,6 +558,6 @@ if __name__ == "__main__":
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
         elif status == "running" and command == "test":
-            source_test_diagnostics(identifier, key, {"credits", "default_app", "catapult", "content_webui", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "policy", "web_assets", "tracing_proto"})
+            source_test_diagnostics(identifier, key, {"distribution_metadata", "credits", "default_app", "catapult", "content_webui", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "policy", "web_assets", "tracing_proto"})
         elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
-            source_test_diagnostics(identifier, key, {"credits", "default_app", "symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "source_action", "llguidance", "crabby_decode"})
+            source_test_diagnostics(identifier, key, {"distribution_metadata", "credits", "default_app", "symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "source_action", "llguidance", "crabby_decode"})
