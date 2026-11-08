@@ -276,15 +276,20 @@ profiles remain unfinished.
 
 ## GPU command-buffer source boundary
 
-The upstream Linux AMD64 profile now captures 2,633 native units across 407
+The upstream Linux AMD64 profile now captures 2,639 native units across 409
 library/group/runtime targets, including GLES2 client/service command buffers,
-Viz common and GPU process IPC services. Sixteen exact source pins include
+Viz common and GPU IPC client/host/service. Sixteen exact source pins include
 Chromium's libyuv revision. The original Dawn checkout hook uses its supported
 pinned revision/time environment; no Git or clock lookup runs inside that action.
 Quoted sibling headers retain their original relative layout across profile
 boundaries instead of being redirected into another source repository.
 
-The [7d07a48 aggregate](https://formatjs.buildbuddy.io/invocation/2a50b8c8-2089-4c39-9950-a097be8b3f3e)
-and [SwiftShader pixel probe](https://formatjs.buildbuddy.io/invocation/7d6b4821-4816-455a-b5c8-efb743167cb2)
-passed on BB. The new transport probe still needs passing runtime evidence after
-its C++ settings and complete-type include fixes. Full Electron remains unfinished.
+The [5cb43b3 aggregate](https://formatjs.buildbuddy.io/invocation/db1109b0-980c-44fe-99f1-153b9efa8946)
+and [SwiftShader pixel probe](https://formatjs.buildbuddy.io/invocation/e88612d6-5558-453f-8b13-ee2aa123e107)
+passed on BB. [9a26e4a components](https://formatjs.buildbuddy.io/invocation/85548eee-1919-463f-b3bc-faff67712494),
+[BCR consumer](https://formatjs.buildbuddy.io/invocation/7fe6e314-f4e1-48e2-a742-0f55ecf58e30)
+and [cross probes](https://formatjs.buildbuddy.io/invocation/2c7580d3-ff97-41a2-a821-cdd4ce646ecb)
+also passed. The complete native suite exercises real command transfer, malformed
+ranges/handles, libyuv conversion bytes, GPU preference Mojo serialization, shader
+cache protobufs and Viz plane sizing. Its launcher declares the pinned desktop
+runtime closure alongside source-built shared owners. Full Electron remains unfinished.

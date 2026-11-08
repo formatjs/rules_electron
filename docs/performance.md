@@ -539,6 +539,21 @@ The preceding graphics gate and concurrent BCR consumer had populated caches.
 This is a mixed-cache observation, not a cold baseline or measured speedup.
 Transport-probe runtime validation remains separate from aggregate compilation.
 
+The expanded [5cb43b3 aggregate](https://formatjs.buildbuddy.io/invocation/db1109b0-980c-44fe-99f1-153b9efa8946)
+built 2,639 units in 34.549 seconds with eight tracked executions, 24.255 CPU
+seconds, 526,127,104-byte maximum action peak memory, 26,974,551 input download
+bytes and 2,873,250 output upload bytes. Most existing outputs were already cached;
+the target set changed, so these figures do not establish a speedup.
+
+The validated [9a26e4a aggregate](https://formatjs.buildbuddy.io/invocation/2f4f54d6-0367-457d-b6aa-21c564d24ac5)
+passed in 6.357 seconds with zero tracked executions. Its
+[complete native suite](https://formatjs.buildbuddy.io/invocation/a2205917-022b-4e00-a863-c111dae2b214)
+passed in 8.390 seconds with two tracked executions, 2.497 CPU seconds,
+367,448,064-byte maximum action peak memory, 25,012 input download bytes and
+3,302,529 output upload bytes. Earlier attempts populated caches; BB-host native
+test execution remains outside those remote CPU/memory totals. These are warm
+observations with passing behavior checks, not a cold/warm speedup comparison.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache
