@@ -107,7 +107,7 @@ def classify(log):
         "LLGUIDANCE_TEST": r"check failed: llguidance ",
         "CATAPULT_RESOURCE_INPUT": r"DepsException:.*(?:nonexistent file|not in the search path)",
         "ELECTRON_VERSION_TEST": r"(?:FAIL|ERROR): test_(?:stable_and_beta_metadata_preserve_semver_and_windows_versions|node_tool_pin_matches_original_yarn_lock)",
-        "API_FEATURES_TEST": r"(?:FAIL|ERROR): test_generated_feature_tables_preserve_all_source_keys_and_declared_year",
+        "API_FEATURES_TEST": r"(?:FAIL|ERROR): test_generated_feature_tables_(?:preserve_all_source_keys|match_merged_compilable_sources)_and_declared_year",
         "NATIVE_GENERATORS_TEST": r"(?:FAIL|ERROR): test_original_generators_match_bazel_(?:fuse_and_node|fuse_node_and_js2c)_artifacts",
         "SDK_RUNTIME_ABI_TEST": r"(?:FAIL|ERROR): test_sdk_interfaces_match_pinned_runtime_symbols_and_build_ids",
         "POLICY_TEST": r"(?:FAIL|ERROR): test_(?:pinned_yaml_runtime_and_policy_ids_match_sources|depfile_uses_declared_relative_policy_paths)",
