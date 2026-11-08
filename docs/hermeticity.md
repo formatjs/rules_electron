@@ -504,3 +504,24 @@ CppCompile actions as positive control. No CMake/foreign-cc mnemonics appear;
 local analysis executes zero build actions. Expanded contexts change compile
 keys, so this does not establish warm-cache performance. Hosted compilation,
 full executable linkage, all source triples and migration parity remain open.
+
+The [312214e overlay](https://github.com/formatjs/electron/commit/312214ea30f4de9af76987adafc4dd10076fabfb)
+captures the original Electron executable, sandbox and crash handler. The original
+default-app pipeline now declares 145 pinned npm packages, API/type generation,
+upstream TypeScript smoke checks, default-app compilation and ASAR generation.
+Node actions compare product bytes across isolated source paths and changed
+mtimes. These execution checks remain pending on BB.
+
+The complete graph analyzes with 132,721 actions, including 67,499 CppCompile,
+330 CppLink and three ElectronNodeProject actions. All three program link actions
+are present; local analysis executes zero build actions. The component output
+includes `default_app.asar`. No CMake/foreign-cc action mnemonics appear.
+
+The prior components workflow failed. Hosted failures exposed two Python protoc
+plugin launchers, an enterprise obfuscation dependency and libc++'s templated
+`unique_ptr::operator*`. The new revision supplies explicit launchers/dependencies
+and preserves cookie-comparison projections with dereference lambdas. Consumer
+checks also exposed API override/`nocompile` semantics and original GRIT pack/gzip
+boundaries; their contracts now follow those producers. Hosted validation of
+these fixes, executable linkage, runtime assembly/launch and full bundle
+typechecking remain open. Full native source profiles still cover Linux AMD64.
