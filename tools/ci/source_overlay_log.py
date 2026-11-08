@@ -365,6 +365,8 @@ def failed_action_diagnostics(identifier, key):
             for prefix in ("v8/", "third_party/", "gen/", "source/", "build/", "gpu/", "ui/", "cc/", "skia/", "electron/"):
                 if "/" + prefix in path:
                     candidates.append(prefix + path.split("/" + prefix, 1)[1])
+            parts = path.split("/")
+            candidates.extend("/".join(parts[index:]) for index in range(len(parts)))
             missing_inputs.update(name for name in candidates if name in public_files)
         nonreproducible = []
         for script, outputs in re.findall(r"Generator output differs across source paths and mtimes: ([^;\r\n]+); ([^\r\n]+)", log):
