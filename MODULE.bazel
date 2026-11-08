@@ -19,3 +19,11 @@ register_toolchains(
     "@llvm//toolchain:all",
     dev_dependency = True,
 )
+
+npm_runtime = use_repo_rule("//electron:npm.bzl", "npm_runtime")
+
+npm_runtime(
+    name = "bundled_npm_fixture",
+    dev_dependency = True,
+    lock = "//tests:fixtures/bundled-package-lock.json",
+)

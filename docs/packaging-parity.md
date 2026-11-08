@@ -8,7 +8,7 @@ electron-builder replacement.
 | --- | --- | --- |
 | Target selection | Seven example OS/CPU/compiler variants | Full source-built Electron runtime |
 | Main/preload/renderer inputs | Explicit files and generated directories | Rich package-provider adapters |
-| Runtime dependencies | Integrity-pinned npm v3 imports; explicit workspace/generated package providers and nested layouts; target-built Node-API addon/helper | Provider-specific adapters, separately recorded bundled dependencies; Electron Node/V8 ABI toolchains |
+| Runtime dependencies | Integrity-pinned npm v3 imports and bundled-owner validation; explicit workspace/generated package providers and nested layouts; target-built Node-API addon/helper | Provider-specific adapters; Electron Node/V8 ABI toolchains |
 | ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity | Direct unpacked alias operations |
 | Extra resources/files | Declared file/tree mappings to resources or app content root, outside ASAR; normalized modes | Arbitrary resource-tree directory symlinks |
 | File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories, including prepackaged imports | — |

@@ -39,9 +39,21 @@ dependency graph changes, then review its versions and integrity hashes.
 declared Node tools. The default exposes its contents for the app mapping above.
 Metadata rewriting remains separate: see [manifest overlays](metadata.md).
 
-`npm_runtime` rejects workspace/file/git links and separately recorded bundled
-dependencies. Package-manager link layouts, bin shims and install scripts are
-unsupported by that fetcher.
+`npm_runtime` supports separately recorded `inBundle` dependencies. Their bytes
+come from the nearest selected parent archive and its SRI; no separate child
+download occurs. Bundled package name/version must match the lock, and the
+manifest must resolve inside that archive owner. Missing owners or mismatched
+identities fail fetching. `@app_npm//:bundled_packages.json` records each owner
+and integrity hash. Development/platform omissions prune entire nested package
+subtrees, including files already present in a parent tarball. Parent archives
+extract before nested package overrides, independent of lock object order.
+
+The BB fixture uses the pinned npm 11.4.2 archive and its 209 bundled package
+records, including aliases and an explicit development omission. npm itself is
+never executed. Hosted validation remains pending.
+
+`npm_runtime` still rejects workspace/file/git links. Package-manager link
+layouts, bin shims and install scripts remain unsupported by that fetcher.
 Build native addons through declared Bazel
 targets, then map their outputs into the app. General Node/V8 ABI addon tooling
 and adapters for other npm providers remain open.
@@ -88,9 +100,14 @@ workspace metadata can use original JSON files as version inputs rather than
 introducing cyclic Bazel target dependencies. No resolver, hoister or filesystem
 symlink layout runs during assembly. Provider-specific imports remain open.
 
-The native example now packages its target-built addon through these rules and
-derives app dependency versions from that package provider. Hosted validation of
-this conversion remains pending.
+The native example packages its target-built addon through these rules and
+derives app dependency versions from that package provider. The
+[6b6a46a BB suite](https://formatjs.buildbuddy.io/invocation/cabd145b-b737-4be4-9cc3-e187427982b3),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/a252d750-5e5c-452f-996c-7791bf054246)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42518647293)
+passed, including both Windows compiler variants. Package tests cover generated
+versions, nested aliases, immutable source manifests and directory propagation
+into ASAR.
 
 The desktop example consumes this public rule for electron-updater, PE tooling
 and minimatch. Its updater lock includes development-only minimatch; native smoke

@@ -14,6 +14,22 @@ load(":npm_lock_test.bzl", "npm_lock_test")
 
 npm_lock_test(name = "npm_lock_test")
 
+py_test(
+    name = "npm_bundle_test",
+    size = "small",
+    srcs = ["npm_bundle_test.py"],
+    args = [
+        "$(rootpath @bundled_npm_fixture//:runtime)",
+        "$(rootpath @bundled_npm_fixture//:bundled_packages.json)",
+        "$(rootpath fixtures/bundled-package-lock.json)",
+    ],
+    data = [
+        "fixtures/bundled-package-lock.json",
+        "@bundled_npm_fixture//:bundled_packages.json",
+        "@bundled_npm_fixture//:runtime",
+    ],
+)
+
 empty_tree(name = "empty_tree")
 
 electron_files(

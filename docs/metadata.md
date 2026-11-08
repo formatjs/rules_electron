@@ -38,7 +38,9 @@ versions from the same manifests shipped with the modules. Unknown production
 dependencies, duplicate names and invalid versions fail before writing output.
 Development-only dependencies are untouched. No package manager or lifecycle
 script runs. Native example uses `workspace:*` for its Bazel-built addon and
-checks the packaged exact version on each smoke host; validation is pending.
+checks the packaged exact version on each smoke host. The
+[6b6a46a native run](https://github.com/formatjs/rules_electron/actions/runs/42518647293)
+passed on all four host types and both Windows compiler variants.
 
 The desktop smoke checks merged dependency metadata, injected release fields
 and removed development fields in the packaged ASAR.

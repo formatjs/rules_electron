@@ -1,6 +1,6 @@
 """Declared workspace packages and integrity-pinned npm runtime trees."""
 
-load("//electron/private:npm_lock.bzl", "npm_lock_packages", "npm_package_path")
+load("//electron/private:npm_lock.bzl", "npm_bundle_identity", "npm_lock_packages", "npm_package_path")
 load(":files.bzl", "ElectronFileTreeInfo", "electron_files")
 
 ElectronNpmPackageInfo = provider(
@@ -93,14 +93,29 @@ def _impl(ctx):
     )
     if selection.error:
         fail(selection.error)
-    for path, package in selection.packages.items():
+    for path in sorted(selection.packages):
+        package = selection.packages[path]
         ctx.download_and_extract(
             url = package["resolved"],
             integrity = package["integrity"],
             output = path,
             stripPrefix = "package",
         )
+    for path in selection.omitted:
+        if not npm_package_path(path):
+            ctx.delete(path)
+    provenance = {}
+    for path, bundle in selection.bundled.items():
+        manifest = ctx.path(path + "/package.json")
+        if not manifest.exists or not str(manifest.realpath).startswith(str(ctx.path(bundle.owner).realpath) + "/"):
+            fail("Bundled npm manifest missing or outside archive owner: " + path)
+        error = npm_bundle_identity(path, bundle.package, json.decode(ctx.read(manifest)))
+        if error:
+            fail(error)
+        provenance[path] = {"owner": bundle.owner, "version": bundle.package["version"], "integrity": selection.packages[bundle.owner]["integrity"]}
+    ctx.file("bundled_packages.json", json.encode(provenance))
     ctx.file("BUILD.bazel", """load("@rules_electron//electron:files.bzl", "electron_files")
+exports_files(["bundled_packages.json"], visibility = ["//visibility:public"])
 electron_files(
     name = "runtime",
     srcs = {path: path[%d:] for path in glob(["node_modules/**"], exclude = ["**/BUILD", "**/BUILD.bazel"])},
