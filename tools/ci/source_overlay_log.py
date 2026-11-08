@@ -111,7 +111,7 @@ def classify(log):
         "NATIVE_GENERATORS_TEST": r"(?:FAIL|ERROR): test_original_generators_match_bazel_fuse_and_node_artifacts",
         "SDK_RUNTIME_ABI_TEST": r"(?:FAIL|ERROR): test_sdk_interfaces_match_pinned_runtime_symbols_and_build_ids",
         "POLICY_TEST": r"(?:FAIL|ERROR): test_(?:pinned_yaml_runtime_and_policy_ids_match_sources|depfile_uses_declared_relative_policy_paths)",
-        "CONTENT_WEBUI_TEST": r"(?:FAIL|ERROR): test_(?:tracing_pack_preserves_original_html_and_javascript|distiller_pack_inlines_pinned_javascript_and_preserves_valid_syntax|electron_repack_preserves_discovery_page_and_component_payloads)",
+        "CONTENT_WEBUI_TEST": r"(?:FAIL|ERROR): test_(?:tracing_pack_preserves_original_html_and_javascript|distiller_pack_inlines_pinned_javascript_and_preserves_valid_syntax|electron_repack_preserves_discovery_page_and_component_payloads|neterror_pack_inlines_both_original_image_scales)",
         "CATAPULT_TEST": r"(?:FAIL|ERROR): test_(?:standalone_html_uses_chromium_tracing_route|minified_viewer_contains_entrypoint_and_parses)",
         "MOJO_LITE_WIRE_TEST": r"(?:FAIL|ERROR): test_mojo_lite_preserves_signed_unsigned_wire_values",
         "DEVTOOLS_BROTLI_TEST": r"(?:FAIL|ERROR): test_devtools_brotli_payload_and_hash_match_original_html",

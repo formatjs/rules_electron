@@ -470,3 +470,9 @@ passed. Final [components diagnostics](https://formatjs.buildbuddy.io/invocation
 reported only the missing notification header and nested DomDistiller input.
 The source overlay now pins those interfaces/assets and expands the full app
 resource closure; hosted validation of those changes remains required.
+
+
+The `b1c1300` [hosted consumer](https://formatjs.buildbuddy.io/invocation/422d9618-3b01-4852-94fe-e3b0d7ae83f2)
+passed the release/beta Electron version contract, original bundle tests, SDK
+ABI checks and native runtime probes. Expanded resources exposed missing CSS
+images and feature JSON inputs; full consumer/components validation is pending.
