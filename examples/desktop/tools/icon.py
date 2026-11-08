@@ -13,7 +13,7 @@ def chunk(kind, data):
 def png(size):
     pixels = (b"\0" + bytes([43, 43, 43, 255]) * size) * size
     return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
-            + chunk(b"IDAT", zlib.compress(pixels, 9)) + chunk(b"IEND", b""))
+            + chunk(b"sRGB", b"\0") + chunk(b"IDAT", zlib.compress(pixels, 9)) + chunk(b"IEND", b""))
 
 
 if __name__ == "__main__":

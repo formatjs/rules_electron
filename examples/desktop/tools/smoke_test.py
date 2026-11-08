@@ -63,6 +63,68 @@ def display_server():
                 server.wait()
 
 
+def check_windows_icon(executable):
+    import ctypes
+    from ctypes import wintypes
+
+    def bind(library, name, result, *arguments):
+        function = getattr(library, name)
+        function.restype, function.argtypes = result, arguments
+        return function
+
+    class IconInfo(ctypes.Structure):
+        _fields_ = [("icon", wintypes.BOOL), ("x", wintypes.DWORD), ("y", wintypes.DWORD),
+                    ("mask", wintypes.HANDLE), ("color", wintypes.HANDLE)]
+
+    class BitmapHeader(ctypes.Structure):
+        _fields_ = [("size", wintypes.DWORD), ("width", wintypes.LONG), ("height", wintypes.LONG),
+                    ("planes", wintypes.WORD), ("bits", wintypes.WORD), ("compression", wintypes.DWORD),
+                    ("image_size", wintypes.DWORD), ("x", wintypes.LONG), ("y", wintypes.LONG),
+                    ("used", wintypes.DWORD), ("important", wintypes.DWORD)]
+
+    class BitmapInfo(ctypes.Structure):
+        _fields_ = [("header", BitmapHeader), ("colors", wintypes.DWORD * 256)]
+
+    shell = ctypes.WinDLL("shell32", use_last_error=True)
+    user = ctypes.WinDLL("user32", use_last_error=True)
+    gdi = ctypes.WinDLL("gdi32", use_last_error=True)
+    extract = bind(shell, "ExtractIconExW", wintypes.UINT, wintypes.LPCWSTR, ctypes.c_int,
+                   ctypes.POINTER(wintypes.HANDLE), ctypes.POINTER(wintypes.HANDLE), wintypes.UINT)
+    info = IconInfo()
+    icon = wintypes.HANDLE()
+    assert extract(str(executable), 0, ctypes.byref(icon), None, 1) == 1
+    dc = None
+    try:
+        if not bind(user, "GetIconInfo", wintypes.BOOL, wintypes.HANDLE, ctypes.POINTER(IconInfo))(icon, ctypes.byref(info)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        assert info.color, "Executable icon has no color bitmap"
+        dc = bind(gdi, "CreateCompatibleDC", wintypes.HANDLE, wintypes.HANDLE)(None)
+        if not dc:
+            raise ctypes.WinError(ctypes.get_last_error())
+        get_bits = bind(gdi, "GetDIBits", ctypes.c_int, wintypes.HANDLE, wintypes.HANDLE, wintypes.UINT,
+                        wintypes.UINT, ctypes.c_void_p, ctypes.POINTER(BitmapInfo), wintypes.UINT)
+        bitmap = BitmapInfo(header=BitmapHeader(size=ctypes.sizeof(BitmapHeader)))
+        header = bitmap.header
+        if not get_bits(dc, info.color, 0, 0, None, ctypes.byref(bitmap), 0):
+            raise ctypes.WinError(ctypes.get_last_error())
+        width, height = header.width, abs(header.height)
+        assert 0 < width <= 256 and 0 < height <= 256
+        header.height, header.bits, header.compression = -height, 32, 0
+        header.image_size, header.used = width * height * 4, 0
+        pixels = ctypes.create_string_buffer(width * height * 4)
+        assert get_bits(dc, info.color, 0, height, pixels, ctypes.byref(bitmap), 0) == height
+        offset = (height // 2 * width + width // 2) * 4
+        assert list(pixels.raw[offset:offset + 3]) == [43, 43, 43]
+    finally:
+        if dc:
+            bind(gdi, "DeleteDC", wintypes.BOOL, wintypes.HANDLE)(dc)
+        for bitmap in [info.mask, info.color]:
+            if bitmap:
+                bind(gdi, "DeleteObject", wintypes.BOOL, wintypes.HANDLE)(bitmap)
+        bind(user, "DestroyIcon", wintypes.BOOL, wintypes.HANDLE)(icon)
+    print("EXAMPLE_ICON_SMOKE_OK")
+
+
 def windows_resources(executable, expected_version):
     import ctypes
     from ctypes import wintypes
@@ -348,8 +410,7 @@ if __name__ == "__main__":
         if result.returncode:
             raise RuntimeError(f"Electron exited {result.returncode}:\n{result.stdout}\n{result.stderr}")
         if host_os == "windows":
-            assert "EXAMPLE_ICON_SMOKE_OK" in result.stdout
-            print("EXAMPLE_ICON_SMOKE_OK")
+            check_windows_icon(executable)
         lines = [line for line in result.stdout.splitlines() if line.startswith("EXAMPLE_SMOKE_OK ")]
         assert len(lines) == 1, result.stdout + result.stderr
         report = json.loads(lines[0].removeprefix("EXAMPLE_SMOKE_OK "))
