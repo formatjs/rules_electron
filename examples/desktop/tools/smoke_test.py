@@ -127,45 +127,7 @@ def windows_resources(executable, expected_version):
     return integrity
 
 
-@contextmanager
-def macos_protocol_handler(bundle_id):
-    import ctypes
-
-    core = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
-    services = ctypes.CDLL("/System/Library/Frameworks/CoreServices.framework/CoreServices")
-    create = core.CFStringCreateWithCString
-    create.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
-    create.restype = ctypes.c_void_p
-    release = core.CFRelease
-    release.argtypes = [ctypes.c_void_p]
-    release.restype = None
-    previous_handler = services.LSCopyDefaultHandlerForURLScheme
-    previous_handler.argtypes = [ctypes.c_void_p]
-    previous_handler.restype = ctypes.c_void_p
-    set_handler = services.LSSetDefaultHandlerForURLScheme
-    set_handler.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-    set_handler.restype = ctypes.c_int32
-    scheme = create(None, b"sample-desktop", 0x08000100)
-    handler = create(None, bundle_id.encode("utf-8"), 0x08000100)
-    previous = previous_handler(scheme)
-    try:
-        status = set_handler(scheme, handler)
-        if status:
-            raise RuntimeError(f"macOS protocol handler selection failed: {status}")
-        yield
-    finally:
-        try:
-            if previous:
-                status = set_handler(scheme, previous)
-                if status:
-                    raise RuntimeError(f"macOS protocol handler restoration failed: {status}")
-        finally:
-            for pointer in (previous, handler, scheme):
-                if pointer:
-                    release(pointer)
-
-
-def check_macos_protocol(app, executable, environment, directory, target_arch):
+def check_macos_protocol(app, environment, directory, target_arch):
     applications = Path.home() / "Applications"
     applications.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="rules-electron-smoke-", dir=applications) as installed:
@@ -186,7 +148,7 @@ def _check_macos_protocol(app, environment, directory, target_arch):
     url = "sample-desktop://smoke/" + uuid.uuid4().hex
     subprocess.run([register, "-f", str(app)], check=True, capture_output=True, timeout=15)
     try:
-        with macos_protocol_handler(metadata["CFBundleIdentifier"]), tempfile.TemporaryFile() as log:
+        with tempfile.TemporaryFile() as log:
             process = subprocess.Popen([
                 str(executable), "--protocol-smoke", str(report), "--disable-gpu",
                 "--user-data-dir=" + str(directory / "protocol-profile"),
@@ -351,6 +313,6 @@ if __name__ == "__main__":
         assert report["platform"] == {"linux": "linux", "macos": "darwin", "windows": "win32"}[args.target_os], report
         print("EXAMPLE_SMOKE_OK " + json.dumps(report, ensure_ascii=True))
         if host_os == "macos":
-            check_macos_protocol(app, executable, environment, directory, args.target_arch)
+            check_macos_protocol(app, environment, directory, args.target_arch)
         if host_os in ("macos", "windows"):
             check_asar_integrity(app, executable, environment, directory, host_os, report["app_version"])

@@ -17,7 +17,7 @@ Handle Electron's `open-url` event before `app.whenReady()`. URL metadata does n
 install runtime listeners or override the user's default-handler preferences.
 
 The desktop example declares `sample-desktop`. Its native macOS smoke registers
-the relocated bundle with LaunchServices, selects its handler, opens a fresh URL
-through `/usr/bin/open`, checks delivery to Electron, restores any prior handler
-and unregisters the bundle. Compilation and bundle
+an isolated bundle under `~/Applications` with LaunchServices, opens a fresh URL
+through `/usr/bin/open`, checks delivery to Electron, then unregisters and removes
+the bundle. Compilation and bundle
 assembly stay on BuildBuddy. Native smoke validation is pending.
