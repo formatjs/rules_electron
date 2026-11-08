@@ -100,6 +100,7 @@ def classify(log):
         "BLINK_CORE_TEST": r"check failed: blink_core ",
         "BLINK_MODULES_TEST": r"check failed: blink_modules ",
         "LLGUIDANCE_TEST": r"check failed: llguidance ",
+        "TRACING_PROTO_TEST": r"check failed: tracing_proto ",
         "SOURCE_ACTION_TEST": r"(?:FAIL|ERROR): test_(?:plugin_exec_preserves_protocol_arguments_and_isolation|plugin_cannot_replace_inputs_or_execute_undeclared_script|native_launcher_rejects_truncated_argument_file)",
         "CONTENT_METADATA_TEST": r"(?:FAIL|ERROR): test_(?:version_header_matches_source_metadata|git_revision_uses_original_gn_truncation|skia_commit_matches_pinned_source)",
         "DEVTOOLS_RESOURCES_TEST": r"(?:FAIL|ERROR): test_(?:locale_collects_strings_from_multiple_frontend_directories|html_boots_actual_devtools_entrypoint|workspace_identity_uses_declared_source_root)",
@@ -256,6 +257,7 @@ def source_test_diagnostics(identifier, key, selected=None):
         "//source/content_rust:llguidance_test": "llguidance",
         "//source/devtools:resources_test": "devtools_resources",
         "//source/content_metadata:metadata_test": "content_metadata",
+        "//source/content_metadata:tracing_proto_test": "tracing_proto",
         "//electron/private:source_action_test": "source_action",
         "//source/blink_bindings:bindings_test": "blink_bindings",
         "//source/crabbyavif:decode_test": "crabby_decode",
@@ -497,4 +499,4 @@ if __name__ == "__main__":
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
         elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
-            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "source_action", "llguidance", "crabby_decode"})
+            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "source_action", "llguidance", "crabby_decode"})
