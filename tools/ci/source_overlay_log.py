@@ -349,6 +349,9 @@ def source_test_diagnostics(identifier, key, selected=None):
                 log = data.decode("utf-8", errors="replace")
                 details = {"probe": probe, "result": test_result(action["targetLabel"]), "log_bytes": len(data), "diagnostics": classify(log)}
                 details["public_missing_shared_libraries"] = sorted({name for name in re.findall(r"error while loading shared libraries: ([A-Za-z0-9_.+-]{1,120}):", log) if name in public_basenames})[:8]
+                if probe == "api_features":
+                    details["python_exceptions"] = sorted({name for name in ("JSONDecodeError", "FileNotFoundError", "KeyError", "ValueError", "TypeError") if re.search(r"\b" + name + ":", log)})
+                    details["public_python_sites"] = [{"file": path.rsplit("/", 1)[-1], "line": int(line)} for path, line in re.findall(r'File "([^"\n]+)", line ([0-9]{1,5})', log) if path.rsplit("/", 1)[-1] in public_basenames and 0 < int(line) < 10000][-8:]
                 if probe == "partition_alloc":
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
