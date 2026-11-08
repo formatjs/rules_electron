@@ -360,7 +360,7 @@ def failed_action_diagnostics(identifier, key):
         log = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", log)
         missing = {name for name in re.findall(r"fatal error: ['\"]([^'\"\n]+)['\"] file not found", log) if name in public_headers}
         missing_inputs, missing_basenames = set(), set()
-        for path in re.findall(r"FileNotFoundError: [^\r\n]*?: [\"']([^\"'\r\n]{1,1000})[\"']", log):
+        for path in re.findall(r"(?:FileNotFoundError: [^\r\n]*?:\s*|No such file or directory:\s*)b?[\"']([^\"'\r\n]{1,1000})[\"']", log):
             path = posixpath.normpath(path)
             if posixpath.basename(path) in public_basenames:
                 missing_basenames.add(posixpath.basename(path))
@@ -397,7 +397,6 @@ def failed_action_diagnostics(identifier, key):
             if name is not None and 0 < int(line) < 10000:
                 sites.append({"file": name, "line": int(line)})
         ts_sites = []
-        public_basenames = {path.rsplit("/", 1)[-1] for path in public_files}
         check_sites = [{"file": name, "line": int(line)} for name, line in re.findall(r"([A-Za-z_0-9.-]+\.(?:h|c|cc|cpp))[:(]([0-9]{1,5})", log) if name in public_basenames and 0 < int(line) < 10000][:8]
         fatal_lines = [line for line in log.splitlines() if re.search(r"FATAL|ERROR|Check failed|Assertion|assertion", line)]
         fatal_identifiers = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line) if word in public_identifiers))[:20] for line in fatal_lines[:6]]
