@@ -604,3 +604,14 @@ compiler variants. Measure execution
 time and transferred bytes before changing compression or transport layout;
 preserve every target, exact installer bytes, symlink/mode metadata and native
 coverage. Complete Electron compilation needs its own baseline once that runtime links.
+
+## Blink Rust prerequisite observation
+
+[d158dbb source aggregate](https://formatjs.buildbuddy.io/invocation/4defb7b1-866f-45d2-aaf4-6d527ce26aae)
+passed in 9.648 seconds with two tracked remote actions, 0.121 CPU seconds,
+113,438,720 bytes maximum action peak memory, 1,702,908 input bytes and 7,121
+output bytes. The following [full source suite](https://formatjs.buildbuddy.io/invocation/21b5cd25-eeef-43ae-9a1f-13d19fc7add5)
+passed in 3.737 seconds with zero tracked remote actions, including font-format
+and original mixed-language panic probes. Its independent BCR source suite took
+39.841 seconds with 12 tracked actions and 2.445 CPU seconds. These incremental
+observations reuse caches and do not establish a controlled speedup.

@@ -373,3 +373,27 @@ seconds with two tracked actions, 4.065 CPU seconds, 356,081,664 bytes maximum
 action peak memory, 437,200,229 input bytes and 9,228,165 output bytes. These are
 incremental observations. Warm orchestration/cache/download overhead needs
 profiling; these figures do not establish cold-build performance.
+
+## Blink Rust prerequisites
+
+The source overlay now captures Blink's original font-format detector and
+Rust/C++/Rust crash path. Two new Rust targets reuse all 89 vendor package
+inventories; the existing 117 Rust records, Symphonia bridge and V8 provider
+metadata remain unchanged. Original CXX generation uses declared source-built
+cxxbridge, rustc configuration and Python helpers. Header-only compilation
+providers keep native link ownership separate; the crash callback retains its
+original C++ source, flags and source-set link behavior.
+
+[d158dbb components](https://formatjs.buildbuddy.io/invocation/16dbafe5-cc1e-40b8-961b-0ae8fae9d3bd),
+[BCR consumer](https://formatjs.buildbuddy.io/invocation/74320089-9454-4c96-9c7e-23d9a7140085)
+and [cross probes](https://formatjs.buildbuddy.io/invocation/136d9125-d6f6-4c63-a668-8e89365933b6)
+passed. Structured results report both new probes as PASSED. Seven pinned SFNT
+fixtures exercise format detection and malformed/truncated input. The isolated
+crash child must reach the original Rust panic and terminate with SIGABRT;
+core dumps are disabled. This checks the language boundary, not crash reporting.
+
+The full dependency action audit found zero CMake/foreign-cc actions. Its positive
+control found 20,791 CppCompile actions across platform and bridge dependencies.
+Both queries traversed `deps(...)`; local analysis executed zero build actions.
+Full source profiles remain Linux AMD64. CrabbyAVIF, Blink and full Electron are
+unfinished.
