@@ -102,6 +102,9 @@ def classify(log):
         "LLGUIDANCE_TEST": r"check failed: llguidance ",
         "CONTENT_WEBUI_TEST": r"(?:FAIL|ERROR): test_tracing_pack_preserves_original_html_and_javascript",
         "CATAPULT_TEST": r"(?:FAIL|ERROR): test_(?:standalone_html_uses_chromium_tracing_route|minified_viewer_contains_entrypoint_and_parses)",
+        "MOJO_LITE_WIRE_TEST": r"(?:FAIL|ERROR): test_mojo_lite_preserves_signed_unsigned_wire_values",
+        "DEVTOOLS_BROTLI_TEST": r"(?:FAIL|ERROR): test_devtools_brotli_payload_and_hash_match_original_html",
+        "DEVTOOLS_MANIFEST_TEST": r"(?:FAIL|ERROR): test_manifest_points_to_compressed_frontend_assets",
         "WEB_ASSETS_TEST": r"(?:FAIL|ERROR): test_(?:mojo_lite_preserves_signed_unsigned_wire_values|devtools_brotli_payload_and_hash_match_original_html|manifest_points_to_compressed_frontend_assets)",
         "BINARY_PROTO_TEST": r"(?:FAIL|ERROR): test_(?:pure_python_runtime_comes_from_declared_files|linux_file_types_select_settings_and_preserve_policy_identity|ssl_payload_matches_declared_policy)",
         "TRACING_PROTO_TEST": r"check failed: tracing_proto ",
@@ -334,7 +337,7 @@ def source_test_diagnostics(identifier, key, selected=None):
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[:])" + re.escape(name) + r"[:(]([0-9]{1,4})(?::|\]|\s|\))", log) if 0 < int(line) < 5000][:8]
-                if probe in ("partition_alloc", "libnode", "embedder", "ipcz", "network", "mojo", "fonts", "codecs", "skia", "gfx", "display", "events", "ui", "ui_webui", "platform_graphics", "gpu_transport", "symphonia", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "llguidance", "crabby_decode"):
+                if probe in ("partition_alloc", "libnode", "embedder", "ipcz", "network", "mojo", "fonts", "codecs", "skia", "gfx", "display", "events", "ui", "ui_webui", "platform_graphics", "gpu_transport", "symphonia", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "llguidance", "crabby_decode", "web_assets"):
                     prefix = "patched libnode" if probe == "libnode" else "PartitionAlloc" if probe == "partition_alloc" else probe
                     details["failed_checks"] = [message for message in public_checks.get(probe, []) if "check failed: " + prefix + " " + message + "\n" in log]
                     details["stages"] = [stage for stage in ["entry", "versions", "invalid", "decode", "png", "pixels", "rgb_freed", "image_freed", "conversion", "atomic", "icu", "i18n", "snapshot", "node", "gin", "platform", "isolate", "modules", "integrity", "callback", "gc", "loop", "shutdown", "done"] if probe + " probe stage: " + stage + "\n" in log]
