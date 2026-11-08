@@ -254,6 +254,7 @@ def source_test_diagnostics(identifier, key):
                 count += 1
                 log = data.decode("utf-8", errors="replace")
                 details = {"probe": probe, "result": test_result(action["targetLabel"]), "log_bytes": len(data), "diagnostics": classify(log)}
+                details["public_missing_shared_libraries"] = sorted({name for name in re.findall(r"error while loading shared libraries: ([A-Za-z0-9_.+-]{1,120}):", log) if name in public_basenames})[:8]
                 if probe == "partition_alloc":
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
