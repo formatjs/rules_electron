@@ -19,7 +19,7 @@ electron-builder replacement.
 | macOS app | Branded bundle/helper metadata, framework links, ad hoc signing, deterministic ZIP | Icons, Developer ID, entitlements policy, notarization/stapling |
 | Windows app | Renamed executable, current-process Node-API exports, four compiler/CPU variants; PE version/product strings and ASAR integrity through declared source Node/resedit tooling | General addon delay-load/import-library tooling, PE icons, Authenticode |
 | App version/build number | Public SemVer manifest override/validation; explicit build number/version; macOS app/helper, Windows PE/NSIS and DEB iteration | — |
-| OS protocol registration | Linux desktop/MIME declarations; per-user Windows NSIS URI schemes | macOS registration; Windows file associations and shortcut AppUserModelID |
+| OS protocol registration | Linux desktop/MIME declarations; macOS URL types and native LaunchServices delivery; per-user Windows NSIS URI schemes | Windows file associations and shortcut AppUserModelID |
 | Installers | Linux DEB for amd64/arm64; per-user Windows NSIS with declared tools and owned-file uninstall | RPM/AppImage, macOS disk images, Windows per-machine NSIS/MSIX and other packaging |
 | Prepackaged release stages | Internal ad hoc Mac signing stage only | Public sign/package-prepackaged APIs and verification policy |
 | Distribution archives | Public ZIP/tar.gz rule, explicit compression, executable modes and relative symlinks; native macOS release ZIP smoke | Additional archive formats; native tar.gz release smoke |

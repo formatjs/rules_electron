@@ -19,5 +19,10 @@ install runtime listeners or override the user's default-handler preferences.
 The desktop example declares `sample-desktop`. Its native macOS smoke registers
 an isolated bundle under `~/Applications` with LaunchServices, opens a fresh URL
 through `/usr/bin/open`, checks delivery to Electron, then unregisters and removes
-the bundle. Compilation and bundle
-assembly stay on BuildBuddy. Native smoke validation is pending.
+the bundle. Compilation and bundle assembly stay on BuildBuddy.
+
+[BB assembly tests](https://formatjs.buildbuddy.io/invocation/6a3f1ecb-e289-4767-adb3-f62661aa6160)
+and [native macOS ARM64 smoke](https://github.com/formatjs/rules_electron/actions/runs/42450461263)
+passed. The final native retry checks registration without setting a default
+handler explicitly. LaunchServices ignores this fixture under the system temporary
+directory; smoke uses an isolated Applications directory instead.
