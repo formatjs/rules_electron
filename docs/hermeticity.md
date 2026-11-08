@@ -553,5 +553,18 @@ source paths and changed mtimes, with declared Python and empty `PATH`.
 Program staging now declares Python directly and normalizes the executable,
 sandbox and Crashpad filenames/modes. A separate GN catalog maps 73 runtime
 paths with real credit/version producers; static FFmpeg has no shared file.
-License scanner inputs, portable library layout, runtime assembly, full ELF
-linkage and native source-runtime launch remain open.
+The [8586881 overlay](https://github.com/formatjs/electron/commit/858688105d03c59f02a43484d4aebf1579589fe1)
+adds the real credits scanner closure: 1,391 hashed inputs, 766 discovery
+directories and 466 shipped metadata entries. Existing pinned repositories
+supply 1,361 inputs; 30 verbatim license/metadata files are checked in. Declared
+empty markers preserve directory discovery. The original scanner and arguments
+replace WebUI's development sample; original version generation and distribution
+notice staging are declared too. Hosted generation/tests remain pending.
+
+Complete source-component action analysis passed: 133,463 actions, 67,499 C++
+compilations, 330 C++ links and 8,801 declared-Python generators. No CMake or
+foreign-cc action mnemonics appear. The source
+[cross probes](https://formatjs.buildbuddy.io/invocation/01533db7-9f9f-46de-b6ad-a19eb9527dde)
+passed. The earlier full components workflow reached BB's free-tier run timeout;
+captured diagnostics contain no compiler failure. Portable library layout,
+runtime assembly, full ELF linkage and native source-runtime launch remain open.
