@@ -22,12 +22,15 @@ def collect(entries, output, patterns=(), file_matcher=None):
             raise ValueError(f"Duplicate file destination: {path}")
         files[path] = entry
     for path in files:
-        if any(parent in files for parent in path.parents):
+        if any(parent in files and not files[parent].get("empty_directory") for parent in path.parents):
             raise ValueError(f"File/directory collision: {path}")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     for path, entry in sorted(files.items()):
         source, destination = Path(entry["source"]), output / str(path)
+        if entry.get("empty_directory"):
+            destination.mkdir(parents=True, exist_ok=True)
+            continue
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
         destination.chmod(0o755 if entry.get("executable") or source.stat().st_mode & 0o111 else 0o644)

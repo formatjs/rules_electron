@@ -31,6 +31,10 @@ def expand(entries, *, allow_root=False):
             for name in directories:
                 if (Path(directory) / name).is_symlink():
                     raise ValueError("Directory symlinks inside input trees are not supported")
+            if not directories and not files:
+                path = destination / Path(directory).relative_to(source).as_posix()
+                if path != PurePosixPath("."):
+                    yield {"source": directory, "path": str(path), "empty_directory": True}
             for name in files:
                 file = Path(directory) / name
                 # Bazel's sandbox projects declared tree files as symlink leaves.

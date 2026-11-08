@@ -53,9 +53,11 @@ def extract_runtime(archive, output, platform, exclude_files, occupied, language
         combined = set(entries) | set(occupied)
         if len(combined) != len(entries) + len(occupied):
             raise ValueError("Runtime and app destinations overlap")
+        directories = {path for path, entry in occupied.items() if entry.get("empty_directory")} if isinstance(occupied, dict) else set()
+        checked_directories = {PurePosixPath(str(path).casefold()) for path in directories} if platform == "windows" else directories
         checked = {PurePosixPath(str(path).casefold()) for path in combined} if platform == "windows" else combined
         for path in checked:
-            if any(parent in checked for parent in path.parents):
+            if any(parent in checked and parent not in checked_directories for parent in path.parents):
                 raise ValueError(f"Runtime file/directory collision: {path}")
         if platform == "windows" and len({str(p).casefold() for p in combined}) != len(combined):
             raise ValueError("Case-insensitive Windows destination collision")

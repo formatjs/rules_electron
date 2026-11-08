@@ -11,11 +11,14 @@ from electron.private.matching import select_files
 
 
 def write_sources(entries, archive, unpacked=(), symlinks=None, unpacked_patterns=(), file_matcher=None):
-    files = {}
+    files, directories = {}, set()
     for entry in expand(entries, allow_root=True):
         path = relative_path(entry["path"])
-        if path in files:
+        if path in files or path in directories:
             raise ValueError(f"Duplicate ASAR destination: {path}")
+        if entry.get("empty_directory"):
+            directories.add(path)
+            continue
         files[path] = Path(entry["source"])
     for path in files:
         if any(parent in files for parent in path.parents):
@@ -24,7 +27,8 @@ def write_sources(entries, archive, unpacked=(), symlinks=None, unpacked_pattern
         relative_path(path)
     unpacked = set(unpacked) | select_files({str(path) for path in files}, unpacked_patterns, file_matcher)
     sidecar = Path(str(archive) + ".unpacked")
-    digest = create_archive({str(path): source for path, source in files.items()}, archive, unpacked, symlinks)
+    digest = create_archive({str(path): source for path, source in files.items()}, archive, unpacked, symlinks,
+                            directories={str(path) for path in directories})
     sidecar.mkdir(parents=True, exist_ok=True)
     Path(archive).chmod(0o644)
     os.utime(archive, (0, 0))

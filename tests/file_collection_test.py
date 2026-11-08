@@ -46,6 +46,26 @@ class FileCollectionTest(unittest.TestCase):
             collect(self.entries, self.root / "bad", patterns=["**/*"])
         self.assertFalse((self.root / "bad").exists())
 
+    def test_empty_directories_survive_root_mounts_merges_and_normalization(self):
+        (self.tree / "empty/nested").mkdir(parents=True)
+        (self.tree / "merged").mkdir(mode=0o700)
+        empty = self.root / "empty-tree"
+        empty.mkdir()
+        entries = self.entries + [{"source": str(empty), "path": "mounted", "directory": True},
+                                  {"source": str(self.notice), "path": "merged/notice"}]
+        for index, mappings in enumerate((entries, list(reversed(entries)))):
+            output = self.root / str(index)
+            collect(mappings, output)
+            for name in ("empty/nested", "mounted", "merged"):
+                path = output / name
+                self.assertTrue(path.is_dir())
+                self.assertEqual((path.stat().st_mode & 0o777, path.stat().st_mtime), (0o755, 0))
+            self.assertEqual(list((output / "empty/nested").iterdir()), [])
+            self.assertEqual((output / "merged/notice").read_bytes(), b"notice")
+        with self.assertRaisesRegex(ValueError, "collision"):
+            collect(entries + [{"source": str(self.notice), "path": "empty"}], self.root / "bad-empty")
+        self.assertFalse((self.root / "bad-empty").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

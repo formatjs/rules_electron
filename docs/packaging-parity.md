@@ -34,6 +34,11 @@ variants run on the corresponding CPU host. No emulation substitutes for smoke.
 
 Keep this checklist current as each contract gains a concrete rule and meaningful
 validation. Production migration requires closing the relevant release gaps.
+
+Empty directory leaves now flow through file collection, plain app assembly and
+ASAR directory entries. BB validation includes a generated tree passing through
+separate collection and ASAR actions; preservation across Bazel tree/cache
+boundaries remains an open gate until that test passes.
 See the [release plan](release-plan.md) and [updater contract](updates.md).
 Linux package behavior and its native validation live in [Linux packages](linux-packages.md).
 Windows installer scope and validation live in [Windows installers](windows-installers.md).

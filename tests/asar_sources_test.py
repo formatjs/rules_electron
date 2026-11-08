@@ -65,6 +65,28 @@ class AsarSourcesTest(unittest.TestCase):
         length = struct.unpack_from("<I", data, 12)[0]
         self.assertEqual(set(json.loads(data[16:16 + length])["files"]), {"message.txt"})
 
+    def test_empty_directories_and_links_survive_without_payload_bytes(self):
+        (self.tree / "empty/nested").mkdir(parents=True)
+        empty = self.root / "empty-tree"
+        empty.mkdir()
+        entries = self.entries + [{"source": str(empty), "path": "mounted", "directory": True}]
+        archive = self.root / "empty.asar"
+        write_sources(entries, archive, symlinks={"empty-link": "assets/empty/nested"})
+        data = archive.read_bytes()
+        _, header_size, _, length = struct.unpack_from("<IIII", data)
+        files = json.loads(data[16:16 + length])["files"]
+        self.assertEqual(files["assets"]["files"]["empty"]["files"]["nested"], {"files": {}})
+        self.assertEqual(files["mounted"], {"files": {}})
+        self.assertEqual(files["empty-link"], {"link": "assets/empty/nested"})
+        self.assertEqual(len(data) - 8 - header_size,
+                         self.module.stat().st_size + (self.tree / "message.txt").stat().st_size)
+        other = self.root / "other.asar"
+        write_sources(list(reversed(entries)), other, symlinks={"empty-link": "assets/empty/nested"})
+        self.assertEqual(data, other.read_bytes())
+        with self.assertRaisesRegex(ValueError, "collision"):
+            write_sources(entries + [{"source": str(self.module), "path": "assets/empty"}], self.root / "bad-empty.asar")
+        self.assertFalse((self.root / "bad-empty.asar").exists())
+
     def test_links_share_payload_resolve_chains_and_keep_reproducibility(self):
         archive = self.root / "links.asar"
         links = {"entry.cjs": "module.cjs", "chain.cjs": "entry.cjs", "assets-link": "assets",

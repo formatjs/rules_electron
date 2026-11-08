@@ -6,15 +6,18 @@ from electron.private.files import relative_path
 
 
 class ArchivePaths:
-    def __init__(self, files, symlinks=None):
+    def __init__(self, files, symlinks=None, directories=()):
+        directories = set(directories)
         self.files = set(files)
         self._declared = dict(symlinks or {})
         self.links = {}
         leaves = self.files | self._declared.keys()
         if self.files & self._declared.keys():
             raise ValueError("ASAR link/file collision")
-        self._directories = {""}
-        for name in sorted(leaves):
+        self._directories = {"", *directories}
+        if leaves & directories:
+            raise ValueError("ASAR file/directory collision")
+        for name in sorted(leaves | directories):
             path = relative_path(name)
             for parent in path.parents:
                 parent = "" if parent == PurePosixPath(".") else str(parent)

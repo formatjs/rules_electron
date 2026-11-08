@@ -35,7 +35,7 @@ electron_files = rule(
     implementation = _impl,
     attrs = {
         "srcs": attr.label_keyed_string_dict(allow_files = True, doc = "File/tree labels mapped to output-relative paths. Empty destination mounts a tree at the output root."),
-        "patterns": attr.string_list(doc = "Ordered minimatch inclusion/exclusion patterns over mapped paths; empty keeps all files."),
+        "patterns": attr.string_list(doc = "Ordered minimatch inclusion/exclusion patterns over mapped paths, including empty directories; empty keeps all entries."),
         "file_matcher": attr.label(providers = [ElectronFileMatcherInfo], cfg = "exec"),
         "_writer": attr.label(default = Label("//electron/private:collect_files"), executable = True, cfg = "exec"),
     },

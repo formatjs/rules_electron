@@ -83,20 +83,21 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         if path in paths:
             raise ValueError(f"Duplicate destination: {path}")
         paths[path] = entry
-    checked_paths = {PurePosixPath(str(path).casefold()) for path in paths} if platform == "windows" else paths
+    checked_paths = {PurePosixPath(str(path).casefold()): entry for path, entry in paths.items()} if platform == "windows" else paths
     if len(checked_paths) != len(paths):
         raise ValueError("Case-insensitive Windows destination collision")
     for path in checked_paths:
-        if any(parent in checked_paths for parent in path.parents):
+        if any(parent in checked_paths and not checked_paths[parent].get("empty_directory") for parent in path.parents):
             raise ValueError(f"File/directory collision: {path}")
 
     package_path = PurePosixPath(resources + "/app/package.json")
     package = json.loads(Path(paths[package_path]["source"]).read_text())
     native_version = build_identity(package.get("version"), build_version, build_number, platform) if (build_version or build_number) else package.get("version", "")
     app_prefix = PurePosixPath(resources + "/app")
-    app_files = {str(path.relative_to(app_prefix)): path for path in paths if path.is_relative_to(app_prefix)}
+    app_files = {str(path.relative_to(app_prefix)): path for path, value in paths.items() if path.is_relative_to(app_prefix) and not value.get("empty_directory")}
+    app_directories = {str(path.relative_to(app_prefix)) for path, value in paths.items() if path != app_prefix and path.is_relative_to(app_prefix) and value.get("empty_directory")}
     main = relative_path(package.get("main", "index.js"))
-    index = ArchivePaths(app_files, asar_symlinks)
+    index = ArchivePaths(app_files, asar_symlinks, app_directories)
     try:
         entry = index.resolve(str(main))
     except ValueError:
@@ -116,6 +117,9 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     for path, entry in sorted(paths.items()):
         source = Path(entry["source"])
         destination = output / str(path)
+        if entry.get("empty_directory"):
+            destination.mkdir(parents=True, exist_ok=True)
+            continue
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
         executable = entry.get("executable", False) or bool(source.stat().st_mode & 0o111)
@@ -127,7 +131,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     header_hash = None
     if asar:
         archive = output / resources / "app.asar"
-        header_hash = create_archive({name: output / path for name, path in app_files.items()}, archive, asar_unpacked, asar_symlinks)
+        header_hash = create_archive({name: output / path for name, path in app_files.items()}, archive, asar_unpacked, asar_symlinks, app_directories)
         archive.chmod(0o644)
         shutil.rmtree(output / app_prefix)
     if platform == "macos":

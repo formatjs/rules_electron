@@ -26,9 +26,10 @@ def _integrity(path):
     }
 
 
-def create_archive(files, destination, unpacked=(), symlinks=None):
-    """Write declared files/links; return SHA-256 of the raw JSON header."""
-    index = ArchivePaths(files, symlinks)
+def create_archive(files, destination, unpacked=(), symlinks=None, directories=()):
+    """Write declared files, directories and links; hash the raw JSON header."""
+    directories = set(directories)
+    index = ArchivePaths(files, symlinks, directories)
     unpacked = set(unpacked)
     missing = unpacked - files.keys()
     if missing:
@@ -36,11 +37,14 @@ def create_archive(files, destination, unpacked=(), symlinks=None):
     header = {"files": {}}
     offset = 0
     packed_sources = []
-    for name in sorted(files.keys() | index.links.keys()):
+    for name in sorted(files.keys() | index.links.keys() | directories):
         node = header
         parts = name.split("/")
         for part in parts[:-1]:
             node = node["files"].setdefault(part, {"files": {}})
+        if name in directories:
+            node["files"].setdefault(parts[-1], {"files": {}})
+            continue
         if name in index.links:
             node["files"][parts[-1]] = {"link": index.links[name]}
             continue

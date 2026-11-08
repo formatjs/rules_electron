@@ -159,6 +159,30 @@ class AssemblyTest(unittest.TestCase):
         self.assertFalse((self.root / "conflict").exists())
         self.assertFalse((self.root / "symlink").exists())
 
+    def test_empty_app_and_extra_directories_survive_plain_and_asar_assembly(self):
+        tree = self.root / "empty-tree"
+        (tree / "nested/empty").mkdir(parents=True)
+        entry = {"source": str(tree), "path": "resources/app/assets", "directory": True}
+        extra = [{"source": str(tree), "path": "extra", "directory": True}]
+        for asar in (False, True):
+            output = self.root / str(asar)
+            assemble(self.entries + [entry], output, asar=asar, extra_files=extra)
+            self.assertTrue((output / "extra/nested/empty").is_dir())
+            self.assertEqual(list((output / "extra/nested/empty").iterdir()), [])
+            if asar:
+                data = (output / "resources/app.asar").read_bytes()
+                length = struct.unpack_from("<I", data, 12)[0]
+                files = json.loads(data[16:16 + length])["files"]
+                self.assertEqual(files["assets"]["files"]["nested"]["files"]["empty"], {"files": {}})
+            else:
+                directory = output / "resources/app/assets/nested/empty"
+                self.assertTrue(directory.is_dir())
+                self.assertEqual((directory.stat().st_mode & 0o777, directory.stat().st_mtime), (0o755, 0))
+        conflict = {"source": str(self.main), "path": "resources/app/assets"}
+        with self.assertRaisesRegex(ValueError, "collision"):
+            assemble(self.entries + [entry, conflict], self.root / "bad-empty")
+        self.assertFalse((self.root / "bad-empty").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
