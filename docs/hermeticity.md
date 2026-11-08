@@ -571,3 +571,13 @@ foreign-cc action mnemonics appear. The source
 passed. The earlier full components workflow reached BB's free-tier run timeout;
 captured diagnostics contain no compiler failure. Portable library layout,
 runtime assembly, full ELF linkage and native source-runtime launch remain open.
+
+The [f0d43e6 overlay](https://github.com/formatjs/electron/commit/f0d43e65ff7fbda3eb67cde866e7e6f20d7cd54a)
+declares complete Linux x64 runtime ZIP assembly: 73 upstream distribution paths,
+91 support libraries and pinned notices. Native Bazel `patchelf` repairs copied
+ELF search paths; dependency/interpreter/SONAME checks and two-root/mtime ZIP
+comparisons guard output. The
+[BB preflight](https://formatjs.buildbuddy.io/invocation/12cb63f6-c691-41e5-9303-2a8c3c548470)
+passed real transitive-DSO relocation, missing-dependency and wrong-SONAME tests.
+This validates the assembler boundary; full Electron linkage, runtime ZIP
+execution and packed-app browser/IPC/pixel checks remain unverified.

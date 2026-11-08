@@ -34,7 +34,15 @@ Linux apps with links use a ZIP-backed `ElectronAppInfo` artifact, avoiding
 unsupported symlinks in Bazel tree outputs. Release archives and DEB packaging
 stream that ZIP; immutable imports validate its layout and CPU. macOS retains
 links through signing and its app ZIP. Windows junction/link installation and
-generated-tree link metadata remain open. BB/native validation is pending.
+generated-tree link metadata remain open.
+
+The [a27aaca BB suite](https://formatjs.buildbuddy.io/invocation/8a023435-0143-4889-ae2c-0b44090de2ed)
+passed actual app ZIP, immutable import, TAR and DEB action boundaries, including
+relocated directory aliases and target updates observed through links. The
+[seven cross-build variants](https://formatjs.buildbuddy.io/invocation/c0534670-f427-4854-b6bb-439abb92dd38)
+and [four native host types](https://github.com/formatjs/rules_electron/actions/runs/42536976011)
+passed. macOS native smoke checks both resource links after signing and ZIP
+relocation, through Electron's filesystem API.
 
 At runtime, `process.resourcesPath` locates extra resources. Its parent locates
 extra files on all three platforms. The desktop example reads a packaged notice
