@@ -105,6 +105,13 @@ app.whenReady().then(async () => {
       });
       assert.ok(app.getAppPath().endsWith('app.asar'));
       assert.equal(require('./package.json').scripts, undefined);
+      assert.equal(require('./package.json').devDependencies, undefined);
+      assert.deepEqual(require('./package.json').dependencies, {
+        'example-native': '1.0.0', 'electron-updater': '6.6.2',
+      });
+      assert.deepEqual(require('./package.json').releaseMetadata, {
+        channel: 'stable', features: ['native-addon', 'updater'],
+      });
       const environment = await window.webContents.executeJavaScript('({node: typeof require, bridge: typeof window.desktop.read, ...window.desktop.environment})');
       assert.deepEqual(environment, { node: 'undefined', bridge: 'function', sandboxed: true, contextIsolated: true });
       const update_version = await require('./updater-smoke.cjs')();

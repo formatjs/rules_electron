@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "electron-updater": "6.6.2"
+  },
+  "releaseMetadata": {
+    "channel": "stable",
+    "features": ["native-addon", "updater"]
+  },
+  "devDependencies": {
+    "development-only": "1.0.0"
+  },
+  "scripts": {
+    "overlay-only": "never executed"
+  }
+}

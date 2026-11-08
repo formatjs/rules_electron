@@ -23,10 +23,27 @@ def build_identity(version, build_version="", build_number="", platform=""):
     return result
 
 
-def package_json(source, output, version="", remove_scripts=False):
+def _merge(package, overlay):
+    for key, value in overlay.items():
+        if isinstance(value, dict) and isinstance(package.get(key), dict):
+            _merge(package[key], value)
+        else:
+            package[key] = value
+
+
+def package_json(source, output, version="", remove_scripts=False, extra_metadata=None, remove_fields=()):
     package = json.loads(Path(source).read_text(encoding="utf-8"))
     if not isinstance(package, dict):
         raise ValueError("App package manifest must be a JSON object")
+    if extra_metadata:
+        overlay = json.loads(Path(extra_metadata).read_text(encoding="utf-8"))
+        if not isinstance(overlay, dict):
+            raise ValueError("extra_metadata must be a JSON object")
+        _merge(package, overlay)
+    if not isinstance(remove_fields, (list, tuple)) or not all(isinstance(field, str) and field for field in remove_fields):
+        raise ValueError("remove_fields must contain nonempty top-level field names")
+    for field in remove_fields:
+        package.pop(field, None)
     package["version"] = _version(version or package.get("version"))
     if remove_scripts:
         package.pop("scripts", None)
@@ -34,4 +51,4 @@ def package_json(source, output, version="", remove_scripts=False):
 
 
 if __name__ == "__main__":
-    package_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4] == "1")
+    package_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4] == "1", sys.argv[5], json.loads(sys.argv[6]))

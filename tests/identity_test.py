@@ -55,6 +55,38 @@ class IdentityTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "JSON object"):
             package_json(source, output)
 
+    def test_overlay_merges_dependencies_replaces_arrays_then_removes_fields(self):
+        source, overlay, output = [self.root / name for name in ("package.json", "overlay.json", "result.json")]
+        original = {
+            "version": "1.2.3", "dependencies": {"retained": "1", "replaced": "1"},
+            "release": {"labels": ["old"], "retained": True}, "devDependencies": {"builder": "1"},
+        }
+        metadata = {
+            "version": "2.0.0", "dependencies": {"replaced": "2", "added": "3"},
+            "release": {"labels": ["new"], "nullable": None}, "scripts": {"build": "never executed"},
+        }
+        source.write_text(json.dumps(original))
+        overlay.write_text(json.dumps(metadata))
+        package_json(source, output, "3.0.0", True, overlay, ["devDependencies", "absent"])
+        self.assertEqual(json.loads(output.read_text()), {
+            "version": "3.0.0", "dependencies": {"retained": "1", "replaced": "2", "added": "3"},
+            "release": {"labels": ["new"], "retained": True, "nullable": None},
+        })
+        self.assertEqual(json.loads(source.read_text()), original)
+        self.assertEqual(json.loads(overlay.read_text()), metadata)
+
+    def test_invalid_overlay_and_final_version_fail_before_output(self):
+        source, overlay, output = [self.root / name for name in ("package.json", "overlay.json", "result.json")]
+        source.write_text('{"version":"1.2.3"}')
+        for value in [[], None, "scalar", {"version": "invalid"}]:
+            overlay.write_text(json.dumps(value))
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                package_json(source, output, extra_metadata=overlay)
+            self.assertFalse(output.exists())
+        with self.assertRaisesRegex(ValueError, "SemVer"):
+            package_json(source, output, remove_fields=["version"])
+        self.assertFalse(output.exists())
+
     def test_native_build_override_precedence_and_windows_limits(self):
         self.assertEqual(build_identity("1.2.3-beta.2+build.5", build_number="7"), "1.2.3.7")
         self.assertEqual(build_identity("1.2.3", "4.5.6.8", "7", "windows"), "4.5.6.8")

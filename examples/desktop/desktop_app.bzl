@@ -1,9 +1,17 @@
 """Shared inputs for the two-version installation smoke."""
 
 load("@rules_electron//electron:defs.bzl", "electron_app")
+load("@rules_electron//electron:metadata.bzl", "electron_package_json")
 
 def desktop_app(name, package_json, **kwargs):
     """Assemble the generic sample with the requested app manifest."""
+    electron_package_json(
+        name = name + "_package",
+        src = package_json,
+        extra_metadata = "release-metadata.json",
+        remove_fields = ["devDependencies"],
+        remove_scripts = True,
+    )
     electron_app(
         name = name,
         srcs = {
@@ -93,7 +101,7 @@ def desktop_app(name, package_json, **kwargs):
             ":macos": ":example_icon",
             "//conditions:default": None,
         }),
-        package_json = package_json,
+        package_json = ":" + name + "_package",
         product_name = "Sample Desktop",
         remove_package_scripts = True,
         runtime = ":runtime",

@@ -13,9 +13,24 @@ electron_package_json(
     name = "release_package",
     src = "package.json",
     version = "2.3.4-beta.1+build.7",
+    extra_metadata = "release-metadata.json",
+    remove_fields = ["devDependencies"],
     remove_scripts = True,
 )
 ```
+
+`extra_metadata` accepts a declared JSON object, including generated files.
+Objects merge recursively; arrays, scalar values and null replace existing
+values. Dependency maps can replace selected versions while retaining other
+entries. `remove_fields` removes exact top-level names after merging; it does
+not interpret dotted paths. `remove_scripts` then strips scripts. Explicit
+`version` wins over the merged version; the final version must be valid SemVer.
+Source manifests remain unchanged. Rewriting dependency metadata does not
+install or prune package files: declare those through app inputs.
+
+The desktop smoke checks merged dependency metadata, injected release fields
+and removed development fields in the packaged ASAR. Hosted validation for
+these overlay checks is pending.
 
 `electron_app` accepts explicit `build_number` and `build_version` attributes.
 Package SemVer remains the application/update identity and Windows ProductVersion.
