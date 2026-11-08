@@ -312,3 +312,35 @@ It also checks packet errors, recovery and rejected initialization. Structured B
 results explicitly report Symphonia, GPU transport and SwiftShader as PASSED.
 This source dependency remains Linux AMD64; full media, compositor and Electron
 integration remain unfinished.
+
+## Media codecs and audio ABI
+
+The Electron platform profile now imports the original full media closure:
+1,529 additional C/C++ units and 156 NASM object actions. Combined coverage is
+4,324 source/object units, 493 library/group/runtime targets, 203 generator
+targets with 353 runs, and 27 exact source pins. FFmpeg reuses Electron's patched
+repository. Original NASM, codec configuration and stub generators use declared
+inputs/tools; source capture includes nested textual C inputs and selected
+module header namespaces. Compiler macro expressions retain their original
+single-argument spelling. No CMake or foreign-cc actions matched the graph audit.
+
+[755d607 components](https://formatjs.buildbuddy.io/invocation/459c32ae-27ea-4ac6-bf40-b3908f40ca8d),
+[BCR consumer](https://formatjs.buildbuddy.io/invocation/65b0f31c-7d09-4a0b-93fa-36ad204cd4e2)
+and [cross probes](https://formatjs.buildbuddy.io/invocation/bd1165c5-db04-43b3-963e-6359254e6449)
+passed. Structured source-suite results report media runtime, ALSA ABI, Symphonia,
+GPU transport and SwiftShader as PASSED. FFmpeg decoding matches every sample
+of an independent WAV reference; tests also check the original Chrome AAC/H264
+registry, Chromium audio parameters and ALSA allocation/version APIs.
+
+The SDK/runtime closure contains 54 libraries from 50 checksum-pinned Debian
+packages. The stripped ALSA link interface and real runtime have identical
+symbol tables, symbol versions and build identity; executable sections are
+present only in the runtime. Pulse headers support original lazy-load stubs;
+server/device integration remains untested.
+
+The source aggregate took 89.022 seconds with 801 tracked remote actions,
+1,409.599 CPU seconds, 740,192,256 bytes maximum action peak memory,
+940,670,748 input bytes and 57,764,434 output bytes. The subsequent complete
+source suite took 39.912 seconds with zero remote actions. These are incremental
+CI observations, not cold-build benchmarks. Full source profiles remain Linux
+AMD64; compositor and full Electron integration remain unfinished.
