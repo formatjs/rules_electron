@@ -448,11 +448,16 @@ if __name__ == "__main__":
     if root.get("pattern") not in ("Electron source components", "Electron source cross-compile", "Electron BCR consumer"):
         raise ValueError("Expected an Electron source-overlay CI workflow")
     public_identifiers = set(json.loads(Path(__file__).with_name("public_source_identifiers.json").read_text()))
+    public_files = set(json.loads(Path(__file__).with_name("public_source_files.json").read_text()))
 
     def public_failures(log):
-        lines = [line for line in log.splitlines() if re.search(r"\b(?:FATAL|ERROR|Error|error|FAILED)\b|Check failed|Assertion", line)]
+        log = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", log)
+        lines = [line for line in log.splitlines() if re.search(r"\b(?:FATAL|ERROR|Error|error|FAILED)\b|Check failed|Assertion|has been removed|base type mismatch|is now (?:optional|required)|Can not resolve", line)]
         return [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line)
                                    if word in public_identifiers))[:20] for line in lines[:6]]
+
+    def public_sources(log):
+        return sorted({name for name in re.findall(r"Compiling ([A-Za-z_0-9/.-]+)", log) if name in public_files})[:8]
 
     log = read_log({"invocation_id": identifier}, key)
     print("Source workflow diagnostics:", json.dumps({"log_bytes": len(log.encode()), "diagnostics": classify(log), "public_failure_identifiers": public_failures(log)}, sort_keys=True))
@@ -466,7 +471,7 @@ if __name__ == "__main__":
         if not 0 <= duration <= 7 * 24 * 3600 * 1000000:
             raise ValueError("Source phase duration exceeds limit")
         command = value.get("command") if value.get("command") in ("build", "test") else "unknown"
-        print("Source child:", json.dumps({"id": identifier, "state": status, "command": command, "duration_usec": duration, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_failure_identifiers": public_failures(log)}, sort_keys=True))
+        print("Source child:", json.dumps({"id": identifier, "state": status, "command": command, "duration_usec": duration, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_failure_identifiers": public_failures(log), "public_sources": public_sources(log)}, sort_keys=True))
         resource_diagnostics(identifier, key)
         if value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and not value.get("success"):
             failed_action_diagnostics(identifier, key)
