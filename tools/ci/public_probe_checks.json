@@ -369,5 +369,17 @@
     "declared ELF64 little endian inputs",
     "declared SDK and runtime inputs",
     "runtime supplies code absent from SDK interface"
+  ],
+  "compositor": [
+    "declared raster surface allocation",
+    "layer geometry opacity and transform",
+    "layer ownership and unique identities",
+    "layer replacement detaches previous child",
+    "layer teardown removes parent links",
+    "paint record takes buffer ownership",
+    "playback restores canvas state",
+    "raster respects clip translation and restore",
+    "reparenting removes previous ownership",
+    "save layer blends green over red"
   ]
 }
