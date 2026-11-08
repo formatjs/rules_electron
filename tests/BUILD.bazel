@@ -32,8 +32,10 @@ electron_app(
         "fixtures/main.js": "main.js",
     },
     app_id = "org.example.empty",
+    executable_name = "sample",
     extra_files = {":empty_tree_view": "extra"},
     package_json = "fixtures/package.json",
+    product_name = "Sample",
     runtime = ":runtime",
 )
 
@@ -41,9 +43,9 @@ electron_prepackaged_app(
     name = "empty_tree_import",
     src = ":empty_tree_app",
     app_id = "org.example.empty",
-    executable_name = "empty_tree_app",
+    executable_name = "sample",
     package_json = "fixtures/package.json",
-    product_name = "empty_tree_app",
+    product_name = "Sample",
 )
 
 electron_deb(
