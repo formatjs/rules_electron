@@ -179,6 +179,7 @@ def classify(log):
         "GENERATOR_REPRODUCIBILITY": r"Generator output differs across source paths and mtimes",
         "GENERATOR_LAYOUT": r"Invalid generator logical path|Duplicate generator logical input|Unresolved generator argument",
         "GENERATOR_PYTHON_IMPORT": r"ModuleNotFoundError:|ImportError:",
+        "GENERATOR_TEMPLATE": r"TemplateNotFound|TemplateSyntaxError|jinja2.exceptions",
         "PROTOC_PLUGIN": r"Plugin failed with status code|program not found or is not executable|protoc-gen-plugin:",
         "V8_ENGINE_SCRIPT": r"check failed: V8 engine JavaScript|V8 engine script exception:",
         "V8_ENGINE_INSPECTOR": r"check failed: V8 engine inspector",

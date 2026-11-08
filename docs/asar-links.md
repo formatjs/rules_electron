@@ -23,5 +23,10 @@ handling; those aliases are not materialized in the sidecar. Input-tree filesyst
 symlinks remain a separate mapping concern.
 
 The example exercises linked main entry, packed directory reads, chained file
-links and an unpacked native addon resolved through a file link. Hosted validation
-is pending.
+links and an unpacked native addon resolved through a file link.
+
+[BB tests](https://formatjs.buildbuddy.io/invocation/c8b7456c-a727-4595-bbb9-103bb30ab4a3),
+[seven cross-build variants](https://formatjs.buildbuddy.io/invocation/b1b6006e-75ae-4641-9cd5-db12fc57f84d)
+and [native smoke](https://github.com/formatjs/rules_electron/actions/runs/42461286829)
+passed. Native coverage includes Linux x64, macOS ARM64 and Windows x64/ARM64
+with GNU LLVM/MSVC, plus existing installer/update and integrity checks.
