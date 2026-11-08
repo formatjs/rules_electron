@@ -24,7 +24,7 @@ def _payload_impl(ctx):
         "product_name": app.product_name,
         "executable_name": app.executable_name,
         "architecture": architecture,
-        "revision": ctx.attr.revision,
+        "revision": ctx.attr.revision or getattr(app, "build_number", "") or "1",
         "description": ctx.attr.description,
         "categories": ctx.attr.categories,
         "protocols": ctx.attr.protocols,
@@ -44,7 +44,7 @@ _linux_payload = rule(
     implementation = _payload_impl,
     attrs = {
         "app": attr.label(mandatory = True, providers = [ElectronAppInfo]),
-        "revision": attr.string(default = "1"),
+        "revision": attr.string(),
         "description": attr.string(mandatory = True),
         "categories": attr.string_list(default = ["Utility"]),
         "protocols": attr.string_list(),
@@ -57,7 +57,7 @@ _linux_payload = rule(
     outputs = {"tar": "%{name}.tar.gz", "version": "%{name}.version"},
 )
 
-def electron_deb(name, app, package_name, maintainer, description, depends, revision = "1", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, **kwargs):
+def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, **kwargs):
     """Build a DEB with desktop integration; scripts are declared inputs, never run during packaging.
 
     Args:
@@ -67,7 +67,7 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         maintainer: Maintainer identity.
         description: Package description and desktop comment.
         depends: Explicit Debian runtime dependencies.
-        revision: Debian package revision, separate from app version.
+        revision: Debian revision; defaults to app build_number, then 1.
         icons: PNG sizes or scalable SVG mappings.
         protocols: URI schemes registered by the desktop entry.
         file_associations: MIME types and filename globs.

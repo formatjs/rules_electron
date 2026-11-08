@@ -57,7 +57,7 @@ def _version(value):
     identifier = r"(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][A-Za-z0-9-]*)"
     pattern = rf"{number}\.{number}\.{number}(?:-{identifier}(?:\.{identifier})*)?(?:\+[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*)?"
     if not isinstance(value, str) or not re.fullmatch(pattern, value):
-        raise ValueError("Update version must be a valid SemVer")
+        raise ValueError("App version must be a valid SemVer")
     return value
 
 

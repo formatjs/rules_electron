@@ -52,6 +52,8 @@ def _installer_impl(ctx):
     ctx.actions.write(manifest, json.encode({
         "app": app.artifact.path,
         "package_json": app.package_json.path,
+        "build_version": getattr(app, "build_version", ""),
+        "build_number": getattr(app, "build_number", ""),
         "app_id": app.app_id,
         "product_name": app.product_name,
         "executable_name": app.executable_name,

@@ -344,3 +344,32 @@ The source aggregate took 89.022 seconds with 801 tracked remote actions,
 source suite took 39.912 seconds with zero remote actions. These are incremental
 CI observations, not cold-build benchmarks. Full source profiles remain Linux
 AMD64; compositor and full Electron integration remain unfinished.
+
+## Compositor closure
+
+The platform profile includes the original compositor closure: 2,017 additional
+C/C++ units, Electron-patched WebRTC, pinned federated-compute/SRTP sources and
+original metrics, field-trial, permissions-policy and GRIT generators. Combined
+coverage is 6,341 source/object units, 1,490 library/group/runtime targets,
+525 generator targets with 675 runs and 30 exact source pins. Existing 493 library
+and 203 generator records remain unchanged. File-valued generator options declare
+their inputs; field-trial generation uses its supported `--year=2025` option.
+SDK PipeWire/SPA headers and five real X11 runtime packages are declared. Runtime
+coverage is 59 libraries from 55 checksum-pinned packages, with SDK/runtime ABI
+metadata checked. The graph audit found no CMake or foreign-cc actions.
+
+[4a2bf7d components](https://formatjs.buildbuddy.io/invocation/76fcec92-d070-4111-bb69-9409ad3645a0),
+[BCR consumer](https://formatjs.buildbuddy.io/invocation/e094d365-9ce7-4b46-a66b-d7eb2df6f6ef)
+and [cross probes](https://formatjs.buildbuddy.io/invocation/462db483-9fb6-4093-9889-cecbb0577540)
+passed. Structured tests report compositor, media runtime, ALSA ABI, Symphonia,
+GPU transport and SwiftShader as PASSED. The compositor probe checks layer
+ownership/reparenting, then every raster pixel after clipping, translation and
+alpha blending. Full source coverage remains Linux AMD64; full Electron is
+unfinished.
+
+The warm aggregate took 164.160 seconds and the following source suite 100.692
+seconds, each with zero tracked remote actions. BCR source tests took 301.185
+seconds with two tracked actions, 4.065 CPU seconds, 356,081,664 bytes maximum
+action peak memory, 437,200,229 input bytes and 9,228,165 output bytes. These are
+incremental observations. Warm orchestration/cache/download overhead needs
+profiling; these figures do not establish cold-build performance.

@@ -116,3 +116,5 @@ configuration, channel manifests, SHA-512 metadata and external blockmaps from
 declared final artifacts. See [updater support](docs/updates.md) and the
 [release parity plan](docs/release-plan.md). Linux DEB install/update smoke is
 supported; release signing and other installer formats remain pending.
+
+App version overrides and build iterations: [identity contract](docs/metadata.md).

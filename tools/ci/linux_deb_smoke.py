@@ -66,7 +66,7 @@ def main(directory):
     try:
         installed = True
         command("sudo", "dpkg", "--install", str(v1))
-        assert version() == "1.0.0-1"
+        assert version() == "1.0.0-7"
         assert LAUNCHER.is_file() and LAUNCHER.stat().st_uid == 0
         desktop = Path("/usr/share/applications") / (APP_ID + ".desktop")
         command("desktop-file-validate", str(desktop))
@@ -123,7 +123,7 @@ sys.exit(result.returncode)
                             raise RuntimeError(f"Installed updater failed:\n{result.stdout}\n{result.stderr}")
                         marker = "UPDATE_HASH_REJECTED" if reject else "INSTALLED_UPDATE_SMOKE_OK"
                         assert marker in result.stdout, result.stdout + result.stderr
-                        assert version() == ("1.0.0-1" if reject else "2.0.0-1")
+                        assert version() == ("1.0.0-7" if reject else "2.0.0-7")
                         print(marker)
             finally:
                 server.shutdown()

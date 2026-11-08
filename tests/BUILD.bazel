@@ -2,6 +2,7 @@ load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//electron:archive.bzl", "electron_archive")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
+load("//electron:metadata.bzl", "electron_package_json")
 load(":cross_build.bzl", "cross_build")
 
 py_test(
@@ -140,4 +141,38 @@ py_test(
     args = ["$(rootpath :app)"],
     data = [":app"],
     target_compatible_with = ["@platforms//os:linux"],
+)
+
+electron_package_json(
+    name = "package_identity",
+    src = "fixtures/package.json",
+    version = "3.2.1-beta.2+build.7",
+)
+
+electron_app(
+    name = "versioned_app",
+    srcs = {"fixtures/main.js": "main.js"},
+    build_number = "7",
+    package_json = ":package_identity",
+    runtime = ":runtime",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+py_test(
+    name = "identity_test",
+    size = "small",
+    srcs = ["identity_test.py"],
+    args = [
+        "$(rootpath :package_identity)",
+        "$(rootpath :versioned_app)",
+    ],
+    data = [
+        ":package_identity",
+        ":versioned_app",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        "//electron/private:identity",
+        "//electron/private:updates",
+    ],
 )

@@ -32,6 +32,7 @@ py_library(
         "runtime.py",
     ],
     visibility = ["//tests:__pkg__"],
+    deps = [":identity"],
 )
 
 py_binary(
@@ -46,7 +47,10 @@ py_library(
     name = "nsis",
     srcs = ["nsis.py"],
     visibility = ["//tests:__pkg__"],
-    deps = [":updates"],
+    deps = [
+        ":identity",
+        ":updates",
+    ],
 )
 
 py_binary(
@@ -83,4 +87,19 @@ py_binary(
     main = "linux.py",
     visibility = ["//electron:__pkg__"],
     deps = [":updates"],
+)
+
+py_library(
+    name = "identity",
+    srcs = ["identity.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [":updates"],
+)
+
+py_binary(
+    name = "package_json",
+    srcs = ["identity.py"],
+    main = "identity.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":identity"],
 )

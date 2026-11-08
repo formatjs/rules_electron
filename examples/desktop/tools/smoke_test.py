@@ -108,7 +108,7 @@ def windows_resources(executable, expected_version):
     language, codepage = struct.unpack("<HH", ctypes.string_at(address, 4))
     for key, expected in {
         "CompanyName": "Example", "ProductName": "Sample Desktop",
-        "FileDescription": "Sample Desktop", "FileVersion": expected_version,
+        "FileDescription": "Sample Desktop", "FileVersion": expected_version + ".7",
         "ProductVersion": expected_version, "InternalName": "sample-desktop",
         "OriginalFilename": "sample-desktop.exe",
     }.items():
@@ -128,6 +128,12 @@ def check_asar_integrity(app, executable, environment, directory, target_os, exp
     digest = hashlib.sha256(raw_header).hexdigest()
     if target_os == "macos":
         metadata = plistlib.loads((app / "Contents/Info.plist").read_bytes())
+        assert metadata["CFBundleShortVersionString"] == expected_version
+        assert metadata["CFBundleVersion"] == expected_version + ".7"
+        for helper in (app / "Contents/Frameworks").glob("Sample Desktop Helper*.app"):
+            identity = plistlib.loads((helper / "Contents/Info.plist").read_bytes())
+            assert identity["CFBundleShortVersionString"] == expected_version
+            assert identity["CFBundleVersion"] == expected_version + ".7"
         assert metadata["ElectronAsarIntegrity"] == {
             "Resources/app.asar": {"algorithm": "SHA256", "hash": digest},
         }

@@ -11,6 +11,8 @@ ElectronAppInfo = provider(
         "executable_name": "Main executable basename.",
         "product_name": "Display name.",
         "app_id": "Application identifier.",
+        "build_version": "Explicit native build version override.",
+        "build_number": "Explicit build iteration.",
     },
 )
 
@@ -90,8 +92,8 @@ def _app_impl(ctx):
     if platform == "macos" and not ctx.executable.macos_signer:
         fail("macOS assembly requires an execution-platform macos_signer (rcodesign)")
     windows_tool = ctx.attr.windows_resource_tool[ElectronWindowsResourceToolInfo] if ctx.attr.windows_resource_tool else None
-    if platform == "windows" and (ctx.attr.windows_metadata or ctx.attr.fuses.get("enableEmbeddedAsarIntegrityValidation") == "on") and not windows_tool:
-        fail("Windows metadata and embedded integrity require windows_resource_tool")
+    if platform == "windows" and (ctx.attr.windows_metadata or ctx.attr.build_version or ctx.attr.build_number or ctx.attr.fuses.get("enableEmbeddedAsarIntegrityValidation") == "on") and not windows_tool:
+        fail("Windows metadata, build identity and embedded integrity require windows_resource_tool")
     if platform != "windows" and (windows_tool or ctx.attr.windows_metadata):
         fail("Windows resource options require a Windows target")
     for key in ctx.attr.windows_metadata:
@@ -126,6 +128,8 @@ def _app_impl(ctx):
         "product_name": ctx.attr.product_name or ctx.label.name,
         "app_id": ctx.attr.app_id,
         "windows_metadata": ctx.attr.windows_metadata,
+        "build_version": ctx.attr.build_version,
+        "build_number": ctx.attr.build_number,
         "windows_resource_tool": {
             "node": windows_tool.node.executable.path,
             "modules": windows_tool.modules.path,
@@ -149,6 +153,8 @@ def _app_impl(ctx):
             executable_name = executable_name,
             product_name = ctx.attr.product_name or ctx.label.name,
             app_id = ctx.attr.app_id,
+            build_version = ctx.attr.build_version,
+            build_number = ctx.attr.build_number,
         ),
         DefaultInfo(files = depset([output])),
     ]
@@ -165,6 +171,8 @@ electron_app = rule(
         "executable_name": attr.string(default = "electron"),
         "product_name": attr.string(),
         "app_id": attr.string(),
+        "build_version": attr.string(doc = "Native macOS/Windows build version; one to four decimal components. Overrides build_number for native metadata."),
+        "build_number": attr.string(doc = "Explicit decimal build iteration; appends to numeric app version for native metadata. Default DEB revision unless overridden."),
         "macos_signer": attr.label(executable = True, allow_single_file = True, cfg = "exec", doc = "Execution-platform rcodesign; required on macOS. Ad hoc signing only."),
         "windows_resource_tool": attr.label(providers = [ElectronWindowsResourceToolInfo], cfg = "exec", doc = "Declared PE resource editor; required for Windows embedded ASAR validation or windows_metadata."),
         "windows_metadata": attr.string_dict(doc = "Windows version strings: CompanyName, FileDescription, InternalName, LegalCopyright, OriginalFilename, ProductName."),

@@ -76,7 +76,7 @@ def extract_runtime(archive, output, platform, exclude_files, occupied, language
                 raise ValueError(f"Invalid runtime symlink chain: {path}") from error
 
 
-def brand_macos(output, executable_name, product_name, app_id, version, asar_header_hash=None):
+def brand_macos(output, executable_name, product_name, app_id, version, asar_header_hash=None, build_version=""):
     if not app_id:
         raise ValueError("macOS app_id required")
     plist = output / "Contents/Info.plist"
@@ -85,7 +85,7 @@ def brand_macos(output, executable_name, product_name, app_id, version, asar_hea
     executable.rename(executable.with_name(executable_name))
     metadata.update(CFBundleExecutable=executable_name, CFBundleName=product_name,
                     CFBundleDisplayName=product_name, CFBundleIdentifier=app_id,
-                    CFBundleShortVersionString=version, CFBundleVersion=version)
+                    CFBundleShortVersionString=version, CFBundleVersion=build_version or version)
     metadata.pop("ElectronAsarIntegrity", None)
     if asar_header_hash:
         metadata["ElectronAsarIntegrity"] = {
@@ -102,7 +102,8 @@ def brand_macos(output, executable_name, product_name, app_id, version, asar_hea
         binary.rename(binary.with_name(name))
         identifier_suffix = suffix.strip(" ()").lower()
         info.update(CFBundleExecutable=name, CFBundleName=name,
-                    CFBundleIdentifier=app_id + ".helper" + ("." + identifier_suffix if identifier_suffix else ""))
+                    CFBundleIdentifier=app_id + ".helper" + ("." + identifier_suffix if identifier_suffix else ""),
+                    CFBundleShortVersionString=version, CFBundleVersion=build_version or version)
         helper_plist.write_bytes(plistlib.dumps(info, sort_keys=True))
         helper.rename(helper.with_name(name + ".app"))
 

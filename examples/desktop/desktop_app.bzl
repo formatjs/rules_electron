@@ -19,6 +19,7 @@ def desktop_app(name, package_json, **kwargs):
             "installed-update-smoke.cjs": "installed-update-smoke.cjs",
         },
         app_id = "org.example.sample-desktop",
+        build_number = "7",
         asar = True,
         asar_unpacked = ["node_modules/example-native/addon.node"],
         executable_name = "sample-desktop",

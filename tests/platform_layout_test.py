@@ -67,11 +67,14 @@ class PlatformLayoutTest(unittest.TestCase):
                              b"framework" + SENTINEL + b"\x01\x09111100111")
         output = self.root / "app"
         assemble(self.manifest("Contents/Resources"), output, platform="macos", runtime_archive=runtime,
-                 executable_name="sample", product_name="Sample Desktop", app_id="org.example.sample", asar=True,
+                 executable_name="sample", product_name="Sample Desktop", app_id="org.example.sample", asar=True, build_number="7",
                  fuses={"enableEmbeddedAsarIntegrityValidation": "on", "onlyLoadAppFromAsar": "on"})
         metadata = plistlib.loads((output / "Contents/Info.plist").read_bytes())
         self.assertEqual(metadata["CFBundleIdentifier"], "org.example.sample")
-        self.assertEqual(metadata["CFBundleVersion"], "1.2.3")
+        self.assertEqual(metadata["CFBundleVersion"], "1.2.3.7")
+        self.assertEqual(metadata["CFBundleShortVersionString"], "1.2.3")
+        helper = output / "Contents/Frameworks/Sample Desktop Helper.app/Contents/Info.plist"
+        self.assertEqual(plistlib.loads(helper.read_bytes())["CFBundleVersion"], "1.2.3.7")
         asar = (output / "Contents/Resources/app.asar").read_bytes()
         header_length = struct.unpack_from("<I", asar, 12)[0]
         self.assertEqual(metadata["ElectronAsarIntegrity"], {

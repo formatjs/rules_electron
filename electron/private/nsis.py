@@ -12,6 +12,7 @@ import sys
 import tempfile
 
 from electron.private.update import _filename, _version
+from electron.private.identity import build_identity
 
 
 def literal(value):
@@ -22,7 +23,8 @@ def literal(value):
 
 def installer_script(app, package_json, app_id, product_name, executable_name,
                      output, protocols=(), desktop_shortcut=False, compression="zlib",
-                     updater_cache_name="", architecture="x64", payload_archive=""):
+                     updater_cache_name="", architecture="x64", payload_archive="",
+                     build_version="", build_number=""):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", app_id):
         raise ValueError("NSIS app_id must be an ASCII application identifier")
     _filename(app_id)
@@ -31,9 +33,9 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     _filename(executable)
     command_executable = executable.replace('$', '$$').replace("'", "$\\'")
     version = _version(json.loads(Path(package_json).read_text(encoding="utf-8"))["version"])
-    numeric = version.split("-", 1)[0].split("+", 1)[0].split(".")
-    if any(int(part) > 65535 for part in numeric):
-        raise ValueError("NSIS version components must fit 0..65535")
+    file_version = build_identity(version, build_version, build_number, "windows")
+    numeric = file_version.split("-", 1)[0].split("+", 1)[0].split(".")
+    numeric += ["0"] * (4 - len(numeric))
     if len(set(protocols)) != len(protocols) or any(not re.fullmatch(r"[a-z][a-z0-9+.-]*", scheme) for scheme in protocols):
         raise ValueError("Invalid or duplicate protocol")
     app = Path(app)
@@ -81,10 +83,11 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         '!include "FileFunc.nsh"', '!include "LogicLib.nsh"', '!include "x64.nsh"',
         'Name ' + q(product_name), 'OutFile ' + q(str(Path(output).resolve())),
         'InstallDir "$LOCALAPPDATA\\Programs\\' + app_id + '"',
-        'VIProductVersion ' + '.'.join(numeric + ['0']),
+        'VIProductVersion ' + '.'.join(numeric),
         'VIAddVersionKey "ProductName" ' + q(product_name),
         'VIAddVersionKey "FileDescription" ' + q(product_name + ' Installer'),
-        'VIAddVersionKey "FileVersion" ' + q(version),
+        'VIAddVersionKey "FileVersion" ' + q(file_version),
+        'VIAddVersionKey "ProductVersion" ' + q(version),
         'VIAddVersionKey "LegalCopyright" ""',
         'Page directory', 'Page instfiles', 'UninstPage uninstConfirm', 'UninstPage instfiles',
     ]

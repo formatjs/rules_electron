@@ -46,6 +46,17 @@ class NsisTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "0..65535"):
             self.render()
 
+    def test_build_identity_keeps_product_release_separate(self):
+        script = self.render(build_number="7")
+        self.assertIn('VIProductVersion 1.2.3.7', script)
+        self.assertIn('VIAddVersionKey "FileVersion" "1.2.3.7"', script)
+        self.assertIn('VIAddVersionKey "ProductVersion" "1.2.3"', script)
+        self.assertIn('"DisplayVersion" "1.2.3"', script)
+        script = self.render(build_version="4.5.6.8", build_number="7")
+        self.assertIn('VIProductVersion 4.5.6.8', script)
+        with self.assertRaisesRegex(ValueError, "0..65535"):
+            self.render(build_number="65536")
+
     def test_rejects_wrong_payload_cpu_before_invoking_compiler(self):
         header = bytearray(70)
         header[:2] = b"MZ"

@@ -8,6 +8,7 @@ import subprocess
 
 from electron.private.asar import create_archive
 from electron.private.fuses import set_fuses
+from electron.private.identity import build_identity
 from electron.private.runtime import brand_macos, extract_runtime, normalize
 
 
@@ -51,7 +52,8 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              executable_name="electron", remove_package_scripts=False,
              platform="linux", runtime_archive="", exclude_files=(),
              product_name="Electron", app_id="", runtime_languages=(),
-             windows_resource_tool=None, windows_metadata=None):
+             windows_resource_tool=None, windows_metadata=None,
+             build_version="", build_number=""):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
     embedded_integrity = (fuses or {}).get("enableEmbeddedAsarIntegrityValidation") == "on"
@@ -59,6 +61,8 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         raise ValueError("enableEmbeddedAsarIntegrityValidation requires ASAR and macOS or a Windows resource tool")
     if platform != "windows" and (windows_resource_tool or windows_metadata):
         raise ValueError("Windows resource options require a Windows target")
+    if platform == "windows" and (build_version or build_number) and not windows_resource_tool:
+        raise ValueError("Windows build identity requires windows_resource_tool")
     if windows_metadata and not windows_resource_tool:
         raise ValueError("windows_metadata requires windows_resource_tool")
     resources = "Contents/Resources" if platform == "macos" else "resources"
@@ -80,6 +84,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
 
     package_path = PurePosixPath(resources + "/app/package.json")
     package = json.loads(Path(paths[package_path]["source"]).read_text())
+    native_version = build_identity(package.get("version"), build_version, build_number, platform) if (build_version or build_number) else package.get("version", "")
     main = relative_path(package.get("main", "index.js"))
     if PurePosixPath(resources + "/app") / main not in paths:
         raise ValueError(f"App entry point missing: {main}")
@@ -113,7 +118,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         archive.chmod(0o644)
         shutil.rmtree(output / app_prefix)
     if platform == "macos":
-        brand_macos(output, executable_name, product_name, app_id, package["version"], header_hash)
+        brand_macos(output, executable_name, product_name, app_id, package["version"], header_hash, build_version=native_version)
         binary = output / "Contents/Frameworks/Electron Framework.framework/Electron Framework"
     else:
         original = "electron.exe" if platform == "windows" else "electron"
@@ -127,7 +132,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         subprocess.run([
             windows_resource_tool["node"], windows_resource_tool["script"],
             windows_resource_tool["modules"], str(binary), json.dumps({
-                "version": package["version"], "product_name": product_name,
+                "version": package["version"], "build_version": native_version, "product_name": product_name,
                 "executable_name": executable_name, "header_hash": header_hash,
                 "metadata": windows_metadata or {},
             }),

@@ -32,8 +32,13 @@ const info = versions[0];
 const languages = info.getAllLanguagesForStringValues();
 if (languages.length !== 1) throw new Error('Expected one Windows resource language');
 const language = languages[0];
+const fileVersion = options.build_version || options.version;
+const fileNumeric = fileVersion.split(/[+-]/, 1)[0].split('.');
+if (!/^(?:0|[1-9][0-9]*)(?:\.(?:0|[1-9][0-9]*)){0,3}$/.test(fileNumeric.join('.')) || fileNumeric.some((part) => Number(part) > 65535)) {
+  throw new Error('Windows build version needs one to four components in 0..65535');
+}
 const numeric = version.slice(1).map(Number);
-info.setFileVersion(...numeric, 0, language.lang);
+info.setFileVersion(...[...fileNumeric.map(Number), ...Array(4 - fileNumeric.length).fill(0)], language.lang);
 info.setProductVersion(...numeric, 0, language.lang);
 info.setStringValues(language, {
   ProductName: options.product_name,
@@ -41,7 +46,7 @@ info.setStringValues(language, {
   InternalName: options.executable_name,
   OriginalFilename: path.basename(binary),
   ...options.metadata,
-  FileVersion: options.version,
+  FileVersion: fileVersion,
   ProductVersion: options.version,
 });
 info.outputToResourceEntries(resources.entries);
