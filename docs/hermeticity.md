@@ -483,3 +483,24 @@ production. Sanitized diagnostics identified Windows-style feature JSON paths,
 cross-directory images and declared branding variables. Source fixes preserve
 existing compile keys and request the original JS2C invocation through native
 providers. New API, image, logo and JS2C contracts remain pending hosted checks.
+
+
+The `8c98695` source consumer passed the original JS2C byte comparison and
+release/beta version tests. Its overall consumer and components runs failed:
+unquoted test JSON, missing API namespace/implementation inputs, a GRIT include
+image, declared native headers and C++ constraints. Cross probes passed.
+
+The [732642d source overlay](https://github.com/formatjs/electron/commit/732642d64f1dac94e46cdc46669c8f46109414b9)
+captures the Linux AMD64 native Electron library closure,
+adding 826 library/group targets and 435 generator actions. Source pins include
+Ink, ink-stroke-modeler and libaddressinput. Native ICU data feeds snapshot and
+country-name generation; GTK/GDK/libatomic runtime packages match the captured
+SDK, with all 90 ELF dependencies accounted for. Seven SDK/runtime ABI pairs,
+GPU checkout metadata and final WebID resource images have hosted contracts.
+Native header isolation follows generator dependencies and selects 11 targets.
+
+The complete component/test graph analyzes with 132,653 actions and 67,494
+CppCompile actions as positive control. No CMake/foreign-cc mnemonics appear;
+local analysis executes zero build actions. Expanded contexts change compile
+keys, so this does not establish warm-cache performance. Hosted compilation,
+full executable linkage, all source triples and migration parity remain open.
