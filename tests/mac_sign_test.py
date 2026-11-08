@@ -5,12 +5,39 @@ import plistlib
 import struct
 import tempfile
 import unittest
+import shutil
+from unittest.mock import patch
 from zipfile import ZipFile
 
 from electron.private.mac_sign import signing_arguments, sign_bundle, archive_bundle
 
 
 class MacSignTest(unittest.TestCase):
+    def test_signing_preserves_empty_leaves_and_keeps_input_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, output = root / "input.app", root / "output.app"
+            (source / "Contents/Resources/empty/nested").mkdir(parents=True)
+            binary = source / "Contents/MacOS/sample"
+            binary.parent.mkdir(parents=True)
+            binary.write_bytes(b"unsigned")
+
+            def sign(command, **_kwargs):
+                original, signed = map(Path, command[-2:])
+                if original != signed:
+                    for file in original.rglob("*"):
+                        if file.is_file():
+                            destination = signed / file.relative_to(original)
+                            destination.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copyfile(file, destination)
+                (signed / "Contents/MacOS/sample").write_bytes(b"signed")
+
+            with patch("electron.private.mac_sign.subprocess.run", side_effect=sign):
+                sign_bundle("declared-signer", source, output)
+            self.assertTrue((output / "Contents/Resources/empty/nested").is_dir())
+            self.assertEqual(binary.read_bytes(), b"unsigned")
+            self.assertEqual((output / "Contents/MacOS/sample").read_bytes(), b"signed")
+
     def test_bundle_zip_preserves_empty_directories(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

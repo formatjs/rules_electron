@@ -52,10 +52,12 @@ def signing_arguments(source, entitlements="", entitlements_inherit="", hardened
 
 def sign_bundle(signer, source, output, entitlements="", entitlements_inherit="", hardened_runtime=False):
     arguments = signing_arguments(source, entitlements, entitlements_inherit, hardened_runtime)
+    # Fresh-output signing copies files only; sign our complete copy in place.
+    shutil.copytree(source, output, symlinks=True)
     config = output.parent / "rcodesign.toml"
     config.write_text("")
     subprocess.run([signer, "sign", "--config-file", str(config), "--timestamp-url", "none", *arguments,
-                    str(source), str(output)], check=True,
+                    str(output), str(output)], check=True,
                    env={"LC_ALL": "C.UTF-8", "TZ": "UTC", "SOURCE_DATE_EPOCH": "0", "HOME": str(config.parent)})
     # rcodesign 0.29 verify requires CMS; ad hoc signatures have none.
     # Native smoke checks the full bundle with Apple's codesign instead.
