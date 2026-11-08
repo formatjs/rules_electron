@@ -65,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: main
+          ref: ${{ inputs.commit_sha || github.event.sha }}
           persist-credentials: false
       - name: Download verified BB smoke shard
         env:
@@ -108,7 +108,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: main
+          ref: ${{ inputs.commit_sha || github.event.sha }}
           persist-credentials: false
       - uses: actions/setup-python@v6
         with:
