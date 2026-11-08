@@ -100,7 +100,7 @@ def classify(log):
         "BLINK_CORE_TEST": r"check failed: blink_core ",
         "BLINK_MODULES_TEST": r"check failed: blink_modules ",
         "LLGUIDANCE_TEST": r"check failed: llguidance ",
-        "DEVTOOLS_RESOURCES_TEST": r"(?:FAIL|ERROR): test_(?:locale_collects_strings_from_multiple_frontend_directories|html_boots_actual_devtools_entrypoint)",
+        "DEVTOOLS_RESOURCES_TEST": r"(?:FAIL|ERROR): test_(?:locale_collects_strings_from_multiple_frontend_directories|html_boots_actual_devtools_entrypoint|workspace_identity_uses_declared_source_root)",
         "BLINK_BINDINGS_TEST": r"check failed: blink_bindings ",
         "CRABBY_DECODE_TEST": r"check failed: crabby_decode ",
         "BLINK_FONT_TEST": r"check failed: blink_font ",

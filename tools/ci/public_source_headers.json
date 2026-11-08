@@ -117533,6 +117533,8 @@
   "services/video_decode_perf_history.h",
   "services/video_decode_stats_recorder.h",
   "services/viz/privileged/cpp/context_lost_reason_traits.h",
+  "services/viz/privileged/cpp/overlay_strategy_mojom_traits.h",
+  "services/viz/privileged/cpp/renderer_settings_mojom_traits.h",
   "services/viz/privileged/mojom/compositing/begin_frame_observer.mojom.h",
   "services/viz/privileged/mojom/compositing/display_private.mojom.h",
   "services/viz/privileged/mojom/compositing/external_begin_frame_controller.mojom.h",
