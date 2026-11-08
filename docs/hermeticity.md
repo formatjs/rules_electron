@@ -269,8 +269,22 @@ The clean [e677b62 components](https://formatjs.buildbuddy.io/invocation/7056db5
 and [cross probes](https://formatjs.buildbuddy.io/invocation/eb37a769-f425-4ba9-9c64-5f77a864c1a2)
 also passed.
 
-[e42592d components](https://formatjs.buildbuddy.io/invocation/9a591f26-aab9-495f-8a05-da63df40d687),
 [consumer](https://formatjs.buildbuddy.io/invocation/44781263-425a-4713-a6e2-288114a29449)
 and [cross probes](https://formatjs.buildbuddy.io/invocation/2a544517-a493-4bd2-9e08-ac3beb1bee52)
 passed. Component profiles remain Linux AMD64; full Electron and other source
 profiles remain unfinished.
+
+## GPU command-buffer source boundary
+
+The upstream Linux AMD64 profile now captures 2,633 native units across 407
+library/group/runtime targets, including GLES2 client/service command buffers,
+Viz common and GPU process IPC services. Sixteen exact source pins include
+Chromium's libyuv revision. The original Dawn checkout hook uses its supported
+pinned revision/time environment; no Git or clock lookup runs inside that action.
+Quoted sibling headers retain their original relative layout across profile
+boundaries instead of being redirected into another source repository.
+
+The [7d07a48 aggregate](https://formatjs.buildbuddy.io/invocation/2a50b8c8-2089-4c39-9950-a097be8b3f3e)
+and [SwiftShader pixel probe](https://formatjs.buildbuddy.io/invocation/7d6b4821-4816-455a-b5c8-efb743167cb2)
+passed on BB. The new transport probe still needs passing runtime evidence after
+its C++ settings and complete-type include fixes. Full Electron remains unfinished.

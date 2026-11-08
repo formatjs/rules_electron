@@ -529,6 +529,16 @@ longer pull entire desktop library sets into every DSO. Native GLib and zlib
 shared owners prevent duplicated initialization state. Future measurements must
 preserve the real loader, SwiftShader selection and framebuffer checks.
 
+## GPU command-buffer source aggregate
+
+The [7d07a48 source aggregate](https://formatjs.buildbuddy.io/invocation/2a50b8c8-2089-4c39-9950-a097be8b3f3e)
+built 2,633 captured native units in 68.641 seconds: 624 tracked executions,
+1,305.694 CPU seconds, 742,985,728-byte maximum action peak memory,
+1,896,199,480 input download bytes and 80,179,315 output upload bytes.
+The preceding graphics gate and concurrent BCR consumer had populated caches.
+This is a mixed-cache observation, not a cold baseline or measured speedup.
+Transport-probe runtime validation remains separate from aggregate compilation.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache
