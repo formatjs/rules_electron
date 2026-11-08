@@ -101,6 +101,7 @@ def classify(log):
         "BLINK_MODULES_TEST": r"check failed: blink_modules ",
         "LLGUIDANCE_TEST": r"check failed: llguidance ",
         "CATAPULT_RESOURCE_INPUT": r"DepsException:.*(?:nonexistent file|not in the search path)",
+        "NATIVE_GENERATORS_TEST": r"(?:FAIL|ERROR): test_original_generators_match_bazel_fuse_and_node_artifacts",
         "SDK_RUNTIME_ABI_TEST": r"(?:FAIL|ERROR): test_sdk_interfaces_match_pinned_runtime_symbols_and_build_ids",
         "POLICY_TEST": r"(?:FAIL|ERROR): test_(?:pinned_yaml_runtime_and_policy_ids_match_sources|depfile_uses_declared_relative_policy_paths)",
         "CONTENT_WEBUI_TEST": r"(?:FAIL|ERROR): test_tracing_pack_preserves_original_html_and_javascript",
@@ -274,6 +275,7 @@ def source_test_diagnostics(identifier, key, selected=None):
         "//source/content_metadata:content_webui_test": "content_webui",
         "//source/content_metadata:policy_test": "policy",
         "//source/content_metadata:runtime_abi_test": "sdk_runtime_abi",
+        "//source/content_metadata:native_generators_test": "native_generators",
         "//electron/private:source_action_test": "source_action",
         "//source/blink_bindings:bindings_test": "blink_bindings",
         "//source/crabbyavif:decode_test": "crabby_decode",
@@ -521,5 +523,7 @@ if __name__ == "__main__":
         elif status == "running" and any(name in classify(log) for name in ("TEST_FAILED", "BUILD_FAILED", "FATAL_ERROR")):
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
+        elif status == "running" and command == "test":
+            source_test_diagnostics(identifier, key, {"catapult", "content_webui", "sdk_runtime_abi", "native_generators", "policy", "web_assets", "tracing_proto"})
         elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
-            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "source_action", "llguidance", "crabby_decode"})
+            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "native_generators", "source_action", "llguidance", "crabby_decode"})
