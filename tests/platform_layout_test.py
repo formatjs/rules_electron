@@ -156,6 +156,10 @@ class PlatformLayoutTest(unittest.TestCase):
             assemble(self.manifest("Contents/Resources"), self.root / "occupied.app", platform="macos",
                      runtime_archive=self.macos_runtime(), app_id="org.example.sample", executable_name="sample",
                      extra_files=[{"source": str(self.main), "path": "MacOS/sample"}])
+        with self.assertRaisesRegex(ValueError, "Executable destination already occupied"):
+            assemble(self.manifest("resources"), self.root / "occupied-windows", platform="windows",
+                     runtime_archive=self.platform_runtime("windows"), executable_name="sample",
+                     extra_files=[{"source": str(self.main), "path": "SAMPLE.EXE"}])
 
     def test_macos_protocols_brand_main_bundle_only(self):
         output = self.root / "protocol.app"

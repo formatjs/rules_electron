@@ -139,7 +139,9 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         name = executable_name + (".exe" if platform == "windows" and not executable_name.endswith(".exe") else "")
         binary = output / name
         if original != name:
-            if binary.exists():
+            occupied = (any(path.name != original and path.name.casefold() == name.casefold()
+                            for path in output.iterdir()) if platform == "windows" else binary.exists())
+            if occupied:
                 raise ValueError(f"Executable destination already occupied: {name}")
             (output / original).rename(binary)
     if windows_resource_tool:
