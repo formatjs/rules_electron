@@ -97,6 +97,18 @@ def desktop_app(name, package_json, **kwargs):
             ":macos": "@rcodesign_linux_x64//:rcodesign",
             "//conditions:default": None,
         }),
+        macos_entitlements = select({
+            ":macos": "entitlements.plist",
+            "//conditions:default": None,
+        }),
+        macos_entitlements_inherit = select({
+            ":macos": "entitlements.plist",
+            "//conditions:default": None,
+        }),
+        macos_hardened_runtime = select({
+            ":macos": True,
+            "//conditions:default": False,
+        }),
         macos_icon = select({
             ":macos": ":example_icon",
             "//conditions:default": None,

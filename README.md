@@ -132,3 +132,4 @@ supported; release signing and other installer formats remain pending.
 
 App version overrides and build iterations: [identity contract](docs/metadata.md).
 Integrity-pinned npm inputs: [npm runtime trees](docs/npm.md).
+macOS entitlement/hardening inputs: [signing settings](docs/macos-signing.md).

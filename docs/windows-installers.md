@@ -8,7 +8,11 @@ compilation. App executable branding remains `electron_app.windows_icon`.
 
 The native fixture uses different app, installer and uninstaller colors, then
 extracts their executable icons through Win32. Installer reproducibility and
-installed update checks also include these icons. Hosted validation is pending.
+installed update checks also include these icons.
+[BB tests](https://formatjs.buildbuddy.io/invocation/9cad5908-69d2-44eb-ac2a-18677024f240),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/b2ff0731-306d-4ddd-8d83-76eb2820bbf0)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42468846229)
+passed, including distinct installer/uninstaller icons on both Windows CPUs/compiler variants.
 
 Shortcuts receive `app_user_model_id`, defaulting to `electron_app.app_id`.
 The value allows at most 128 UTF-16 units and no whitespace. Both Start Menu
@@ -26,7 +30,11 @@ See [Electron's runtime API](https://www.electronjs.org/docs/latest/api/app#apps
 and [Windows shortcut identity](https://learn.microsoft.com/en-us/windows/win32/shell/enable-desktop-toast-with-appusermodelid).
 Packaging sets shortcut properties; app code owns process identity. Native
 smoke reads shortcut properties through Electron and process identity through
-Win32, before and after installed updates. Hosted validation is pending.
+Win32, before and after installed updates.
+[BB tests](https://formatjs.buildbuddy.io/invocation/e8acc136-a9d1-49a9-996d-ba494c7c053e),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/0340753a-d869-4cce-b70a-961dc7bdd773)
+and [all native hosts](https://github.com/formatjs/rules_electron/actions/runs/42468452137)
+passed; both Windows compiler/CPU variants checked shortcut and process identity.
 
 `electron_nsis` builds a per-user installer and uninstaller from a Windows
 `electron_app`. The compiler runs on the execution platform; payload binaries

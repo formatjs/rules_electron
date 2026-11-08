@@ -10,6 +10,13 @@ load(":npm_lock_test.bzl", "npm_lock_test")
 npm_lock_test(name = "npm_lock_test")
 
 py_test(
+    name = "mac_sign_test",
+    size = "small",
+    srcs = ["mac_sign_test.py"],
+    deps = ["//electron/private:assembly"],
+)
+
+py_test(
     name = "file_collection_test",
     size = "small",
     srcs = ["file_collection_test.py"],

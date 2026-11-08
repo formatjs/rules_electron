@@ -189,6 +189,24 @@ def windows_resources(executable, expected_version):
     return integrity
 
 
+def check_macos_signing(app):
+    helpers = sorted((app / "Contents/Frameworks").glob("*.app"))
+    assert helpers, "Expected nested Electron helpers"
+    targets = [app, app / "Contents/Frameworks/Electron Framework.framework", *helpers,
+               app / "Contents/Resources/app.asar.unpacked/node_modules/example-native/addon.node",
+               app / "Contents/Resources/plugins/shared.asar.unpacked/addon.node"]
+    for target in targets:
+        flags = subprocess.run(["/usr/bin/codesign", "--display", "--verbose=4", str(target)],
+                               capture_output=True, text=True, check=True)
+        assert re.search(r"flags=.*\bruntime\b", flags.stderr), flags.stderr
+        result = subprocess.run(["/usr/bin/codesign", "--display", "--entitlements", "-", str(target)],
+                                capture_output=True, check=True)
+        entitlements = plistlib.loads(result.stdout)
+        for name in ["allow-jit", "allow-unsigned-executable-memory", "disable-library-validation"]:
+            assert entitlements.get("com.apple.security.cs." + name) is True, name
+    print("EXAMPLE_HARDENED_RUNTIME_SMOKE_OK binaries=" + str(len(targets)))
+
+
 def check_macos_icon(app):
     import ctypes
     from ctypes import c_void_p, c_char_p, c_long, c_double
@@ -394,6 +412,7 @@ if __name__ == "__main__":
                 raise RuntimeError("Expected one packaged .app")
             app = bundles[0]
             subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
+            check_macos_signing(app)
             executable = app / "Contents/MacOS/sample-desktop"
         else:
             shutil.copytree(source, app)

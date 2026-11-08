@@ -9,12 +9,15 @@ from electron.private.mac_sign import archive_bundle, sign_bundle
 
 if __name__ == "__main__":
     manifest = json.loads(Path(sys.argv[1]).read_text())
+    signing = {name: manifest.pop("macos_" + name, default) for name, default in [
+        ("entitlements", ""), ("entitlements_inherit", ""), ("hardened_runtime", False),
+    ]}
     if manifest.get("platform") == "macos":
         with tempfile.TemporaryDirectory() as directory:
             unsigned = Path(directory) / "unsigned.app"
             signed = Path(directory) / "signed.app"
             assemble(output=unsigned, **manifest)
-            sign_bundle(sys.argv[3], unsigned, signed)
+            sign_bundle(sys.argv[3], unsigned, signed, **signing)
             archive_bundle(signed, sys.argv[2], manifest["product_name"] + ".app")
     else:
         assemble(output=sys.argv[2], **manifest)

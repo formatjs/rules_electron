@@ -96,6 +96,8 @@ def _app_impl(ctx):
         fail("macOS protocols require a macOS target")
     if platform != "macos" and ctx.file.macos_icon:
         fail("macos_icon requires a macOS target")
+    if platform != "macos" and (ctx.file.macos_entitlements or ctx.file.macos_entitlements_inherit or ctx.attr.macos_hardened_runtime):
+        fail("macOS signing settings require a macOS target")
     if platform == "macos" and not ctx.executable.macos_signer:
         fail("macOS assembly requires an execution-platform macos_signer (rcodesign)")
     windows_tool = ctx.attr.windows_resource_tool[ElectronWindowsResourceToolInfo] if ctx.attr.windows_resource_tool else None
@@ -151,6 +153,9 @@ def _app_impl(ctx):
         "macos_protocols": ctx.attr.macos_protocols,
         "macos_protocol_roles": ctx.attr.macos_protocol_roles,
         "macos_icon": ctx.file.macos_icon.path if ctx.file.macos_icon else "",
+        "macos_entitlements": ctx.file.macos_entitlements.path if ctx.file.macos_entitlements else "",
+        "macos_entitlements_inherit": ctx.file.macos_entitlements_inherit.path if ctx.file.macos_entitlements_inherit else "",
+        "macos_hardened_runtime": ctx.attr.macos_hardened_runtime,
         "windows_metadata": ctx.attr.windows_metadata,
         "windows_icon": ctx.file.windows_icon.path if ctx.file.windows_icon else "",
         "build_version": ctx.attr.build_version,
@@ -164,7 +169,7 @@ def _app_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._assembler,
         arguments = [manifest.path, output.path] + ([ctx.executable.macos_signer.path] if platform == "macos" else []),
-        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([ctx.file.windows_icon] if ctx.file.windows_icon else []) + ([windows_tool.modules, windows_tool.script] if windows_tool else []) + ([matcher.modules, matcher.script] if matcher else [])),
+        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([ctx.file.macos_entitlements] if ctx.file.macos_entitlements else []) + ([ctx.file.macos_entitlements_inherit] if ctx.file.macos_entitlements_inherit else []) + ([ctx.file.windows_icon] if ctx.file.windows_icon else []) + ([windows_tool.modules, windows_tool.script] if windows_tool else []) + ([matcher.modules, matcher.script] if matcher else [])),
         tools = ([ctx.executable.macos_signer] if platform == "macos" else []) + ([windows_tool.node] if windows_tool else []) + ([matcher.node] if matcher else []),
         outputs = [output],
         mnemonic = "ElectronApp",
@@ -207,6 +212,9 @@ electron_app = rule(
         "build_version": attr.string(doc = "Native macOS/Windows build version; one to four decimal components. Overrides build_number for native metadata."),
         "build_number": attr.string(doc = "Explicit decimal build iteration; appends to numeric app version for native metadata. Default DEB revision unless overridden."),
         "macos_signer": attr.label(executable = True, allow_single_file = True, cfg = "exec", doc = "Execution-platform rcodesign; required on macOS. Ad hoc signing only."),
+        "macos_entitlements": attr.label(allow_single_file = [".plist"], doc = "XML entitlements for the main macOS executable."),
+        "macos_entitlements_inherit": attr.label(allow_single_file = [".plist"], doc = "XML entitlements for nested Mach-O executables, frameworks, libraries and addons."),
+        "macos_hardened_runtime": attr.bool(default = False, doc = "Set the runtime code-signature flag on the main bundle and nested Mach-O files."),
         "windows_resource_tool": attr.label(providers = [ElectronWindowsResourceToolInfo], cfg = "exec", doc = "Declared PE resource editor; required for Windows embedded ASAR validation, metadata or icons."),
         "windows_metadata": attr.string_dict(doc = "Windows version strings: CompanyName, FileDescription, InternalName, LegalCopyright, OriginalFilename, ProductName."),
         "windows_icon": attr.label(allow_single_file = [".ico"], doc = "Declared ICO asset replacing executable icon groups through windows_resource_tool."),
