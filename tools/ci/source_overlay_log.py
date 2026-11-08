@@ -97,6 +97,7 @@ def classify(log):
         "BLINK_PLATFORM_TEST": r"check failed: blink_platform ",
         "BLINK_CORE_TEST": r"check failed: blink_core ",
         "BLINK_MODULES_TEST": r"check failed: blink_modules ",
+        "DEVTOOLS_RESOURCES_TEST": r"(?:FAIL|ERROR): test_(?:locale_collects_strings_from_multiple_frontend_directories|html_boots_actual_devtools_entrypoint)",
         "BLINK_BINDINGS_TEST": r"check failed: blink_bindings ",
         "CRABBY_DECODE_TEST": r"check failed: crabby_decode ",
         "BLINK_FONT_TEST": r"check failed: blink_font ",
@@ -247,6 +248,7 @@ def source_test_diagnostics(identifier, key, selected=None):
         "//source/blink_platform:platform_test": "blink_platform",
         "//source/blink_core:core_test": "blink_core",
         "//source/blink_modules:modules_test": "blink_modules",
+        "//source/devtools:resources_test": "devtools_resources",
         "//source/blink_bindings:bindings_test": "blink_bindings",
         "//source/crabbyavif:decode_test": "crabby_decode",
         "//source/blink_rust:font_format_test": "blink_font",
@@ -480,4 +482,4 @@ if __name__ == "__main__":
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
         elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
-            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "crabby_decode"})
+            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "crabby_decode"})
