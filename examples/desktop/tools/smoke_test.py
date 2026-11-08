@@ -166,6 +166,16 @@ def macos_protocol_handler(bundle_id):
 
 
 def check_macos_protocol(app, executable, environment, directory, target_arch):
+    applications = Path.home() / "Applications"
+    applications.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="rules-electron-smoke-", dir=applications) as installed:
+        bundle = Path(installed) / app.name
+        subprocess.run(["/usr/bin/ditto", str(app), str(bundle)], check=True, timeout=30)
+        _check_macos_protocol(bundle, environment, directory, target_arch)
+
+
+def _check_macos_protocol(app, environment, directory, target_arch):
+    executable = app / "Contents/MacOS/sample-desktop"
     metadata = plistlib.loads((app / "Contents/Info.plist").read_bytes())
     assert metadata["CFBundleURLTypes"] == [{
         "CFBundleURLName": "Sample Desktop", "CFBundleURLSchemes": ["sample-desktop"],
