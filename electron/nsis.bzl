@@ -28,7 +28,7 @@ electron_nsis_tool = rule(
     implementation = _tool_impl,
     attrs = {
         "compiler": attr.label(mandatory = True, executable = True, allow_single_file = True, cfg = "exec"),
-        "data": attr.label(mandatory = True, cfg = "exec", doc = "Tree containing Include, Stubs, Plugins and Contrib."),
+        "data": attr.label(mandatory = True, cfg = "exec", doc = "Tree containing Include, Stubs, Plugins and Contrib, including the Unicode WinShell plugin for shortcut identity."),
         "archive_compiler": attr.label(executable = True, allow_single_file = True, cfg = "exec", doc = "Declared 7zip; required for 7z payload compression."),
     },
 )
@@ -61,6 +61,7 @@ def _installer_impl(ctx):
         "data": tool.data.path,
         "protocols": ctx.attr.protocols,
         "file_associations": ctx.attr.file_associations,
+        "app_user_model_id": ctx.attr.app_user_model_id,
         "desktop_shortcut": ctx.attr.desktop_shortcut,
         "verify_reproducible": ctx.attr.verify_reproducible,
         "compression": ctx.attr.compression,
@@ -87,6 +88,7 @@ electron_nsis = rule(
         "protocols": attr.string_list(doc = "Per-user URI schemes; existing foreign registrations cause installation to fail."),
         "file_associations": attr.string_dict(doc = "Lowercase extensions (including dot) mapped to descriptions. Registers per-user Open With and Default Apps handlers; preserves user defaults."),
         "desktop_shortcut": attr.bool(default = False),
+        "app_user_model_id": attr.string(doc = "Shortcut AppUserModelID; defaults to the app ID. Match app.setAppUserModelId at runtime."),
         "compression": attr.string(default = "7z", values = ["7z", "zlib", "bzip2", "lzma", "off"]),
         "updater_cache_name": attr.string(doc = "Stable app-update.yml cache name; seed current installer for differential updates."),
         "verify_reproducible": attr.bool(default = False, doc = "Compile twice in different directories and require identical installer bytes."),

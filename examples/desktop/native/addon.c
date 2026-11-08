@@ -26,5 +26,25 @@ NAPI_MODULE_INIT() {
     throw_error(env, NULL, "Could not initialize example addon");
     return NULL;
   }
+#ifdef _WIN32
+  typedef HRESULT(WINAPI *get_app_id_type)(PWSTR*);
+  typedef void(WINAPI *free_memory_type)(LPVOID);
+  typedef napi_status(NAPI_CDECL *create_string_type)(napi_env, const char16_t*, size_t, napi_value*);
+  get_app_id_type get_app_id = (get_app_id_type)GetProcAddress(GetModuleHandleW(L"shell32.dll"), "GetCurrentProcessExplicitAppUserModelID");
+  free_memory_type free_memory = (free_memory_type)GetProcAddress(GetModuleHandleW(L"ole32.dll"), "CoTaskMemFree");
+  create_string_type create_string = (create_string_type)GetProcAddress(host, "napi_create_string_utf16");
+  PWSTR identifier = NULL;
+  if (!get_app_id || !free_memory || !create_string || FAILED(get_app_id(&identifier))) {
+    throw_error(env, NULL, "Could not read process AppUserModelID");
+    return NULL;
+  }
+  napi_value app_id;
+  napi_status status = create_string(env, (const char16_t*)identifier, NAPI_AUTO_LENGTH, &app_id);
+  free_memory(identifier);
+  if (status != napi_ok || set_property(env, exports, "appUserModelId", app_id) != napi_ok) {
+    throw_error(env, NULL, "Could not expose process AppUserModelID");
+    return NULL;
+  }
+#endif
   return exports;
 }

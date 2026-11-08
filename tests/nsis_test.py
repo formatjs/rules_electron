@@ -85,6 +85,13 @@ class NsisTest(unittest.TestCase):
         second = self.render(file_associations={".first": "First", ".second": "Second"})
         self.assertEqual(first, second)
 
+    def test_app_user_model_id_constraints(self):
+        for value in ["contains space", "tabs\there", "a" * 129, "😀" * 65, "${NSISDIR}"]:
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                self.render(app_user_model_id=value)
+        self.render(app_user_model_id="a" * 128)
+        self.render(app_user_model_id="😀" * 64)
+
 
 if __name__ == "__main__":
     unittest.main()

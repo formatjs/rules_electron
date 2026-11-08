@@ -355,6 +355,7 @@ if __name__ == "__main__":
     parser.add_argument("--target-arch", choices=["x64", "arm64"], required=True)
     parser.add_argument("--installed", action="store_true")
     parser.add_argument("--expected-version")
+    parser.add_argument("--shortcut", action="append", default=[])
     args = parser.parse_args()
     host_os = {"Linux": "linux", "Darwin": "macos", "Windows": "windows"}.get(platform.system())
     host_arch = {"x86_64": "x64", "amd64": "x64", "arm64": "arm64", "aarch64": "arm64"}.get(platform.machine().lower())
@@ -405,6 +406,7 @@ if __name__ == "__main__":
             result = subprocess.run([
                 str(executable), "--smoke", "--disable-gpu", "--disable-dev-shm-usage",
                 "--user-data-dir=" + str(directory / "profile"),
+                *[value for shortcut in args.shortcut for value in ["--shortcut-smoke", shortcut]],
             ], cwd=directory, env=environment, capture_output=True, encoding="utf-8", errors="replace", timeout=45)
         if result.returncode:
             raise RuntimeError(f"Electron exited {result.returncode}:\n{result.stdout}\n{result.stderr}")

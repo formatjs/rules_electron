@@ -24,10 +24,14 @@ def literal(value):
 def installer_script(app, package_json, app_id, product_name, executable_name,
                      output, protocols=(), desktop_shortcut=False, compression="zlib",
                      updater_cache_name="", architecture="x64", payload_archive="",
-                     build_version="", build_number="", file_associations=None):
+                     build_version="", build_number="", file_associations=None, app_user_model_id=""):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", app_id):
         raise ValueError("NSIS app_id must be an ASCII application identifier")
     _filename(app_id)
+    app_user_model_id = app_user_model_id or app_id
+    if len(app_user_model_id.encode('utf-16-le')) > 256 or any(c.isspace() for c in app_user_model_id):
+        raise ValueError("AppUserModelID must contain at most 128 UTF-16 units and no whitespace")
+    literal(app_user_model_id)
     _filename(product_name)
     executable = executable_name if executable_name.endswith(".exe") else executable_name + ".exe"
     _filename(executable)
@@ -202,9 +206,13 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         'WriteRegDWORD HKCU ' + q(uninstall_registry) + ' "NoModify" 1',
         'WriteRegDWORD HKCU ' + q(uninstall_registry) + ' "NoRepair" 1',
         'CreateShortcut "$SMPROGRAMS\\' + product_name.replace('$', '$$') + '.lnk" "$INSTDIR\\' + executable.replace('$', '$$') + '"',
+        'IfErrors failed_install',
+        'WinShell::SetLnkAUMI "$SMPROGRAMS\\' + product_name.replace('$', '$$') + '.lnk" ' + q(app_user_model_id),
     ]
     if desktop_shortcut:
-        lines += ['CreateShortcut "$DESKTOP\\' + product_name.replace('$', '$$') + '.lnk" "$INSTDIR\\' + executable.replace('$', '$$') + '"']
+        lines += ['CreateShortcut "$DESKTOP\\' + product_name.replace('$', '$$') + '.lnk" "$INSTDIR\\' + executable.replace('$', '$$') + '"',
+                  'IfErrors failed_install',
+                  'WinShell::SetLnkAUMI "$DESKTOP\\' + product_name.replace('$', '$$') + '.lnk" ' + q(app_user_model_id)]
     for scheme in protocols:
         key = 'Software\\Classes\\' + scheme
         lines += ['WriteRegStr HKCU ' + q(key) + ' "" ' + q('URL:' + product_name),

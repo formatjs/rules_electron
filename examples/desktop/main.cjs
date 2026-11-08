@@ -1,8 +1,10 @@
-const { app, BrowserWindow, ipcMain, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, shell } = require('electron');
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+const appUserModelId = 'org.example.sample-desktop';
+if (process.platform === 'win32') app.setAppUserModelId(appUserModelId);
 const addon = require('example-native');
 
 const smoke = process.argv.includes('--smoke');
@@ -104,6 +106,15 @@ app.whenReady().then(async () => {
         label: 'shared-asar-ready',
       });
       assert.ok(app.getAppPath().endsWith('app.asar'));
+      if (process.platform === 'win32') {
+        assert.equal(addon.appUserModelId, appUserModelId);
+        process.argv.forEach((argument, index) => {
+          if (argument !== '--shortcut-smoke') return;
+          const details = shell.readShortcutLink(process.argv[index + 1]);
+          assert.equal(details.target.toLowerCase(), process.execPath.toLowerCase());
+          assert.equal(details.appUserModelId, appUserModelId);
+        });
+      }
       assert.equal(require('./package.json').scripts, undefined);
       assert.equal(require('./package.json').devDependencies, undefined);
       assert.equal(fs.existsSync(path.join(__dirname, 'node_modules/minimatch/package.json')), false);

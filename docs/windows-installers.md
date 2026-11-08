@@ -1,5 +1,23 @@
 # Windows installers
 
+Shortcuts receive `app_user_model_id`, defaulting to `electron_app.app_id`.
+The value allows at most 128 UTF-16 units and no whitespace. Both Start Menu
+and optional desktop shortcuts receive it on each installation or upgrade.
+The declared NSIS data tree must include the Unicode WinShell plugin; the
+example's integrity-pinned bundle already provides it.
+
+Set the same ID early in the Electron main process:
+
+```javascript
+if (process.platform === 'win32') app.setAppUserModelId('org.example.sample-desktop');
+```
+
+See [Electron's runtime API](https://www.electronjs.org/docs/latest/api/app#appsetappusermodelidid-windows)
+and [Windows shortcut identity](https://learn.microsoft.com/en-us/windows/win32/shell/enable-desktop-toast-with-appusermodelid).
+Packaging sets shortcut properties; app code owns process identity. Native
+smoke reads shortcut properties through Electron and process identity through
+Win32, before and after installed updates. Hosted validation is pending.
+
 `electron_nsis` builds a per-user installer and uninstaller from a Windows
 `electron_app`. The compiler runs on the execution platform; payload binaries
 never execute during packaging.

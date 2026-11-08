@@ -140,7 +140,8 @@ class FeedHandler(http.server.SimpleHTTPRequestHandler):
 def smoke(executable, architecture, expected):
     print(command(sys.executable, "examples/desktop/tools/smoke_test.py", str(executable),
                   "--installed", "--expected-version", expected,
-                  "--target-os", "windows", "--target-arch", architecture), flush=True)
+                  "--target-os", "windows", "--target-arch", architecture,
+                  *[value for shortcut in shortcuts for value in ["--shortcut", str(shortcut)]]), flush=True)
 
 
 if __name__ == "__main__":

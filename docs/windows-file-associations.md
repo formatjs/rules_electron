@@ -31,6 +31,9 @@ and extra verbs are not yet supported.
 
 The native Windows fixture checks shell command resolution, installed icons,
 foreign registration rejection, update stability and uninstall cleanup while
-preserving another app's extension default/Open With entry. Hosted validation
-for these checks is pending. All packaging runs on BB Linux; Windows hosts only
-install and exercise the resulting artifacts.
+preserving another app's extension default/Open With entry.
+[BB unit tests](https://formatjs.buildbuddy.io/invocation/6a3e0c79-fe1a-4000-bfd5-e4c3e17c9b61),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/89538d73-818d-4d76-8dcd-897327668de0)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42467990963)
+passed. Both Windows CPUs/compiler variants passed installed handler checks.
+All packaging runs on BB Linux; Windows hosts only install and exercise outputs.
