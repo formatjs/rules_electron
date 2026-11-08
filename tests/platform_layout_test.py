@@ -6,6 +6,7 @@ import stat
 import struct
 import tempfile
 import unittest
+import zlib
 from zipfile import ZipFile, ZipInfo
 
 from electron.private.assemble import assemble
@@ -47,13 +48,15 @@ class PlatformLayoutTest(unittest.TestCase):
         self.assertEqual((output / "locales/en-US.pak").read_bytes(), b"english")
         self.assertFalse((output / "locales/fr.pak").exists())
 
-    def macos_runtime(self):
+    def macos_runtime(self, icon_metadata=False):
         runtime = self.root / "macos.zip"
         with ZipFile(runtime, "w") as archive:
             for name in ["", "/Frameworks/Electron Helper.app"]:
                 prefix = "Electron.app/Contents" + name + ("/Contents" if name else "")
                 executable = "Electron Helper" if name else "Electron"
                 metadata = {"CFBundleIdentifier": "org.example.helper"} if name else {"CFBundleExecutable": executable}
+                if icon_metadata:
+                    metadata.update(CFBundleIconFile="electron.icns", CFBundleIconName="electron")
                 archive.writestr(prefix + "/Info.plist", plistlib.dumps(metadata))
                 archive.writestr(prefix + "/MacOS/" + executable, b"runtime")
             prefix = "Electron.app/Contents/Frameworks/Foo.framework/"
@@ -161,6 +164,47 @@ class PlatformLayoutTest(unittest.TestCase):
             assemble(self.manifest("resources"), self.root / "occupied-windows", platform="windows",
                      runtime_archive=self.platform_runtime("windows"), executable_name="sample",
                      extra_files=[{"source": str(self.main), "path": "SAMPLE.EXE"}])
+
+    def icns_fixture(self):
+        def chunk(kind, data):
+            return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+        png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 32, 32, 8, 6, 0, 0, 0))
+               + chunk(b"IDAT", zlib.compress((b"\0" + b"\x2b\x2b\x2b\xff" * 32) * 32)) + chunk(b"IEND", b""))
+        icon = self.root / "example.icns"
+        icon.write_bytes(b"icns" + struct.pack(">I", 16 + len(png)) + b"ic11" + struct.pack(">I", 8 + len(png)) + png)
+        return icon
+
+    def test_macos_icon_brands_main_and_helper_before_archive(self):
+        icon = self.icns_fixture()
+        output = self.root / "icon.app"
+        assemble(self.manifest("Contents/Resources"), output, platform="macos",
+                 runtime_archive=self.macos_runtime(icon_metadata=True), app_id="org.example.sample", macos_icon=icon)
+        for plist in [output / "Contents/Info.plist", *output.glob("Contents/Frameworks/*Helper.app/Contents/Info.plist")]:
+            metadata = plistlib.loads(plist.read_bytes())
+            self.assertEqual(metadata["CFBundleIconFile"], "app.icns")
+            self.assertNotIn("CFBundleIconName", metadata)
+            copied = plist.parent / "Resources/app.icns"
+            self.assertEqual(copied.read_bytes(), icon.read_bytes())
+            self.assertEqual(copied.stat().st_mode & 0o777, 0o644)
+        archive = self.root / "icon.zip"
+        archive_bundle(output, archive, "Sample.app")
+        with ZipFile(archive) as source:
+            self.assertEqual(source.read("Sample.app/Contents/Resources/app.icns"), icon.read_bytes())
+
+    def test_macos_icon_rejects_invalid_container_wrong_target_and_collision(self):
+        icon = self.icns_fixture()
+        with self.assertRaisesRegex(ValueError, "macOS target"):
+            assemble([], self.root / "wrong-target", macos_icon=icon)
+        with self.assertRaisesRegex(ValueError, "Duplicate destination"):
+            assemble(self.manifest("Contents/Resources") + [{"source": str(icon), "path": "Contents/Resources/app.icns"}],
+                     self.root / "collision", platform="macos", macos_icon=icon)
+        for data in [b"", b"not an icon", b"icns" + struct.pack(">I", 100),
+                     b"icns" + struct.pack(">I", 16) + b"ic11" + struct.pack(">I", 100),
+                     b"icns" + struct.pack(">I", 16) + b"ic11" + struct.pack(">I", 8)]:
+            icon.write_bytes(data)
+            with self.subTest(data=data), self.assertRaises(ValueError):
+                assemble([], self.root / "invalid-icon", platform="macos", macos_icon=icon)
+        self.assertFalse((self.root / "invalid-icon").exists())
 
     def test_additional_asar_stages_sidecar_and_header_integrity(self):
         notice = self.root / "extra.txt"

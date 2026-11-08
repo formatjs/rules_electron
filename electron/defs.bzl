@@ -92,6 +92,8 @@ def _app_impl(ctx):
         fail("Runtime and app target OS must match")
     if platform != "macos" and (ctx.attr.macos_protocols or ctx.attr.macos_protocol_roles):
         fail("macOS protocols require a macOS target")
+    if platform != "macos" and ctx.file.macos_icon:
+        fail("macos_icon requires a macOS target")
     if platform == "macos" and not ctx.executable.macos_signer:
         fail("macOS assembly requires an execution-platform macos_signer (rcodesign)")
     windows_tool = ctx.attr.windows_resource_tool[ElectronWindowsResourceToolInfo] if ctx.attr.windows_resource_tool else None
@@ -140,6 +142,7 @@ def _app_impl(ctx):
         "app_id": ctx.attr.app_id,
         "macos_protocols": ctx.attr.macos_protocols,
         "macos_protocol_roles": ctx.attr.macos_protocol_roles,
+        "macos_icon": ctx.file.macos_icon.path if ctx.file.macos_icon else "",
         "windows_metadata": ctx.attr.windows_metadata,
         "build_version": ctx.attr.build_version,
         "build_number": ctx.attr.build_number,
@@ -152,7 +155,7 @@ def _app_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._assembler,
         arguments = [manifest.path, output.path] + ([ctx.executable.macos_signer.path] if platform == "macos" else []),
-        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + asar_inputs + ([windows_tool.modules, windows_tool.script] if windows_tool else [])),
+        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([windows_tool.modules, windows_tool.script] if windows_tool else [])),
         tools = ([ctx.executable.macos_signer] if platform == "macos" else []) + ([windows_tool.node] if windows_tool else []),
         outputs = [output],
         mnemonic = "ElectronApp",
@@ -188,6 +191,7 @@ electron_app = rule(
         "app_id": attr.string(),
         "macos_protocols": attr.string_list_dict(doc = "macOS URL type names mapped to URI schemes; schemes normalize to lowercase."),
         "macos_protocol_roles": attr.string_dict(doc = "Role per macOS URL type: Editor (default), Viewer, Shell, QLGenerator or None."),
+        "macos_icon": attr.label(allow_single_file = [".icns"], doc = "Declared ICNS asset, copied to Contents/Resources/app.icns before signing."),
         "build_version": attr.string(doc = "Native macOS/Windows build version; one to four decimal components. Overrides build_number for native metadata."),
         "build_number": attr.string(doc = "Explicit decimal build iteration; appends to numeric app version for native metadata. Default DEB revision unless overridden."),
         "macos_signer": attr.label(executable = True, allow_single_file = True, cfg = "exec", doc = "Execution-platform rcodesign; required on macOS. Ad hoc signing only."),

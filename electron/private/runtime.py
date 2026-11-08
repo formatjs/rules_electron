@@ -107,7 +107,7 @@ def _macos_url_types(protocols, roles):
 
 
 def brand_macos(output, executable_name, product_name, app_id, version, asar_header_hash=None, build_version="",
-                protocols=None, protocol_roles=None, extra_asar_hashes=None):
+                protocols=None, protocol_roles=None, extra_asar_hashes=None, icon_name=None):
     if not app_id:
         raise ValueError("macOS app_id required")
     url_types = _macos_url_types(protocols, protocol_roles)
@@ -121,6 +121,9 @@ def brand_macos(output, executable_name, product_name, app_id, version, asar_hea
     metadata.update(CFBundleExecutable=executable_name, CFBundleName=product_name,
                     CFBundleDisplayName=product_name, CFBundleIdentifier=app_id,
                     CFBundleShortVersionString=version, CFBundleVersion=build_version or version)
+    if icon_name:
+        metadata["CFBundleIconFile"] = icon_name
+        metadata.pop("CFBundleIconName", None)
     if url_types:
         metadata["CFBundleURLTypes"] = url_types
     metadata.pop("ElectronAsarIntegrity", None)
@@ -144,5 +147,12 @@ def brand_macos(output, executable_name, product_name, app_id, version, asar_hea
         info.update(CFBundleExecutable=name, CFBundleName=name,
                     CFBundleIdentifier=app_id + ".helper" + ("." + identifier_suffix if identifier_suffix else ""),
                     CFBundleShortVersionString=version, CFBundleVersion=build_version or version)
+        if icon_name:
+            resources = helper / "Contents/Resources"
+            resources.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(output / "Contents/Resources" / icon_name, resources / icon_name)
+            (resources / icon_name).chmod(0o644)
+            info["CFBundleIconFile"] = icon_name
+            info.pop("CFBundleIconName", None)
         helper_plist.write_bytes(plistlib.dumps(info, sort_keys=True))
         helper.rename(helper.with_name(name + ".app"))

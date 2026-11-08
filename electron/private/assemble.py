@@ -9,6 +9,7 @@ from electron.private.asar import create_archive, header_hash as archive_header_
 from electron.private.files import expand as _expand, relative_path
 from electron.private.fuses import set_fuses
 from electron.private.identity import build_identity
+from electron.private.icons import validate_icns
 from electron.private.runtime import brand_macos, extract_runtime, normalize
 
 
@@ -18,11 +19,15 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              product_name="Electron", app_id="", runtime_languages=(),
              windows_resource_tool=None, windows_metadata=None,
              build_version="", build_number="", macos_protocols=None, macos_protocol_roles=None,
-             extra_files=(), extra_asars=()):
+             extra_files=(), extra_asars=(), macos_icon=""):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
     if platform != "macos" and (macos_protocols or macos_protocol_roles):
         raise ValueError("macOS protocols require a macOS target")
+    if macos_icon:
+        if platform != "macos":
+            raise ValueError("macos_icon requires a macOS target")
+        validate_icns(macos_icon)
     embedded_integrity = (fuses or {}).get("enableEmbeddedAsarIntegrityValidation") == "on"
     if embedded_integrity and (not asar or platform == "linux" or platform == "windows" and not windows_resource_tool):
         raise ValueError("enableEmbeddedAsarIntegrityValidation requires ASAR and macOS or a Windows resource tool")
@@ -38,6 +43,8 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     if not asar and (fuses or {}).get("onlyLoadAppFromAsar") == "on":
         raise ValueError("onlyLoadAppFromAsar requires asar=True")
     expanded = list(_expand(entries))
+    if macos_icon:
+        expanded.append({"source": macos_icon, "path": "Contents/Resources/app.icns"})
     extra_hashes = {}
     for archive in extra_asars:
         name = relative_path(archive["path"])
@@ -110,7 +117,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     if platform == "macos":
         brand_macos(output, executable_name, product_name, app_id, package["version"], header_hash,
                     build_version=native_version, protocols=macos_protocols, protocol_roles=macos_protocol_roles,
-                    extra_asar_hashes=extra_hashes)
+                    extra_asar_hashes=extra_hashes, icon_name="app.icns" if macos_icon else None)
         binary = output / "Contents/Frameworks/Electron Framework.framework/Electron Framework"
     else:
         original = "electron.exe" if platform == "windows" else "electron"

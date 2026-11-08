@@ -9,7 +9,10 @@ load("@rules_electron//electron:update.bzl", "electron_update_config", "electron
 load("@rules_electron//electron:windows.bzl", "electron_windows_resource_tool")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//tools:cross_bundle.bzl", "cross_smoke_bundle")
+load("//tools:icon.bzl", "example_icns")
 load(":desktop_app.bzl", "desktop_app")
+
+example_icns(name = "example_icon")
 
 cross_smoke_bundle(
     name = "cross_build_smoke_bundle",

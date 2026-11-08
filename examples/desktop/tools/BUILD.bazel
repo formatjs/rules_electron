@@ -1,3 +1,11 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
+py_binary(
+    name = "icon_writer",
+    srcs = ["icon.py"],
+    main = "icon.py",
+)
+
 exports_files(["smoke_test.py"])
 
 alias(

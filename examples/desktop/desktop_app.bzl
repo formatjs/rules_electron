@@ -80,6 +80,10 @@ def desktop_app(name, package_json, **kwargs):
             ":macos": "@rcodesign_linux_x64//:rcodesign",
             "//conditions:default": None,
         }),
+        macos_icon = select({
+            ":macos": ":example_icon",
+            "//conditions:default": None,
+        }),
         package_json = package_json,
         product_name = "Sample Desktop",
         remove_package_scripts = True,

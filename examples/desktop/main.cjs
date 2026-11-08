@@ -94,6 +94,14 @@ app.whenReady().then(async () => {
         notice: 'Generic desktop example notice.\n',
         label: 'shared-asar-ready',
       });
+      if (process.platform === 'darwin') {
+        const icon = await app.getFileIcon(path.resolve(process.resourcesPath, '../..'), { size: 'normal' });
+        assert.equal(icon.isEmpty(), false);
+        const bitmap = icon.resize({ width: 32, height: 32 }).toBitmap({ scaleFactor: 1 });
+        const pixel = [...bitmap.subarray((16 * 32 + 16) * 4, (16 * 32 + 16) * 4 + 4)];
+        assert.deepEqual(pixel.sort((a, b) => a - b), [43, 43, 43, 255]);
+        console.log('EXAMPLE_ICON_SMOKE_OK');
+      }
       assert.ok(app.getAppPath().endsWith('app.asar'));
       assert.equal(require('./package.json').scripts, undefined);
       const environment = await window.webContents.executeJavaScript('({node: typeof require, bridge: typeof window.desktop.read, ...window.desktop.environment})');
