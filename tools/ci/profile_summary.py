@@ -4,6 +4,44 @@ from collections import defaultdict
 import gzip
 import io
 import json
+import math
+
+
+def summarize_source(profile):
+    categories = {
+        "action processing", "remote action cache check", "remote output download",
+        "general information", "skyframe evaluator", "critical path component",
+        "thread wait", "VFS read", "Fetching repository",
+    }
+    mnemonics = {
+        "CppCompile", "CppLink", "CppArchive", "Rustc", "RustBindgen",
+        "CargoBuildScriptRun", "CargoBuildScriptCompile", "ElectronPython", "FileWrite",
+    }
+    phases = {"runAnalysisPhase", "runLoadingPhase", "evaluateTargetPatterns", "runExecutorMainPhase"}
+    events = []
+    for event in profile["traceEvents"]:
+        args = event.get("args", {})
+        if event.get("ph") == "M" and event.get("name") == "thread_name" and args.get("name") == "Critical Path":
+            events.append({"ph": "M", "name": "thread_name", "pid": event.get("pid"), "tid": event.get("tid"), "args": {"name": "Critical Path"}})
+        if event.get("ph") != "X":
+            continue
+        timestamp, duration = event.get("ts"), event.get("dur")
+        if not all(isinstance(value, (int, float)) and math.isfinite(value) for value in [timestamp, duration]):
+            raise ValueError("Invalid source profile timing")
+        if abs(timestamp) > 2**63 or not 0 <= duration <= 7 * 86400 * 1000000:
+            raise ValueError("Source profile timing exceeds limits")
+        mnemonic = args.get("mnemonic")
+        events.append({
+            "ph": "X", "pid": event.get("pid"), "tid": event.get("tid"),
+            "ts": timestamp, "dur": duration,
+            "cat": event.get("cat") if event.get("cat") in categories else "other",
+            "name": event.get("name") if event.get("name") in phases else "",
+            "args": {"mnemonic": mnemonic if mnemonic in mnemonics else "other"} if mnemonic else {},
+        })
+    result = summarize({"traceEvents": events})
+    if not 0 <= result["trace_span_seconds"] <= 7 * 86400:
+        raise ValueError("Source profile span exceeds limits")
+    return result
 
 
 def decode_profile(data, limit=128 * 1024**2):

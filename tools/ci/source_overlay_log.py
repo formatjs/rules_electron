@@ -12,6 +12,28 @@ from pathlib import Path
 
 from buildbuddy_artifacts import NoRedirect, api_request, invocation_id
 from buildbuddy_log import read_log, resource_diagnostics
+from profile_summary import decode_profile, summarize_source
+
+
+def source_profile_diagnostics(invocation, key):
+    if not invocation.get("success") or invocation.get("invocationStatus") != "COMPLETE_INVOCATION_STATUS":
+        return
+    for name in ["source-graphics-profile.json.gz", "source-components-profile.json.gz", "source-tests-profile.json.gz", "source-consumer-profile.json.gz"]:
+        matches = [artifact for artifact in invocation.get("artifacts", []) if artifact.get("name", "").rsplit("/", 1)[-1] == name]
+        if not matches:
+            continue
+        if len(matches) != 1:
+            raise ValueError("Expected one source phase profile")
+        uri = matches[0].get("uri", "")
+        parsed = urllib.parse.urlsplit(uri)
+        digest = re.search(r"/blobs/([0-9a-f]{64})/(\d+)$", parsed.path)
+        if parsed.scheme != "bytestream" or parsed.netloc not in ("formatjs.buildbuddy.io", "remote.buildbuddy.io") or not digest or int(digest[2]) > 64 * 1024**2:
+            raise ValueError("Invalid source profile artifact store or size")
+        with api_request("GetFile", {"uri": uri}, key) as response:
+            data = response.read(int(digest[2]) + 1)
+        if len(data) != int(digest[2]) or hashlib.sha256(data).hexdigest() != digest[1]:
+            raise ValueError("Source profile digest mismatch")
+        print("Verified source profile " + name + ":", json.dumps(summarize_source(decode_profile(data)), sort_keys=True))
 
 
 def classify(log):
@@ -388,7 +410,7 @@ if __name__ == "__main__":
     identifier = invocation_id(os.environ["INVOCATION_URL"])
 
     def invocation(identifier):
-        with api_request("GetInvocation", {"selector": {"invocation_id": identifier}, "include_child_invocations": True}, key) as response:
+        with api_request("GetInvocation", {"selector": {"invocation_id": identifier}, "include_child_invocations": True, "include_artifacts": True}, key) as response:
             values = json.load(response).get("invocation", [])
         if len(values) != 1 or values[0].get("commitSha") != sha or values[0].get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/electron":
             raise ValueError("Expected Electron source-overlay repository and commit")
@@ -399,6 +421,7 @@ if __name__ == "__main__":
         raise ValueError("Expected an Electron source-overlay CI workflow")
     log = read_log({"invocation_id": identifier}, key)
     print("Source workflow diagnostics:", json.dumps({"log_bytes": len(log.encode()), "diagnostics": classify(log)}, sort_keys=True))
+    source_profile_diagnostics(root, key)
     for child in root.get("childInvocations", [])[:32]:
         identifier = child["invocationId"]
         value = invocation(identifier)

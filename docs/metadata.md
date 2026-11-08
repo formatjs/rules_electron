@@ -38,4 +38,10 @@ The [electron-builder contract](https://www.electron.build/docs/api/app-builder-
 uses the same distinction between release version, build version and build number.
 The generic desktop example sets build number 7 across its target variants;
 matching native smoke hosts inspect PE/plist metadata and installed DEB revision.
-Hosted validation is pending.
+[48db5da packaging tests](https://formatjs.buildbuddy.io/invocation/7ef7befa-c521-45bb-97a2-080327eb40bd)
+and [seven cross-build variants](https://formatjs.buildbuddy.io/invocation/9c7fc677-e132-4c44-84db-a5a125b92d9a)
+passed. [Native smoke](https://github.com/formatjs/rules_electron/actions/runs/42438603219)
+passed on Linux x64, macOS ARM64 and Windows x64/ARM64. It checks app/helper plist
+build versions, PE version strings, DEB revision 7 and installed update flows.
+Manifest tests verify override SemVer reaches both the assembled app and feed,
+including prerelease/build metadata; invalid inputs fail before output.

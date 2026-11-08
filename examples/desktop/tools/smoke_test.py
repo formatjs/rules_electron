@@ -106,6 +106,13 @@ def windows_resources(executable, expected_version):
     if not query(buffer, r"\VarFileInfo\Translation", ctypes.byref(address), ctypes.byref(length)) or length.value != 4:
         raise RuntimeError("Expected one Windows version translation")
     language, codepage = struct.unpack("<HH", ctypes.string_at(address, 4))
+    if not query(buffer, "\\", ctypes.byref(address), ctypes.byref(length)) or length.value != 52:
+        raise RuntimeError("Expected Windows fixed version information")
+    fixed = struct.unpack("<13I", ctypes.string_at(address, 52))
+    major, minor, patch = [int(part) for part in expected_version.split(".")]
+    assert fixed[0] == 0xFEEF04BD
+    assert fixed[2:6] == (major << 16 | minor, patch << 16 | 7,
+                           major << 16 | minor, patch << 16)
     for key, expected in {
         "CompanyName": "Example", "ProductName": "Sample Desktop",
         "FileDescription": "Sample Desktop", "FileVersion": expected_version + ".7",

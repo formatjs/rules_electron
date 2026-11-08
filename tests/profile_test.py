@@ -2,7 +2,7 @@ import gzip
 import json
 import unittest
 
-from tools.ci.profile_summary import decode_profile, summarize
+from tools.ci.profile_summary import decode_profile, summarize, summarize_source
 
 
 class ProfileTest(unittest.TestCase):
@@ -26,6 +26,23 @@ class ProfileTest(unittest.TestCase):
             summarize({"traceEvents": []})
         with self.assertRaises(ValueError):
             decode_profile(gzip.compress(b" " * 100), limit=10)
+
+    def test_source_summary_keeps_metrics_without_trace_labels(self):
+        result = summarize_source({"traceEvents": [
+            {"ph": "X", "cat": "general information", "name": "runAnalysisPhase", "ts": 0, "dur": 2000000},
+            {"ph": "X", "cat": "remote action cache check", "name": "/private/workspace/file", "ts": 0, "dur": 1000000},
+            {"ph": "X", "cat": "custom category", "name": "custom label", "args": {"mnemonic": "custom command"}, "ts": 0, "dur": 1000000},
+            {"ph": "X", "cat": "action processing", "args": {"mnemonic": "CppCompile"}, "ts": 0, "dur": 1000000},
+        ]})
+        self.assertEqual(result["phases_seconds"], {"runAnalysisPhase": 2})
+        self.assertEqual(result["categories"]["remote action cache check"]["cumulative_seconds"], 1)
+        self.assertEqual(result["categories"]["other"]["count"], 1)
+        self.assertEqual(result["actions"]["CppCompile"]["count"], 1)
+        self.assertNotIn("private", json.dumps(result))
+        self.assertNotIn("custom", json.dumps(result))
+        for duration in [-1, float("nan"), 8 * 86400 * 1000000]:
+            with self.subTest(duration=duration), self.assertRaises(ValueError):
+                summarize_source({"traceEvents": [{"ph": "X", "ts": 0, "dur": duration}]})
 
 
 if __name__ == "__main__":
