@@ -354,6 +354,10 @@ def source_test_diagnostics(identifier, key, selected=None):
                 if probe == "api_features":
                     details["python_exceptions"] = sorted({name for name in ("JSONDecodeError", "FileNotFoundError", "KeyError", "ValueError", "TypeError") if re.search(r"\b" + name + ":", log)})
                     details["public_python_sites"] = [{"file": path.rsplit("/", 1)[-1], "line": int(line)} for path, line in re.findall(r'File "([^"\n]+)", line ([0-9]{1,5})', log) if path.rsplit("/", 1)[-1] in public_basenames and 0 < int(line) < 10000][-8:]
+                if probe == "content_webui":
+                    methods = ["test_tracing_pack_preserves_original_html_and_javascript", "test_distiller_pack_inlines_pinned_javascript_and_preserves_valid_syntax", "test_electron_repack_preserves_discovery_page_and_component_payloads", "test_neterror_pack_inlines_both_original_image_scales", "test_final_pack_preserves_linux_branding_image", "test_final_pack_preserves_unscaled_webid_include_images"]
+                    details["failed_methods"] = [name for name in methods if re.search(r"(?:FAIL|ERROR): " + name + r"\b", log)]
+                    details["public_python_sites"] = [{"file": path.rsplit("/", 1)[-1], "line": int(line)} for path, line in re.findall(r'File "([^"\n]+)", line ([0-9]{1,5})', log) if path.rsplit("/", 1)[-1] == "content_webui_test.py" and 0 < int(line) < 10000][-8:]
                 if probe == "partition_alloc":
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
