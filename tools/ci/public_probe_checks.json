@@ -472,5 +472,18 @@
     "WebSocket error text escapes backslashes and controls",
     "WebSocket protocol header joins in order",
     "WebSocket empty protocol list stays empty"
+  ],
+  "llguidance": [
+    "ASCII tokenizer initializes through C ABI",
+    "valid regex compiles",
+    "invalid regex is rejected",
+    "matcher initializes",
+    "token mask computes",
+    "mask allows grammar prefix and excludes other tokens",
+    "valid prefix advances matcher",
+    "incomplete prefix cannot finish",
+    "complete grammar accepts matching tokens",
+    "reset restores initial grammar state",
+    "invalid token fails through C ABI"
   ]
 }

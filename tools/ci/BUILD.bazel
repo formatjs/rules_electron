@@ -41,3 +41,9 @@ py_library(
     visibility = ["//tests:__pkg__"],
     deps = [":smoke_shards"],
 )
+
+py_library(
+    name = "source_headers_diagnostics",
+    srcs = ["source_headers_diagnostics.py"],
+    visibility = ["//tests:__pkg__"],
+)
