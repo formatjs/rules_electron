@@ -61,7 +61,7 @@ _linux_payload = rule(
     outputs = {"tar": "%{name}.tar.gz", "version": "%{name}.version"},
 )
 
-def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], setuid_sandbox = False, preinst = None, postinst = None, prerm = None, postrm = None, **kwargs):
+def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, setuid_sandbox = False, **kwargs):
     """Build a DEB with desktop integration; scripts are declared inputs, never run during packaging.
 
     Args:
@@ -76,11 +76,11 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         protocols: URI schemes registered by the desktop entry.
         file_associations: MIME types and filename globs.
         categories: Desktop categories.
-        setuid_sandbox: Install a matching chrome-sandbox ELF helper as root:root 4755.
         preinst: Optional declared maintainer script.
         postinst: Optional declared maintainer script.
         prerm: Optional declared maintainer script.
         postrm: Optional declared maintainer script.
+        setuid_sandbox: Install a matching chrome-sandbox ELF helper as root:root 4755.
         **kwargs: Standard target attributes, including visibility.
     """
     compatible = ["@platforms//os:linux"] + kwargs.pop("target_compatible_with", [])

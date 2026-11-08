@@ -50,7 +50,11 @@ extract before nested package overrides, independent of lock object order.
 
 The BB fixture uses the pinned npm 11.4.2 archive and its 209 bundled package
 records, including aliases and an explicit development omission. npm itself is
-never executed. Hosted validation remains pending.
+never executed. The [c75a7c8 BB suite](https://formatjs.buildbuddy.io/invocation/18c5305e-6501-405c-aca8-2c50a144c339)
+passed bundled bytes, ownership and pruning checks. Its
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/1201a651-0814-466b-a1d0-898b5a798572)
+and [four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42519436197)
+also passed.
 
 `npm_runtime` still rejects workspace/file/git links. Package-manager link
 layouts, bin shims and install scripts remain unsupported by that fetcher.

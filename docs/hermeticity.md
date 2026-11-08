@@ -533,3 +533,10 @@ Python interpreter directly with `-I -B`, stages the runner/helper explicitly,
 and retains empty `PATH`. Analysis confirms that launch for all three Node
 actions; execution remains pending. Existing BB compilation continues before
 the next source push, which would cancel it.
+
+That components run ended disconnected with a failed workflow status. The
+[be5bb4c launcher repair](https://github.com/formatjs/electron/commit/be5bb4c35dfb6dff85aa71088715dece6b007480)
+is now pushed. Source cross probes passed; consumer/components execution remains
+pending. The prior consumer reported 62 passing probes, including API features,
+WebUI resource contracts and original native generator checks. Those passes do
+not establish full executable linkage or default-app generation.
