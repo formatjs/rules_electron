@@ -2,6 +2,7 @@ package(default_visibility = ["//visibility:public"])
 
 exports_files([
     "archive.bzl",
+    "asar.bzl",
     "defs.bzl",
     "linux.bzl",
     "metadata.bzl",

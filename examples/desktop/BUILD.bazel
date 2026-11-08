@@ -1,6 +1,7 @@
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_electron//electron:archive.bzl", "electron_archive")
+load("@rules_electron//electron:asar.bzl", "electron_asar")
 load("@rules_electron//electron:defs.bzl", "electron_runtime")
 load("@rules_electron//electron:linux.bzl", "electron_deb")
 load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool")
@@ -15,6 +16,19 @@ cross_smoke_bundle(
     app = ":smoke_app",
     linux_packages = ":linux_release_files",
     windows_packages = ":windows_release_files",
+)
+
+electron_asar(
+    name = "shared_archive",
+    srcs = {
+        "additional-archive.cjs": "index.cjs",
+        ":native_addon": "addon.node",
+        "resources/NOTICE.txt": "notice.txt",
+    },
+    unpacked = [
+        "addon.node",
+        "notice.txt",
+    ],
 )
 
 electron_archive(

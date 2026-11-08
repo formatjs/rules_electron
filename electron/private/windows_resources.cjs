@@ -22,6 +22,13 @@ for (const [key, value] of Object.entries(options.metadata)) {
 if (options.header_hash && !/^[a-f0-9]{64}$/.test(options.header_hash)) {
   throw new Error('Invalid ASAR header SHA-256');
 }
+const hashes = { ...(options.extra_asar_hashes || {}) };
+if (options.header_hash) hashes['resources/app.asar'] = options.header_hash;
+for (const [file, digest] of Object.entries(hashes)) {
+  if (!file.endsWith('.asar') || file.includes('\\') || file.includes(':') ||
+      file.split('/').some((part) => !part || part === '.' || part === '..') ||
+      typeof digest !== 'string' || !/^[a-f0-9]{64}$/.test(digest)) throw new Error('Invalid additional ASAR integrity');
+}
 
 // Resource changes invalidate the runtime's old signature; release signing follows.
 const executable = NtExecutable.from(fs.readFileSync(binary), { ignoreCert: true });
@@ -52,15 +59,15 @@ info.setStringValues(language, {
 info.outputToResourceEntries(resources.entries);
 
 resources.entries = resources.entries.filter((entry) => String(entry.type).toUpperCase() !== 'INTEGRITY' || String(entry.id).toUpperCase() !== 'ELECTRONASAR');
-if (options.header_hash) {
+if (Object.keys(hashes).length) {
   resources.entries.push({
     type: 'INTEGRITY',
     id: 'ELECTRONASAR',
     lang: language.lang,
     codepage: language.codepage,
-    bin: new TextEncoder().encode(JSON.stringify([
-      { file: 'resources\\app.asar', alg: 'SHA256', value: options.header_hash },
-    ])).buffer,
+    bin: new TextEncoder().encode(JSON.stringify(Object.entries(hashes).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(
+      ([file, value]) => ({ file: file.replaceAll('/', '\\'), alg: 'SHA256', value }),
+    ))).buffer,
   });
 }
 resources.outputResource(executable);

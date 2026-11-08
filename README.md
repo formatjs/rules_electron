@@ -63,6 +63,10 @@ trees beneath the distribution root, or `Contents/` on macOS; see
 development scripts from the packaged manifest. No implicit file filtering
 or native-addon rebuilds occur.
 
+`electron_asar` creates standalone archives. Map them with `extra_asars` to stage
+unpacked sidecars and include their header digests in supported platform metadata;
+see [ASAR integrity](docs/asar-integrity.md).
+
 V1 `fuses` accepts `"on"`/`"off"` for `runAsNode`, `enableCookieEncryption`,
 `enableNodeOptionsEnvironmentVariable`, `enableNodeCliInspectArguments`,
 `enableEmbeddedAsarIntegrityValidation`, `onlyLoadAppFromAsar`,

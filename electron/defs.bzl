@@ -1,5 +1,6 @@
 """Native Electron app assembly. Runtime sources belong to the electron overlay."""
 
+load(":asar.bzl", "ElectronAsarInfo")
 load(":windows.bzl", "ElectronWindowsResourceToolInfo")
 
 ElectronAppInfo = provider(
@@ -107,6 +108,11 @@ def _app_impl(ctx):
     app_entries = _entries(ctx.attr.srcs, allow_directories = True)
     resource_entries = _entries(ctx.attr.extra_resources, allow_directories = True)
     extra_entries = _entries(ctx.attr.extra_files, allow_directories = True)
+    extra_asars, asar_inputs = [], []
+    for target, destination in ctx.attr.extra_asars.items():
+        archive = target[ElectronAsarInfo]
+        extra_asars.append({"archive": archive.archive.path, "unpacked": archive.unpacked.path, "header_hash": archive.header_hash.path, "path": _path(destination)})
+        asar_inputs += [archive.archive, archive.unpacked, archive.header_hash]
     for entry in resource_entries:
         if entry.path.split("/")[0] in ["app", "app.asar", "app.asar.unpacked"]:
             fail("Extra resource occupies app destination: %s" % entry.path)
@@ -120,6 +126,7 @@ def _app_impl(ctx):
     ctx.actions.write(manifest, json.encode({
         "entries": entries,
         "extra_files": [{"source": e.source.path, "path": e.path, "directory": e.source.is_directory} for e in extra_entries],
+        "extra_asars": extra_asars,
         "asar": ctx.attr.asar,
         "asar_unpacked": ctx.attr.asar_unpacked,
         "fuses": ctx.attr.fuses,
@@ -145,7 +152,7 @@ def _app_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._assembler,
         arguments = [manifest.path, output.path] + ([ctx.executable.macos_signer.path] if platform == "macos" else []),
-        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + ([windows_tool.modules, windows_tool.script] if windows_tool else [])),
+        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + asar_inputs + ([windows_tool.modules, windows_tool.script] if windows_tool else [])),
         tools = ([ctx.executable.macos_signer] if platform == "macos" else []) + ([windows_tool.node] if windows_tool else []),
         outputs = [output],
         mnemonic = "ElectronApp",
@@ -175,6 +182,7 @@ electron_app = rule(
         "asar_unpacked": attr.string_list(doc = "Exact app-relative paths stored alongside ASAR; requires asar=True."),
         "extra_resources": attr.label_keyed_string_dict(allow_files = True, doc = "Files or tree artifacts mapped relative to resources/, outside ASAR."),
         "extra_files": attr.label_keyed_string_dict(allow_files = True, doc = "Files or tree artifacts mapped to Contents/ on macOS, distribution root elsewhere; outside ASAR."),
+        "extra_asars": attr.label_keyed_string_dict(providers = [ElectronAsarInfo], doc = "Standalone ASAR targets mapped to resource-relative .asar paths; stages sidecars and embeds header integrity."),
         "executable_name": attr.string(default = "electron"),
         "product_name": attr.string(),
         "app_id": attr.string(),

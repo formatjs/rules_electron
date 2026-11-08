@@ -187,13 +187,28 @@ def _check_macos_protocol(app, environment, directory, target_arch):
 
 
 def check_asar_integrity(app, executable, environment, directory, target_os, expected_version):
-    archive = app / ("Contents/Resources/app.asar" if target_os == "macos" else "resources/app.asar")
-    with archive.open("rb") as source:
-        prefix = source.read(16)
-        header_size = struct.unpack_from("<I", prefix, 4)[0]
-        raw_header = source.read(struct.unpack_from("<I", prefix, 12)[0])
-    header = json.loads(raw_header)
-    digest = hashlib.sha256(raw_header).hexdigest()
+    resources = app / ("Contents/Resources" if target_os == "macos" else "resources")
+    digests, checks = {}, []
+    for relative, entry_name, marker, skip, prefix in [
+        ("app.asar", "package.json", b'"version":"', len(b'"version":"'), ""),
+        ("plugins/shared.asar", "index.cjs", b"shared-asar-ready", 0, "additional_"),
+    ]:
+        archive = resources / relative
+        with archive.open("rb") as source:
+            framing = source.read(16)
+            header_size = struct.unpack_from("<I", framing, 4)[0]
+            raw_header = source.read(struct.unpack_from("<I", framing, 12)[0])
+            entry = json.loads(raw_header)["files"][entry_name]
+            payload_offset = 8 + header_size + int(entry["offset"])
+            source.seek(payload_offset)
+            payload = source.read(entry["size"])
+        digests[relative] = hashlib.sha256(raw_header).hexdigest()
+        checks += [
+            (prefix + "header", archive, 16 + raw_header.index(entry["integrity"]["hash"].encode()),
+             "Integrity check failed for asar archive"),
+            (prefix + "payload", archive, payload_offset + payload.index(marker) + skip,
+             "ASAR Integrity Violation: got a hash mismatch"),
+        ]
     if target_os == "macos":
         metadata = plistlib.loads((app / "Contents/Info.plist").read_bytes())
         assert metadata["CFBundleShortVersionString"] == expected_version
@@ -203,24 +218,14 @@ def check_asar_integrity(app, executable, environment, directory, target_os, exp
             assert identity["CFBundleShortVersionString"] == expected_version
             assert identity["CFBundleVersion"] == expected_version + ".7"
         assert metadata["ElectronAsarIntegrity"] == {
-            "Resources/app.asar": {"algorithm": "SHA256", "hash": digest},
+            "Resources/" + relative: {"algorithm": "SHA256", "hash": digest} for relative, digest in digests.items()
         }
     else:
-        assert windows_resources(executable, expected_version) == [{"file": "resources\\app.asar", "alg": "SHA256", "value": digest}]
-    entry = header["files"]["package.json"]
-    payload_offset = 8 + header_size + int(entry["offset"])
-    with archive.open("rb") as source:
-        source.seek(payload_offset)
-        package = source.read(entry["size"])
-    offsets = {
-        "header": 16 + raw_header.index(entry["integrity"]["hash"].encode()),
-        "payload": payload_offset + package.index(b'"version":"') + len(b'"version":"'),
-    }
-    diagnostics = {
-        "header": "Integrity check failed for asar archive",
-        "payload": "ASAR Integrity Violation: got a hash mismatch",
-    }
-    for label, offset in offsets.items():
+        assert windows_resources(executable, expected_version) == [
+            {"file": "resources\\" + relative.replace("/", "\\"), "alg": "SHA256", "value": digests[relative]}
+            for relative in sorted(digests)
+        ]
+    for label, archive, offset, diagnostic in checks:
         with archive.open("r+b") as file:
             file.seek(offset)
             original = file.read(1)
@@ -232,7 +237,7 @@ def check_asar_integrity(app, executable, environment, directory, target_os, exp
                 "--user-data-dir=" + str(directory / "profile"),
             ], cwd=directory, env=environment, capture_output=True, encoding="utf-8", errors="replace", timeout=30)
             assert result.returncode != 0, label
-            assert diagnostics[label] in result.stderr, result.stdout + result.stderr
+            assert diagnostic in result.stderr, result.stdout + result.stderr
             assert "EXAMPLE_SMOKE_OK" not in result.stdout, result.stdout
             print("EXAMPLE_ASAR_REJECTED " + label)
         finally:

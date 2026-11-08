@@ -23,16 +23,48 @@ exports_files(
 )
 
 py_library(
+    name = "asar",
+    srcs = ["asar.py"],
+    visibility = ["//tests:__pkg__"],
+)
+
+py_library(
+    name = "file_mappings",
+    srcs = ["files.py"],
+)
+
+py_library(
+    name = "asar_sources",
+    srcs = ["asar_sources.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        ":asar",
+        ":file_mappings",
+    ],
+)
+
+py_binary(
+    name = "asar_packager",
+    srcs = ["asar_sources.py"],
+    main = "asar_sources.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":asar_sources"],
+)
+
+py_library(
     name = "assembly",
     srcs = [
-        "asar.py",
         "assemble.py",
         "fuses.py",
         "mac_sign.py",
         "runtime.py",
     ],
     visibility = ["//tests:__pkg__"],
-    deps = [":identity"],
+    deps = [
+        ":asar",
+        ":file_mappings",
+        ":identity",
+    ],
 )
 
 py_binary(

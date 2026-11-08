@@ -9,6 +9,7 @@ import unittest
 from zipfile import ZipFile, ZipInfo
 
 from electron.private.assemble import assemble
+from electron.private.asar import create_archive
 from electron.private.fuses import SENTINEL
 from electron.private.mac_sign import archive_bundle
 from electron.private.runtime import extract_runtime
@@ -160,6 +161,36 @@ class PlatformLayoutTest(unittest.TestCase):
             assemble(self.manifest("resources"), self.root / "occupied-windows", platform="windows",
                      runtime_archive=self.platform_runtime("windows"), executable_name="sample",
                      extra_files=[{"source": str(self.main), "path": "SAMPLE.EXE"}])
+
+    def test_additional_asar_stages_sidecar_and_header_integrity(self):
+        notice = self.root / "extra.txt"
+        notice.write_bytes(b"archive sidecar")
+        archive = self.root / "shared.asar"
+        digest = create_archive({"index.cjs": self.main, "notice.txt": notice}, archive, ["notice.txt"])
+        digest_file = self.root / "shared.sha256"
+        digest_file.write_text(digest + "\n")
+        spec = {"archive": str(archive), "unpacked": str(archive) + ".unpacked",
+                "header_hash": str(digest_file), "path": "plugins/shared.asar"}
+        for platform in ("linux", "windows", "macos"):
+            with self.subTest(platform=platform):
+                resources = "Contents/Resources" if platform == "macos" else "resources"
+                output = self.root / (platform + "-additional")
+                assemble(self.manifest(resources), output, platform=platform,
+                         runtime_archive=self.platform_runtime(platform), app_id="org.example.sample", asar=True,
+                         extra_asars=[spec])
+                self.assertEqual((output / resources / "plugins/shared.asar").read_bytes(), archive.read_bytes())
+                self.assertEqual((output / resources / "plugins/shared.asar.unpacked/notice.txt").read_bytes(), b"archive sidecar")
+                if platform == "macos":
+                    metadata = plistlib.loads((output / "Contents/Info.plist").read_bytes())
+                    self.assertEqual(metadata["ElectronAsarIntegrity"]["Resources/plugins/shared.asar"],
+                                     {"algorithm": "SHA256", "hash": digest})
+                    self.assertEqual(len(metadata["ElectronAsarIntegrity"]), 2)
+        for destination in ("../escape.asar", "app.asar", "app/extra.asar", "not-an-archive.txt"):
+            with self.subTest(destination=destination), self.assertRaises(ValueError):
+                assemble(self.manifest("resources"), self.root / "invalid-extra", extra_asars=[dict(spec, path=destination)])
+        digest_file.write_text("0" * 64)
+        with self.assertRaisesRegex(ValueError, "header digest mismatch"):
+            assemble(self.manifest("resources"), self.root / "bad-digest", extra_asars=[spec])
 
     def test_macos_protocols_brand_main_bundle_only(self):
         output = self.root / "protocol.app"

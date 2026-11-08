@@ -89,6 +89,11 @@ app.whenReady().then(async () => {
       assert.equal(app.isPackaged, true);
       assert.equal(fs.readFileSync(path.join(path.dirname(process.resourcesPath), 'licenses/NOTICE.txt'), 'utf8'),
         'Generic desktop example notice.\n');
+      assert.deepEqual(require(path.join(process.resourcesPath, 'plugins/shared.asar/index.cjs')), {
+        answer: 42,
+        notice: 'Generic desktop example notice.\n',
+        label: 'shared-asar-ready',
+      });
       assert.ok(app.getAppPath().endsWith('app.asar'));
       assert.equal(require('./package.json').scripts, undefined);
       const environment = await window.webContents.executeJavaScript('({node: typeof require, bridge: typeof window.desktop.read, ...window.desktop.environment})');

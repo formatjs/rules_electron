@@ -1,51 +1,15 @@
 """Assemble a relocatable Linux Electron distribution from declared inputs."""
 
 import json
-import os
 from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
 
-from electron.private.asar import create_archive
+from electron.private.asar import create_archive, header_hash as archive_header_hash
+from electron.private.files import expand as _expand, relative_path
 from electron.private.fuses import set_fuses
 from electron.private.identity import build_identity
 from electron.private.runtime import brand_macos, extract_runtime, normalize
-
-
-def relative_path(value):
-    path = PurePosixPath(value)
-    if (not path.parts or path.is_absolute() or str(path) != value
-            or any(part in (".", "..") for part in path.parts)
-            or "\\" in value or ":" in value):
-        raise ValueError(f"Expected normalized relative path: {value!r}")
-    return path
-
-
-def _walk_error(error):
-    raise error
-
-
-def _expand(entries):
-    for entry in entries:
-        destination = relative_path(entry["path"])
-        if not entry.get("directory", False):
-            yield entry
-            continue
-        source = Path(entry["source"])
-        if not source.is_dir():
-            raise ValueError(f"Expected input tree: {source}")
-        for directory, directories, files in os.walk(source, followlinks=False, onerror=_walk_error):
-            for name in directories:
-                if (Path(directory) / name).is_symlink():
-                    raise ValueError("Directory symlinks inside input trees are not supported")
-            for name in files:
-                file = Path(directory) / name
-                # Bazel's sandbox projects declared tree files as symlink leaves.
-                relative = file.relative_to(source).as_posix()
-                relative_path(relative)
-                if not file.is_file():
-                    raise ValueError(f"Expected regular tree file: {relative}")
-                yield {"source": str(file), "path": str(destination / relative), "executable": False}
 
 
 def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
@@ -54,7 +18,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              product_name="Electron", app_id="", runtime_languages=(),
              windows_resource_tool=None, windows_metadata=None,
              build_version="", build_number="", macos_protocols=None, macos_protocol_roles=None,
-             extra_files=()):
+             extra_files=(), extra_asars=()):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
     if platform != "macos" and (macos_protocols or macos_protocol_roles):
@@ -74,6 +38,19 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     if not asar and (fuses or {}).get("onlyLoadAppFromAsar") == "on":
         raise ValueError("onlyLoadAppFromAsar requires asar=True")
     expanded = list(_expand(entries))
+    extra_hashes = {}
+    for archive in extra_asars:
+        name = relative_path(archive["path"])
+        checked = str(name).casefold() if platform == "windows" else str(name)
+        if not str(name).endswith(".asar") or checked.split("/")[0] in ("app", "app.asar", "app.asar.unpacked"):
+            raise ValueError(f"Invalid additional ASAR destination: {name}")
+        digest = Path(archive["header_hash"]).read_text().strip()
+        if archive_header_hash(archive["archive"]) != digest:
+            raise ValueError("Additional ASAR header digest mismatch")
+        destination = resources + "/" + str(name)
+        expanded.append({"source": archive["archive"], "path": destination})
+        expanded.extend(_expand([{"source": archive["unpacked"], "path": destination + ".unpacked", "directory": True}]))
+        extra_hashes[destination.removeprefix("Contents/")] = digest
     for entry in _expand(extra_files):
         path = relative_path(("Contents/" if platform == "macos" else "") + entry["path"])
         checked = PurePosixPath(str(path).casefold()) if platform == "windows" else path
@@ -132,7 +109,8 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         shutil.rmtree(output / app_prefix)
     if platform == "macos":
         brand_macos(output, executable_name, product_name, app_id, package["version"], header_hash,
-                    build_version=native_version, protocols=macos_protocols, protocol_roles=macos_protocol_roles)
+                    build_version=native_version, protocols=macos_protocols, protocol_roles=macos_protocol_roles,
+                    extra_asar_hashes=extra_hashes)
         binary = output / "Contents/Frameworks/Electron Framework.framework/Electron Framework"
     else:
         original = "electron.exe" if platform == "windows" else "electron"
@@ -150,6 +128,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
             windows_resource_tool["modules"], str(binary), json.dumps({
                 "version": package["version"], "build_version": native_version, "product_name": product_name,
                 "executable_name": executable_name, "header_hash": header_hash,
+                "extra_asar_hashes": extra_hashes,
                 "metadata": windows_metadata or {},
             }),
         ], check=True)

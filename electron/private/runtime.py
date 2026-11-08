@@ -1,6 +1,5 @@
 """Extract declared distribution ZIPs without following archive symlinks."""
 
-import os
 from pathlib import Path, PurePosixPath
 import plistlib
 import posixpath
@@ -8,6 +7,8 @@ import re
 import shutil
 import stat
 from zipfile import ZipFile
+
+from electron.private.files import normalize
 
 
 def _relative(name):
@@ -106,7 +107,7 @@ def _macos_url_types(protocols, roles):
 
 
 def brand_macos(output, executable_name, product_name, app_id, version, asar_header_hash=None, build_version="",
-                protocols=None, protocol_roles=None):
+                protocols=None, protocol_roles=None, extra_asar_hashes=None):
     if not app_id:
         raise ValueError("macOS app_id required")
     url_types = _macos_url_types(protocols, protocol_roles)
@@ -123,9 +124,12 @@ def brand_macos(output, executable_name, product_name, app_id, version, asar_hea
     if url_types:
         metadata["CFBundleURLTypes"] = url_types
     metadata.pop("ElectronAsarIntegrity", None)
+    integrities = dict(extra_asar_hashes or {})
     if asar_header_hash:
+        integrities["Resources/app.asar"] = asar_header_hash
+    if integrities:
         metadata["ElectronAsarIntegrity"] = {
-            "Resources/app.asar": {"algorithm": "SHA256", "hash": asar_header_hash},
+            path: {"algorithm": "SHA256", "hash": digest} for path, digest in sorted(integrities.items())
         }
     plist.write_bytes(plistlib.dumps(metadata, sort_keys=True))
     frameworks = output / "Contents/Frameworks"
@@ -142,11 +146,3 @@ def brand_macos(output, executable_name, product_name, app_id, version, asar_hea
                     CFBundleShortVersionString=version, CFBundleVersion=build_version or version)
         helper_plist.write_bytes(plistlib.dumps(info, sort_keys=True))
         helper.rename(helper.with_name(name + ".app"))
-
-
-def normalize(output):
-    for directory, directories, files in os.walk(output, topdown=False):
-        for name in files + [name for name in directories if (Path(directory) / name).is_symlink()]:
-            os.utime(os.path.join(directory, name), (0, 0), follow_symlinks=False)
-        os.chmod(directory, 0o755)
-        os.utime(directory, (0, 0))

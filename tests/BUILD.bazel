@@ -1,9 +1,23 @@
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//electron:archive.bzl", "electron_archive")
+load("//electron:asar.bzl", "electron_asar")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
 load("//electron:metadata.bzl", "electron_package_json")
 load(":cross_build.bzl", "cross_build")
+
+py_test(
+    name = "asar_sources_test",
+    size = "small",
+    srcs = ["asar_sources_test.py"],
+    deps = ["//electron/private:asar_sources"],
+)
+
+electron_asar(
+    name = "additional_asar",
+    srcs = {"fixtures/notice.txt": "notice.txt"},
+    unpacked = ["notice.txt"],
+)
 
 py_test(
     name = "smoke_bundle_test",
@@ -115,6 +129,7 @@ electron_runtime(
 electron_app(
     name = "app",
     srcs = {"fixtures/main.js": "main.js"},
+    extra_asars = {":additional_asar": "plugins/extra.asar"},
     extra_files = {"fixtures/notice.txt": "licenses/NOTICE.txt"},
     package_json = "fixtures/package.json",
     runtime = ":runtime",

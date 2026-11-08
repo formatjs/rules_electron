@@ -29,7 +29,38 @@ Embedded validation requires `asar = True`. Windows additionally requires a
 declared [resource tool](windows-resources.md); it writes the digest as an
 `INTEGRITY` / `ELECTRONASAR` PE resource before fuse mutation and final signing.
 Linux Electron does not implement this enforcement.
-Additional ASAR files outside `app.asar` have no generated embedded digest.
+Additional archives use `electron_asar` and `electron_app.extra_asars`:
+
+```starlark
+load("@rules_electron//electron:asar.bzl", "electron_asar")
+
+electron_asar(
+    name = "shared",
+    srcs = {
+        "shared.cjs": "index.cjs",
+        ":native_addon": "addon.node",
+    },
+    unpacked = ["addon.node"],
+)
+
+# On electron_app:
+extra_asars = {":shared": "plugins/shared.asar"},
+```
+
+The standalone rule accepts file/tree mappings. It produces an archive, unpacked
+sidecar tree and raw-header digest. Default files contain the archive;
+`unpacked` and `header_hash` output groups expose the other artifacts.
+`extra_asars` consumes these declared outputs, checks the digest, copies the
+archive/sidecar and embeds the additional header hash in the macOS plist or Windows PE
+resource. Windows embedding requires its declared resource tool. Linux retains
+the archive's per-file hashes but has no embedded-header enforcement.
+Use `extra_asars` for this contract; a generic `extra_resources` mapping supplies
+only the mapped artifact.
+
+The native example loads a module and unpacked Node-API addon/data from an
+additional archive. Its corruption checks cover both archives' headers and
+packed payloads. Hosted validation for this addition is pending.
+
 Unpacked files and extra resources are not protected by the ASAR header's
 packed-file validation; release signing and installation permissions remain
 separate requirements.
