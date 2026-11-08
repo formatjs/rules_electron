@@ -142108,6 +142108,7 @@
   "source/content_metadata/bundle_tracing_proto.py",
   "source/content_metadata/catapult_test.py",
   "source/content_metadata/content_webui_test.py",
+  "source/content_metadata/electron_version_test.py",
   "source/content_metadata/native_generators_test.py",
   "source/content_metadata/policy_test.py",
   "source/content_metadata/runtime_abi_test.py",

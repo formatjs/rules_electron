@@ -456,3 +456,9 @@ including Catapult, tracing WebUI, policy, CUPS/xshmfence ABI, Blink and
 DevTools probes. Its [full components build](https://formatjs.buildbuddy.io/invocation/c69cb285-f229-4804-84ed-8443dd4105fb)
 failed on missing declared headers and security interstitial JavaScript inputs.
 Full source linkage remains open.
+
+
+The `f5c3c64` [hosted consumer](https://formatjs.buildbuddy.io/invocation/be316b86-96a8-438b-8535-8aa994afef56)
+has passed the original fuse/Node artifact comparison and SDK runtime ABI
+contract including GdkPixbuf. Full consumer/components execution remains pending;
+these probes do not establish complete Electron linkage.
