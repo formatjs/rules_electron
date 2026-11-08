@@ -1,6 +1,6 @@
 """Lock selection respects production and explicit target inputs."""
 
-load("//electron/private:npm_lock.bzl", "npm_lock_packages")
+load("//electron/private:npm_lock.bzl", "npm_lock_packages", "npm_package_path")
 
 _PACKAGE = {"resolved": "https://registry.npmjs.org/example/-/example-1.0.0.tgz", "integrity": "sha512-declared"}
 
@@ -9,6 +9,12 @@ def _lock(packages):
 
 def _impl(_ctx):
     errors = []
+    for path in ["node_modules/a", "node_modules/@example/a", "node_modules/a/node_modules/@other/b"]:
+        if npm_package_path(path):
+            errors.append("Valid installation path rejected: " + path)
+    for path in ["a", "node_modules/../a", "node_modules/@scope", "node_modules/a/child", "node_modules/a//b", "node_modules/a\\b"]:
+        if not npm_package_path(path):
+            errors.append("Unsafe installation path accepted: " + path)
     records = {
         "node_modules/example": _PACKAGE,
         "node_modules/@example/nested/node_modules/child": _PACKAGE,

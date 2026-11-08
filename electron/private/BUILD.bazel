@@ -165,6 +165,24 @@ py_binary(
 )
 
 py_library(
+    name = "npm_packages",
+    srcs = ["npm_package.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        ":file_collection",
+        ":identity",
+    ],
+)
+
+py_binary(
+    name = "npm_package",
+    srcs = ["npm_package.py"],
+    main = "npm_package.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":npm_packages"],
+)
+
+py_library(
     name = "identity",
     srcs = ["identity.py"],
     visibility = ["//tests:__pkg__"],

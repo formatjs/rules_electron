@@ -29,7 +29,8 @@ not interpret dotted paths. `remove_scripts` then strips scripts. Explicit
 Source manifests remain unchanged. Rewriting dependency metadata does not
 install or prune package files: declare those through app inputs.
 
-`dependency_manifests` accepts source or generated package JSON files. Each
+`dependency_manifests` accepts source/generated package JSON files or
+`ElectronNpmPackageInfo` providers from `electron_npm_package`. Each
 declares a nonempty `name` and exact SemVer `version`. Matching entries in
 `dependencies` and `optionalDependencies` receive that version after the overlay
 merge, before field removal. This converts workspace/file ranges into packaged

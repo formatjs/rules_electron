@@ -6,6 +6,7 @@ load("@rules_electron//electron:defs.bzl", "electron_runtime")
 load("@rules_electron//electron:files.bzl", "electron_files")
 load("@rules_electron//electron:linux.bzl", "electron_deb")
 load("@rules_electron//electron:matching.bzl", "electron_file_matcher")
+load("@rules_electron//electron:npm.bzl", "electron_npm_package", "electron_npm_tree")
 load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool")
 load("@rules_electron//electron:update.bzl", "electron_update_config", "electron_update_feed")
 load("@rules_electron//electron:windows.bzl", "electron_windows_resource_tool")
@@ -19,6 +20,20 @@ example_icon(name = "example_icon")
 electron_files(
     name = "empty_resources",
     directories = ["empty"],
+)
+
+electron_npm_package(
+    name = "native_package",
+    srcs = {
+        "native-package/index.cjs": "index.cjs",
+        ":native_addon": "addon.node",
+    },
+    package_json = "native-package/package.json",
+)
+
+electron_npm_tree(
+    name = "workspace_npm",
+    packages = {":native_package": "node_modules/example-native"},
 )
 
 example_icon(

@@ -1,8 +1,20 @@
 """Validate lockfile inputs before repository downloads."""
 
+_NUL = json.decode('"\\u0000"')
+
 def _matches(values, target):
     positives = [value for value in values if not value.startswith("!")]
     return "!" + target not in values and (not positives or target in positives or "any" in positives)
+
+def npm_package_path(path):
+    """Validate one explicit Node installation path; return an error or empty string."""
+    if type(path) != "string" or not path.startswith("node_modules/") or any([p in ["", ".", ".."] for p in path.split("/")]) or any([c in path for c in ["\\", ":", _NUL]]):
+        return "Invalid npm package path: " + str(path)
+    for name in path[len("node_modules/"):].split("/node_modules/"):
+        parts = name.split("/")
+        if not (len(parts) == 1 and not name.startswith("@") or len(parts) == 2 and parts[0].startswith("@") and len(parts[0]) > 1):
+            return "Invalid npm package path: " + path
+    return ""
 
 def npm_lock_packages(lock, include_dev = False, target_os = "", target_cpu = "", target_libc = ""):
     """Return selected package records or a validation error; never inspect the host."""
@@ -16,12 +28,9 @@ def npm_lock_packages(lock, include_dev = False, target_os = "", target_cpu = ""
             return struct(packages = {}, error = "Invalid npm package record: " + path)
         if package.get("dev") and not include_dev:
             continue
-        if not path.startswith("node_modules/") or any([p in ["", ".", ".."] for p in path.split("/")]) or "\\" in path or ":" in path:
-            return struct(packages = {}, error = "Invalid npm package path: " + path)
-        for name in path[len("node_modules/"):].split("/node_modules/"):
-            parts = name.split("/")
-            if not (len(parts) == 1 and not name.startswith("@") or len(parts) == 2 and parts[0].startswith("@") and len(parts[0]) > 1):
-                return struct(packages = {}, error = "Invalid npm package path: " + path)
+        error = npm_package_path(path)
+        if error:
+            return struct(packages = {}, error = error)
         compatible = True
         for key, target in [("os", target_os), ("cpu", target_cpu), ("libc", target_libc)]:
             values = package.get(key, [])

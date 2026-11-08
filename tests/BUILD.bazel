@@ -6,6 +6,7 @@ load("//electron:defs.bzl", "electron_app", "electron_runtime")
 load("//electron:files.bzl", "electron_files")
 load("//electron:linux.bzl", "electron_deb")
 load("//electron:metadata.bzl", "electron_package_json")
+load("//electron:npm.bzl", "electron_npm_package", "electron_npm_tree")
 load("//electron:prepackaged.bzl", "electron_prepackaged_app")
 load(":cross_build.bzl", "cross_build")
 load(":empty_tree.bzl", "empty_tree")
@@ -285,6 +286,60 @@ electron_package_json(
     name = "workspace_dependency",
     src = "fixtures/workspace-package.json",
     version = "4.5.6",
+)
+
+electron_npm_package(
+    name = "workspace_package",
+    srcs = {
+        ":empty_tree_view": "assets",
+        "fixtures/main.js": "index.cjs",
+    },
+    package_json = ":workspace_dependency",
+)
+
+electron_npm_package(
+    name = "workspace_alias_package",
+    srcs = {"fixtures/main.js": "index.cjs"},
+    package_json = ":workspace_dependency",
+)
+
+electron_npm_tree(
+    name = "workspace_packages",
+    packages = {
+        ":workspace_package": "node_modules/@example/workspace",
+        ":workspace_alias_package": "node_modules/@example/workspace/node_modules/alias",
+    },
+)
+
+electron_asar(
+    name = "workspace_packages_asar",
+    srcs = {":workspace_packages": ""},
+)
+
+electron_package_json(
+    name = "workspace_app_manifest",
+    src = "fixtures/package.json",
+    dependency_manifests = [":workspace_package"],
+    extra_metadata = "fixtures/workspace-overlay.json",
+)
+
+py_test(
+    name = "npm_package_test",
+    size = "small",
+    srcs = ["npm_package_test.py"],
+    args = [
+        "$(rootpath :workspace_packages)",
+        "$(rootpath :workspace_app_manifest)",
+        "$(rootpath fixtures/main.js)",
+        "$(rootpath :workspace_packages_asar)",
+    ],
+    data = [
+        "fixtures/main.js",
+        ":workspace_app_manifest",
+        ":workspace_packages",
+        ":workspace_packages_asar",
+    ],
+    deps = ["//electron/private:npm_packages"],
 )
 
 electron_package_json(

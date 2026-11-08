@@ -8,10 +8,10 @@ electron-builder replacement.
 | --- | --- | --- |
 | Target selection | Seven example OS/CPU/compiler variants | Full source-built Electron runtime |
 | Main/preload/renderer inputs | Explicit files and generated directories | Rich package-provider adapters |
-| Runtime dependencies | Public integrity-pinned npm v3 imports, production/platform selection, explicit Node-API package, target-built helper/addon | Package-provider adapters, bundled/workspace dependencies; Electron Node/V8 ABI toolchains |
+| Runtime dependencies | Integrity-pinned npm v3 imports; explicit workspace/generated package providers and nested layouts; target-built Node-API addon/helper | Provider-specific adapters, separately recorded bundled dependencies; Electron Node/V8 ABI toolchains |
 | ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity | Direct unpacked alias operations |
 | Extra resources/files | Declared file/tree mappings to resources or app content root, outside ASAR; normalized modes | Arbitrary resource-tree directory symlinks |
-| File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories, including prepackaged imports | Native empty-directory smoke results |
+| File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories, including prepackaged imports | — |
 | Manifest metadata | Deep-merge overlays, source/generated dependency-manifest version rewrites, top-level field/script removal; shared app/update identity | Provider-specific metadata adapters |
 | Runtime locales | Explicit file mappings or non-macOS ZIP locale selection | Broader runtime-provider integration |
 | Fuses | Named v1 settings, including macOS framework mutation before ad hoc signing | Universal macOS binaries; availability depends on runtime wire |
@@ -45,8 +45,11 @@ manifest for ZIP/tar.gz release archives and DEB/NSIS packaging. The
 passed separate collection, ASAR, app and release-archive action boundaries.
 The [33af2a4 suite](https://formatjs.buildbuddy.io/invocation/0fb78fb8-8e3f-4537-8f2e-2b9a72bcfc0e)
 also passed immutable import, real DEB directory entries and generated NSIS
-install/uninstall ownership checks. Native smoke now reads empty directories
-inside ASAR and extra resources; results remain pending.
+install/uninstall ownership checks. Native smoke reads empty directories inside
+ASAR and extra resources. The
+[a5f18c1 cross-build](https://formatjs.buildbuddy.io/invocation/fc93ed89-7fe8-4247-ac3d-592fa5175313)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42517726082)
+passed, including macOS signature checks and both Windows compiler variants.
 See the [release plan](release-plan.md) and [updater contract](updates.md).
 Linux package behavior and its native validation live in [Linux packages](linux-packages.md).
 Windows installer scope and validation live in [Windows installers](windows-installers.md).

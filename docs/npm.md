@@ -39,11 +39,58 @@ dependency graph changes, then review its versions and integrity hashes.
 declared Node tools. The default exposes its contents for the app mapping above.
 Metadata rewriting remains separate: see [manifest overlays](metadata.md).
 
-Workspace/file/git dependencies, separately recorded bundled dependencies,
-package-manager link layouts, bin shims and install scripts are unsupported.
+`npm_runtime` rejects workspace/file/git links and separately recorded bundled
+dependencies. Package-manager link layouts, bin shims and install scripts are
+unsupported by that fetcher.
 Build native addons through declared Bazel
 targets, then map their outputs into the app. General Node/V8 ABI addon tooling
 and adapters for other npm providers remain open.
+
+Use configured targets for workspace packages and generated code:
+
+```starlark
+load("@rules_electron//electron:npm.bzl", "electron_npm_package", "electron_npm_tree")
+
+electron_npm_package(
+    name = "native_package",
+    package_json = "native-package/package.json",
+    srcs = {
+        "native-package/index.cjs": "index.cjs",
+        ":native_addon": "addon.node",
+    },
+)
+
+electron_npm_tree(
+    name = "workspace_npm",
+    packages = {":native_package": "node_modules/example-native"},
+)
+
+# App inputs:
+srcs = {":workspace_npm": "node_modules"},
+# electron_package_json inputs:
+dependency_manifests = [":native_package"],
+```
+
+`electron_npm_package` accepts declared files/trees, including generated target
+outputs, and requires a package name and exact SemVer. It normalizes and copies
+the same `package.json` exposed by `ElectronNpmPackageInfo`. Package JSON is owned
+by the rule; omit it from `srcs`. `dependency_manifests` rewrites production
+workspace/file ranges from declared package JSON files or package providers.
+`remove_scripts = True` strips package scripts; no lifecycle scripts run either
+way. Directory manifests propagate through the package and assembled tree.
+
+`electron_npm_tree` preserves explicitly supplied root, scoped, nested and alias
+installation paths. Paths must start with `node_modules/`; its default output
+strips that prefix, matching `npm_runtime`. Set `strip_node_modules = False` to
+retain it. Packages do not acquire transitive dependencies implicitly: declare
+the complete layout, including peer dependencies, through `packages`. Cyclic
+workspace metadata can use original JSON files as version inputs rather than
+introducing cyclic Bazel target dependencies. No resolver, hoister or filesystem
+symlink layout runs during assembly. Provider-specific imports remain open.
+
+The native example now packages its target-built addon through these rules and
+derives app dependency versions from that package provider. Hosted validation of
+this conversion remains pending.
 
 The desktop example consumes this public rule for electron-updater, PE tooling
 and minimatch. Its updater lock includes development-only minimatch; native smoke

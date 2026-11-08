@@ -1,11 +1,14 @@
 """Declared package identity shared by app assembly and release feeds."""
 
+load(":npm.bzl", "npm_package_manifests")
+
 def _package_impl(ctx):
     output = ctx.actions.declare_file(ctx.label.name + ".json")
+    dependencies = npm_package_manifests(ctx.attr.dependency_manifests)
     ctx.actions.run(
         executable = ctx.executable._writer,
-        arguments = [ctx.file.src.path, output.path, ctx.attr.version, "1" if ctx.attr.remove_scripts else "0", ctx.file.extra_metadata.path if ctx.file.extra_metadata else "", json.encode(ctx.attr.remove_fields), json.encode([file.path for file in ctx.files.dependency_manifests])],
-        inputs = [ctx.file.src] + ctx.files.dependency_manifests + ([ctx.file.extra_metadata] if ctx.file.extra_metadata else []),
+        arguments = [ctx.file.src.path, output.path, ctx.attr.version, "1" if ctx.attr.remove_scripts else "0", ctx.file.extra_metadata.path if ctx.file.extra_metadata else "", json.encode(ctx.attr.remove_fields), json.encode([file.path for file in dependencies])],
+        inputs = [ctx.file.src] + dependencies + ([ctx.file.extra_metadata] if ctx.file.extra_metadata else []),
         outputs = [output],
         mnemonic = "ElectronPackageJson",
     )
