@@ -18,7 +18,8 @@ srcs = {"@app_npm//:runtime": "node_modules"},
 ```
 
 Repository fetching uses the lock's HTTPS archive URLs and SHA-256/384/512 SRI
-hashes. Assembly uses declared `copy_to_directory` tooling. No npm executable,
+hashes. Assembly reuses declared `electron_files` tooling and normalizes file
+modes/timestamps. No npm executable,
 dependency resolution, lifecycle scripts, PATH tools or host platform detection
 run. Nested/scoped package paths retain the lock's Node resolution layout.
 

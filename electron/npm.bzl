@@ -19,15 +19,13 @@ def _impl(ctx):
             output = path,
             stripPrefix = "package",
         )
-    ctx.file("BUILD.bazel", """load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
-copy_to_directory(
+    ctx.file("BUILD.bazel", """load("@rules_electron//electron:files.bzl", "electron_files")
+electron_files(
     name = "runtime",
-    srcs = glob(["node_modules/**"], exclude = ["**/BUILD", "**/BUILD.bazel"]),
-    root_paths = %s,
-    include_external_repositories = ["*"],
+    srcs = {path: path[%d:] for path in glob(["node_modules/**"], exclude = ["**/BUILD", "**/BUILD.bazel"])},
     visibility = ["//visibility:public"],
 )
-""" % repr(["node_modules"] if ctx.attr.strip_node_modules else ["."]))
+""" % (len("node_modules/") if ctx.attr.strip_node_modules else 0))
 
 npm_runtime = repository_rule(
     implementation = _impl,
