@@ -1,5 +1,15 @@
 # Windows installers
 
+`installer_icon` and `uninstaller_icon` accept declared ICO labels, including
+generated icons. NSIS embeds them independently using its
+[`Icon` and `UninstallIcon` attributes](https://nsis.sourceforge.io/Docs/Chapter4.html#instattribs).
+Unspecified icons retain NSIS defaults. Invalid ICO containers fail before
+compilation. App executable branding remains `electron_app.windows_icon`.
+
+The native fixture uses different app, installer and uninstaller colors, then
+extracts their executable icons through Win32. Installer reproducibility and
+installed update checks also include these icons. Hosted validation is pending.
+
 Shortcuts receive `app_user_model_id`, defaulting to `electron_app.app_id`.
 The value allows at most 128 UTF-16 units and no whitespace. Both Start Menu
 and optional desktop shortcuts receive it on each installation or upgrade.

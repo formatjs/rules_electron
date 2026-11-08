@@ -1,4 +1,4 @@
-"""Validate declared ICNS containers without platform image tools."""
+"""Validate declared ICNS/ICO containers without host image tools."""
 
 from pathlib import Path
 import struct

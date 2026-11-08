@@ -144,6 +144,12 @@ def smoke(executable, architecture, expected):
                   *[value for shortcut in shortcuts for value in ["--shortcut", str(shortcut)]]), flush=True)
 
 
+def icon(executable, architecture, gray):
+    print(command(sys.executable, "examples/desktop/tools/smoke_test.py", str(executable),
+                  "--icon-only", "--icon-gray", str(gray),
+                  "--target-os", "windows", "--target-arch", architecture), flush=True)
+
+
 if __name__ == "__main__":
     packages = Path(sys.argv[1]).resolve()
     architecture = sys.argv[2]
@@ -166,6 +172,8 @@ if __name__ == "__main__":
         raise RuntimeError("Disposable host already contains sample state: " + ", ".join(k for k, v in existing.items() if v))
     first = packages / "nsis_v1_feed/Sample-1.0.0.exe"
     second = packages / "nsis_v2_feed/Sample-2.0.0.exe"
+    icon(first, architecture, 73)
+    icon(second, architecture, 73)
     with tempfile.TemporaryDirectory() as directory:
         directory = Path(directory)
         install = directory / "Installed Sample Desktop"
@@ -211,6 +219,7 @@ if __name__ == "__main__":
             assert registry_value(PROTOCOL + r"\shell\open\command", "") == f'"{executable}" "%1"'
             assert all(p.is_file() for p in shortcuts)
             handlers = file_handlers(executable)
+            icon(install / "Uninstall.exe", architecture, 113)
             assert digest(cache / "installer.exe") == digest(first)
             smoke(executable, architecture, "1.0.0")
             (install / "keep-user-data.txt").write_text("keep")
@@ -232,6 +241,7 @@ if __name__ == "__main__":
             assert digest(cache / "installer.exe") == digest(second)
             assert (install / "keep-user-data.txt").read_text() == "keep"
             assert file_handlers(executable) == handlers
+            icon(install / "Uninstall.exe", architecture, 113)
             smoke(executable, architecture, "2.0.0")
             command(str(install / "Uninstall.exe"), "/S")
             wait_for(lambda: registry_value(REGISTRY, "DisplayVersion") is None and not executable.exists() and not (install / "Uninstall.exe").exists())

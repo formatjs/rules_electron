@@ -92,6 +92,14 @@ class NsisTest(unittest.TestCase):
         self.render(app_user_model_id="a" * 128)
         self.render(app_user_model_id="😀" * 64)
 
+    def test_malformed_installer_icons_fail_before_compilation(self):
+        icon = self.root / "invalid.ico"
+        for content in [b"not an ICO", struct.pack("<HHH", 0, 1, 1)]:
+            icon.write_bytes(content)
+            for option in ["installer_icon", "uninstaller_icon"]:
+                with self.subTest(content=content, option=option), self.assertRaisesRegex(ValueError, "ICO"):
+                    self.render(**{option: str(icon)})
+
 
 if __name__ == "__main__":
     unittest.main()

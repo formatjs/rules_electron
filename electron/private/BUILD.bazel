@@ -81,11 +81,16 @@ py_binary(
 )
 
 py_library(
+    name = "icons",
+    srcs = ["icons.py"],
+    visibility = ["//tests:__pkg__"],
+)
+
+py_library(
     name = "assembly",
     srcs = [
         "assemble.py",
         "fuses.py",
-        "icons.py",
         "mac_sign.py",
         "runtime.py",
     ],
@@ -93,6 +98,7 @@ py_library(
     deps = [
         ":asar",
         ":file_mappings",
+        ":icons",
         ":identity",
         ":matching",
     ],
@@ -111,6 +117,7 @@ py_library(
     srcs = ["nsis.py"],
     visibility = ["//tests:__pkg__"],
     deps = [
+        ":icons",
         ":identity",
         ":updates",
     ],

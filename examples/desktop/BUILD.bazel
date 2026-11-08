@@ -21,6 +21,18 @@ example_icon(
     format = "ico",
 )
 
+example_icon(
+    name = "example_installer_icon",
+    format = "ico",
+    gray = 73,
+)
+
+example_icon(
+    name = "example_uninstaller_icon",
+    format = "ico",
+    gray = 113,
+)
+
 cross_smoke_bundle(
     name = "cross_build_smoke_bundle",
     app = ":smoke_app",
@@ -232,9 +244,11 @@ electron_nsis_tool(
             ".rules-electron-sample": "Sample Document",
             ".rules-electron-cleanup": "Sample Cleanup Document",
         },
+        installer_icon = ":example_installer_icon",
         protocols = ["sample-desktop"],
         target_compatible_with = ["@platforms//os:windows"],
         tool = ":nsis_tool",
+        uninstaller_icon = ":example_uninstaller_icon",
         updater_cache_name = "sample-desktop-updater",
         verify_reproducible = name == "nsis_v1",
     )

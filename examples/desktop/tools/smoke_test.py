@@ -63,7 +63,7 @@ def display_server():
                 server.wait()
 
 
-def check_windows_icon(executable):
+def check_windows_icon(executable, gray=43):
     import ctypes
     from ctypes import wintypes
 
@@ -114,7 +114,7 @@ def check_windows_icon(executable):
         pixels = ctypes.create_string_buffer(width * height * 4)
         assert get_bits(dc, info.color, 0, height, pixels, ctypes.byref(bitmap), 0) == height
         offset = (height // 2 * width + width // 2) * 4
-        assert list(pixels.raw[offset:offset + 3]) == [43, 43, 43]
+        assert list(pixels.raw[offset:offset + 3]) == [gray, gray, gray]
     finally:
         if dc:
             bind(gdi, "DeleteDC", wintypes.BOOL, wintypes.HANDLE)(dc)
@@ -356,11 +356,20 @@ if __name__ == "__main__":
     parser.add_argument("--installed", action="store_true")
     parser.add_argument("--expected-version")
     parser.add_argument("--shortcut", action="append", default=[])
+    parser.add_argument("--icon-only", action="store_true")
+    parser.add_argument("--icon-gray", type=int, default=43)
     args = parser.parse_args()
     host_os = {"Linux": "linux", "Darwin": "macos", "Windows": "windows"}.get(platform.system())
     host_arch = {"x86_64": "x64", "amd64": "x64", "arm64": "arm64", "aarch64": "arm64"}.get(platform.machine().lower())
     if (host_os, host_arch) != (args.target_os, args.target_arch):
         raise RuntimeError(f"Smoke requires native {args.target_os}/{args.target_arch}; host is {host_os}/{host_arch}")
+    if args.icon_only:
+        if host_os != "windows":
+            raise RuntimeError("Executable icon smoke requires Windows")
+        if not 0 <= args.icon_gray <= 255:
+            raise ValueError("Expected icon gray must fit 0..255")
+        check_windows_icon(Path(args.app), args.icon_gray)
+        raise SystemExit(0)
     if host_os == "windows":
         import ctypes
         ctypes.windll.kernel32.SetErrorMode(0x8003)
