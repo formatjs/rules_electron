@@ -35,10 +35,13 @@ variants run on the corresponding CPU host. No emulation substitutes for smoke.
 Keep this checklist current as each contract gains a concrete rule and meaningful
 validation. Production migration requires closing the relevant release gaps.
 
-Empty directory leaves now flow through file collection, plain app assembly and
-ASAR directory entries. BB validation includes a generated tree passing through
-separate collection and ASAR actions; preservation across Bazel tree/cache
-boundaries remains an open gate until that test passes.
+Empty directory leaves flow through file collection, plain app assembly and
+ASAR directory entries. Bazel drops untracked empty directories from tree
+inputs, so producers supply `ElectronFileTreeInfo.directory_manifest`: a declared
+JSON file listing normalized tree-relative directory paths. `electron_files`
+propagates that manifest; ASAR/app rules consume it. App assembly emits its own
+manifest for ZIP/tar.gz release archives. BB regression coverage crosses those
+action boundaries; installer propagation remains pending.
 See the [release plan](release-plan.md) and [updater contract](updates.md).
 Linux package behavior and its native validation live in [Linux packages](linux-packages.md).
 Windows installer scope and validation live in [Windows installers](windows-installers.md).

@@ -129,7 +129,7 @@ def inventory(source, platform):
             yield entries, lambda entry: archive.open(entry.source)
 
 
-def create_archive(source, platform, root_name, format, compression_level, output):
+def create_archive(source, platform, root_name, format, compression_level, output, directory_manifest=""):
     relative(root_name)
     if "/" in root_name or platform not in ("linux", "windows", "macos"):
         raise ValueError("Expected one archive root and a supported platform")
@@ -138,6 +138,16 @@ def create_archive(source, platform, root_name, format, compression_level, outpu
     if format not in ("zip", "tar.gz") or not 0 <= compression_level <= 9:
         raise ValueError("Invalid archive format or compression level")
     with inventory(Path(source), platform) as (entries, open_entry):
+        if directory_manifest:
+            directories = json.loads(Path(directory_manifest).read_text())
+            if not isinstance(directories, list) or any(not isinstance(path, str) for path in directories):
+                raise ValueError("Expected directory path list")
+            for path in directories:
+                relative(path)
+                if path in entries and entries[path].kind != "directory":
+                    raise ValueError(f"Archive file/directory collision: {path}")
+                entries[path] = Entry("directory", 0o755)
+            validate(entries, platform)
         members = [(root_name, Entry("directory", 0o755))] + [(root_name + "/" + name, entry) for name, entry in sorted(entries.items())]
         if format == "zip":
             with ZipFile(output, "w") as archive:

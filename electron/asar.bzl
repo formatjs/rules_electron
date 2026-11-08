@@ -1,5 +1,6 @@
 """Standalone ASAR archives with explicit unpacked files and header integrity."""
 
+load(":files.bzl", "ElectronFileTreeInfo")
 load(":matching.bzl", "ElectronFileMatcherInfo")
 
 ElectronAsarInfo = provider(fields = {
@@ -19,7 +20,12 @@ def _impl(ctx):
             fail("Each ASAR mapping needs one file or tree artifact: %s" % target.label)
         file = files[0]
         inputs.append(file)
-        entries.append({"source": file.path, "path": destination, "directory": file.is_directory})
+        entry = {"source": file.path, "path": destination, "directory": file.is_directory}
+        if ElectronFileTreeInfo in target:
+            directories = target[ElectronFileTreeInfo].directory_manifest
+            inputs.append(directories)
+            entry["directory_manifest"] = directories.path
+        entries.append(entry)
     archive = ctx.actions.declare_file(ctx.label.name + ".asar")
     unpacked = ctx.actions.declare_directory(ctx.label.name + ".asar.unpacked")
     digest = ctx.actions.declare_file(ctx.label.name + ".sha256")

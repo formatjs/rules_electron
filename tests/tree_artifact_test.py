@@ -4,20 +4,17 @@ import json
 from pathlib import Path
 import struct
 import sys
+import tarfile
 import unittest
+from zipfile import ZipFile
 
-SOURCE, VIEW, ASAR = map(Path, sys.argv[1:])
+SOURCE, VIEW, ASAR, ZIP, TAR = map(Path, sys.argv[1:])
 
 
 class TreeArtifactTest(unittest.TestCase):
-    def test_remote_tree_and_file_view_preserve_empty_leaves(self):
+    def test_remote_tree_and_file_view_preserve_payload(self):
         for root in (SOURCE, VIEW):
-            with self.subTest(root=root.name):
-                for name in ("nested/empty", ".hidden/empty"):
-                    leaf = root / name
-                    self.assertTrue(leaf.is_dir(), name)
-                    self.assertEqual(list(leaf.iterdir()), [])
-                self.assertEqual((root / "message.txt").read_bytes(), b"tree payload\n")
+            self.assertEqual((root / "message.txt").read_bytes(), b"tree payload\n")
 
     def test_separate_asar_action_preserves_empty_directories_and_payload(self):
         data = ASAR.read_bytes()
@@ -26,6 +23,21 @@ class TreeArtifactTest(unittest.TestCase):
         for parent in ("nested", ".hidden"):
             self.assertEqual(files[parent]["files"]["empty"], {"files": {}})
         self.assertEqual(data[8 + header_size:], b"tree payload\n")
+
+    def test_app_and_release_archives_preserve_tracked_directory_paths(self):
+        directories = [prefix + suffix for prefix in ("sample/resources/app/assets/", "sample/extra/")
+                       for suffix in ("nested/empty", ".hidden/empty")]
+        with ZipFile(ZIP) as archive:
+            for path in directories:
+                entry = archive.getinfo(path + "/")
+                self.assertTrue(entry.is_dir())
+                self.assertEqual(entry.external_attr >> 16 & 0o777, 0o755)
+            self.assertEqual(archive.read("sample/resources/app/assets/message.txt"), b"tree payload\n")
+        with tarfile.open(TAR) as archive:
+            for path in directories:
+                entry = archive.getmember(path)
+                self.assertTrue(entry.isdir())
+                self.assertEqual((entry.mode, entry.mtime), (0o755, 0))
 
 
 if __name__ == "__main__":

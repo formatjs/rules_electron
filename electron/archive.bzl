@@ -12,17 +12,19 @@ def _impl(ctx):
     if ctx.attr.compression_level < 0 or ctx.attr.compression_level > 9:
         fail("compression_level must be between 0 and 9")
     manifest = ctx.actions.declare_file(ctx.label.name + ".json")
+    directories = getattr(app, "directory_manifest", None)
     ctx.actions.write(manifest, json.encode({
         "source": app.artifact.path,
         "platform": app.platform,
         "root_name": root,
         "format": ctx.attr.format,
         "compression_level": ctx.attr.compression_level,
+        "directory_manifest": directories.path if directories else "",
     }))
     ctx.actions.run(
         executable = ctx.executable._archive,
         arguments = [manifest.path, output.path],
-        inputs = [manifest, app.artifact],
+        inputs = [manifest, app.artifact] + ([directories] if directories else []),
         outputs = [output],
         mnemonic = "ElectronReleaseArchive",
         progress_message = "Archiving Electron app %{label}",

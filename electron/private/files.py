@@ -1,6 +1,7 @@
 """Declared file mappings shared by app and ASAR assembly."""
 
 import os
+import json
 from pathlib import Path, PurePosixPath
 
 
@@ -27,14 +28,18 @@ def expand(entries, *, allow_root=False):
         source = Path(entry["source"])
         if not source.is_dir():
             raise ValueError(f"Expected input tree: {source}")
+        empty = set()
+        if entry.get("directory_manifest"):
+            declared = json.loads(Path(entry["directory_manifest"]).read_text())
+            if not isinstance(declared, list) or any(not isinstance(path, str) for path in declared):
+                raise ValueError("Expected directory path list")
+            empty.update(str(relative_path(path)) for path in declared)
         for directory, directories, files in os.walk(source, followlinks=False, onerror=_walk_error):
             for name in directories:
                 if (Path(directory) / name).is_symlink():
                     raise ValueError("Directory symlinks inside input trees are not supported")
             if not directories and not files:
-                path = destination / Path(directory).relative_to(source).as_posix()
-                if path != PurePosixPath("."):
-                    yield {"source": directory, "path": str(path), "empty_directory": True}
+                empty.add(Path(directory).relative_to(source).as_posix())
             for name in files:
                 file = Path(directory) / name
                 # Bazel's sandbox projects declared tree files as symlink leaves.
@@ -43,6 +48,10 @@ def expand(entries, *, allow_root=False):
                 if not file.is_file():
                     raise ValueError(f"Expected regular tree file: {relative}")
                 yield {"source": str(file), "path": str(destination / relative), "executable": False}
+        for path in sorted(empty):
+            path = destination / path
+            if path != PurePosixPath("."):
+                yield {"path": str(path), "empty_directory": True}
 
 
 def normalize(output):

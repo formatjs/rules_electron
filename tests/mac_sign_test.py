@@ -5,11 +5,24 @@ import plistlib
 import struct
 import tempfile
 import unittest
+from zipfile import ZipFile
 
-from electron.private.mac_sign import signing_arguments, sign_bundle
+from electron.private.mac_sign import signing_arguments, sign_bundle, archive_bundle
 
 
 class MacSignTest(unittest.TestCase):
+    def test_bundle_zip_preserves_empty_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle = root / "Sample.app"
+            (bundle / "Contents/Resources/empty/nested").mkdir(parents=True)
+            (bundle / "Contents/Resources/message").write_bytes(b"message")
+            output = root / "app.zip"
+            archive_bundle(bundle, output, "Sample.app")
+            with ZipFile(output) as archive:
+                self.assertTrue(archive.getinfo("Sample.app/Contents/Resources/empty/nested/").is_dir())
+                self.assertEqual(archive.read("Sample.app/Contents/Resources/message"), b"message")
+
     def test_scopes_cover_main_nested_binaries_and_skip_aliases_and_resources(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

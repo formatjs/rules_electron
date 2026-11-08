@@ -115,11 +115,11 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     if runtime_archive:
         extract_runtime(runtime_archive, output, platform, exclude_files, paths, runtime_languages)
     for path, entry in sorted(paths.items()):
-        source = Path(entry["source"])
         destination = output / str(path)
         if entry.get("empty_directory"):
             destination.mkdir(parents=True, exist_ok=True)
             continue
+        source = Path(entry["source"])
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
         executable = entry.get("executable", False) or bool(source.stat().st_mode & 0o111)

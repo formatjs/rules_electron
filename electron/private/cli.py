@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -17,7 +18,12 @@ if __name__ == "__main__":
             unsigned = Path(directory) / "unsigned.app"
             signed = Path(directory) / "signed.app"
             assemble(output=unsigned, **manifest)
-            sign_bundle(sys.argv[3], unsigned, signed, **signing)
+            sign_bundle(sys.argv[4], unsigned, signed, **signing)
             archive_bundle(signed, sys.argv[2], manifest["product_name"] + ".app")
+            Path(sys.argv[3]).write_text("[]\n")
     else:
         assemble(output=sys.argv[2], **manifest)
+        root = Path(sys.argv[2])
+        directories = sorted(Path(path).relative_to(root).as_posix() for path, dirs, files in os.walk(root)
+                             if not dirs and not files and Path(path) != root)
+        Path(sys.argv[3]).write_text(json.dumps(directories, separators=(",", ":")) + "\n")

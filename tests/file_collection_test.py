@@ -66,6 +66,16 @@ class FileCollectionTest(unittest.TestCase):
             collect(entries + [{"source": str(self.notice), "path": "empty"}], self.root / "bad-empty")
         self.assertFalse((self.root / "bad-empty").exists())
 
+    def test_tracked_directory_manifest_rejects_invalid_paths_and_file_collisions(self):
+        import json
+        manifest = self.root / "directories.json"
+        entries = [dict(self.entries[0], directory_manifest=str(manifest))]
+        for value in [["../escape"], ["a/./b"], ["/absolute"], [1], {}, ["helper/child"], ["helper"]]:
+            manifest.write_text(json.dumps(value))
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                collect(entries, self.root / "bad-manifest")
+        self.assertFalse((self.root / "bad-manifest").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

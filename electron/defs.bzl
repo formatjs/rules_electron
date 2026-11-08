@@ -1,6 +1,7 @@
 """Native Electron app assembly. Runtime sources belong to the electron overlay."""
 
 load(":asar.bzl", "ElectronAsarInfo")
+load(":files.bzl", "ElectronFileTreeInfo")
 load(":matching.bzl", "ElectronFileMatcherInfo")
 load(":windows.bzl", "ElectronWindowsResourceToolInfo")
 
@@ -8,6 +9,7 @@ ElectronAppInfo = provider(
     doc = "Assembled target app and identity for downstream packaging rules.",
     fields = {
         "artifact": "App directory or macOS bundle ZIP.",
+        "directory_manifest": "Tracked empty directory paths for tree outputs, when present.",
         "platform": "linux, macos or windows.",
         "package_json": "App package manifest.",
         "executable_name": "Main executable basename.",
@@ -47,7 +49,7 @@ def _entries(files, allow_directories = False, allow_root = False):
         if len(outputs) != 1 or (outputs[0].is_directory and not allow_directories):
             fail("Each mapping needs one file%s: %s" % (" or tree artifact" if allow_directories else "", target.label))
         destination = "" if allow_root and outputs[0].is_directory and path == "" else _path(path)
-        entries.append(struct(source = outputs[0], path = destination, executable = False))
+        entries.append(struct(source = outputs[0], path = destination, executable = False, directory_manifest = target[ElectronFileTreeInfo].directory_manifest if ElectronFileTreeInfo in target else None))
     return entries
 
 def _runtime_impl(ctx):
@@ -128,14 +130,15 @@ def _app_impl(ctx):
             fail("Extra resource occupies app destination: %s" % entry.path)
     resources = "Contents/Resources" if platform == "macos" else "resources"
     entries = [{"source": e.source.path, "path": e.path, "executable": e.executable} for e in runtime.entries]
-    entries += [{"source": e.source.path, "path": resources + "/app" + ("/" + e.path if e.path else ""), "executable": False, "directory": e.source.is_directory} for e in app_entries]
-    entries += [{"source": e.source.path, "path": resources + "/" + e.path, "executable": e.executable, "directory": e.source.is_directory} for e in resource_entries]
+    entries += [{"source": e.source.path, "path": resources + "/app" + ("/" + e.path if e.path else ""), "executable": False, "directory": e.source.is_directory, "directory_manifest": e.directory_manifest.path if e.directory_manifest else ""} for e in app_entries]
+    entries += [{"source": e.source.path, "path": resources + "/" + e.path, "executable": e.executable, "directory": e.source.is_directory, "directory_manifest": e.directory_manifest.path if e.directory_manifest else ""} for e in resource_entries]
     entries.append({"source": ctx.file.package_json.path, "path": resources + "/app/package.json", "executable": False})
     manifest = ctx.actions.declare_file(ctx.label.name + ".manifest.json")
     output = ctx.actions.declare_file(ctx.label.name + ".zip") if platform == "macos" else ctx.actions.declare_directory(ctx.label.name)
+    directories = ctx.actions.declare_file(ctx.label.name + ".directories.json")
     ctx.actions.write(manifest, json.encode({
         "entries": entries,
-        "extra_files": [{"source": e.source.path, "path": e.path, "directory": e.source.is_directory} for e in extra_entries],
+        "extra_files": [{"source": e.source.path, "path": e.path, "directory": e.source.is_directory, "directory_manifest": e.directory_manifest.path if e.directory_manifest else ""} for e in extra_entries],
         "extra_asars": extra_asars,
         "asar": ctx.attr.asar,
         "asar_unpacked": ctx.attr.asar_unpacked,
@@ -169,16 +172,17 @@ def _app_impl(ctx):
     }))
     ctx.actions.run(
         executable = ctx.executable._assembler,
-        arguments = [manifest.path, output.path] + ([ctx.executable.macos_signer.path] if platform == "macos" else []),
-        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([ctx.file.macos_entitlements] if ctx.file.macos_entitlements else []) + ([ctx.file.macos_entitlements_inherit] if ctx.file.macos_entitlements_inherit else []) + ([ctx.file.windows_icon] if ctx.file.windows_icon else []) + ([windows_tool.modules, windows_tool.script] if windows_tool else []) + ([matcher.modules, matcher.script] if matcher else [])),
+        arguments = [manifest.path, output.path, directories.path] + ([ctx.executable.macos_signer.path] if platform == "macos" else []),
+        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + [e.directory_manifest for e in app_entries + resource_entries + extra_entries if e.directory_manifest] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([ctx.file.macos_entitlements] if ctx.file.macos_entitlements else []) + ([ctx.file.macos_entitlements_inherit] if ctx.file.macos_entitlements_inherit else []) + ([ctx.file.windows_icon] if ctx.file.windows_icon else []) + ([windows_tool.modules, windows_tool.script] if windows_tool else []) + ([matcher.modules, matcher.script] if matcher else [])),
         tools = ([signer if signer.executable else ctx.executable.macos_signer] if signer else []) + ([windows_tool.node] if windows_tool else []) + ([matcher.node] if matcher else []),
-        outputs = [output],
+        outputs = [output, directories],
         mnemonic = "ElectronApp",
         progress_message = "Assembling Electron app %{label}",
     )
     return [
         ElectronAppInfo(
             artifact = output,
+            directory_manifest = directories,
             platform = platform,
             package_json = ctx.file.package_json,
             executable_name = executable_name,

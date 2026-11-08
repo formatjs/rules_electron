@@ -23,6 +23,30 @@ electron_asar(
     srcs = {":empty_tree_view": ""},
 )
 
+electron_app(
+    name = "empty_tree_app",
+    srcs = {
+        ":empty_tree_view": "assets",
+        "fixtures/main.js": "main.js",
+    },
+    extra_files = {":empty_tree_view": "extra"},
+    package_json = "fixtures/package.json",
+    runtime = ":runtime",
+)
+
+electron_archive(
+    name = "empty_tree_zip",
+    app = ":empty_tree_app",
+    root_name = "sample",
+)
+
+electron_archive(
+    name = "empty_tree_tar",
+    app = ":empty_tree_app",
+    format = "tar.gz",
+    root_name = "sample",
+)
+
 py_test(
     name = "tree_artifact_test",
     size = "small",
@@ -31,11 +55,15 @@ py_test(
         "$(rootpath :empty_tree)",
         "$(rootpath :empty_tree_view)",
         "$(rootpath :empty_tree_asar)",
+        "$(rootpath :empty_tree_zip)",
+        "$(rootpath :empty_tree_tar)",
     ],
     data = [
         ":empty_tree",
         ":empty_tree_asar",
+        ":empty_tree_tar",
         ":empty_tree_view",
+        ":empty_tree_zip",
     ],
 )
 
