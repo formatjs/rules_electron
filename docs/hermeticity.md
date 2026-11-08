@@ -449,3 +449,10 @@ gperf generation; the full source suite reports the binding probe PASSED.
 Generated compilation headers now follow native C/C++ owners. Their selected
 set matches the pre-IDL profile; auxiliary testing headers stay outside unrelated
 compilations. Full Blink and Electron integration remain unfinished.
+
+
+The source overlay at `0f2b70e` passed its [hosted BCR consumer](https://formatjs.buildbuddy.io/invocation/d95c2ae9-2364-4e15-a145-bc7d59516f3a),
+including Catapult, tracing WebUI, policy, CUPS/xshmfence ABI, Blink and
+DevTools probes. Its [full components build](https://formatjs.buildbuddy.io/invocation/c69cb285-f229-4804-84ed-8443dd4105fb)
+failed on missing declared headers and security interstitial JavaScript inputs.
+Full source linkage remains open.
