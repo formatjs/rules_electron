@@ -20,8 +20,8 @@ def _impl(ctx):
     if directories and inherited and directories != inherited:
         fail("Explicit directory manifest conflicts with source provider")
     directories = directories or inherited
-    if not source.is_directory and (platform != "macos" or not source.basename.endswith(".zip")):
-        fail("src must be a tree artifact, or a macOS app ZIP")
+    if not source.is_directory and (platform not in ["macos", "linux"] or not source.basename.endswith(".zip")):
+        fail("src must be a tree artifact, or a Linux/macOS app ZIP")
     manifest = ctx.actions.declare_file(ctx.label.name + ".import.json")
     validation = ctx.actions.declare_file(ctx.label.name + ".validated")
     ctx.actions.write(manifest, json.encode({
@@ -63,7 +63,7 @@ def _impl(ctx):
 electron_prepackaged_app = rule(
     implementation = _impl,
     attrs = {
-        "src": attr.label(mandatory = True, allow_single_file = True, doc = "App directory tree artifact or macOS .app ZIP; preserved byte-for-byte."),
+        "src": attr.label(mandatory = True, allow_single_file = True, doc = "App directory tree artifact or Linux/macOS app ZIP; preserved byte-for-byte."),
         "directory_manifest": attr.label(allow_single_file = [".json"], doc = "Tracked tree-relative directory paths. Inherited from app/tree providers when available."),
         "package_json": attr.label(mandatory = True, allow_single_file = [".json"], doc = "Expected packaged name, version and main; shared with release rules."),
         "executable_name": attr.string(default = "electron", doc = "Executable basename, without Windows .exe suffix."),

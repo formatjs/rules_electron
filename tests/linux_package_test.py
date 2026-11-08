@@ -8,9 +8,29 @@ import unittest
 import xml.etree.ElementTree as ET
 
 from electron.private.linux import create_payload
+from electron.private.archive import create_archive
 
 
 class LinuxPackageTest(unittest.TestCase):
+    def test_zip_payload_preserves_directory_aliases_and_matches_directory_bytes(self):
+        (self.app / "data/v1").mkdir(parents=True)
+        (self.app / "data/v1/payload").write_bytes(b"payload")
+        (self.app / "current").symlink_to("data/v1", target_is_directory=True)
+        packed = self.root / "input.zip"
+        create_archive(self.app, "linux", "App 世界", "zip", 0, packed)
+        before = packed.read_bytes()
+        tree_payload = self.payload(name="tree")
+        zip_payload = self.payload(name="zip", app=packed)
+        self.assertEqual(zip_payload.read_bytes(), tree_payload.read_bytes())
+        self.assertEqual(packed.read_bytes(), before)
+        with tarfile.open(zip_payload) as archive:
+            entry = archive.getmember("opt/org.example.sample/current")
+            self.assertTrue(entry.issym())
+            self.assertEqual(entry.linkname, "data/v1")
+            destination = self.root / "installed"
+            archive.extractall(destination, filter="data")
+        self.assertEqual((destination / "opt/org.example.sample/current/payload").read_bytes(), b"payload")
+
     def test_setuid_sandbox_sets_only_helper_mode_without_changing_inputs(self):
         helper = self.app / "chrome-sandbox"
         header = bytearray(64)

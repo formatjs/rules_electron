@@ -110,7 +110,10 @@ py_binary(
     srcs = ["cli.py"],
     main = "cli.py",
     visibility = ["//electron:__pkg__"],
-    deps = [":assembly"],
+    deps = [
+        ":archives",
+        ":assembly",
+    ],
 )
 
 py_library(
@@ -151,6 +154,7 @@ py_library(
     srcs = ["linux.py"],
     visibility = ["//tests:__pkg__"],
     deps = [
+        ":archives",
         ":file_mappings",
         ":updates",
     ],

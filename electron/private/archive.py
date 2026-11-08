@@ -47,33 +47,37 @@ def validate(entries, platform):
             raise ValueError(f"Archive file/directory collision: {name}")
         if entry.kind != "symlink":
             continue
-        pending = list(PurePosixPath(name).parts)
-        resolved = []
-        expansions = 0
-        while pending:
-            component = pending.pop(0)
-            if component in ("", "."):
-                continue
-            if component == "..":
-                if not resolved:
-                    raise ValueError(f"Escaping archive symlink: {name}")
-                resolved.pop()
-                continue
-            node = entries.get("/".join(resolved + [component]))
-            if node is None:
-                raise ValueError(f"Dangling archive symlink: {name}")
-            if node.kind == "symlink":
-                expansions += 1
-                if expansions > 40:
-                    raise ValueError(f"Cyclic archive symlink: {name}")
-                target = node.target
-                if not target or PurePosixPath(target).is_absolute() or any(c in target for c in ("\\", ":", "\0")):
-                    raise ValueError(f"Invalid archive symlink: {name}")
-                pending = target.split("/") + pending
-            else:
-                if pending and node.kind != "directory":
-                    raise ValueError(f"Archive symlink traverses a file: {name}")
-                resolved.append(component)
+        resolve(entries, name)
+
+
+def resolve(entries, name):
+    pending = list(PurePosixPath(relative(name)).parts)
+    resolved, expansions = [], 0
+    while pending:
+        component = pending.pop(0)
+        if component in ("", "."):
+            continue
+        if component == "..":
+            if not resolved:
+                raise ValueError(f"Escaping archive symlink: {name}")
+            resolved.pop()
+            continue
+        node = entries.get("/".join(resolved + [component]))
+        if node is None:
+            raise ValueError(f"Dangling archive symlink: {name}")
+        if node.kind == "symlink":
+            expansions += 1
+            if expansions > 40:
+                raise ValueError(f"Cyclic archive symlink: {name}")
+            target = node.target
+            if not target or PurePosixPath(target).is_absolute() or any(c in target for c in ("\\", ":", "\0")):
+                raise ValueError(f"Invalid archive symlink: {name}")
+            pending = target.split("/") + pending
+        else:
+            if pending and node.kind != "directory":
+                raise ValueError(f"Archive symlink traverses a file: {name}")
+            resolved.append(component)
+    return "/".join(resolved)
 
 
 @contextmanager
@@ -96,9 +100,15 @@ def inventory(source, platform):
         validate(entries, platform)
         yield entries, lambda entry: entry.source.open("rb")
     else:
-        if platform != "macos":
-            raise ValueError("Only macOS app inputs may be ZIPs")
+        if platform not in ("macos", "linux"):
+            raise ValueError("Only Linux and macOS app inputs may be ZIPs")
         with ZipFile(source) as archive:
+            stripped = [info.filename[:-1] if info.is_dir() else info.filename for info in archive.infolist()]
+            for name in stripped:
+                relative(name)
+            root_names = {name.split("/", 1)[0] for name in stripped}
+            linux_root = (next(iter(root_names)) if platform == "linux" and len(root_names) == 1 and
+                          all("/" in name or info.is_dir() for name, info in zip(stripped, archive.infolist())) else None)
             roots = set()
             names = set()
             for info in archive.infolist():
@@ -108,15 +118,16 @@ def inventory(source, platform):
                 names.add(name)
                 parts = name.split("/", 1)
                 roots.add(parts[0])
-                if not parts[0].endswith(".app"):
+                if platform == "macos" and not parts[0].endswith(".app"):
                     raise ValueError("Expected one macOS app bundle")
                 mode = info.external_attr >> 16
                 kind = stat.S_IFMT(mode)
-                if len(parts) == 1:
+                strip_root = platform == "macos" or linux_root is not None
+                if strip_root and len(parts) == 1:
                     if not info.is_dir():
                         raise ValueError("App bundle root must be a directory")
                     continue
-                key = parts[1]
+                key = parts[1] if strip_root else name
                 if info.is_dir() and kind in (0, stat.S_IFDIR):
                     entries[key] = Entry("directory", 0o755)
                 elif stat.S_ISLNK(mode):
@@ -127,7 +138,7 @@ def inventory(source, platform):
                     entries[key] = Entry("file", 0o755 if mode & 0o111 else 0o644, info.file_size, info)
                 else:
                     raise ValueError(f"Unsupported archive file type: {name}")
-            if len(roots) != 1:
+            if platform == "macos" and len(roots) != 1:
                 raise ValueError("Expected one macOS app bundle")
             validate(entries, platform)
             yield entries, lambda entry: archive.open(entry.source)

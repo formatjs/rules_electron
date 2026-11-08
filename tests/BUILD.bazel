@@ -32,6 +32,64 @@ py_test(
 
 empty_tree(name = "empty_tree")
 
+electron_app(
+    name = "resource_links_app",
+    srcs = {"fixtures/main.js": "main.js"},
+    app_id = "org.example.links",
+    asar = True,
+    executable_name = "sample",
+    extra_resources = {"fixtures/notice.txt": "data/v1/notice.txt"},
+    package_json = "fixtures/package.json",
+    product_name = "Sample",
+    resource_symlinks = {
+        "current": "data/v1",
+        "nested/alias": "current",
+    },
+    runtime = ":runtime",
+)
+
+electron_prepackaged_app(
+    name = "resource_links_import",
+    src = ":resource_links_app",
+    app_id = "org.example.links",
+    executable_name = "sample",
+    package_json = "fixtures/package.json",
+    product_name = "Sample",
+)
+
+electron_archive(
+    name = "resource_links_tar",
+    app = ":resource_links_import",
+    format = "tar.gz",
+    root_name = "sample",
+)
+
+electron_deb(
+    name = "resource_links_deb",
+    package_name = "resource-links-fixture",
+    app = ":resource_links_import",
+    depends = [],
+    description = "Resource link fixture",
+    maintainer = "Example <example@example.com>",
+)
+
+py_test(
+    name = "resource_links_test",
+    srcs = ["resource_links_test.py"],
+    args = [
+        "$(rootpath :resource_links_app)",
+        "$(rootpath :resource_links_tar)",
+        "$(rootpath :resource_links_deb)",
+        "$(rootpath fixtures/notice.txt)",
+    ],
+    data = [
+        "fixtures/notice.txt",
+        ":resource_links_app",
+        ":resource_links_deb",
+        ":resource_links_tar",
+    ],
+)
+
 electron_files(
     name = "empty_tree_view",
     srcs = {":empty_tree": ""},

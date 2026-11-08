@@ -1,7 +1,9 @@
 # Prepackaged apps
 
-`electron_prepackaged_app` imports an existing app tree artifact or macOS `.app`
-ZIP into `ElectronAppInfo`. Archives, DEB and NSIS rules accept it directly.
+`electron_prepackaged_app` imports an existing app tree artifact, Linux app ZIP or
+macOS `.app` ZIP into `ElectronAppInfo`. Archives and DEB stream Linux ZIP inputs;
+NSIS requires a Windows directory payload. Linux ZIPs may be flat or contain one
+wrapping directory. Inputs remain immutable.
 
 ```starlark
 load("@rules_electron//electron:prepackaged.bzl", "electron_prepackaged_app")

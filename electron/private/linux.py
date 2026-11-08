@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 
 from electron.private.update import _version
 from electron.private.files import read_directories
+from electron.private.archive import Entry, inventory, resolve
 
 
 def _identifier(value, field):
@@ -28,6 +29,15 @@ def _desktop_string(value):
 def create_payload(app, package_json, app_id, product_name, executable_name,
                    architecture, revision, description, categories, protocols,
                    file_associations, icons, output, version_output, directory_manifest="", setuid_sandbox=False):
+    with inventory(Path(app), "linux") as (app_entries, open_app):
+        _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
+                        architecture, revision, description, categories, protocols, file_associations,
+                        icons, output, version_output, directory_manifest, setuid_sandbox)
+
+
+def _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
+                    architecture, revision, description, categories, protocols,
+                    file_associations, icons, output, version_output, directory_manifest, setuid_sandbox):
     _identifier(app_id, "app_id")
     _identifier(executable_name, "executable_name")
     if architecture not in ("amd64", "arm64"):
@@ -38,14 +48,14 @@ def create_payload(app, package_json, app_id, product_name, executable_name,
     version = _version(package.get("version"))
     upstream, separator, prerelease = version.partition("-")
     deb_version = upstream + ("~" + prerelease if separator else "") + "-" + revision
-    app = Path(app)
-    if not (app / executable_name).is_file():
+    executable = app_entries.get(executable_name)
+    if executable is None or app_entries.get(resolve(app_entries, executable_name), Entry("directory", 0)).kind != "file":
         raise ValueError("App executable missing")
     if setuid_sandbox:
-        helper = app / "chrome-sandbox"
-        if executable_name == "chrome-sandbox" or helper.is_symlink() or not helper.is_file() or not helper.stat().st_mode & 0o111:
+        helper = app_entries.get("chrome-sandbox")
+        if executable_name == "chrome-sandbox" or helper is None or helper.kind != "file" or not helper.mode & 0o111:
             raise ValueError("Setuid sandbox requires a separate regular executable chrome-sandbox")
-        with helper.open("rb") as source:
+        with open_app(helper) as source:
             header = source.read(20)
         if (len(header) != 20 or header[:6] != b"\x7fELF\x02\x01"
                 or struct.unpack_from("<H", header, 16)[0] not in (2, 3)
@@ -87,26 +97,19 @@ def create_payload(app, package_json, app_id, product_name, executable_name,
     entries, empty = {}, set()
     if directory_manifest:
         empty.update(prefix + "/" + str(path) for path in read_directories(directory_manifest))
-    for source in sorted(app.rglob("*")):
-        relative = source.relative_to(app)
-        if source.is_dir() and not source.is_symlink():
-            empty.add(prefix + "/" + relative.as_posix())
+    for relative, entry in app_entries.items():
+        if entry.kind == "directory":
+            empty.add(prefix + "/" + relative)
             continue
-        destination = prefix + "/" + relative.as_posix()
+        destination = prefix + "/" + relative
         if destination in generated:
-            if source.is_symlink() or source.read_bytes().strip() != b"deb":
+            if entry.kind != "file":
                 raise ValueError("App has conflicting package-type resource")
+            with open_app(entry) as source:
+                if source.read().strip() != b"deb":
+                    raise ValueError("App has conflicting package-type resource")
             continue
-        if source.is_symlink():
-            if source.readlink().is_absolute():
-                raise ValueError("App symlinks must be relative")
-            try:
-                source.resolve(strict=True).relative_to(app.resolve())
-            except (ValueError, OSError, RuntimeError) as error:
-                raise ValueError("App symlink escapes package or is dangling") from error
-        elif not source.is_file():
-            raise ValueError("Only regular app files and internal symlinks can be packaged")
-        entries[destination] = source
+        entries[destination] = (entry, open_app)
     for icon in icons:
         source = Path(icon["source"])
         size = icon["size"]
@@ -120,7 +123,8 @@ def create_payload(app, package_json, app_id, product_name, executable_name,
         destination = "usr/share/icons/hicolor/" + size + "/apps/" + app_id + extension
         if destination in entries:
             raise ValueError("Duplicate icon size")
-        entries[destination] = source
+        entries[destination] = (Entry("file", 0o755 if source.stat().st_mode & 0o111 else 0o644, source.stat().st_size, source),
+                                lambda entry: entry.source.open("rb"))
     directories = empty | {str(parent) for name in [*entries, *generated, *empty] for parent in PurePosixPath(name).parents if str(parent) != "."}
     if directories & (entries.keys() | generated.keys()):
         raise ValueError("Linux payload file/directory collision")
@@ -138,14 +142,14 @@ def create_payload(app, package_json, app_id, product_name, executable_name,
                     info.size = len(data)
                     archive.addfile(info, io.BytesIO(data))
                 else:
-                    source = entries[name]
-                    if source.is_symlink():
-                        info.type, info.linkname, info.mode = tarfile.SYMTYPE, source.readlink().as_posix(), 0o777
+                    entry, open_entry = entries[name]
+                    if entry.kind == "symlink":
+                        info.type, info.linkname, info.mode = tarfile.SYMTYPE, entry.target, 0o777
                         archive.addfile(info)
                     else:
-                        info.size = source.stat().st_size
-                        info.mode = 0o4755 if setuid_sandbox and name == prefix + "/chrome-sandbox" else 0o755 if source.stat().st_mode & 0o111 else 0o644
-                        with source.open("rb") as contents:
+                        info.size = entry.size
+                        info.mode = 0o4755 if setuid_sandbox and name == prefix + "/chrome-sandbox" else entry.mode
+                        with open_entry(entry) as contents:
                             archive.addfile(info, contents)
     Path(version_output).write_text(deb_version + "\n", encoding="utf-8")
 

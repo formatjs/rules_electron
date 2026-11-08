@@ -104,6 +104,12 @@ app.whenReady().then(async () => {
       assert.equal(app.isPackaged, true);
       assert.deepEqual(fs.readdirSync(path.join(__dirname, 'renderer/empty')), []);
       assert.deepEqual(fs.readdirSync(path.join(process.resourcesPath, 'directories/empty')), []);
+      if (process.platform === 'darwin') {
+        assert.equal(fs.lstatSync(path.join(process.resourcesPath, 'linked-config')).isSymbolicLink(), true);
+        assert.equal(fs.lstatSync(path.join(process.resourcesPath, 'nested/config')).isSymbolicLink(), true);
+        assert.equal(fs.realpathSync(path.join(process.resourcesPath, 'nested/config/settings.json')),
+          fs.realpathSync(path.join(process.resourcesPath, 'config/settings.json')));
+      }
       assert.equal(fs.readFileSync(path.join(path.dirname(process.resourcesPath), 'licenses/NOTICE.txt'), 'utf8'),
         'Generic desktop example notice.\n');
       assert.equal(path.basename(__filename), 'main.cjs');

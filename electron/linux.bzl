@@ -5,8 +5,8 @@ load(":defs.bzl", "ElectronAppInfo")
 
 def _payload_impl(ctx):
     app = ctx.attr.app[ElectronAppInfo]
-    if app.platform != "linux" or not app.artifact.is_directory:
-        fail("electron_deb requires an assembled Linux app directory")
+    if app.platform != "linux":
+        fail("electron_deb requires an assembled Linux app")
     architecture = None
     for name in ["amd64", "arm64"]:
         if ctx.target_platform_has_constraint(getattr(ctx.attr, "_" + name)[platform_common.ConstraintValueInfo]):

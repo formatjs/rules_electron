@@ -8,7 +8,7 @@ load(":windows.bzl", "ElectronWindowsResourceToolInfo")
 ElectronAppInfo = provider(
     doc = "Assembled target app and identity for downstream packaging rules.",
     fields = {
-        "artifact": "App directory or macOS bundle ZIP.",
+        "artifact": "App directory or Linux/macOS app ZIP.",
         "directory_manifest": "Tracked empty directory paths for tree outputs, when present.",
         "platform": "linux, macos or windows.",
         "package_json": "App package manifest.",
@@ -91,6 +91,8 @@ electron_runtime = rule(
 
 def _app_impl(ctx):
     platform = _platform(ctx)
+    if platform == "windows" and ctx.attr.resource_symlinks:
+        fail("Resource symlinks currently require Linux or macOS")
     runtime = ctx.attr.runtime[ElectronRuntimeInfo]
     if runtime.platform != platform:
         fail("Runtime and app target OS must match")
@@ -136,10 +138,13 @@ def _app_impl(ctx):
     entries += [{"source": e.source.path, "path": resources + "/" + e.path, "executable": e.executable, "directory": e.source.is_directory, "directory_manifest": e.directory_manifest.path if e.directory_manifest else ""} for e in resource_entries]
     entries.append({"source": ctx.file.package_json.path, "path": resources + "/app/package.json", "executable": False})
     manifest = ctx.actions.declare_file(ctx.label.name + ".manifest.json")
-    output = ctx.actions.declare_file(ctx.label.name + ".zip") if platform == "macos" else ctx.actions.declare_directory(ctx.label.name)
+    zip_output = platform == "macos" or bool(ctx.attr.resource_symlinks)
+    output = ctx.actions.declare_file(ctx.label.name + ".zip") if zip_output else ctx.actions.declare_directory(ctx.label.name)
     directories = ctx.actions.declare_file(ctx.label.name + ".directories.json")
     ctx.actions.write(manifest, json.encode({
         "entries": entries,
+        "zip_output": zip_output,
+        "resource_symlinks": ctx.attr.resource_symlinks,
         "extra_files": [{"source": e.source.path, "path": e.path, "directory": e.source.is_directory, "directory_manifest": e.directory_manifest.path if e.directory_manifest else ""} for e in extra_entries],
         "extra_asars": extra_asars,
         "asar": ctx.attr.asar,
@@ -209,6 +214,7 @@ electron_app = rule(
         "file_matcher": attr.label(providers = [ElectronFileMatcherInfo], cfg = "exec"),
         "asar_symlinks": attr.string_dict(doc = "ASAR link paths mapped to archive-root-relative targets; empty target denotes archive root. Requires asar=True."),
         "extra_resources": attr.label_keyed_string_dict(allow_files = True, doc = "Files or tree artifacts mapped relative to resources/, outside ASAR."),
+        "resource_symlinks": attr.string_dict(doc = "Linux/macOS resource link paths mapped to resource-root-relative targets. Targets must be declared; Linux returns an app ZIP to preserve links outside Bazel tree artifacts."),
         "extra_files": attr.label_keyed_string_dict(allow_files = True, doc = "Files or tree artifacts mapped to Contents/ on macOS, distribution root elsewhere; outside ASAR."),
         "extra_asars": attr.label_keyed_string_dict(providers = [ElectronAsarInfo], doc = "Standalone ASAR targets mapped to resource-relative .asar paths; stages sidecars and embeds header integrity."),
         "executable_name": attr.string(default = "electron"),

@@ -11,6 +11,32 @@ from electron.private.assemble import assemble
 
 
 class AssemblyTest(unittest.TestCase):
+    def test_resource_directory_links_preserve_aliases_after_relocation(self):
+        entries = self.entries + [{"source": str(self.main), "path": "resources/versions/v1/payload"}]
+        output = self.root / "linked"
+        assemble(entries, output, asar=True, resource_symlinks={"current": "versions/v1", "nested/alias": "current"})
+        moved = self.root / "relocated"
+        output.rename(moved)
+        self.assertEqual((moved / "resources/current").readlink().as_posix(), "versions/v1")
+        self.assertEqual((moved / "resources/nested/alias").readlink().as_posix(), "../current")
+        self.assertEqual((moved / "resources/nested/alias/payload").read_bytes(), b"app")
+        (moved / "resources/versions/v1/payload").write_bytes(b"changed")
+        self.assertEqual((moved / "resources/current/payload").read_bytes(), b"changed")
+        self.assertTrue((moved / "resources/app.asar").is_file())
+
+    def test_resource_links_reject_collisions_escapes_cycles_and_app_paths_before_writing(self):
+        entries = self.entries + [{"source": str(self.main), "path": "resources/data/payload"}]
+        invalid = [{"../escape": "data"}, {"alias": "../outside"}, {"alias": "missing"},
+                   {"one": "two", "two": "one"}, {"data": "data"},
+                   {"app/alias": "data"}, {"alias": "app/main.js"}, {"data/payload": "data"},
+                   {"root": "", "alias": "root/app/main.js"}]
+        for links in invalid:
+            with self.subTest(links=links), self.assertRaises(ValueError):
+                assemble(entries, self.root / "invalid-links", resource_symlinks=links)
+        self.assertFalse((self.root / "invalid-links").exists())
+        with self.assertRaisesRegex(ValueError, "require Linux or macOS"):
+            assemble(entries, self.root / "windows-links", platform="windows", resource_symlinks={"alias": "data"})
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)

@@ -16,8 +16,25 @@ Both stay outside `app.asar`.
 Mappings require normalized relative destinations. Tree contents retain relative
 paths, including dotfiles. Assembly preserves executable status, normalizes modes
 to 0755/0644 and timestamps to epoch. It rejects app/ASAR destinations, duplicate
-paths, file/directory collisions and runtime-file replacement. Windows collision
-checks ignore case. Directory symlinks in trees remain unsupported.
+paths, file/directory collisions and runtime-file replacement. Windows/macOS
+collision checks ignore case. Raw directory symlinks in tree artifacts remain
+unsupported; [Bazel tree artifacts do not support symlinks](https://bazel.build/rules/lib/builtins/actions#declare_symlink).
+
+Declare internal resource links separately on Linux/macOS:
+
+```starlark
+extra_resources = {":settings": "versions/v1/settings.json"},
+resource_symlinks = {"current": "versions/v1", "nested/config": "current"},
+```
+
+Targets are relative to the resource root. Links retain filesystem semantics,
+including chains and directory aliases. Missing targets, escapes, cycles,
+collisions and links into app/ASAR paths fail before assembly writes output.
+Linux apps with links use a ZIP-backed `ElectronAppInfo` artifact, avoiding
+unsupported symlinks in Bazel tree outputs. Release archives and DEB packaging
+stream that ZIP; immutable imports validate its layout and CPU. macOS retains
+links through signing and its app ZIP. Windows junction/link installation and
+generated-tree link metadata remain open. BB/native validation is pending.
 
 At runtime, `process.resourcesPath` locates extra resources. Its parent locates
 extra files on all three platforms. The desktop example reads a packaged notice

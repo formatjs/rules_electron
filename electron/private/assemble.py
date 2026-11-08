@@ -1,6 +1,7 @@
 """Assemble a relocatable Linux Electron distribution from declared inputs."""
 
 import json
+import posixpath
 from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
@@ -22,9 +23,11 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              windows_resource_tool=None, windows_metadata=None,
              build_version="", build_number="", macos_protocols=None, macos_protocol_roles=None,
              extra_files=(), extra_asars=(), macos_icon="", windows_icon="", asar_symlinks=None,
-             asar_unpacked_patterns=(), file_matcher=None, macos_extra_plist=""):
+             asar_unpacked_patterns=(), file_matcher=None, macos_extra_plist="", resource_symlinks=None):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
+    if platform == "windows" and resource_symlinks:
+        raise ValueError("Resource symlinks currently require Linux or macOS")
     if macos_extra_plist and platform != "macos":
         raise ValueError("macos_extra_plist requires a macOS target")
     if platform != "macos" and (macos_protocols or macos_protocol_roles):
@@ -85,9 +88,27 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         if path in paths:
             raise ValueError(f"Duplicate destination: {path}")
         paths[path] = entry
-    checked_paths = {PurePosixPath(str(path).casefold()): entry for path, entry in paths.items()} if platform == "windows" else paths
+    if resource_symlinks:
+        resource_root = PurePosixPath(resources)
+        resource_files = {str(path.relative_to(resource_root)): entry for path, entry in paths.items() if path != resource_root and path.is_relative_to(resource_root)}
+        for alias, target in resource_symlinks.items():
+            relative_path(alias)
+            if not isinstance(target, str):
+                raise ValueError("Resource link target must be a string")
+            if target:
+                relative_path(target)
+            if any(name.split("/")[0] in ("app", "app.asar", "app.asar.unpacked") for name in (alias, target) if name):
+                raise ValueError("Resource link occupies app destination")
+        namespace = ArchivePaths({name for name, entry in resource_files.items() if not entry.get("empty_directory")},
+                                 resource_symlinks, {name for name, entry in resource_files.items() if entry.get("empty_directory")})
+        if any(target.split("/")[0] in ("app", "app.asar", "app.asar.unpacked") for target in namespace.links.values()):
+            raise ValueError("Resource link occupies app destination")
+        for alias, target in resource_symlinks.items():
+            path = resource_root / alias
+            paths[path] = {"symlink": posixpath.relpath(str(resource_root / target), str(path.parent))}
+    checked_paths = {PurePosixPath(str(path).casefold()): entry for path, entry in paths.items()} if platform in ("windows", "macos") else paths
     if len(checked_paths) != len(paths):
-        raise ValueError("Case-insensitive Windows destination collision")
+        raise ValueError("Case-insensitive destination collision")
     for path in checked_paths:
         if any(parent in checked_paths and not checked_paths[parent].get("empty_directory") for parent in path.parents):
             raise ValueError(f"File/directory collision: {path}")
@@ -121,11 +142,18 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         if entry.get("empty_directory"):
             destination.mkdir(parents=True, exist_ok=True)
             continue
+        if "symlink" in entry:
+            continue
         source = Path(entry["source"])
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
         executable = entry.get("executable", False) or bool(source.stat().st_mode & 0o111)
         destination.chmod(0o755 if executable else 0o644)
+    for path, entry in sorted(paths.items()):
+        if "symlink" in entry:
+            destination = output / str(path)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.symlink_to(entry["symlink"])
     if remove_package_scripts:
         package.pop("scripts", None)
         (output / package_path).write_text(json.dumps(package, ensure_ascii=False, sort_keys=True, separators=(",", ":")))

@@ -13,6 +13,19 @@ from electron.private.prepackaged import validate
 
 
 class PrepackagedTest(unittest.TestCase):
+    def test_linux_zip_import_validates_cpu_and_keeps_directory_links_immutable(self):
+        app, _ = self.fixture(packed=True)
+        (app / "data/v1").mkdir(parents=True)
+        (app / "data/v1/payload").write_bytes(b"payload")
+        (app / "current").symlink_to("data/v1", target_is_directory=True)
+        archive = self.root / "linux.zip"
+        create_archive(app, "linux", "App 世界", "zip", 0, archive)
+        before = hashlib.sha256(archive.read_bytes()).digest()
+        self.check(archive)
+        self.assertEqual(hashlib.sha256(archive.read_bytes()).digest(), before)
+        with self.assertRaisesRegex(ValueError, "CPU differs"):
+            self.check(archive, cpu="aarch64")
+
     def test_directory_manifest_validates_without_rewriting_app(self):
         app, binary = self.fixture()
         before = binary.read_bytes()
