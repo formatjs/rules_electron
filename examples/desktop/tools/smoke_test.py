@@ -6,6 +6,7 @@ import os
 import platform
 import hashlib
 import plistlib
+import re
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
 import select
@@ -148,7 +149,15 @@ def check_macos_protocol(app, executable, environment, directory, target_arch):
                     if process.poll() is not None or time.monotonic() > deadline:
                         raise RuntimeError("macOS protocol receiver did not become ready")
                     time.sleep(0.1)
-                subprocess.run(["/usr/bin/open", url], check=True, capture_output=True, timeout=15)
+                delivery = subprocess.run(["/usr/bin/open", url], capture_output=True, text=True, timeout=15)
+                if delivery.returncode:
+                    details = {
+                        "exit_code": delivery.returncode,
+                        "osstatus": re.findall(r"Code=(-?\d+)", delivery.stderr),
+                        "no_handler": "No application knows how to open" in delivery.stderr,
+                        "permission_denied": "permission" in delivery.stderr.lower(),
+                    }
+                    raise RuntimeError("macOS protocol dispatch failed: " + json.dumps(details))
                 if process.wait(timeout=25):
                     raise RuntimeError("macOS protocol receiver failed")
                 assert json.loads(report.read_text()) == {
