@@ -423,7 +423,7 @@ def failed_action_diagnostics(identifier, key):
         missing = {name for name in re.findall(r"fatal error: ['\"]([^'\"\n]+)['\"] file not found", log) if name in public_headers}
         missing_inputs, missing_basenames = set(), set()
         for path in re.findall(r"(?:FileNotFoundError: [^\r\n]*?:\s*|No such file or directory:\s*)b?[\"']([^\"'\r\n]{1,1000})[\"']", log):
-            path = posixpath.normpath(path)
+            path = posixpath.normpath(path.replace("\\", "/"))
             if posixpath.basename(path) in public_basenames:
                 missing_basenames.add(posixpath.basename(path))
             candidates = [path]
@@ -436,9 +436,11 @@ def failed_action_diagnostics(identifier, key):
         for line in log.splitlines():
             if "FileNotFound" in line:
                 missing_basenames.update(name for name in re.findall(r"[A-Za-z0-9_.+-]+\.[A-Za-z0-9]+", line) if name in public_basenames)
+        python_exceptions = sorted({name for name in ("JSONDecodeError", "FileNotFoundError", "KeyError", "ValueError", "TypeError", "AssertionError") if re.search(r"\b" + name + ":", log)})
+        python_error_identifiers = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line) if word in public_identifiers))[:24] for line in log.splitlines() if re.match(r"(?:KeyError|ValueError|TypeError|AssertionError):", line)][:4]
         missing_modules = set()
         for path in re.findall(r"(?:Cannot find (?:module|package)|Could not resolve entry module) ['\"]([^'\"\r\n]{1,1000})['\"]", log):
-            path = posixpath.normpath(path)
+            path = posixpath.normpath(path.replace("\\", "/"))
             parts = path.split("/")
             missing_modules.update(name for name in ("/".join(parts[index:]) for index in range(len(parts))) if name in public_files)
         nonreproducible = []
@@ -479,7 +481,7 @@ def failed_action_diagnostics(identifier, key):
         ts_locations = re.findall(r"([^\s()]+)\(([0-9]{1,5}),([0-9]{1,4})\): error (TS[0-9]{4,5}):", log)
         ts_locations += re.findall(r"([^\s:]+):([0-9]{1,5}):([0-9]{1,4}) - error (TS[0-9]{4,5}):", log)
         for path, line, column, code in ts_locations:
-            path = posixpath.normpath(path)
+            path = posixpath.normpath(path.replace("\\", "/"))
             candidates = [path]
             for prefix in ("third_party/", "gen/", "ui/", "tools/", "components/"):
                 if "/" + prefix in path:
@@ -487,7 +489,7 @@ def failed_action_diagnostics(identifier, key):
             known = next((name for name in candidates if name in public_files), None)
             if known and 0 < int(line) < 10000 and 0 < int(column) < 10000:
                 ts_sites.append({"file": known, "line": int(line), "column": int(column), "code": code})
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_action_targets": public_action_targets(log), "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_missing_input_basenames": sorted(missing_basenames)[:8], "public_missing_modules": sorted(missing_modules)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers, "public_missing_shared_libraries": missing_shared_libraries}, sort_keys=True))
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_action_targets": public_action_targets(log), "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_missing_input_basenames": sorted(missing_basenames)[:8], "python_exceptions": python_exceptions, "public_python_error_identifiers": python_error_identifiers, "public_missing_modules": sorted(missing_modules)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers, "public_missing_shared_libraries": missing_shared_libraries}, sort_keys=True))
 
 
 if __name__ == "__main__":
