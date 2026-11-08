@@ -421,5 +421,13 @@
     "red conversion has BT601 limited luma",
     "source libpng allocates reference reader",
     "source libpng reads independent reference"
+  ],
+  "blink_bindings": [
+    "core includes direct and inherited event interfaces",
+    "event interfaces are unique and sorted",
+    "event interfaces retain component ownership",
+    "generated component metadata matches native export",
+    "generated events retain original native header directories",
+    "non event interfaces are excluded"
   ]
 }
