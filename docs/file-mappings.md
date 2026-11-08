@@ -21,4 +21,11 @@ checks ignore case. Directory symlinks in trees remain unsupported.
 
 At runtime, `process.resourcesPath` locates extra resources. Its parent locates
 extra files on all three platforms. The desktop example reads a packaged notice
-there during native smoke. Hosted validation for this addition is pending.
+there during native smoke.
+
+[BB assembly tests](https://formatjs.buildbuddy.io/invocation/f79a67e5-511b-4ef9-99c7-a4f235c02e35)
+and [seven cross-build variants](https://formatjs.buildbuddy.io/invocation/2c48cc35-4af3-4a3f-a72d-3334074ca928)
+passed. [Native smoke](https://github.com/formatjs/rules_electron/actions/runs/42453918813)
+passed on Linux x64, macOS ARM64 and Windows x64/ARM64, including installed DEB/NSIS
+flows. Assembly tests cover file/tree layout on all platforms, relocation, ASAR
+exclusion, executable modes, dotfiles and rejected app/runtime collisions.

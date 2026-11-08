@@ -10,7 +10,7 @@ electron-builder replacement.
 | Main/preload/renderer inputs | Explicit files and generated directories | Rich package-provider adapters |
 | Runtime dependencies | Explicit Node-API package, target-built helper/addon | General npm closure handling; Electron Node/V8 ABI toolchains |
 | ASAR | Deterministic header, hashes, unpacked native files; macOS plist and Windows PE header integrity | Additional ASAR files; native coverage tracked separately |
-| Extra resources | File/tree mappings, normalized modes | Arbitrary resource-tree directory symlinks |
+| Extra resources/files | Declared file/tree mappings to resources or app content root, outside ASAR; normalized modes | Arbitrary resource-tree directory symlinks |
 | File selection | Explicit whitelist; generated tree contents retained | Include/exclude glob rules and map filtering |
 | Manifest scripts | Root package scripts removable | General dependency manifest rewriting |
 | Runtime locales | Explicit file mappings or non-macOS ZIP locale selection | Broader runtime-provider integration |
