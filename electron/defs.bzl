@@ -100,6 +100,7 @@ def _app_impl(ctx):
         fail("macOS signing settings require a macOS target")
     if platform == "macos" and not ctx.executable.macos_signer:
         fail("macOS assembly requires an execution-platform macos_signer (rcodesign)")
+    signer = ctx.attr.macos_signer[DefaultInfo].files_to_run if platform == "macos" else None
     windows_tool = ctx.attr.windows_resource_tool[ElectronWindowsResourceToolInfo] if ctx.attr.windows_resource_tool else None
     matcher = ctx.attr.file_matcher[ElectronFileMatcherInfo] if ctx.attr.file_matcher else None
     if ctx.attr.asar_unpacked_patterns and (not ctx.attr.asar or not matcher):
@@ -170,7 +171,7 @@ def _app_impl(ctx):
         executable = ctx.executable._assembler,
         arguments = [manifest.path, output.path] + ([ctx.executable.macos_signer.path] if platform == "macos" else []),
         inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([ctx.file.macos_entitlements] if ctx.file.macos_entitlements else []) + ([ctx.file.macos_entitlements_inherit] if ctx.file.macos_entitlements_inherit else []) + ([ctx.file.windows_icon] if ctx.file.windows_icon else []) + ([windows_tool.modules, windows_tool.script] if windows_tool else []) + ([matcher.modules, matcher.script] if matcher else [])),
-        tools = ([ctx.executable.macos_signer] if platform == "macos" else []) + ([windows_tool.node] if windows_tool else []) + ([matcher.node] if matcher else []),
+        tools = ([signer if signer.executable else ctx.executable.macos_signer] if signer else []) + ([windows_tool.node] if windows_tool else []) + ([matcher.node] if matcher else []),
         outputs = [output],
         mnemonic = "ElectronApp",
         progress_message = "Assembling Electron app %{label}",

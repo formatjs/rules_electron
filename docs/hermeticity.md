@@ -22,7 +22,11 @@ Current enforcement:
   sandbox network access, and disable automatic C++/Apple/Swift host toolchains.
   LLVM toolchains and sysroots are declared Bazel inputs.
 - Assembly, ASAR, update metadata and Linux payload actions use the pinned
-  execution Python toolchain. Signing uses a digest-pinned execution-platform
+  execution Python toolchain. Root/example workspaces select its shell bootstrap,
+  avoiding ambient Python during startup. A BB regression launches a Python tool
+  with shell utilities available but no Python executable on PATH; validation is
+  pending. POSIX shell bootstrap utilities remain part of the Linux execution
+  platform. Signing declares the signer's full runfiles and uses a digest-pinned execution-platform
   rcodesign archive. Target binaries never execute during packaging.
 - Windows resource editing uses an explicit execution Node and pinned pure-JS
   `resedit`/`pe-library` closure. The example builds that Node from

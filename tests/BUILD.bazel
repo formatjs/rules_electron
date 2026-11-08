@@ -1,5 +1,5 @@
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
-load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 load("//electron:archive.bzl", "electron_archive")
 load("//electron:asar.bzl", "electron_asar")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
@@ -8,6 +8,21 @@ load(":cross_build.bzl", "cross_build")
 load(":npm_lock_test.bzl", "npm_lock_test")
 
 npm_lock_test(name = "npm_lock_test")
+
+py_binary(
+    name = "python_bootstrap_probe",
+    srcs = ["python_bootstrap_probe.py"],
+    tags = ["manual"],
+)
+
+py_test(
+    name = "python_bootstrap_test",
+    size = "small",
+    srcs = ["python_bootstrap_test.py"],
+    args = ["$(rootpath :python_bootstrap_probe)"],
+    data = [":python_bootstrap_probe"],
+    target_compatible_with = ["@platforms//os:linux"],
+)
 
 py_test(
     name = "mac_sign_test",
