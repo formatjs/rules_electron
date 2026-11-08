@@ -216,9 +216,8 @@ def check_macos_icon(app):
         width, height = send(bitmap, "pixelsWide", c_long), send(bitmap, "pixelsHigh", c_long)
         assert width > 0 and height > 0
         color = send(bitmap, "colorAtX:y:", c_void_p, (c_long, width // 2), (c_long, height // 2))
-        space = send(class_named("NSColorSpace"), "sRGBColorSpace")
-        color = send(color, "colorUsingColorSpace:", c_void_p, (c_void_p, space))
         assert color, "Bundle icon has no RGB color"
+        # Compare stored components; color conversion changes encoded gray.
         pixel = [round(send(color, component, c_double) * 255) for component in
                  ["redComponent", "greenComponent", "blueComponent", "alphaComponent"]]
         assert pixel == [43, 43, 43, 255], pixel
