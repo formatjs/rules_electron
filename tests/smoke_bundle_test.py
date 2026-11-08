@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 import shutil
 import struct
@@ -53,7 +54,12 @@ class SmokeBundleTest(unittest.TestCase):
                     path.chmod(0o755)
                 (source / "data").write_bytes(b"resource\0bytes")
                 (source / "data").chmod(0o644)
-            self.entries.append({"variant": variant, "source": str(source), "directory": source.is_dir()})
+            entry = {"variant": variant, "source": str(source), "directory": source.is_dir()}
+            if source.is_dir():
+                directories = base / "directories.json"
+                directories.write_text(json.dumps(["resources/cache/empty", ".hidden"]))
+                entry["directory_manifest"] = str(directories)
+            self.entries.append(entry)
             if variant.endswith("_msvc") or target_os == "linux":
                 feed = base / "feed"
                 feed.mkdir()
@@ -80,6 +86,10 @@ class SmokeBundleTest(unittest.TestCase):
                     entry = next(entry for entry in self.entries if entry["variant"] == variant and not entry.get("package"))
                     source = Path(entry["source"])
                     if entry["directory"]:
+                        for name in ("resources/cache/empty", ".hidden"):
+                            directory = unpacked / variant / "app" / name
+                            self.assertTrue(directory.is_dir())
+                            self.assertEqual(list(directory.iterdir()), [])
                         for file in source.rglob("*"):
                             if file.is_file():
                                 output = unpacked / variant / "app" / file.relative_to(source)
@@ -100,7 +110,12 @@ class SmokeBundleTest(unittest.TestCase):
         shutil.copytree(self.inputs, relocated)
         for path in relocated.rglob("*"):
             os.utime(path, (1234567890, 1234567890))
-        entries = [dict(entry, source=str(relocated / Path(entry["source"]).relative_to(self.inputs))) for entry in reversed(self.entries)]
+        entries = []
+        for entry in reversed(self.entries):
+            changed = dict(entry, source=str(relocated / Path(entry["source"]).relative_to(self.inputs)))
+            if entry.get("directory_manifest"):
+                changed["directory_manifest"] = str(relocated / Path(entry["directory_manifest"]).relative_to(self.inputs))
+            entries.append(changed)
         second = self.outputs(self.root / "second")
         build_bundles(entries, second)
         for shard in SHARDS:

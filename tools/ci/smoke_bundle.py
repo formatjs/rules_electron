@@ -1,5 +1,5 @@
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import stat
 import sys
@@ -85,6 +85,22 @@ def add_entry(archive, entry, names):
         info._compresslevel = 1
         with file.open("rb") as content, archive.open(info, "w", force_zip64=True) as destination:
                 shutil.copyfileobj(content, destination)
+    if entry.get("directory_manifest") and entry["directory"] and not entry.get("package"):
+        directories = json.loads(Path(entry["directory_manifest"]).read_text())
+        if not isinstance(directories, list) or any(not isinstance(path, str) for path in directories):
+            raise ValueError("Expected directory path list")
+        for directory in sorted(set(directories)):
+            path = PurePosixPath(directory)
+            if not path.parts or path.is_absolute() or str(path) != directory or ".." in path.parts or any(c in directory for c in ("\\", ":", "\0")):
+                raise ValueError("Invalid smoke directory path")
+            name = entry["variant"] + "/app/" + directory + "/"
+            if name in names or name[:-1] in names:
+                raise ValueError("Duplicate smoke directory member")
+            names.add(name)
+            info = ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.create_system = 3
+            info.external_attr = ((stat.S_IFDIR | 0o755) << 16) | 0x10
+            archive.writestr(info, b"")
 
 
 if __name__ == "__main__":

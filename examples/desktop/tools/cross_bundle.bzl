@@ -1,5 +1,7 @@
 """BB-built native smoke shards; all seven target variants remain checked."""
 
+load("@rules_electron//electron:defs.bzl", "ElectronAppInfo")
+
 _VARIANTS = [
     "linux_x86_64",
     "linux_aarch64",
@@ -58,7 +60,12 @@ def _impl(ctx):
             fail("Expected one app output")
         file = files[0]
         inputs.append(file)
-        entries.append({"variant": variant, "source": file.path, "directory": file.is_directory})
+        entry = {"variant": variant, "source": file.path, "directory": file.is_directory}
+        directories = getattr(target[ElectronAppInfo], "directory_manifest", None) if ElectronAppInfo in target else None
+        if directories:
+            inputs.append(directories)
+            entry["directory_manifest"] = directories.path
+        entries.append(entry)
     for variant, target in dict(ctx.split_attr.linux_packages, **ctx.split_attr.windows_packages).items():
         for file in target[DefaultInfo].files.to_list():
             inputs.append(file)

@@ -27,25 +27,35 @@ VARIANTS = {
 
 def extract_variant(archive, destination, variant):
     entries = []
-    paths = set()
+    paths = {}
     size = 0
     for info in archive.infolist():
         path = PurePosixPath(info.filename)
         if not path.parts or path.parts[0] != variant:
             continue
-        if path.is_absolute() or ".." in path.parts or "\\" in info.filename or ":" in info.filename or str(path) != info.filename:
+        if path.is_absolute() or ".." in path.parts or "\\" in info.filename or ":" in info.filename or str(path) + ("/" if info.is_dir() else "") != info.filename:
             raise ValueError("Invalid smoke artifact path")
-        if info.is_dir() or stat.S_ISLNK(info.external_attr >> 16) or path in paths:
-            raise ValueError("Unexpected directory, symlink or duplicate entry")
-        paths.add(path)
+        if stat.S_ISLNK(info.external_attr >> 16) or path in paths or info.is_dir() and info.file_size:
+            raise ValueError("Unexpected symlink, duplicate or nonempty directory entry")
+        paths[path] = info
         size += info.file_size
         if size > 4 * 1024**3 or len(paths) > 10000:
             raise ValueError("Smoke variant exceeds extraction limits")
         entries.append((info, path))
     if not entries:
         raise ValueError(f"Missing smoke variant: {variant}")
+    checked = {PurePosixPath(str(path).casefold()): info for path, info in paths.items()} if variant.startswith(("windows_", "macos_")) else paths
+    if len(checked) != len(paths):
+        raise ValueError("Case-insensitive smoke path collision")
+    for path in checked:
+        if any(parent in checked and not checked[parent].is_dir() for parent in path.parents):
+            raise ValueError("Smoke file/directory collision")
     for info, path in entries:
         output = destination / path
+        if info.is_dir():
+            output.mkdir(parents=True, exist_ok=True)
+            output.chmod(0o755)
+            continue
         output.parent.mkdir(parents=True, exist_ok=True)
         with archive.open(info) as source, output.open("wb") as file:
             shutil.copyfileobj(source, file)

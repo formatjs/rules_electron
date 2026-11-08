@@ -45,12 +45,14 @@ def desktop_app(name, package_json, **kwargs):
         extra_asars = {":shared_archive": "plugins/shared.asar"},
         extra_resources = select({
             ":windows": {
+                ":empty_resources": "directories",
                 ":helper": "native/helper.exe",
                 ":update_config": "app-update.yml",
                 ":update_smoke_feed": "update-smoke-feed",
                 "resources/settings.json": "config/settings.json",
             },
             "//conditions:default": {
+                ":empty_resources": "directories",
                 ":helper": "native/helper",
                 ":update_config": "app-update.yml",
                 ":update_smoke_feed": "update-smoke-feed",

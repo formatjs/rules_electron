@@ -45,7 +45,10 @@ providers; external imports can supply an explicit `directory_manifest` JSON
 file. Import validation checks paths and collisions without rewriting app bytes.
 
 The generic renderer bundle contains development fixtures; its filtered view
-excludes them. Native smoke checks both their absence and working renderer/IPC.
+excludes them. It also declares an empty renderer directory and an empty extra
+resource directory. Native smoke checks both directories with `fs.readdirSync`,
+alongside exclusions and working renderer/IPC. Those new directory checks await
+hosted results.
 Hosted [unit tests](https://formatjs.buildbuddy.io/invocation/8b1dfd53-a7b2-4d11-bc43-31757b3ae171)
 and [seven cross-builds](https://formatjs.buildbuddy.io/invocation/7ad6bac8-00b0-45be-980b-e133206ae3d6)
 passed. [Native smoke](https://github.com/formatjs/rules_electron/actions/runs/42465475900)

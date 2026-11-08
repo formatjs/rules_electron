@@ -66,6 +66,18 @@ class ArtifactHandoffTest(unittest.TestCase):
                     extract_variant(archive, Path(directory), "windows_x86_64_msvc")
                 self.assertEqual(list(Path(directory).iterdir()), [])
 
+    def test_file_directory_collisions_fail_before_extracting(self):
+        prefix = "windows_x86_64_msvc/app/"
+        for names in (("cache", "cache/empty/"), ("cache", "cache/"), ("cache", "CACHE/empty/"), ("cache/", "CACHE/")):
+            content = io.BytesIO()
+            with ZipFile(content, "w") as archive:
+                for name in names:
+                    archive.writestr(prefix + name, b"" if name.endswith("/") else b"file")
+            with tempfile.TemporaryDirectory() as directory, ZipFile(content) as archive:
+                with self.subTest(names=names), self.assertRaises(ValueError):
+                    extract_variant(archive, Path(directory), "windows_x86_64_msvc")
+                self.assertEqual(list(Path(directory).iterdir()), [])
+
 
 if __name__ == "__main__":
     unittest.main()

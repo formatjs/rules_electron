@@ -43,8 +43,10 @@ propagates that manifest; ASAR/app rules consume it. App assembly emits its own
 manifest for ZIP/tar.gz release archives and DEB/NSIS packaging. The
 [8172dc6 assembly suite](https://formatjs.buildbuddy.io/invocation/30445f78-79fc-4636-8f8f-8dc932ad9f36)
 passed separate collection, ASAR, app and release-archive action boundaries.
-Installer propagation and the new native ASAR directory smoke await hosted
-validation.
+The [33af2a4 suite](https://formatjs.buildbuddy.io/invocation/0fb78fb8-8e3f-4537-8f2e-2b9a72bcfc0e)
+also passed immutable import, real DEB directory entries and generated NSIS
+install/uninstall ownership checks. Native smoke now reads empty directories
+inside ASAR and extra resources; results remain pending.
 See the [release plan](release-plan.md) and [updater contract](updates.md).
 Linux package behavior and its native validation live in [Linux packages](linux-packages.md).
 Windows installer scope and validation live in [Windows installers](windows-installers.md).

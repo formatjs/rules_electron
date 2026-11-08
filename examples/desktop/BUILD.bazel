@@ -16,6 +16,11 @@ load(":desktop_app.bzl", "desktop_app")
 
 example_icon(name = "example_icon")
 
+electron_files(
+    name = "empty_resources",
+    directories = ["empty"],
+)
+
 example_icon(
     name = "example_windows_icon",
     format = "ico",
