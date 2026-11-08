@@ -98,6 +98,8 @@ def _app_impl(ctx):
         fail("macOS protocols require a macOS target")
     if platform != "macos" and ctx.file.macos_icon:
         fail("macos_icon requires a macOS target")
+    if platform != "macos" and ctx.file.macos_extra_plist:
+        fail("macos_extra_plist requires a macOS target")
     if platform != "macos" and (ctx.file.macos_entitlements or ctx.file.macos_entitlements_inherit or ctx.attr.macos_hardened_runtime):
         fail("macOS signing settings require a macOS target")
     if platform == "macos" and not ctx.executable.macos_signer:
@@ -157,6 +159,7 @@ def _app_impl(ctx):
         "macos_protocols": ctx.attr.macos_protocols,
         "macos_protocol_roles": ctx.attr.macos_protocol_roles,
         "macos_icon": ctx.file.macos_icon.path if ctx.file.macos_icon else "",
+        "macos_extra_plist": ctx.file.macos_extra_plist.path if ctx.file.macos_extra_plist else "",
         "macos_entitlements": ctx.file.macos_entitlements.path if ctx.file.macos_entitlements else "",
         "macos_entitlements_inherit": ctx.file.macos_entitlements_inherit.path if ctx.file.macos_entitlements_inherit else "",
         "macos_hardened_runtime": ctx.attr.macos_hardened_runtime,
@@ -173,7 +176,7 @@ def _app_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._assembler,
         arguments = [manifest.path, output.path, directories.path] + ([ctx.executable.macos_signer.path] if platform == "macos" else []),
-        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + [e.directory_manifest for e in app_entries + resource_entries + extra_entries if e.directory_manifest] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([ctx.file.macos_entitlements] if ctx.file.macos_entitlements else []) + ([ctx.file.macos_entitlements_inherit] if ctx.file.macos_entitlements_inherit else []) + ([ctx.file.windows_icon] if ctx.file.windows_icon else []) + ([windows_tool.modules, windows_tool.script] if windows_tool else []) + ([matcher.modules, matcher.script] if matcher else [])),
+        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + [e.directory_manifest for e in app_entries + resource_entries + extra_entries if e.directory_manifest] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([ctx.file.macos_extra_plist] if ctx.file.macos_extra_plist else []) + ([ctx.file.macos_entitlements] if ctx.file.macos_entitlements else []) + ([ctx.file.macos_entitlements_inherit] if ctx.file.macos_entitlements_inherit else []) + ([ctx.file.windows_icon] if ctx.file.windows_icon else []) + ([windows_tool.modules, windows_tool.script] if windows_tool else []) + ([matcher.modules, matcher.script] if matcher else [])),
         tools = ([signer if signer.executable else ctx.executable.macos_signer] if signer else []) + ([windows_tool.node] if windows_tool else []) + ([matcher.node] if matcher else []),
         outputs = [output, directories],
         mnemonic = "ElectronApp",
@@ -214,6 +217,7 @@ electron_app = rule(
         "macos_protocols": attr.string_list_dict(doc = "macOS URL type names mapped to URI schemes; schemes normalize to lowercase."),
         "macos_protocol_roles": attr.string_dict(doc = "Role per macOS URL type: Editor (default), Viewer, Shell, QLGenerator or None."),
         "macos_icon": attr.label(allow_single_file = [".icns"], doc = "Declared ICNS asset, copied to Contents/Resources/app.icns before signing."),
+        "macos_extra_plist": attr.label(allow_single_file = [".plist"], doc = "Additional main-bundle Info.plist fields, merged before signing. Identity, icons, URL handlers and ASAR integrity remain owned by the rule."),
         "build_version": attr.string(doc = "Native macOS/Windows build version; one to four decimal components. Overrides build_number for native metadata."),
         "build_number": attr.string(doc = "Explicit decimal build iteration; appends to numeric app version for native metadata. Default DEB revision unless overridden."),
         "macos_signer": attr.label(executable = True, allow_single_file = True, cfg = "exec", doc = "Execution-platform rcodesign; required on macOS. Ad hoc signing only."),

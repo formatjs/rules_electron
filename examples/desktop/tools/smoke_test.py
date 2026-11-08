@@ -262,54 +262,75 @@ def check_macos_protocol(app, environment, directory, target_arch):
 
 
 def _check_macos_protocol(app, environment, directory, target_arch):
-    executable = app / "Contents/MacOS/sample-desktop"
     metadata = plistlib.loads((app / "Contents/Info.plist").read_bytes())
     assert metadata["CFBundleURLTypes"] == [{
         "CFBundleURLName": "Sample Desktop", "CFBundleURLSchemes": ["sample-desktop"],
         "CFBundleTypeRole": "Editor",
     }]
+    document_type = "org.example.sample-desktop.document"
+    assert metadata["CFBundleDocumentTypes"] == [{
+        "CFBundleTypeName": "Sample Document", "CFBundleTypeRole": "Editor",
+        "CFBundleTypeIconFile": "app.icns", "LSHandlerRank": "Owner", "LSItemContentTypes": [document_type],
+    }]
+    declaration, = metadata["UTExportedTypeDeclarations"]
+    assert declaration["UTTypeIdentifier"] == document_type
+    assert declaration["UTTypeConformsTo"] == ["public.data"]
+    assert declaration["UTTypeIconFile"] == "app.icns"
+    assert declaration["UTTypeTagSpecification"]["public.filename-extension"] == ["sample-desktop"]
     register = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
-    report = directory / "protocol-result.json"
     url = "sample-desktop://smoke/" + uuid.uuid4().hex
+    document = directory.resolve() / "sample-世界.sample-desktop"
+    content = "Generic sample document.\n"
+    document.write_text(content, encoding="utf-8")
     subprocess.run([register, "-f", str(app)], check=True, capture_output=True, timeout=15)
     try:
         check_macos_icon(app)
-        with tempfile.TemporaryFile() as log:
-            process = subprocess.Popen([
-                str(executable), "--protocol-smoke", str(report), "--disable-gpu",
-                "--user-data-dir=" + str(directory / "protocol-profile"),
-            ], env=environment, cwd=directory, stdout=log, stderr=log)
-            try:
-                deadline = time.monotonic() + 15
-                while not Path(str(report) + ".ready").exists():
-                    if process.poll() is not None or time.monotonic() > deadline:
-                        raise RuntimeError("macOS protocol receiver did not become ready")
-                    time.sleep(0.1)
-                delivery = subprocess.run(["/usr/bin/open", url], capture_output=True, text=True, timeout=15)
-                if delivery.returncode:
-                    details = {
-                        "exit_code": delivery.returncode,
-                        "osstatus": re.findall(r"Code=(-?\d+)", delivery.stderr),
-                        "no_handler": "No application knows how to open" in delivery.stderr,
-                        "permission_denied": "permission" in delivery.stderr.lower(),
-                    }
-                    raise RuntimeError("macOS protocol dispatch failed: " + json.dumps(details))
-                if process.wait(timeout=25):
-                    raise RuntimeError("macOS protocol receiver failed")
-                assert json.loads(report.read_text()) == {
-                    "url": url, "platform": "darwin", "architecture": target_arch,
-                }
-            finally:
-                if process.poll() is None:
-                    process.terminate()
-                    try:
-                        process.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                        process.wait()
+        check_macos_icon(document)
+        print("EXAMPLE_DOCUMENT_ICON_SMOKE_OK")
+        for kind, item, expected in [
+            ("protocol", url, {"url": url}),
+            ("document", str(document), {"file": str(document), "content": content}),
+        ]:
+            expected.update(platform="darwin", architecture=target_arch)
+            _receive_macos_event(app, environment, directory, kind, item, expected)
+            print("EXAMPLE_" + kind.upper() + "_SMOKE_OK")
     finally:
         subprocess.run([register, "-u", str(app)], check=True, capture_output=True, timeout=15)
-    print("EXAMPLE_PROTOCOL_SMOKE_OK")
+
+
+def _receive_macos_event(app, environment, directory, kind, item, expected):
+    report = directory / (kind + "-result.json")
+    with tempfile.TemporaryFile() as log:
+        process = subprocess.Popen([
+            str(app / "Contents/MacOS/sample-desktop"), "--" + kind + "-smoke", str(report), "--disable-gpu",
+            "--user-data-dir=" + str(directory / (kind + "-profile")),
+        ], env=environment, cwd=directory, stdout=log, stderr=log)
+        try:
+            deadline = time.monotonic() + 15
+            while not Path(str(report) + ".ready").exists():
+                if process.poll() is not None or time.monotonic() > deadline:
+                    raise RuntimeError("macOS " + kind + " receiver did not become ready")
+                time.sleep(0.1)
+            delivery = subprocess.run(["/usr/bin/open", item], capture_output=True, text=True, timeout=15)
+            if delivery.returncode:
+                details = {
+                    "exit_code": delivery.returncode,
+                    "osstatus": re.findall(r"Code=(-?\d+)", delivery.stderr),
+                    "no_handler": "No application knows how to open" in delivery.stderr,
+                    "permission_denied": "permission" in delivery.stderr.lower(),
+                }
+                raise RuntimeError("macOS " + kind + " dispatch failed: " + json.dumps(details))
+            if process.wait(timeout=25):
+                raise RuntimeError("macOS " + kind + " receiver failed")
+            assert json.loads(report.read_text()) == expected
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
 
 
 def check_asar_integrity(app, executable, environment, directory, target_os, expected_version):

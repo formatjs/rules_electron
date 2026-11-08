@@ -27,6 +27,10 @@ def desktop_app(name, package_json, **kwargs):
             "installed-update-smoke.cjs": "installed-update-smoke.cjs",
         },
         app_id = "org.example.sample-desktop",
+        macos_extra_plist = select({
+            ":macos": "document-types.plist",
+            "//conditions:default": None,
+        }),
         macos_protocols = select({
             ":macos": {"Sample Desktop": ["sample-desktop"]},
             "//conditions:default": {},

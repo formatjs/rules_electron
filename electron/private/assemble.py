@@ -22,9 +22,11 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              windows_resource_tool=None, windows_metadata=None,
              build_version="", build_number="", macos_protocols=None, macos_protocol_roles=None,
              extra_files=(), extra_asars=(), macos_icon="", windows_icon="", asar_symlinks=None,
-             asar_unpacked_patterns=(), file_matcher=None):
+             asar_unpacked_patterns=(), file_matcher=None, macos_extra_plist=""):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
+    if macos_extra_plist and platform != "macos":
+        raise ValueError("macos_extra_plist requires a macOS target")
     if platform != "macos" and (macos_protocols or macos_protocol_roles):
         raise ValueError("macOS protocols require a macOS target")
     if macos_icon:
@@ -137,7 +139,8 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     if platform == "macos":
         brand_macos(output, executable_name, product_name, app_id, package["version"], header_hash,
                     build_version=native_version, protocols=macos_protocols, protocol_roles=macos_protocol_roles,
-                    extra_asar_hashes=extra_hashes, icon_name="app.icns" if macos_icon else None)
+                    extra_asar_hashes=extra_hashes, icon_name="app.icns" if macos_icon else None,
+                    extra_plist=macos_extra_plist)
         binary = output / "Contents/Frameworks/Electron Framework.framework/Electron Framework"
     else:
         original = "electron.exe" if platform == "windows" else "electron"

@@ -10,6 +10,8 @@ const addon = require('example-native');
 const smoke = process.argv.includes('--smoke');
 const protocolSmokeIndex = process.argv.indexOf('--protocol-smoke');
 const protocolReport = protocolSmokeIndex >= 0 ? process.argv[protocolSmokeIndex + 1] : null;
+const documentSmokeIndex = process.argv.indexOf('--document-smoke');
+const documentReport = documentSmokeIndex >= 0 ? process.argv[documentSmokeIndex + 1] : null;
 let window;
 let watchdog;
 
@@ -18,6 +20,17 @@ if (protocolSmokeIndex >= 0) {
   app.on('open-url', (event, url) => {
     event.preventDefault();
     fs.writeFileSync(protocolReport, JSON.stringify({ url, platform: process.platform, architecture: process.arch }));
+    app.quit();
+  });
+}
+
+if (documentSmokeIndex >= 0) {
+  assert.ok(documentReport && path.isAbsolute(documentReport));
+  app.on('open-file', (event, file) => {
+    event.preventDefault();
+    fs.writeFileSync(documentReport, JSON.stringify({
+      file, content: fs.readFileSync(file, 'utf8'), platform: process.platform, architecture: process.arch,
+    }));
     app.quit();
   });
 }
@@ -31,8 +44,8 @@ function ownFrame(event) {
 }
 
 app.whenReady().then(async () => {
-  if (protocolReport) {
-    fs.writeFileSync(protocolReport + '.ready', 'ready');
+  if (protocolReport || documentReport) {
+    fs.writeFileSync((protocolReport || documentReport) + '.ready', 'ready');
     watchdog = setTimeout(() => app.exit(1), 20000);
     return;
   }

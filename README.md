@@ -85,6 +85,8 @@ and [Windows resources](docs/windows-resources.md).
 macOS bundle/helper metadata, ad hoc signing and
 [URL scheme declarations](docs/macos-protocols.md) are supported.
 [Declared ICNS icons](docs/macos-icons.md) apply to the main and helper bundles.
+[Additional Info.plist fields](docs/macos-metadata.md) declare document types,
+UTIs and other main-bundle metadata before signing.
 [Declared ICO icons](docs/windows-resources.md#windows-icons) brand Windows executables.
 macOS installers, release signing and broader OS integration remain pending. Linux DEB
 packaging supplies desktop/MIME/protocol/icon metadata and declared package hooks;

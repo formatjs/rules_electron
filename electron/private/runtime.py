@@ -109,12 +109,24 @@ def _macos_url_types(protocols, roles):
 
 
 def brand_macos(output, executable_name, product_name, app_id, version, asar_header_hash=None, build_version="",
-                protocols=None, protocol_roles=None, extra_asar_hashes=None, icon_name=None):
+                protocols=None, protocol_roles=None, extra_asar_hashes=None, icon_name=None, extra_plist=""):
     if not app_id:
         raise ValueError("macOS app_id required")
     url_types = _macos_url_types(protocols, protocol_roles)
     plist = output / "Contents/Info.plist"
     metadata = plistlib.loads(plist.read_bytes())
+    if extra_plist:
+        extra = plistlib.loads(Path(extra_plist).read_bytes())
+        if not isinstance(extra, dict):
+            raise ValueError("macOS extra plist must contain a dictionary")
+        reserved = {
+            "CFBundleExecutable", "CFBundleName", "CFBundleDisplayName", "CFBundleIdentifier",
+            "CFBundleShortVersionString", "CFBundleVersion", "CFBundlePackageType",
+            "CFBundleIconFile", "CFBundleIconName", "CFBundleURLTypes", "ElectronAsarIntegrity",
+        }
+        if reserved & extra.keys():
+            raise ValueError("macOS extra plist overrides reserved fields: " + ", ".join(sorted(reserved & extra.keys())))
+        metadata.update(extra)
     executable = output / "Contents/MacOS" / metadata["CFBundleExecutable"]
     destination = executable.with_name(executable_name)
     if destination != executable and destination.exists():

@@ -262,6 +262,50 @@ class PlatformLayoutTest(unittest.TestCase):
         for helper in output.glob("Contents/Frameworks/*Helper.app/Contents/Info.plist"):
             self.assertNotIn("CFBundleURLTypes", plistlib.loads(helper.read_bytes()))
 
+    def test_macos_extra_plist_preserves_document_metadata_and_source(self):
+        extra = {"CFBundleDocumentTypes": [{"CFBundleTypeName": "Sample Document", "CFBundleTypeRole": "Editor",
+                                          "LSItemContentTypes": ["org.example.sample.document"]}],
+                 "UTExportedTypeDeclarations": [{"UTTypeIdentifier": "org.example.sample.document",
+                                                 "UTTypeConformsTo": ["public.data"]}],
+                 "NSCameraUsageDescription": "Example camera purpose"}
+        source = self.root / "extra.plist"
+        source.write_bytes(plistlib.dumps(extra))
+        before = source.read_bytes()
+        output = self.root / "document.app"
+        runtime = self.macos_runtime()
+        assemble(self.manifest("Contents/Resources"), output, platform="macos", runtime_archive=runtime,
+                 app_id="org.example.sample", executable_name="sample", asar=True, macos_extra_plist=source)
+        metadata = plistlib.loads((output / "Contents/Info.plist").read_bytes())
+        for key, value in extra.items():
+            self.assertEqual(metadata[key], value)
+        self.assertEqual(metadata["CFBundleIdentifier"], "org.example.sample")
+        self.assertEqual(metadata["CFBundleExecutable"], "sample")
+        self.assertIn("Resources/app.asar", metadata["ElectronAsarIntegrity"])
+        for helper in output.glob("Contents/Frameworks/*Helper.app/Contents/Info.plist"):
+            self.assertTrue(extra.keys().isdisjoint(plistlib.loads(helper.read_bytes())))
+        archive = self.root / "document.zip"
+        archive_bundle(output, archive, "Sample.app")
+        with ZipFile(archive) as packaged:
+            self.assertEqual(plistlib.loads(packaged.read("Sample.app/Contents/Info.plist")), metadata)
+        self.assertEqual(source.read_bytes(), before)
+
+    def test_macos_extra_plist_rejects_identity_and_wrong_platform(self):
+        source = self.root / "extra.plist"
+        runtime = self.macos_runtime()
+        for key in ["CFBundleIdentifier", "CFBundleExecutable", "CFBundleVersion", "CFBundleShortVersionString",
+                    "CFBundleName", "CFBundleDisplayName", "CFBundleIconFile", "CFBundleIconName",
+                    "CFBundlePackageType", "CFBundleURLTypes", "ElectronAsarIntegrity"]:
+            source.write_bytes(plistlib.dumps({key: "override"}))
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "reserved fields"):
+                assemble(self.manifest("Contents/Resources"), self.root / (key + ".app"), platform="macos",
+                         runtime_archive=runtime, app_id="org.example.sample", macos_extra_plist=source)
+        source.write_bytes(plistlib.dumps([]))
+        with self.assertRaisesRegex(ValueError, "must contain a dictionary"):
+            assemble(self.manifest("Contents/Resources"), self.root / "array.app", platform="macos",
+                     runtime_archive=runtime, app_id="org.example.sample", macos_extra_plist=source)
+        with self.assertRaisesRegex(ValueError, "requires a macOS target"):
+            assemble([], self.root / "wrong-platform", macos_extra_plist=source)
+
     def test_macos_protocol_validation(self):
         runtime = self.macos_runtime()
         for index, (protocols, roles) in enumerate([
