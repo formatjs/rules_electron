@@ -19,7 +19,7 @@ def _impl(ctx):
     unpacked = ctx.actions.declare_directory(ctx.label.name + ".asar.unpacked")
     digest = ctx.actions.declare_file(ctx.label.name + ".sha256")
     manifest = ctx.actions.declare_file(ctx.label.name + ".manifest.json")
-    ctx.actions.write(manifest, json.encode({"entries": entries, "unpacked": ctx.attr.unpacked}))
+    ctx.actions.write(manifest, json.encode({"entries": entries, "unpacked": ctx.attr.unpacked, "symlinks": ctx.attr.symlinks}))
     ctx.actions.run(
         executable = ctx.executable._writer,
         arguments = [manifest.path, archive.path, unpacked.path, digest.path],
@@ -38,6 +38,7 @@ electron_asar = rule(
     attrs = {
         "srcs": attr.label_keyed_string_dict(allow_files = True, doc = "File/tree labels mapped to archive-relative paths."),
         "unpacked": attr.string_list(doc = "Exact archive-relative files copied to the unpacked sidecar."),
+        "symlinks": attr.string_dict(doc = "Link paths mapped to archive-root-relative targets; empty target denotes archive root. Encoded in ASAR, without filesystem symlinks."),
         "_writer": attr.label(default = Label("//electron/private:asar_packager"), executable = True, cfg = "exec"),
     },
     doc = "Create an ASAR; use electron_app.extra_asars to stage its sidecar and embed integrity metadata.",

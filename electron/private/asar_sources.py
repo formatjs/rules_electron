@@ -9,7 +9,7 @@ from electron.private.asar import create_archive
 from electron.private.files import expand, normalize, relative_path
 
 
-def write_sources(entries, archive, unpacked=()):
+def write_sources(entries, archive, unpacked=(), symlinks=None):
     files = {}
     for entry in expand(entries):
         path = relative_path(entry["path"])
@@ -22,8 +22,8 @@ def write_sources(entries, archive, unpacked=()):
     for path in unpacked:
         relative_path(path)
     sidecar = Path(str(archive) + ".unpacked")
+    digest = create_archive({str(path): source for path, source in files.items()}, archive, unpacked, symlinks)
     sidecar.mkdir(parents=True, exist_ok=True)
-    digest = create_archive({str(path): source for path, source in files.items()}, archive, unpacked)
     Path(archive).chmod(0o644)
     os.utime(archive, (0, 0))
     normalize(sidecar)
@@ -35,4 +35,4 @@ if __name__ == "__main__":
     if Path(sidecar) != Path(archive + ".unpacked"):
         raise ValueError("ASAR sidecar must follow its archive")
     options = json.loads(Path(manifest).read_text())
-    Path(digest).write_text(write_sources(options["entries"], archive, options["unpacked"]) + "\n")
+    Path(digest).write_text(write_sources(options["entries"], archive, options["unpacked"], options.get("symlinks")) + "\n")

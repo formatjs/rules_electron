@@ -6,6 +6,7 @@ import shutil
 import subprocess
 
 from electron.private.asar import create_archive, header_hash as archive_header_hash
+from electron.private.asar_paths import ArchivePaths
 from electron.private.files import expand as _expand, relative_path
 from electron.private.fuses import set_fuses
 from electron.private.identity import build_identity
@@ -19,7 +20,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              product_name="Electron", app_id="", runtime_languages=(),
              windows_resource_tool=None, windows_metadata=None,
              build_version="", build_number="", macos_protocols=None, macos_protocol_roles=None,
-             extra_files=(), extra_asars=(), macos_icon="", windows_icon=""):
+             extra_files=(), extra_asars=(), macos_icon="", windows_icon="", asar_symlinks=None):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
     if platform != "macos" and (macos_protocols or macos_protocol_roles):
@@ -44,6 +45,8 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     resources = "Contents/Resources" if platform == "macos" else "resources"
     if not asar and asar_unpacked:
         raise ValueError("asar_unpacked requires asar=True")
+    if not asar and asar_symlinks:
+        raise ValueError("asar_symlinks requires asar=True")
     if not asar and (fuses or {}).get("onlyLoadAppFromAsar") == "on":
         raise ValueError("onlyLoadAppFromAsar requires asar=True")
     expanded = list(_expand(entries))
@@ -86,12 +89,16 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     package_path = PurePosixPath(resources + "/app/package.json")
     package = json.loads(Path(paths[package_path]["source"]).read_text())
     native_version = build_identity(package.get("version"), build_version, build_number, platform) if (build_version or build_number) else package.get("version", "")
-    main = relative_path(package.get("main", "index.js"))
-    if PurePosixPath(resources + "/app") / main not in paths:
-        raise ValueError(f"App entry point missing: {main}")
-
     app_prefix = PurePosixPath(resources + "/app")
     app_files = {str(path.relative_to(app_prefix)): path for path in paths if path.is_relative_to(app_prefix)}
+    main = relative_path(package.get("main", "index.js"))
+    index = ArchivePaths(app_files, asar_symlinks)
+    try:
+        entry = index.resolve(str(main))
+    except ValueError:
+        entry = None
+    if entry not in app_files:
+        raise ValueError(f"App entry point missing: {main}")
     for name in asar_unpacked:
         relative_path(name)
         if name not in app_files:
@@ -115,7 +122,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     header_hash = None
     if asar:
         archive = output / resources / "app.asar"
-        header_hash = create_archive({name: output / path for name, path in app_files.items()}, archive, asar_unpacked)
+        header_hash = create_archive({name: output / path for name, path in app_files.items()}, archive, asar_unpacked, asar_symlinks)
         archive.chmod(0o644)
         shutil.rmtree(output / app_prefix)
     if platform == "macos":

@@ -26,6 +26,10 @@ def desktop_app(name, package_json, **kwargs):
         build_number = "7",
         asar = True,
         asar_unpacked = ["node_modules/example-native/addon.node"],
+        asar_symlinks = {
+            "linked-main.cjs": "main.cjs",
+            "linked-assets": "assets",
+        },
         executable_name = "sample-desktop",
         extra_files = {"resources/NOTICE.txt": "licenses/NOTICE.txt"},
         extra_asars = {":shared_archive": "plugins/shared.asar"},

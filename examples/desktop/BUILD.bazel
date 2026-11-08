@@ -33,6 +33,11 @@ electron_asar(
         ":native_addon": "addon.node",
         "resources/NOTICE.txt": "notice.txt",
     },
+    symlinks = {
+        "entry.cjs": "index.cjs",
+        "entry-chain.cjs": "entry.cjs",
+        "addon-link.node": "addon.node",
+    },
     unpacked = [
         "addon.node",
         "notice.txt",

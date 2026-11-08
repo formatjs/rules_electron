@@ -24,8 +24,12 @@ exports_files(
 
 py_library(
     name = "asar",
-    srcs = ["asar.py"],
+    srcs = [
+        "asar.py",
+        "asar_paths.py",
+    ],
     visibility = ["//tests:__pkg__"],
+    deps = [":file_mappings"],
 )
 
 py_library(

@@ -3,7 +3,7 @@
   "productName": "Sample Desktop",
   "version": "1.0.0",
   "description": "Generic Bazel Electron migration example",
-  "main": "main.cjs",
+  "main": "linked-main.cjs",
   "scripts": {
     "development-only": "echo not shipped"
   },

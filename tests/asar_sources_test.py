@@ -56,6 +56,37 @@ class AsarSourcesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unpacked paths not declared"):
             write_sources(self.entries, self.root / "missing.asar", ["absent.node"])
 
+    def test_links_share_payload_resolve_chains_and_keep_reproducibility(self):
+        archive = self.root / "links.asar"
+        links = {"entry.cjs": "module.cjs", "chain.cjs": "entry.cjs", "assets-link": "assets",
+                 "root-link": "", "message-link": "assets-link/message.txt"}
+        digest = write_sources(self.entries, archive, ["assets/message.txt"], links)
+        data = archive.read_bytes()
+        _, header_size, _, length = struct.unpack_from("<IIII", data)
+        files = json.loads(data[16:16 + length])["files"]
+        self.assertEqual(files["chain.cjs"], {"link": "module.cjs"})
+        self.assertEqual(files["assets-link"], {"link": "assets"})
+        self.assertEqual(files["message-link"], {"link": "assets/message.txt"})
+        self.assertEqual(files["root-link"], {"link": ""})
+        self.assertEqual(data[8 + header_size:], self.module.read_bytes())
+        self.assertEqual((Path(str(archive) + ".unpacked") / "assets/message.txt").read_bytes(),
+                         (self.tree / "message.txt").read_bytes())
+        second = self.root / "links-again.asar"
+        self.assertEqual(write_sources(list(reversed(self.entries)), second, ["assets/message.txt"],
+                                       dict(reversed(list(links.items())))), digest)
+        self.assertEqual(second.read_bytes(), data)
+
+    def test_rejects_link_cycles_collisions_missing_and_escaping_targets(self):
+        cases = [{"module.cjs": "assets"}, {"alias": "assets", "alias/child": "module.cjs"},
+                 {"alias": "missing"}, {"a": "b", "b": "a"}, {"a": "a/child"},
+                 {"a": "assets/a", "assets/a": "a"}, {"/alias": "module.cjs"},
+                 {"alias": "../module.cjs"}, {"alias": "assets/./message.txt"}]
+        for links in cases:
+            with self.subTest(links=links), self.assertRaises(ValueError):
+                write_sources(self.entries, self.root / "bad-links.asar", symlinks=links)
+        self.assertFalse((self.root / "bad-links.asar").exists())
+        self.assertFalse((self.root / "bad-links.asar.unpacked").exists())
+
     def test_rejects_truncated_and_invalid_archive_framing(self):
         archive = self.root / "bad.asar"
         for data in [b"", b"not an asar", struct.pack("<IIII", 4, 8, 4, 100)]:

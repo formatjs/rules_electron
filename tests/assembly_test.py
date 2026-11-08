@@ -61,6 +61,22 @@ class AssemblyTest(unittest.TestCase):
                 assemble(self.entries, self.root / "out")
         self.assertFalse((self.root / "out").exists())
 
+    def test_asar_entry_point_resolves_file_and_directory_links(self):
+        for main in ["entry.js", "root/main.js"]:
+            self.package.write_text(json.dumps({"main": main}))
+            output = self.root / main.replace("/", "-")
+            assemble(self.entries, output, asar=True, asar_symlinks={"entry.js": "main.js", "root": ""})
+            data = (output / "resources/app.asar").read_bytes()
+            length = struct.unpack_from("<I", data, 12)[0]
+            files = json.loads(data[16:16 + length])["files"]
+            self.assertEqual(files["entry.js"], {"link": "main.js"})
+            self.assertEqual(files["root"], {"link": ""})
+            self.assertIn("main.js", files)
+        self.package.write_text(json.dumps({"main": "root"}))
+        with self.assertRaisesRegex(ValueError, "App entry point missing"):
+            assemble(self.entries, self.root / "directory-entry", asar=True, asar_symlinks={"root": ""})
+        self.assertFalse((self.root / "directory-entry").exists())
+
     def test_asar_preserves_content_and_unpacked_native_files(self):
         self.package.write_text(json.dumps({"main": "main.js", "scripts": {"build": "private development command"}}))
         self.main.write_text("console.log('世界')", encoding="utf-8")
@@ -113,6 +129,7 @@ class AssemblyTest(unittest.TestCase):
             {"windows_metadata": {"CompanyName": "Example"}},
             {"windows_icon": "example.ico", "platform": "windows"},
             {"windows_icon": "example.ico"},
+            {"asar_symlinks": {"linked-main.js": "main.js"}},
         ]:
             with self.subTest(options=options), self.assertRaises(ValueError):
                 assemble(self.entries, self.root / "out", **options)

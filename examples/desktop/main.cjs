@@ -89,7 +89,14 @@ app.whenReady().then(async () => {
       assert.equal(app.isPackaged, true);
       assert.equal(fs.readFileSync(path.join(path.dirname(process.resourcesPath), 'licenses/NOTICE.txt'), 'utf8'),
         'Generic desktop example notice.\n');
-      assert.deepEqual(require(path.join(process.resourcesPath, 'plugins/shared.asar/index.cjs')), {
+      assert.equal(path.basename(__filename), 'main.cjs');
+      assert.ok(fs.lstatSync(path.join(__dirname, 'linked-main.cjs')).isSymbolicLink());
+      assert.deepEqual(JSON.parse(fs.readFileSync(path.join(__dirname, 'linked-assets/message.json'), 'utf8')),
+        require('./assets/message.json'));
+      const shared = path.join(process.resourcesPath, 'plugins/shared.asar');
+      assert.ok(fs.lstatSync(path.join(shared, 'entry-chain.cjs')).isSymbolicLink());
+      assert.equal(fs.realpathSync(path.join(shared, 'entry-chain.cjs')), path.join(shared, 'index.cjs'));
+      assert.deepEqual(require(path.join(shared, 'entry-chain.cjs')), {
         answer: 42,
         notice: 'Generic desktop example notice.\n',
         label: 'shared-asar-ready',

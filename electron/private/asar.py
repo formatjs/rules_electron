@@ -1,10 +1,12 @@
-"""Deterministic regular-file ASAR writer; format defined by electron/asar."""
+"""Deterministic ASAR writer; format defined by electron/asar."""
 
 import hashlib
 import json
 from pathlib import Path
 import shutil
 import struct
+
+from electron.private.asar_paths import ArchivePaths
 
 BLOCK_SIZE = 4 * 1024 * 1024
 
@@ -24,8 +26,9 @@ def _integrity(path):
     }
 
 
-def create_archive(files, destination, unpacked=()):
-    """Write declared regular files; return SHA-256 of the raw JSON header."""
+def create_archive(files, destination, unpacked=(), symlinks=None):
+    """Write declared files/links; return SHA-256 of the raw JSON header."""
+    index = ArchivePaths(files, symlinks)
     unpacked = set(unpacked)
     missing = unpacked - files.keys()
     if missing:
@@ -33,14 +36,18 @@ def create_archive(files, destination, unpacked=()):
     header = {"files": {}}
     offset = 0
     packed_sources = []
-    for name, source in sorted(files.items()):
-        size = source.stat().st_size
-        if size > 0xFFFFFFFF:
-            raise ValueError(f"ASAR file exceeds 4 GiB limit: {name}")
+    for name in sorted(files.keys() | index.links.keys()):
         node = header
         parts = name.split("/")
         for part in parts[:-1]:
             node = node["files"].setdefault(part, {"files": {}})
+        if name in index.links:
+            node["files"][parts[-1]] = {"link": index.links[name]}
+            continue
+        source = files[name]
+        size = source.stat().st_size
+        if size > 0xFFFFFFFF:
+            raise ValueError(f"ASAR file exceeds 4 GiB limit: {name}")
         entry = {"size": size, "integrity": _integrity(source)}
         if name in unpacked:
             entry["unpacked"] = True
