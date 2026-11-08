@@ -30,4 +30,7 @@ BB tests cover metadata, source preservation, archive bytes, helper isolation an
 rejected identity overrides. The macOS ARM64 smoke registers an isolated bundle,
 checks the document icon, opens a Unicode filename through LaunchServices and
 checks delivery and contents. It unregisters and removes the bundle afterward.
-Native document validation is pending.
+The [0814e7a BB suite](https://formatjs.buildbuddy.io/invocation/21d7dcc9-e76d-474d-bfe6-be257eeb452c),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/e087edd0-6fb6-4bd0-a9d6-5a47f206bed3)
+and [macOS ARM64 job](https://github.com/formatjs/rules_electron/actions/runs/42524008167/job/128863543358)
+passed, including document icon, document delivery, URL delivery and app launch.
