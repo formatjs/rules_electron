@@ -74072,6 +74072,7 @@
   "snapshot_blob.bin",
   "source/base_test.cc",
   "source/blink_bindings/bindings_test.py",
+  "source/blink_core/core_probe.cc",
   "source/blink_platform/platform_probe.cc",
   "source/blink_rust/crash_probe.cc",
   "source/blink_rust/crash_test.py",

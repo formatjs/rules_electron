@@ -63,5 +63,7 @@ utility or target executable runs during cross-compilation.
 
 Supply valid ICO image representations; framing validation does not decode them.
 The generic example generates PNG-backed icons with declared Python, then uses
-Windows' native icon lookup to check executable icon pixels. Hosted validation is
-pending. Installer/uninstaller icon customization remains separate.
+`ExtractIconExW` and `GetDIBits` to check executable icon pixels.
+[Native smoke](https://github.com/formatjs/rules_electron/actions/runs/42459477459)
+passed x64/ARM64 with GNU LLVM and MSVC, including installed app paths.
+Installer/uninstaller icon customization remains separate.

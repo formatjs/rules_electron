@@ -82,7 +82,8 @@ and [Windows resources](docs/windows-resources.md).
 macOS bundle/helper metadata, ad hoc signing and
 [URL scheme declarations](docs/macos-protocols.md) are supported.
 [Declared ICNS icons](docs/macos-icons.md) apply to the main and helper bundles.
-macOS installers, release signing, Windows icons and broader OS integration remain pending. Linux DEB
+[Declared ICO icons](docs/windows-resources.md#windows-icons) brand Windows executables.
+macOS installers, release signing and broader OS integration remain pending. Linux DEB
 packaging supplies desktop/MIME/protocol/icon metadata and declared package hooks;
 see [Linux packages](docs/linux-packages.md).
 Per-user Windows NSIS packaging supplies shortcuts, URI schemes and updater cache

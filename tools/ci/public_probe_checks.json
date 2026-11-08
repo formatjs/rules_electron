@@ -444,5 +444,19 @@
     "native string interning shares storage",
     "pinned ICU data opens",
     "source ICU initializes with declared data"
+  ],
+  "blink_core": [
+    "declared ICU data available",
+    "native feature list initializes",
+    "pinned ICU data opens",
+    "source ICU initializes with declared data",
+    "HTML tag names fold ASCII case",
+    "quoted attribute entities decode",
+    "numeric entities and CRLF normalize",
+    "HTML end tag parses",
+    "HTML comment parses",
+    "closed stream emits EOF",
+    "incomplete tag waits for input",
+    "split attribute continues without losing tokenizer state"
   ]
 }

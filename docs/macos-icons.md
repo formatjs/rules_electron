@@ -20,4 +20,10 @@ defines the resource-directory lookup.
 
 The example generates a fixed gray PNG-backed ICNS on BB with pinned Python. Its
 native macOS smoke uses `NSWorkspace.iconForFile:` to check icon pixels, then retains the
-existing deep/strict signature verification. Hosted validation is pending.
+existing deep/strict signature verification.
+
+[BB tests](https://formatjs.buildbuddy.io/invocation/f5378f61-887e-441f-8e67-b388a7abe2fa),
+[seven cross-build variants](https://formatjs.buildbuddy.io/invocation/26d6eb66-513c-4f87-a05a-8ad4ab9788f6)
+and [native smoke](https://github.com/formatjs/rules_electron/actions/runs/42459477459)
+passed. macOS checks the actual bundle icon bitmap through AppKit, alongside
+URL dispatch and ASAR corruption/signature checks.
