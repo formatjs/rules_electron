@@ -39,6 +39,11 @@ def source_profile_diagnostics(invocation, key):
         print("Verified source profile " + name + ":", json.dumps(summarize_source(decode_profile(data)), sort_keys=True))
 
 
+def public_action_targets(log):
+    targets = json.loads(Path(__file__).with_name("public_source_targets.json").read_text())
+    return sorted({targets[name] for name in re.findall(r"\btarget_[0-9a-f]{16}", log) if name in targets})[:8]
+
+
 def classify(log):
     patterns = {
         "UNKNOWN_OPTION": r"Unrecognized option|unrecognized flag|bad option",
@@ -102,6 +107,7 @@ def classify(log):
         "LLGUIDANCE_TEST": r"check failed: llguidance ",
         "CATAPULT_RESOURCE_INPUT": r"DepsException:.*(?:nonexistent file|not in the search path)",
         "ELECTRON_VERSION_TEST": r"(?:FAIL|ERROR): test_(?:stable_and_beta_metadata_preserve_semver_and_windows_versions|node_tool_pin_matches_original_yarn_lock)",
+        "API_FEATURES_TEST": r"(?:FAIL|ERROR): test_generated_feature_tables_preserve_all_source_keys_and_declared_year",
         "NATIVE_GENERATORS_TEST": r"(?:FAIL|ERROR): test_original_generators_match_bazel_fuse_and_node_artifacts",
         "SDK_RUNTIME_ABI_TEST": r"(?:FAIL|ERROR): test_sdk_interfaces_match_pinned_runtime_symbols_and_build_ids",
         "POLICY_TEST": r"(?:FAIL|ERROR): test_(?:pinned_yaml_runtime_and_policy_ids_match_sources|depfile_uses_declared_relative_policy_paths)",
@@ -278,6 +284,7 @@ def source_test_diagnostics(identifier, key, selected=None):
         "//source/content_metadata:runtime_abi_test": "sdk_runtime_abi",
         "//source/content_metadata:native_generators_test": "native_generators",
         "//source/content_metadata:electron_version_test": "electron_version",
+        "//source/content_metadata:api_features_test": "api_features",
         "//electron/private:source_action_test": "source_action",
         "//source/blink_bindings:bindings_test": "blink_bindings",
         "//source/crabbyavif:decode_test": "crabby_decode",
@@ -477,7 +484,7 @@ def failed_action_diagnostics(identifier, key):
             known = next((name for name in candidates if name in public_files), None)
             if known and 0 < int(line) < 10000 and 0 < int(column) < 10000:
                 ts_sites.append({"file": known, "line": int(line), "column": int(column), "code": code})
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_missing_input_basenames": sorted(missing_basenames)[:8], "public_missing_modules": sorted(missing_modules)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers, "public_missing_shared_libraries": missing_shared_libraries}, sort_keys=True))
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_action_targets": public_action_targets(log), "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_missing_input_basenames": sorted(missing_basenames)[:8], "public_missing_modules": sorted(missing_modules)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers, "public_missing_shared_libraries": missing_shared_libraries}, sort_keys=True))
 
 
 if __name__ == "__main__":
@@ -522,7 +529,7 @@ if __name__ == "__main__":
         if not 0 <= duration <= 7 * 24 * 3600 * 1000000:
             raise ValueError("Source phase duration exceeds limit")
         command = value.get("command") if value.get("command") in ("build", "test") else "unknown"
-        print("Source child:", json.dumps({"id": identifier, "state": status, "command": command, "duration_usec": duration, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log), "network": network_diagnostics(log), "public_missing_headers": missing_headers(log, public_headers), "public_failure_identifiers": public_failures(log), "public_sources": public_sources(log)}, sort_keys=True))
+        print("Source child:", json.dumps({"id": identifier, "state": status, "command": command, "duration_usec": duration, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log), "network": network_diagnostics(log), "public_missing_headers": missing_headers(log, public_headers), "public_action_targets": public_action_targets(log), "public_failure_identifiers": public_failures(log), "public_sources": public_sources(log)}, sort_keys=True))
         resource_diagnostics(identifier, key)
         if value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and not value.get("success"):
             failed_action_diagnostics(identifier, key)
@@ -531,6 +538,6 @@ if __name__ == "__main__":
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
         elif status == "running" and command == "test":
-            source_test_diagnostics(identifier, key, {"catapult", "content_webui", "sdk_runtime_abi", "native_generators", "electron_version", "policy", "web_assets", "tracing_proto"})
+            source_test_diagnostics(identifier, key, {"catapult", "content_webui", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "policy", "web_assets", "tracing_proto"})
         elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
-            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "native_generators", "electron_version", "source_action", "llguidance", "crabby_decode"})
+            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "source_action", "llguidance", "crabby_decode"})
