@@ -7,6 +7,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 from zipfile import ZipFile
 
@@ -79,6 +80,23 @@ if __name__ == "__main__":
                 "--target-os", target_os, "--target-arch", target_arch,
             ], check=True)
             if variant == "linux_x86_64":
+                release = directory / variant / "packages/release_tar.tar.gz"
+                extracted = directory / variant / "tar-release"
+                with tarfile.open(release, "r:gz") as archive:
+                    members = archive.getmembers()
+                    if not members or any(
+                        PurePosixPath(member.name).parts[:1] != ("sample-desktop",)
+                        or not (member.isfile() or member.isdir() or member.issym())
+                        or member.uid != 0 or member.gid != 0 or member.mtime != 0
+                        for member in members
+                    ):
+                        raise ValueError("Unexpected Linux release archive inventory")
+                    archive.extractall(extracted, filter="data")
+                subprocess.run([
+                    sys.executable, "examples/desktop/tools/smoke_test.py", str(extracted / "sample-desktop"),
+                    "--target-os", "linux", "--target-arch", "x64",
+                ], check=True)
+                print("TAR_RELEASE_SMOKE_OK", flush=True)
                 subprocess.run([sys.executable, "tools/ci/linux_deb_smoke.py", str(directory / variant / "packages")], check=True)
             if variant.endswith("_msvc"):
                 subprocess.run([sys.executable, "tools/ci/windows_nsis_smoke.py", str(directory / variant / "packages"), target_arch], check=True)

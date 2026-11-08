@@ -47,3 +47,7 @@ code signatures and ASAR integrity on its matching host.
 passed BB cross-builds and all four native host jobs. ZIP/tar.gz rule outputs also
 passed the BB Linux fixture test. Native installed-app tar.gz update behavior
 remains separate from archive generation.
+
+The Linux example also builds `release_tar.tar.gz` on BB. Its native x64 smoke
+checks archive ownership/timestamps, extracts with Python's data filter, then
+runs the relocated app, native addon and ASAR checks. Validation is pending.

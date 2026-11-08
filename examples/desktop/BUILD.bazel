@@ -85,6 +85,14 @@ electron_archive(
     compression_level = 1,
 )
 
+electron_archive(
+    name = "release_tar",
+    app = ":app",
+    compression_level = 1,
+    format = "tar.gz",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
 alias(
     name = "smoke_app",
     actual = select({
@@ -354,6 +362,7 @@ filegroup(
     srcs = [
         ":deb_v1",
         ":deb_v2_feed",
+        ":release_tar",
     ],
     target_compatible_with = ["@platforms//os:linux"],
 )
