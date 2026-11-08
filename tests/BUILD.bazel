@@ -9,6 +9,13 @@ load(":npm_lock_test.bzl", "npm_lock_test")
 
 npm_lock_test(name = "npm_lock_test")
 
+py_test(
+    name = "network_diagnostics_test",
+    size = "small",
+    srcs = ["network_diagnostics_test.py"],
+    deps = ["//tools/ci:network_diagnostics"],
+)
+
 py_binary(
     name = "python_bootstrap_probe",
     srcs = ["python_bootstrap_probe.py"],

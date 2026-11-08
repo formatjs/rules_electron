@@ -13,6 +13,7 @@ from pathlib import Path
 from buildbuddy_artifacts import NoRedirect, api_request, invocation_id
 from buildbuddy_log import read_log, resource_diagnostics
 from profile_summary import decode_profile, summarize_source
+from network_diagnostics import network_diagnostics
 
 
 def source_profile_diagnostics(invocation, key):
@@ -460,7 +461,7 @@ if __name__ == "__main__":
         return sorted({name for name in re.findall(r"Compiling ([A-Za-z_0-9/.-]+)", log) if name in public_files})[:8]
 
     log = read_log({"invocation_id": identifier}, key)
-    print("Source workflow diagnostics:", json.dumps({"log_bytes": len(log.encode()), "diagnostics": classify(log), "public_failure_identifiers": public_failures(log)}, sort_keys=True))
+    print("Source workflow diagnostics:", json.dumps({"log_bytes": len(log.encode()), "diagnostics": classify(log), "network": network_diagnostics(log), "public_failure_identifiers": public_failures(log)}, sort_keys=True))
     source_profile_diagnostics(root, key)
     for child in root.get("childInvocations", [])[:32]:
         identifier = child["invocationId"]
@@ -471,7 +472,7 @@ if __name__ == "__main__":
         if not 0 <= duration <= 7 * 24 * 3600 * 1000000:
             raise ValueError("Source phase duration exceeds limit")
         command = value.get("command") if value.get("command") in ("build", "test") else "unknown"
-        print("Source child:", json.dumps({"id": identifier, "state": status, "command": command, "duration_usec": duration, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_failure_identifiers": public_failures(log), "public_sources": public_sources(log)}, sort_keys=True))
+        print("Source child:", json.dumps({"id": identifier, "state": status, "command": command, "duration_usec": duration, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log), "network": network_diagnostics(log), "public_failure_identifiers": public_failures(log), "public_sources": public_sources(log)}, sort_keys=True))
         resource_diagnostics(identifier, key)
         if value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and not value.get("success"):
             failed_action_diagnostics(identifier, key)
