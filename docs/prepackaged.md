@@ -33,4 +33,9 @@ signature trust, notarization or the identity of every nested executable.
 Developer ID and Authenticode release signing remain separate unfinished work.
 
 The generic example routes both app versions through this import before release
-packaging. Hosted unit, cross-build and native validation are pending.
+packaging. [BB unit tests](https://formatjs.buildbuddy.io/invocation/4148b234-9a16-4eab-a4c8-fb61e8ac7b2f),
+[seven cross-build variants](https://formatjs.buildbuddy.io/invocation/dd2f6381-0380-466e-9571-59c92855ba53)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42472770974)
+passed at `bfeedd6`. Native smoke covers renderer/IPC/addons, macOS signature
+checks and installed DEB/NSIS update lifecycles; Windows exercises both MSVC
+and GNULLVM variants on matching x64/ARM64 hosts.
