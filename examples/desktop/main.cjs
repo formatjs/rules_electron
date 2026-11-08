@@ -89,6 +89,7 @@ app.whenReady().then(async () => {
         helper: 'native helper ready',
       });
       assert.equal(app.isPackaged, true);
+      assert.deepEqual(fs.readdirSync(path.join(__dirname, 'renderer/empty')), []);
       assert.equal(fs.readFileSync(path.join(path.dirname(process.resourcesPath), 'licenses/NOTICE.txt'), 'utf8'),
         'Generic desktop example notice.\n');
       assert.equal(path.basename(__filename), 'main.cjs');

@@ -173,6 +173,7 @@ copy_to_directory(
 electron_files(
     name = "renderer_files",
     srcs = {":renderer_bundle": "renderer"},
+    directories = ["renderer/empty"],
     file_matcher = ":file_matcher",
     patterns = [
         "**/*",

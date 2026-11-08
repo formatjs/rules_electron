@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import tempfile
 import struct
 import unittest
@@ -7,6 +8,21 @@ from electron.private.nsis import build_installer, installer_script, literal
 
 
 class NsisTest(unittest.TestCase):
+    def test_tracked_empty_directories_install_and_uninstall_without_recursive_removal(self):
+        manifest = self.root / "directories.json"
+        manifest.write_text(json.dumps(["cache/empty", ".hidden"]))
+        for compression in ("zlib", "7z"):
+            script = self.render(directory_manifest=str(manifest), compression=compression,
+                                 payload_archive=str(self.root / "payload.7z") if compression == "7z" else "")
+            for name in ("cache\\empty", ".hidden"):
+                self.assertIn('CreateDirectory "$INSTDIR\\' + name + '"', script)
+                self.assertIn('RMDir "$INSTDIR\\' + name + '"', script)
+            self.assertNotIn('RMDir /r', script)
+        for paths in (["../escape"], ["sample.exe/child"], ["Uninstall.exe/child"], ["CACHE", "cache/empty"]):
+            manifest.write_text(json.dumps(paths))
+            with self.subTest(paths=paths), self.assertRaises(ValueError):
+                self.render(directory_manifest=str(manifest))
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)

@@ -9,9 +9,15 @@ def relative_path(value):
     path = PurePosixPath(value)
     if (not path.parts or path.is_absolute() or str(path) != value
             or any(part in (".", "..") for part in path.parts)
-            or "\\" in value or ":" in value):
+            or "\\" in value or ":" in value or "\0" in value):
         raise ValueError(f"Expected normalized relative path: {value!r}")
     return path
+
+def read_directories(manifest):
+    declared = json.loads(Path(manifest).read_text())
+    if not isinstance(declared, list) or any(not isinstance(path, str) for path in declared):
+        raise ValueError("Expected directory path list")
+    return {relative_path(path) for path in declared}
 
 
 def _walk_error(error):
@@ -30,10 +36,7 @@ def expand(entries, *, allow_root=False):
             raise ValueError(f"Expected input tree: {source}")
         empty = set()
         if entry.get("directory_manifest"):
-            declared = json.loads(Path(entry["directory_manifest"]).read_text())
-            if not isinstance(declared, list) or any(not isinstance(path, str) for path in declared):
-                raise ValueError("Expected directory path list")
-            empty.update(str(relative_path(path)) for path in declared)
+            empty.update(str(path) for path in read_directories(entry["directory_manifest"]))
         for directory, directories, files in os.walk(source, followlinks=False, onerror=_walk_error):
             for name in directories:
                 if (Path(directory) / name).is_symlink():

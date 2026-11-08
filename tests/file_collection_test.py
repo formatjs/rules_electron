@@ -1,6 +1,7 @@
 """Declared tree views preserve layout and reject selected collisions."""
 
 from pathlib import Path
+import json
 import tempfile
 import unittest
 
@@ -67,7 +68,6 @@ class FileCollectionTest(unittest.TestCase):
         self.assertFalse((self.root / "bad-empty").exists())
 
     def test_tracked_directory_manifest_rejects_invalid_paths_and_file_collisions(self):
-        import json
         manifest = self.root / "directories.json"
         entries = [dict(self.entries[0], directory_manifest=str(manifest))]
         for value in [["../escape"], ["a/./b"], ["/absolute"], [1], {}, ["helper/child"], ["helper"]]:
@@ -75,6 +75,15 @@ class FileCollectionTest(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 collect(entries, self.root / "bad-manifest")
         self.assertFalse((self.root / "bad-manifest").exists())
+
+    def test_explicit_directories_work_without_source_trees(self):
+        output = self.root / "explicit"
+        manifest = collect([], output, directories=["empty/nested", ".hidden"])
+        self.assertEqual(manifest, [".hidden", "empty/nested"])
+        self.assertTrue((output / "empty/nested").is_dir())
+        with self.assertRaises(ValueError):
+            collect([], self.root / "invalid", directories=["../escape"])
+        self.assertFalse((self.root / "invalid").exists())
 
 
 if __name__ == "__main__":

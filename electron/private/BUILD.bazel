@@ -4,6 +4,7 @@ py_library(
     name = "archives",
     srcs = ["archive.py"],
     visibility = ["//tests:__pkg__"],
+    deps = [":file_mappings"],
 )
 
 py_binary(
@@ -117,6 +118,7 @@ py_library(
     srcs = ["nsis.py"],
     visibility = ["//tests:__pkg__"],
     deps = [
+        ":file_mappings",
         ":icons",
         ":identity",
         ":updates",
@@ -148,7 +150,10 @@ py_library(
     name = "linux_packaging",
     srcs = ["linux.py"],
     visibility = ["//tests:__pkg__"],
-    deps = [":updates"],
+    deps = [
+        ":file_mappings",
+        ":updates",
+    ],
 )
 
 py_binary(

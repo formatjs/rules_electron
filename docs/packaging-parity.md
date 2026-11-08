@@ -11,7 +11,7 @@ electron-builder replacement.
 | Runtime dependencies | Public integrity-pinned npm v3 imports, production/platform selection, explicit Node-API package, target-built helper/addon | Package-provider adapters, bundled/workspace dependencies; Electron Node/V8 ABI toolchains |
 | ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity | Direct unpacked alias operations |
 | Extra resources/files | Declared file/tree mappings to resources or app content root, outside ASAR; normalized modes | Arbitrary resource-tree directory symlinks |
-| File selection | Declared file/tree mappings; ordered minimatch include/exclude filters after destination mapping; root tree mounts | Empty directory preservation |
+| File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories | Prepackaged tree directory manifests; native empty-directory smoke results |
 | Manifest metadata | Declared deep-merge overlays, dependency version rewrites, top-level field/script removal; shared app/update identity | Package-provider-driven dependency rewrites |
 | Runtime locales | Explicit file mappings or non-macOS ZIP locale selection | Broader runtime-provider integration |
 | Fuses | Named v1 settings, including macOS framework mutation before ad hoc signing | Universal macOS binaries; availability depends on runtime wire |
@@ -40,8 +40,11 @@ ASAR directory entries. Bazel drops untracked empty directories from tree
 inputs, so producers supply `ElectronFileTreeInfo.directory_manifest`: a declared
 JSON file listing normalized tree-relative directory paths. `electron_files`
 propagates that manifest; ASAR/app rules consume it. App assembly emits its own
-manifest for ZIP/tar.gz release archives. BB regression coverage crosses those
-action boundaries; installer propagation remains pending.
+manifest for ZIP/tar.gz release archives and DEB/NSIS packaging. The
+[8172dc6 assembly suite](https://formatjs.buildbuddy.io/invocation/30445f78-79fc-4636-8f8f-8dc932ad9f36)
+passed separate collection, ASAR, app and release-archive action boundaries.
+Installer propagation and the new native ASAR directory smoke await hosted
+validation.
 See the [release plan](release-plan.md) and [updater contract](updates.md).
 Linux package behavior and its native validation live in [Linux packages](linux-packages.md).
 Windows installer scope and validation live in [Windows installers](windows-installers.md).

@@ -12,6 +12,8 @@ import sys
 import tarfile
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED, ZIP_STORED
 
+from electron.private.files import read_directories
+
 
 @dataclass
 class Entry:
@@ -139,11 +141,8 @@ def create_archive(source, platform, root_name, format, compression_level, outpu
         raise ValueError("Invalid archive format or compression level")
     with inventory(Path(source), platform) as (entries, open_entry):
         if directory_manifest:
-            directories = json.loads(Path(directory_manifest).read_text())
-            if not isinstance(directories, list) or any(not isinstance(path, str) for path in directories):
-                raise ValueError("Expected directory path list")
-            for path in directories:
-                relative(path)
+            for path in read_directories(directory_manifest):
+                path = str(path)
                 if path in entries and entries[path].kind != "directory":
                     raise ValueError(f"Archive file/directory collision: {path}")
                 entries[path] = Entry("directory", 0o755)

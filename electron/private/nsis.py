@@ -14,6 +14,7 @@ import tempfile
 from electron.private.update import _filename, _version
 from electron.private.identity import build_identity
 from electron.private.icons import validate_ico
+from electron.private.files import read_directories
 
 
 def literal(value):
@@ -26,7 +27,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
                      output, protocols=(), desktop_shortcut=False, compression="zlib",
                      updater_cache_name="", architecture="x64", payload_archive="",
                      build_version="", build_number="", file_associations=None, app_user_model_id="",
-                     installer_icon="", uninstaller_icon=""):
+                     installer_icon="", uninstaller_icon="", directory_manifest=""):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", app_id):
         raise ValueError("NSIS app_id must be an ASCII application identifier")
     _filename(app_id)
@@ -84,6 +85,23 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
             files.append((name, path))
         else:
             raise ValueError("Windows installer requires regular payload files")
+    if directory_manifest:
+        for path in read_directories(directory_manifest):
+            for part in path.parts:
+                _filename(part)
+            name = str(path)
+            literal(name)
+            if name.casefold() in seen and name not in directories:
+                raise ValueError("Windows directory manifest collision")
+            directories.add(name)
+            seen.add(name.casefold())
+    directories.update(str(parent) for name in list(directories) for parent in Path(name).parents if str(parent) != ".")
+    files_by_case = {name.casefold() for name, _ in files}
+    if any(name.casefold() in files_by_case for name in directories):
+        raise ValueError("Windows directory manifest collision")
+    if len({name.casefold() for name in directories}) != len(directories):
+        raise ValueError("Case-insensitive Windows directory collision")
+    seen.update(name.casefold() for name in directories)
     if not any(name == executable for name, _ in files):
         raise ValueError("Windows app executable missing")
     if seen.intersection({"uninstall.exe", ".rules-electron.ini"}):
@@ -197,6 +215,8 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
                       'FileSeek $0 0 END $1', 'FileClose $0',
                       'IntCmp $1 ' + str(path.stat().st_size) + ' +2', 'Goto failed_install']
     else:
+        for name in sorted(directories):
+            lines += ['CreateDirectory "$INSTDIR\\' + name.replace('/', '\\').replace('$', '$$') + '"', 'IfErrors failed_install']
         for name, path in files:
             parent = str(Path(name).parent).replace('/', '\\').replace('$', '$$')
             lines += ['SetOutPath "$INSTDIR' + ('\\' + parent if parent != '.' else '') + '"',

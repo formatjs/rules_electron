@@ -17,8 +17,10 @@ def _payload_impl(ctx):
         if len(target.files.to_list()) != 1:
             fail("Each icon mapping requires exactly one file")
     manifest = ctx.actions.declare_file(ctx.label.name + ".json")
+    directories = getattr(app, "directory_manifest", None)
     ctx.actions.write(manifest, json.encode({
         "app": app.artifact.path,
+        "directory_manifest": directories.path if directories else "",
         "package_json": app.package_json.path,
         "app_id": app.app_id,
         "product_name": app.product_name,
@@ -34,7 +36,7 @@ def _payload_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._payload,
         arguments = [manifest.path, ctx.outputs.tar.path, ctx.outputs.version.path],
-        inputs = [manifest, app.artifact, app.package_json] + [f for t in ctx.attr.icons for f in t.files.to_list()],
+        inputs = [manifest, app.artifact, app.package_json] + ([directories] if directories else []) + [f for t in ctx.attr.icons for f in t.files.to_list()],
         outputs = [ctx.outputs.tar, ctx.outputs.version],
         mnemonic = "ElectronLinuxPayload",
         progress_message = "Packaging Electron Linux payload %{label}",

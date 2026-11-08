@@ -22,15 +22,26 @@ nonempty filename. Selected destination collisions and file/directory conflicts
 fail before copying.
 
 Patterns use the [declared minimatch tool](file-patterns.md), after source trees
-expand and destination prefixes apply. Empty patterns retain all regular files.
+expand and destination prefixes apply. Empty patterns retain all files and
+declared empty directories.
 Nonempty patterns start with no selected files and apply inclusions/exclusions in
 order. Use one collection per mapping when inputs need different filters.
 
 Outputs retain relative paths and executable status, with normalized 0755/0644
 modes and epoch timestamps. The resulting tree works with app `srcs`,
 `extra_resources`, `extra_files` or standalone ASAR mappings. Filtering does not
-read undeclared host paths. Directory symlinks remain unsupported; empty
-source directories are omitted.
+read undeclared host paths. Directory symlinks remain unsupported.
+
+Use `directories = ["renderer/cache"]` to declare empty output directories;
+the same patterns filter those paths. Bazel does not reliably preserve bare
+empty directories inside tree inputs. Generated-tree rules can return
+`ElectronFileTreeInfo(directory_manifest = file)` from `electron/files.bzl`,
+where `file` is a declared JSON list of normalized tree-relative directory paths.
+The manifest must be a separate output, outside the tree. `electron_files`
+propagates this metadata; app/ASAR rules consume it. App assembly also carries
+directory metadata into release ZIP/tar.gz archives and DEB/NSIS packaging.
+No marker files enter the app. Immutable prepackaged tree imports still need
+their own directory-manifest interface.
 
 The generic renderer bundle contains development fixtures; its filtered view
 excludes them. Native smoke checks both their absence and working renderer/IPC.

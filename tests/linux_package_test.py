@@ -10,6 +10,21 @@ from electron.private.linux import create_payload
 
 
 class LinuxPackageTest(unittest.TestCase):
+    def test_tracked_empty_directories_reach_payload_and_reject_collisions(self):
+        manifest = self.root / "directories.json"
+        manifest.write_text(json.dumps(["cache/empty", ".hidden"]))
+        output = self.payload(directory_manifest=str(manifest))
+        with tarfile.open(output) as archive:
+            for name in ("cache/empty", ".hidden"):
+                entry = archive.getmember("opt/org.example.sample/" + name)
+                self.assertTrue(entry.isdir())
+                self.assertEqual((entry.mode, entry.mtime), (0o755, 0))
+        for paths in (["../escape"], ["sample/child"], ["resource"]):
+            manifest.write_text(json.dumps(paths))
+            with self.subTest(paths=paths), self.assertRaises(ValueError):
+                self.payload(name="invalid-directories", directory_manifest=str(manifest))
+        self.assertFalse((self.root / "invalid-directories.tar.gz").exists())
+
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)

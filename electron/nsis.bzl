@@ -49,8 +49,10 @@ def _installer_impl(ctx):
     manifest = ctx.actions.declare_file(ctx.label.name + ".json")
     output = ctx.actions.declare_file(ctx.label.name + ".exe")
     script = ctx.actions.declare_file(ctx.label.name + ".nsi")
+    directories = getattr(app, "directory_manifest", None)
     ctx.actions.write(manifest, json.encode({
         "app": app.artifact.path,
+        "directory_manifest": directories.path if directories else "",
         "package_json": app.package_json.path,
         "build_version": getattr(app, "build_version", ""),
         "build_number": getattr(app, "build_number", ""),
@@ -74,7 +76,7 @@ def _installer_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._packager,
         arguments = [manifest.path, output.path, script.path],
-        inputs = [manifest, app.artifact, app.package_json, tool.data] + ([ctx.file.installer_icon] if ctx.file.installer_icon else []) + ([ctx.file.uninstaller_icon] if ctx.file.uninstaller_icon else []),
+        inputs = [manifest, app.artifact, app.package_json, tool.data] + ([directories] if directories else []) + ([ctx.file.installer_icon] if ctx.file.installer_icon else []) + ([ctx.file.uninstaller_icon] if ctx.file.uninstaller_icon else []),
         tools = [tool.runner] + ([tool.archive_runner] if ctx.attr.compression == "7z" else []),
         outputs = [output, script],
         mnemonic = "ElectronNsis",

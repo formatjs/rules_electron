@@ -11,6 +11,7 @@ import tarfile
 import xml.etree.ElementTree as ET
 
 from electron.private.update import _version
+from electron.private.files import read_directories
 
 
 def _identifier(value, field):
@@ -25,7 +26,7 @@ def _desktop_string(value):
 
 def create_payload(app, package_json, app_id, product_name, executable_name,
                    architecture, revision, description, categories, protocols,
-                   file_associations, icons, output, version_output):
+                   file_associations, icons, output, version_output, directory_manifest=""):
     _identifier(app_id, "app_id")
     _identifier(executable_name, "executable_name")
     if architecture not in ("amd64", "arm64"):
@@ -72,10 +73,13 @@ def create_payload(app, package_json, app_id, product_name, executable_name,
     }
     if file_associations:
         generated["usr/share/mime/packages/" + app_id + ".xml"] = (ET.tostring(mime_info, encoding="utf-8", xml_declaration=True), 0o644)
-    entries = {}
+    entries, empty = {}, set()
+    if directory_manifest:
+        empty.update(prefix + "/" + str(path) for path in read_directories(directory_manifest))
     for source in sorted(app.rglob("*")):
         relative = source.relative_to(app)
         if source.is_dir() and not source.is_symlink():
+            empty.add(prefix + "/" + relative.as_posix())
             continue
         destination = prefix + "/" + relative.as_posix()
         if destination in generated:
@@ -106,7 +110,9 @@ def create_payload(app, package_json, app_id, product_name, executable_name,
         if destination in entries:
             raise ValueError("Duplicate icon size")
         entries[destination] = source
-    directories = {str(parent) for name in [*entries, *generated] for parent in PurePosixPath(name).parents if str(parent) != "."}
+    directories = empty | {str(parent) for name in [*entries, *generated, *empty] for parent in PurePosixPath(name).parents if str(parent) != "."}
+    if directories & (entries.keys() | generated.keys()):
+        raise ValueError("Linux payload file/directory collision")
     with Path(output).open("wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed:
         with tarfile.open(fileobj=compressed, mode="w|", format=tarfile.PAX_FORMAT) as archive:
             for name in sorted(directories | set(entries) | set(generated)):

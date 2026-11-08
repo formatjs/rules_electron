@@ -4,6 +4,7 @@ load("//electron:archive.bzl", "electron_archive")
 load("//electron:asar.bzl", "electron_asar")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
 load("//electron:files.bzl", "electron_files")
+load("//electron:linux.bzl", "electron_deb")
 load("//electron:metadata.bzl", "electron_package_json")
 load(":cross_build.bzl", "cross_build")
 load(":empty_tree.bzl", "empty_tree")
@@ -29,9 +30,19 @@ electron_app(
         ":empty_tree_view": "assets",
         "fixtures/main.js": "main.js",
     },
+    app_id = "org.example.empty",
     extra_files = {":empty_tree_view": "extra"},
     package_json = "fixtures/package.json",
     runtime = ":runtime",
+)
+
+electron_deb(
+    name = "empty_tree_deb",
+    package_name = "empty-tree-fixture",
+    app = ":empty_tree_app",
+    depends = [],
+    description = "Directory preservation fixture",
+    maintainer = "Example <example@example.com>",
 )
 
 electron_archive(
@@ -57,10 +68,12 @@ py_test(
         "$(rootpath :empty_tree_asar)",
         "$(rootpath :empty_tree_zip)",
         "$(rootpath :empty_tree_tar)",
+        "$(rootpath :empty_tree_deb)",
     ],
     data = [
         ":empty_tree",
         ":empty_tree_asar",
+        ":empty_tree_deb",
         ":empty_tree_tar",
         ":empty_tree_view",
         ":empty_tree_zip",

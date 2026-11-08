@@ -9,8 +9,9 @@ from electron.private.files import expand, normalize, relative_path
 from electron.private.matching import select_files
 
 
-def collect(entries, output, patterns=(), file_matcher=None):
+def collect(entries, output, patterns=(), file_matcher=None, directories=()):
     expanded = list(expand(entries, allow_root=True))
+    expanded.extend({"path": str(relative_path(path)), "empty_directory": True} for path in directories)
     names = {entry["path"] for entry in expanded}
     selected = select_files(names, patterns, file_matcher) if patterns else names
     files = {}
