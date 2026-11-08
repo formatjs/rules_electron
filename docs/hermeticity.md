@@ -462,3 +462,11 @@ The `f5c3c64` [hosted consumer](https://formatjs.buildbuddy.io/invocation/be316b
 has passed the original fuse/Node artifact comparison and SDK runtime ABI
 contract including GdkPixbuf. Full consumer/components execution remains pending;
 these probes do not establish complete Electron linkage.
+
+
+The completed `f5c3c64` [consumer](https://formatjs.buildbuddy.io/invocation/be316b86-96a8-438b-8535-8aa994afef56)
+and [cross checks](https://formatjs.buildbuddy.io/invocation/9c18ca24-2a0f-4ede-8b18-fd1fc08568c4)
+passed. Final [components diagnostics](https://formatjs.buildbuddy.io/invocation/85913fe9-8c99-4429-b33b-da606236117f)
+reported only the missing notification header and nested DomDistiller input.
+The source overlay now pins those interfaces/assets and expands the full app
+resource closure; hosted validation of those changes remains required.
