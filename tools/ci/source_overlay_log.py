@@ -169,7 +169,7 @@ def classify(log):
     return {category: len(re.findall(pattern, log, re.IGNORECASE)) for category, pattern in patterns.items() if re.search(pattern, log, re.IGNORECASE)}
 
 
-def source_test_diagnostics(identifier, key):
+def source_test_diagnostics(identifier, key, selected=None):
     probes = {
         "//source:node_dependencies_test": "node_dependencies",
         "//tests:v8_torque_test": "torque",
@@ -234,7 +234,7 @@ def source_test_diagnostics(identifier, key):
         page = json.loads(content)
         for action in page.get("action", []):
             probe = next((name for suffix, name in probes.items() if action.get("targetLabel", "").endswith(suffix)), None)
-            if probe is None:
+            if probe is None or selected is not None and probe not in selected:
                 continue
             for file in action.get("file", []):
                 if file.get("name", "").rsplit("/", 1)[-1] != "test.log":
@@ -406,3 +406,5 @@ if __name__ == "__main__":
         if value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and not value.get("success"):
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
+        elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
+            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics"})
