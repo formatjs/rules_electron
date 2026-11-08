@@ -112,7 +112,7 @@ def classify(log):
         "NATIVE_GENERATORS_TEST": r"(?:FAIL|ERROR): test_original_generators_match_bazel_(?:fuse_and_node|fuse_node_and_js2c)_artifacts",
         "SDK_RUNTIME_ABI_TEST": r"(?:FAIL|ERROR): test_sdk_interfaces_match_pinned_runtime_symbols_and_build_ids",
         "POLICY_TEST": r"(?:FAIL|ERROR): test_(?:pinned_yaml_runtime_and_policy_ids_match_sources|depfile_uses_declared_relative_policy_paths)",
-        "CONTENT_WEBUI_TEST": r"(?:FAIL|ERROR): test_(?:tracing_pack_preserves_original_html_and_javascript|distiller_pack_inlines_pinned_javascript_and_preserves_valid_syntax|electron_repack_preserves_discovery_page_and_component_payloads|neterror_pack_inlines_both_original_image_scales|final_pack_preserves_linux_branding_image)",
+        "CONTENT_WEBUI_TEST": r"(?:FAIL|ERROR): test_(?:tracing_pack_preserves_original_html_and_javascript|distiller_pack_inlines_pinned_javascript_and_preserves_valid_syntax|electron_repack_preserves_discovery_page_and_component_payloads|neterror_pack_inlines_both_original_image_scales|(?:final_pack|unscaled_resource_pack)_preserves_linux_branding_image|final_pack_preserves_unscaled_webid_include_images)",
         "CATAPULT_TEST": r"(?:FAIL|ERROR): test_(?:standalone_html_uses_chromium_tracing_route|minified_viewer_contains_entrypoint_and_parses)",
         "MOJO_LITE_WIRE_TEST": r"(?:FAIL|ERROR): test_mojo_lite_preserves_signed_unsigned_wire_values",
         "DEVTOOLS_BROTLI_TEST": r"(?:FAIL|ERROR): test_devtools_brotli_payload_and_hash_match_original_html",
@@ -355,7 +355,7 @@ def source_test_diagnostics(identifier, key, selected=None):
                     details["python_exceptions"] = sorted({name for name in ("JSONDecodeError", "FileNotFoundError", "KeyError", "ValueError", "TypeError") if re.search(r"\b" + name + ":", log)})
                     details["public_python_sites"] = [{"file": path.rsplit("/", 1)[-1], "line": int(line)} for path, line in re.findall(r'File "([^"\n]+)", line ([0-9]{1,5})', log) if path.rsplit("/", 1)[-1] in public_basenames and 0 < int(line) < 10000][-8:]
                 if probe == "content_webui":
-                    methods = ["test_tracing_pack_preserves_original_html_and_javascript", "test_distiller_pack_inlines_pinned_javascript_and_preserves_valid_syntax", "test_electron_repack_preserves_discovery_page_and_component_payloads", "test_neterror_pack_inlines_both_original_image_scales", "test_final_pack_preserves_linux_branding_image", "test_final_pack_preserves_unscaled_webid_include_images"]
+                    methods = ["test_tracing_pack_preserves_original_html_and_javascript", "test_distiller_pack_inlines_pinned_javascript_and_preserves_valid_syntax", "test_electron_repack_preserves_discovery_page_and_component_payloads", "test_neterror_pack_inlines_both_original_image_scales", "test_final_pack_preserves_linux_branding_image", "test_unscaled_resource_pack_preserves_linux_branding_image", "test_final_pack_preserves_unscaled_webid_include_images"]
                     details["failed_methods"] = [name for name in methods if re.search(r"(?:FAIL|ERROR): " + name + r"\b", log)]
                     details["public_python_sites"] = [{"file": path.rsplit("/", 1)[-1], "line": int(line)} for path, line in re.findall(r'File "([^"\n]+)", line ([0-9]{1,5})', log) if path.rsplit("/", 1)[-1] == "content_webui_test.py" and 0 < int(line) < 10000][-8:]
                 if probe == "partition_alloc":
