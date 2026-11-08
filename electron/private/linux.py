@@ -6,6 +6,7 @@ import json
 from pathlib import Path, PurePosixPath
 import re
 import shlex
+import struct
 import sys
 import tarfile
 import xml.etree.ElementTree as ET
@@ -26,7 +27,7 @@ def _desktop_string(value):
 
 def create_payload(app, package_json, app_id, product_name, executable_name,
                    architecture, revision, description, categories, protocols,
-                   file_associations, icons, output, version_output, directory_manifest=""):
+                   file_associations, icons, output, version_output, directory_manifest="", setuid_sandbox=False):
     _identifier(app_id, "app_id")
     _identifier(executable_name, "executable_name")
     if architecture not in ("amd64", "arm64"):
@@ -40,6 +41,16 @@ def create_payload(app, package_json, app_id, product_name, executable_name,
     app = Path(app)
     if not (app / executable_name).is_file():
         raise ValueError("App executable missing")
+    if setuid_sandbox:
+        helper = app / "chrome-sandbox"
+        if executable_name == "chrome-sandbox" or helper.is_symlink() or not helper.is_file() or not helper.stat().st_mode & 0o111:
+            raise ValueError("Setuid sandbox requires a separate regular executable chrome-sandbox")
+        with helper.open("rb") as source:
+            header = source.read(20)
+        if (len(header) != 20 or header[:6] != b"\x7fELF\x02\x01"
+                or struct.unpack_from("<H", header, 16)[0] not in (2, 3)
+                or struct.unpack_from("<H", header, 18)[0] != {"amd64": 62, "arm64": 183}[architecture]):
+            raise ValueError("Setuid sandbox must be an ELF64 executable matching the DEB architecture")
     for scheme in protocols:
         if not re.fullmatch(r"[a-z][a-z0-9+.-]*", scheme):
             raise ValueError("Invalid URI protocol")
@@ -133,7 +144,7 @@ def create_payload(app, package_json, app_id, product_name, executable_name,
                         archive.addfile(info)
                     else:
                         info.size = source.stat().st_size
-                        info.mode = 0o755 if source.stat().st_mode & 0o111 else 0o644
+                        info.mode = 0o4755 if setuid_sandbox and name == prefix + "/chrome-sandbox" else 0o755 if source.stat().st_mode & 0o111 else 0o644
                         with source.open("rb") as contents:
                             archive.addfile(info, contents)
     Path(version_output).write_text(deb_version + "\n", encoding="utf-8")

@@ -15,7 +15,7 @@ electron-builder replacement.
 | Manifest metadata | Deep-merge overlays, source/generated dependency-manifest version rewrites, top-level field/script removal; shared app/update identity | Provider-specific metadata adapters |
 | Runtime locales | Explicit file mappings or non-macOS ZIP locale selection | Broader runtime-provider integration |
 | Fuses | Named v1 settings, including macOS framework mutation before ad hoc signing | Universal macOS binaries; availability depends on runtime wire |
-| Linux app | Relocatable directory, DEB desktop/MIME/protocol/icon metadata, explicit package dependencies and hooks | Setuid sandbox installation, distribution-specific confinement |
+| Linux app | Relocatable directory, DEB desktop/MIME/protocol/icon metadata, explicit dependencies/hooks, opt-in root-owned setuid sandbox helper | Native setuid validation; distribution-specific confinement |
 | macOS app | Branded bundle/helper metadata and ICNS icons, framework links, scoped main/inherited entitlements, hardened runtime, ad hoc signing, deterministic ZIP | Developer ID, production entitlement policy, notarization/stapling |
 | Windows app | Renamed executable, current-process Node-API exports, four compiler/CPU variants; PE version/product strings, ICO icons and ASAR integrity through declared source Node/resedit tooling | General addon delay-load/import-library tooling, Authenticode |
 | App version/build number | Public SemVer manifest override/validation; explicit build number/version; macOS app/helper, Windows PE/NSIS and DEB iteration | — |

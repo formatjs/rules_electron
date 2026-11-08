@@ -328,6 +328,7 @@ filegroup(
         icons = {"assets/sample.svg": "scalable"},
         maintainer = "Example Maintainers <maintainers@example.invalid>",
         protocols = ["sample-desktop"],
+        setuid_sandbox = True,
     )
     for name, app in [
         ("deb_v1", ":app"),

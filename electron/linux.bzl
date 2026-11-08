@@ -21,6 +21,7 @@ def _payload_impl(ctx):
     ctx.actions.write(manifest, json.encode({
         "app": app.artifact.path,
         "directory_manifest": directories.path if directories else "",
+        "setuid_sandbox": ctx.attr.setuid_sandbox,
         "package_json": app.package_json.path,
         "app_id": app.app_id,
         "product_name": app.product_name,
@@ -47,6 +48,7 @@ _linux_payload = rule(
     attrs = {
         "app": attr.label(mandatory = True, providers = [ElectronAppInfo]),
         "revision": attr.string(),
+        "setuid_sandbox": attr.bool(default = False),
         "description": attr.string(mandatory = True),
         "categories": attr.string_list(default = ["Utility"]),
         "protocols": attr.string_list(),
@@ -59,7 +61,7 @@ _linux_payload = rule(
     outputs = {"tar": "%{name}.tar.gz", "version": "%{name}.version"},
 )
 
-def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, **kwargs):
+def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], setuid_sandbox = False, preinst = None, postinst = None, prerm = None, postrm = None, **kwargs):
     """Build a DEB with desktop integration; scripts are declared inputs, never run during packaging.
 
     Args:
@@ -74,6 +76,7 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         protocols: URI schemes registered by the desktop entry.
         file_associations: MIME types and filename globs.
         categories: Desktop categories.
+        setuid_sandbox: Install a matching chrome-sandbox ELF helper as root:root 4755.
         preinst: Optional declared maintainer script.
         postinst: Optional declared maintainer script.
         prerm: Optional declared maintainer script.
@@ -90,6 +93,7 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         protocols = protocols,
         file_associations = file_associations,
         categories = categories,
+        setuid_sandbox = setuid_sandbox,
         target_compatible_with = compatible,
     )
     pkg_deb(

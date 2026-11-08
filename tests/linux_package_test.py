@@ -1,5 +1,6 @@
 import json
 import os
+import struct
 from pathlib import Path
 import tarfile
 import tempfile
@@ -10,6 +11,39 @@ from electron.private.linux import create_payload
 
 
 class LinuxPackageTest(unittest.TestCase):
+    def test_setuid_sandbox_sets_only_helper_mode_without_changing_inputs(self):
+        helper = self.app / "chrome-sandbox"
+        header = bytearray(64)
+        header[:6] = b"\x7fELF\x02\x01"
+        struct.pack_into("<HH", header, 16, 3, 183)
+        helper.write_bytes(header)
+        helper.chmod(0o755)
+        for enabled, expected_mode in ((False, 0o755), (True, 0o4755)):
+            payload = self.payload(name=str(enabled), setuid_sandbox=enabled)
+            with tarfile.open(payload) as archive:
+                sandbox = archive.getmember("opt/org.example.sample/chrome-sandbox")
+                main = archive.getmember("opt/org.example.sample/sample")
+                self.assertEqual((sandbox.uid, sandbox.gid, sandbox.mode), (0, 0, expected_mode))
+                self.assertEqual(main.mode, 0o755)
+                self.assertEqual(archive.extractfile(sandbox).read(), bytes(header))
+        self.assertEqual(helper.stat().st_mode & 0o7777, 0o755)
+
+    def test_setuid_sandbox_rejects_missing_linked_wrong_architecture_and_script_helpers(self):
+        helper = self.app / "chrome-sandbox"
+        with self.assertRaises(ValueError):
+            self.payload(name="missing", setuid_sandbox=True)
+        helper.symlink_to("sample")
+        with self.assertRaises(ValueError):
+            self.payload(name="linked", setuid_sandbox=True)
+        helper.unlink()
+        for header in (b"#!/bin/sh\nexit 0\n", b"\x7fELF\x02\x01" + bytes(10) + struct.pack("<HH", 3, 62)):
+            helper.write_bytes(header)
+            helper.chmod(0o755)
+            with self.subTest(header=header[:6]), self.assertRaises(ValueError):
+                self.payload(name="invalid", setuid_sandbox=True)
+        for name in ("missing", "linked", "invalid"):
+            self.assertFalse((self.root / (name + ".tar.gz")).exists())
+
     def test_tracked_empty_directories_reach_payload_and_reject_collisions(self):
         manifest = self.root / "directories.json"
         manifest.write_text(json.dumps(["cache/empty", ".hidden"]))

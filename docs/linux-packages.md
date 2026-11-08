@@ -15,6 +15,7 @@ electron_deb(
     protocols = ["example"],
     file_associations = {"application/x-example": ["*.example"]},
     icons = {"icon.svg": "scalable"},
+    setuid_sandbox = True,
 )
 ```
 
@@ -48,6 +49,13 @@ package. Headless CI supplies an elevation adapter backed by the runner's sudo;
 the updater, downloader and dpkg installation remain real. No ARM64 installation
 claim is made without a native smoke host.
 
-The package currently uses the existing user-namespace Chromium sandbox strategy.
-Setuid sandbox installation, distribution-specific confinement, RPM and AppImage
-remain separate work.
+`setuid_sandbox = True` installs the app-root `chrome-sandbox` helper as
+root:root with mode `4755`. Packaging requires a separate regular executable
+ELF64 helper matching the target CPU; missing helpers, symlinks, scripts and
+wrong architectures fail. Input permissions remain unchanged. The default
+retains normalized `0755` executable modes for user-namespace sandboxing.
+
+Example DEBs enable this option. Installed v1/v2 smoke checks helper ownership
+and mode, clears host sandbox overrides, and launches with
+`--disable-namespace-sandbox` to exercise Chromium's setuid fallback. Validation
+is pending. Distribution-specific confinement, RPM and AppImage remain open.

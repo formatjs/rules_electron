@@ -49,9 +49,15 @@ def version():
 
 
 def launch_smoke(expected):
+    sandbox = Path("/opt") / APP_ID / "chrome-sandbox"
+    metadata = sandbox.stat()
+    assert not sandbox.is_symlink() and metadata.st_uid == metadata.st_gid == 0
+    assert metadata.st_mode & 0o7777 == 0o4755
     print(command(sys.executable, "examples/desktop/tools/smoke_test.py", str(LAUNCHER),
                   "--installed", "--expected-version", expected,
+                  "--setuid-sandbox",
                   "--target-os", "linux", "--target-arch", "x64"))
+    print("DEB_SETUID_SANDBOX_OK " + expected)
 
 
 def main(directory):
@@ -116,8 +122,9 @@ sys.exit(result.returncode)
                                            XDG_CONFIG_HOME=str(home / "config"), XDG_CACHE_HOME=str(home / "cache"),
                                            PATH=str(broker) + os.pathsep + os.environ["PATH"],
                                            RULES_ELECTRON_UPDATE_FEED=f"http://127.0.0.1:{server.server_port}/")
+                        environment.pop("CHROME_DEVEL_SANDBOX", None)
                         result = subprocess.run([str(LAUNCHER), "--reject-update-smoke" if reject else "--install-update-smoke",
-                                                 "--disable-gpu", "--disable-dev-shm-usage"],
+                                                 "--disable-gpu", "--disable-dev-shm-usage", "--disable-namespace-sandbox"],
                                                 env=environment, capture_output=True, text=True, timeout=120)
                         if result.returncode:
                             raise RuntimeError(f"Installed updater failed:\n{result.stdout}\n{result.stderr}")
