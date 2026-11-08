@@ -437,7 +437,7 @@ def failed_action_diagnostics(identifier, key):
             if "FileNotFound" in line:
                 missing_basenames.update(name for name in re.findall(r"[A-Za-z0-9_.+-]+\.[A-Za-z0-9]+", line) if name in public_basenames)
         python_exceptions = sorted({name for name in ("JSONDecodeError", "FileNotFoundError", "KeyError", "ValueError", "TypeError", "AssertionError") if re.search(r"\b" + name + ":", log)})
-        python_error_identifiers = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line) if word in public_identifiers))[:24] for line in log.splitlines() if re.match(r"(?:KeyError|ValueError|TypeError|AssertionError):", line)][:4]
+        python_error_identifiers = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line) if word in public_identifiers))[:24] for line in log.splitlines() if re.match(r"(?:KeyError|ValueError|TypeError|AssertionError|FileNotFoundError):", line)][:4]
         missing_modules = set()
         for path in re.findall(r"(?:Cannot find (?:module|package)|Could not resolve entry module) ['\"]([^'\"\r\n]{1,1000})['\"]", log):
             path = posixpath.normpath(path.replace("\\", "/"))
