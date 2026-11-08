@@ -6,6 +6,7 @@ exports_files([
     "defs.bzl",
     "linux.bzl",
     "metadata.bzl",
+    "matching.bzl",
     "nsis.bzl",
     "update.bzl",
     "windows.bzl",

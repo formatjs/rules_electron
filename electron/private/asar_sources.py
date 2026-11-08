@@ -7,9 +7,10 @@ import sys
 
 from electron.private.asar import create_archive
 from electron.private.files import expand, normalize, relative_path
+from electron.private.matching import select_files
 
 
-def write_sources(entries, archive, unpacked=(), symlinks=None):
+def write_sources(entries, archive, unpacked=(), symlinks=None, unpacked_patterns=(), file_matcher=None):
     files = {}
     for entry in expand(entries):
         path = relative_path(entry["path"])
@@ -21,6 +22,7 @@ def write_sources(entries, archive, unpacked=(), symlinks=None):
             raise ValueError(f"ASAR file/directory collision: {path}")
     for path in unpacked:
         relative_path(path)
+    unpacked = set(unpacked) | select_files({str(path) for path in files}, unpacked_patterns, file_matcher)
     sidecar = Path(str(archive) + ".unpacked")
     digest = create_archive({str(path): source for path, source in files.items()}, archive, unpacked, symlinks)
     sidecar.mkdir(parents=True, exist_ok=True)
@@ -35,4 +37,5 @@ if __name__ == "__main__":
     if Path(sidecar) != Path(archive + ".unpacked"):
         raise ValueError("ASAR sidecar must follow its archive")
     options = json.loads(Path(manifest).read_text())
-    Path(digest).write_text(write_sources(options["entries"], archive, options["unpacked"], options.get("symlinks")) + "\n")
+    Path(digest).write_text(write_sources(options["entries"], archive, options["unpacked"], options.get("symlinks"),
+                                        options.get("unpacked_patterns", []), options.get("file_matcher")) + "\n")

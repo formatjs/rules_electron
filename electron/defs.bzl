@@ -1,6 +1,7 @@
 """Native Electron app assembly. Runtime sources belong to the electron overlay."""
 
 load(":asar.bzl", "ElectronAsarInfo")
+load(":matching.bzl", "ElectronFileMatcherInfo")
 load(":windows.bzl", "ElectronWindowsResourceToolInfo")
 
 ElectronAppInfo = provider(
@@ -97,6 +98,9 @@ def _app_impl(ctx):
     if platform == "macos" and not ctx.executable.macos_signer:
         fail("macOS assembly requires an execution-platform macos_signer (rcodesign)")
     windows_tool = ctx.attr.windows_resource_tool[ElectronWindowsResourceToolInfo] if ctx.attr.windows_resource_tool else None
+    matcher = ctx.attr.file_matcher[ElectronFileMatcherInfo] if ctx.attr.file_matcher else None
+    if ctx.attr.asar_unpacked_patterns and (not ctx.attr.asar or not matcher):
+        fail("asar_unpacked_patterns requires asar=True and file_matcher")
     if platform == "windows" and (ctx.attr.windows_metadata or ctx.file.windows_icon or ctx.attr.build_version or ctx.attr.build_number or ctx.attr.fuses.get("enableEmbeddedAsarIntegrityValidation") == "on") and not windows_tool:
         fail("Windows metadata, icons, build identity and embedded integrity require windows_resource_tool")
     if platform != "windows" and (windows_tool or ctx.attr.windows_metadata or ctx.file.windows_icon):
@@ -131,6 +135,8 @@ def _app_impl(ctx):
         "extra_asars": extra_asars,
         "asar": ctx.attr.asar,
         "asar_unpacked": ctx.attr.asar_unpacked,
+        "asar_unpacked_patterns": ctx.attr.asar_unpacked_patterns,
+        "file_matcher": {"node": matcher.node.executable.path, "script": matcher.script.path, "modules": matcher.modules.path} if matcher else None,
         "asar_symlinks": ctx.attr.asar_symlinks,
         "fuses": ctx.attr.fuses,
         "executable_name": executable_name,
@@ -157,8 +163,8 @@ def _app_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._assembler,
         arguments = [manifest.path, output.path] + ([ctx.executable.macos_signer.path] if platform == "macos" else []),
-        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([ctx.file.windows_icon] if ctx.file.windows_icon else []) + ([windows_tool.modules, windows_tool.script] if windows_tool else [])),
-        tools = ([ctx.executable.macos_signer] if platform == "macos" else []) + ([windows_tool.node] if windows_tool else []),
+        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([ctx.file.windows_icon] if ctx.file.windows_icon else []) + ([windows_tool.modules, windows_tool.script] if windows_tool else []) + ([matcher.modules, matcher.script] if matcher else [])),
+        tools = ([ctx.executable.macos_signer] if platform == "macos" else []) + ([windows_tool.node] if windows_tool else []) + ([matcher.node] if matcher else []),
         outputs = [output],
         mnemonic = "ElectronApp",
         progress_message = "Assembling Electron app %{label}",
@@ -185,6 +191,8 @@ electron_app = rule(
         "srcs": attr.label_keyed_string_dict(allow_files = True, doc = "Single files or tree artifacts mapped to app-relative paths."),
         "asar": attr.bool(default = False, doc = "Write resources/app.asar instead of resources/app."),
         "asar_unpacked": attr.string_list(doc = "Exact app-relative paths stored alongside ASAR; requires asar=True."),
+        "asar_unpacked_patterns": attr.string_list(doc = "Ordered minimatch inclusion/exclusion patterns; selected files join explicit unpacked paths. Requires asar=True and file_matcher."),
+        "file_matcher": attr.label(providers = [ElectronFileMatcherInfo], cfg = "exec"),
         "asar_symlinks": attr.string_dict(doc = "ASAR link paths mapped to archive-root-relative targets; empty target denotes archive root. Requires asar=True."),
         "extra_resources": attr.label_keyed_string_dict(allow_files = True, doc = "Files or tree artifacts mapped relative to resources/, outside ASAR."),
         "extra_files": attr.label_keyed_string_dict(allow_files = True, doc = "Files or tree artifacts mapped to Contents/ on macOS, distribution root elsewhere; outside ASAR."),

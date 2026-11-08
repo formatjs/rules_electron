@@ -11,6 +11,7 @@ from electron.private.files import expand as _expand, relative_path
 from electron.private.fuses import set_fuses
 from electron.private.identity import build_identity
 from electron.private.icons import validate_icns, validate_ico
+from electron.private.matching import select_files
 from electron.private.runtime import brand_macos, extract_runtime, normalize
 
 
@@ -20,7 +21,8 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              product_name="Electron", app_id="", runtime_languages=(),
              windows_resource_tool=None, windows_metadata=None,
              build_version="", build_number="", macos_protocols=None, macos_protocol_roles=None,
-             extra_files=(), extra_asars=(), macos_icon="", windows_icon="", asar_symlinks=None):
+             extra_files=(), extra_asars=(), macos_icon="", windows_icon="", asar_symlinks=None,
+             asar_unpacked_patterns=(), file_matcher=None):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
     if platform != "macos" and (macos_protocols or macos_protocol_roles):
@@ -45,6 +47,8 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     resources = "Contents/Resources" if platform == "macos" else "resources"
     if not asar and asar_unpacked:
         raise ValueError("asar_unpacked requires asar=True")
+    if not asar and asar_unpacked_patterns:
+        raise ValueError("asar_unpacked_patterns requires asar=True")
     if not asar and asar_symlinks:
         raise ValueError("asar_symlinks requires asar=True")
     if not asar and (fuses or {}).get("onlyLoadAppFromAsar") == "on":
@@ -103,6 +107,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         relative_path(name)
         if name not in app_files:
             raise ValueError(f"ASAR unpacked path not declared: {name}")
+    asar_unpacked = sorted(set(asar_unpacked) | select_files(app_files, asar_unpacked_patterns, file_matcher))
 
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)

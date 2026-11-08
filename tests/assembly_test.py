@@ -130,6 +130,7 @@ class AssemblyTest(unittest.TestCase):
             {"windows_icon": "example.ico", "platform": "windows"},
             {"windows_icon": "example.ico"},
             {"asar_symlinks": {"linked-main.js": "main.js"}},
+            {"asar_unpacked_patterns": ["**/*.node"]},
         ]:
             with self.subTest(options=options), self.assertRaises(ValueError):
                 assemble(self.entries, self.root / "out", **options)

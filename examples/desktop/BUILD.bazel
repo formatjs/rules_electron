@@ -4,6 +4,7 @@ load("@rules_electron//electron:archive.bzl", "electron_archive")
 load("@rules_electron//electron:asar.bzl", "electron_asar")
 load("@rules_electron//electron:defs.bzl", "electron_runtime")
 load("@rules_electron//electron:linux.bzl", "electron_deb")
+load("@rules_electron//electron:matching.bzl", "electron_file_matcher")
 load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool")
 load("@rules_electron//electron:update.bzl", "electron_update_config", "electron_update_feed")
 load("@rules_electron//electron:windows.bzl", "electron_windows_resource_tool")
@@ -33,15 +34,16 @@ electron_asar(
         ":native_addon": "addon.node",
         "resources/NOTICE.txt": "notice.txt",
     },
+    file_matcher = ":file_matcher",
     symlinks = {
         "entry.cjs": "index.cjs",
         "entry-chain.cjs": "entry.cjs",
         "addon-link.node": "addon.node",
     },
     unpacked = [
-        "addon.node",
         "notice.txt",
     ],
+    unpacked_patterns = ["**/*.node"],
 )
 
 electron_archive(
@@ -64,7 +66,21 @@ exports_files([
     "node_api.BUILD.bazel",
     "updater-package-lock.json",
     "windows-tools-package-lock.json",
+    "matcher-tools-package-lock.json",
 ])
+
+electron_file_matcher(
+    name = "file_matcher",
+    modules = "@matcher_tools_npm//:runtime",
+    node = "@nodejs_26_13_0//:node",
+)
+
+filegroup(
+    name = "file_matcher_node",
+    srcs = [":file_matcher"],
+    output_group = "node",
+    visibility = ["//tools:__pkg__"],
+)
 
 electron_windows_resource_tool(
     name = "windows_resource_tool",

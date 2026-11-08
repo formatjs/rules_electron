@@ -1,5 +1,7 @@
 """Standalone ASAR archives with explicit unpacked files and header integrity."""
 
+load(":matching.bzl", "ElectronFileMatcherInfo")
+
 ElectronAsarInfo = provider(fields = {
     "archive": "ASAR artifact.",
     "unpacked": "Unpacked sidecar tree.",
@@ -7,6 +9,9 @@ ElectronAsarInfo = provider(fields = {
 })
 
 def _impl(ctx):
+    matcher = ctx.attr.file_matcher[ElectronFileMatcherInfo] if ctx.attr.file_matcher else None
+    if ctx.attr.unpacked_patterns and not matcher:
+        fail("unpacked_patterns requires file_matcher")
     entries, inputs = [], []
     for target, destination in ctx.attr.srcs.items():
         files = target[DefaultInfo].files.to_list()
@@ -19,11 +24,18 @@ def _impl(ctx):
     unpacked = ctx.actions.declare_directory(ctx.label.name + ".asar.unpacked")
     digest = ctx.actions.declare_file(ctx.label.name + ".sha256")
     manifest = ctx.actions.declare_file(ctx.label.name + ".manifest.json")
-    ctx.actions.write(manifest, json.encode({"entries": entries, "unpacked": ctx.attr.unpacked, "symlinks": ctx.attr.symlinks}))
+    ctx.actions.write(manifest, json.encode({
+        "entries": entries,
+        "unpacked": ctx.attr.unpacked,
+        "unpacked_patterns": ctx.attr.unpacked_patterns,
+        "symlinks": ctx.attr.symlinks,
+        "file_matcher": {"node": matcher.node.executable.path, "script": matcher.script.path, "modules": matcher.modules.path} if matcher else None,
+    }))
     ctx.actions.run(
         executable = ctx.executable._writer,
         arguments = [manifest.path, archive.path, unpacked.path, digest.path],
-        inputs = inputs + [manifest],
+        inputs = inputs + [manifest] + ([matcher.modules, matcher.script] if matcher else []),
+        tools = [matcher.node] if matcher else [],
         outputs = [archive, unpacked, digest],
         mnemonic = "ElectronAsar",
     )
@@ -38,6 +50,8 @@ electron_asar = rule(
     attrs = {
         "srcs": attr.label_keyed_string_dict(allow_files = True, doc = "File/tree labels mapped to archive-relative paths."),
         "unpacked": attr.string_list(doc = "Exact archive-relative files copied to the unpacked sidecar."),
+        "unpacked_patterns": attr.string_list(doc = "Ordered minimatch inclusion/exclusion patterns; selected files join explicit unpacked paths. Requires file_matcher."),
+        "file_matcher": attr.label(providers = [ElectronFileMatcherInfo], cfg = "exec"),
         "symlinks": attr.string_dict(doc = "Link paths mapped to archive-root-relative targets; empty target denotes archive root. Encoded in ASAR, without filesystem symlinks."),
         "_writer": attr.label(default = Label("//electron/private:asar_packager"), executable = True, cfg = "exec"),
     },

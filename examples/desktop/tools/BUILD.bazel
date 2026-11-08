@@ -1,4 +1,23 @@
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
+
+py_test(
+    name = "file_matcher_test",
+    srcs = ["file_matcher_test.py"],
+    args = [
+        "$(rootpath //:file_matcher_node)",
+        "$(rootpath @rules_electron//electron/private:file_matcher.cjs)",
+        "$(rootpath @matcher_tools_npm//:runtime)",
+    ],
+    data = [
+        "//:file_matcher_node",
+        "@matcher_tools_npm//:runtime",
+        "@rules_electron//electron/private:file_matcher.cjs",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)
 
 py_binary(
     name = "icon_writer",

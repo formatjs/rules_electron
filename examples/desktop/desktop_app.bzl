@@ -25,7 +25,8 @@ def desktop_app(name, package_json, **kwargs):
         }),
         build_number = "7",
         asar = True,
-        asar_unpacked = ["node_modules/example-native/addon.node"],
+        asar_unpacked_patterns = ["**/*.node"],
+        file_matcher = ":file_matcher",
         asar_symlinks = {
             "linked-main.cjs": "main.cjs",
             "linked-assets": "assets",

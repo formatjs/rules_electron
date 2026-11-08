@@ -65,6 +65,12 @@ npm_runtime(
     strip_node_modules = False,
 )
 
+npm_runtime(
+    name = "matcher_tools_npm",
+    lock = "//:matcher-tools-package-lock.json",
+    strip_node_modules = False,
+)
+
 http_file(
     name = "bootstrap_electron_macos_arm64",
     downloaded_file_path = "electron.zip",

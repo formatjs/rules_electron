@@ -6,6 +6,8 @@ from pathlib import Path
 import struct
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from electron.private.asar import header_hash
 from electron.private.asar_sources import write_sources
@@ -86,6 +88,19 @@ class AsarSourcesTest(unittest.TestCase):
                 write_sources(self.entries, self.root / "bad-links.asar", symlinks=links)
         self.assertFalse((self.root / "bad-links.asar").exists())
         self.assertFalse((self.root / "bad-links.asar.unpacked").exists())
+
+    def test_patterns_require_declared_tool_and_reject_invalid_tool_results(self):
+        archive = self.root / "patterns.asar"
+        with self.assertRaisesRegex(ValueError, "require file_matcher"):
+            write_sources(self.entries, archive, unpacked_patterns=["**/*.cjs"])
+        tool = {"node": "declared-node", "script": "declared-script", "modules": "declared-modules"}
+        for result in [["../escape"], ["absent.cjs"], ["module.cjs", "module.cjs"], [1], "invalid"]:
+            with self.subTest(result=result), patch("electron.private.matching.subprocess.run",
+                                                   return_value=SimpleNamespace(stdout=json.dumps(result))):
+                with self.assertRaisesRegex(ValueError, "undeclared or duplicate"):
+                    write_sources(self.entries, archive, unpacked_patterns=["**/*.cjs"], file_matcher=tool)
+        self.assertFalse(archive.exists())
+        self.assertFalse(Path(str(archive) + ".unpacked").exists())
 
     def test_rejects_truncated_and_invalid_archive_framing(self):
         archive = self.root / "bad.asar"
