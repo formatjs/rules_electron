@@ -525,3 +525,11 @@ checks also exposed API override/`nocompile` semantics and original GRIT pack/gz
 boundaries; their contracts now follow those producers. Hosted validation of
 these fixes, executable linkage, runtime assembly/launch and full bundle
 typechecking remain open. Full native source profiles still cover Linux AMD64.
+
+The `312214e` cross probes passed. Its consumer and components runs reached the
+new Node pipeline and failed to launch the Python shell bootstrap under empty
+`PATH` (`BASH_ENV_LOOKUP`, exit 127). A queued overlay fix invokes the declared
+Python interpreter directly with `-I -B`, stages the runner/helper explicitly,
+and retains empty `PATH`. Analysis confirms that launch for all three Node
+actions; execution remains pending. Existing BB compilation continues before
+the next source push, which would cancel it.
