@@ -77,6 +77,7 @@ def classify(log):
         "CPP_REDEFINITION": r"redefinition of|duplicate definition|already defined",
         "CPP_TEMPLATE_DEPTH": r"recursive template instantiation|template instantiation depth|bracket nesting level exceeded",
         "CPP_TARGET_FEATURE": r"requires target feature|target specific option mismatch",
+        "BASH_ENV_LOOKUP": r"/usr/bin/env: [\"'‘]?bash[\"'’]?: (?:No such file or directory|not found)",
         "CPP_TEMPLATE_ARGUMENT": r"template argument|no template named|not a template|parameter pack",
         "CPP_ACCESS_CONTROL": r"is a private member|is protected within",
         "CPP_TOKEN_ERROR": r"unknown type name|extraneous|error: expected",
