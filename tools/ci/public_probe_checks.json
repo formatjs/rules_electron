@@ -381,5 +381,18 @@
     "raster respects clip translation and restore",
     "reparenting removes previous ownership",
     "save layer blends green over red"
+  ],
+  "blink_font": [
+    "declared font fixture available",
+    "empty input has no font flags",
+    "font fixture contains source bytes",
+    "original font format flags match independent fixture properties",
+    "seven declared SFNT fixtures and expected flag masks",
+    "truncated directory has no font flags",
+    "truncated font rejects partial header"
+  ],
+  "blink_crash": [
+    "original panic aborts child with SIGABRT",
+    "panic reaches original Rust crash site"
   ]
 }
