@@ -293,3 +293,22 @@ also passed. The complete native suite exercises real command transfer, malforme
 ranges/handles, libyuv conversion bytes, GPU preference Mojo serialization, shader
 cache protobufs and Viz plane sizing. Its launcher declares the pinned desktop
 runtime closure alongside source-built shared owners. Full Electron remains unfinished.
+
+## Symphonia Rust/CXX boundary
+
+The source overlay now captures Chromium's Symphonia FLAC bridge: ten additional
+Rust targets and nine vendor packages. Existing 107 Rust target records retain
+their configuration. Original CXX generation uses source-built cxxbridge, declared
+Rust target configuration and original Python helpers, with byte reproducibility
+checks across source paths and mtimes. Generated headers forward compilation
+context separately from native link ownership. No foreign build wrapper is used.
+
+[bdd6d7e components](https://formatjs.buildbuddy.io/invocation/86cc1e18-00a5-4033-96eb-cb6f81f7e986),
+[BCR consumer](https://formatjs.buildbuddy.io/invocation/b5e0d4f7-7a0e-43a7-9cc1-e93a4dfe85de)
+and [cross probes](https://formatjs.buildbuddy.io/invocation/86f8eb41-b3fe-4e20-8731-d765a70eced7)
+passed. The native test compares decoded samples through the original CXX/Rust
+bridge against a WAV reference whose PCM checksum matches the pinned FLAC fixture.
+It also checks packet errors, recovery and rejected initialization. Structured BB
+results explicitly report Symphonia, GPU transport and SwiftShader as PASSED.
+This source dependency remains Linux AMD64; full media, compositor and Electron
+integration remain unfinished.

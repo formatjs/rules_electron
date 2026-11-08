@@ -554,6 +554,22 @@ passed in 8.390 seconds with two tracked executions, 2.497 CPU seconds,
 test execution remains outside those remote CPU/memory totals. These are warm
 observations with passing behavior checks, not a cold/warm speedup comparison.
 
+## Symphonia media dependency
+
+The [bdd6d7e source aggregate](https://formatjs.buildbuddy.io/invocation/40786b09-0961-4775-aca8-6f40537092f7)
+passed in 30.253 seconds with two tracked executions, 0.090 CPU seconds,
+115,621,888-byte maximum action peak memory, 1,710,428 input download bytes and
+11,540 output upload bytes. Its [complete native suite](https://formatjs.buildbuddy.io/invocation/0bb1fe8e-7bab-42eb-9eee-a3d994fa6a60)
+passed in 12.989 seconds with zero tracked remote executions; native tests run on
+the matching BB host.
+
+The separate [BCR consumer test phase](https://formatjs.buildbuddy.io/invocation/609bfdab-4826-4b87-8536-a3322406bfc6)
+passed in 51.183 seconds with nine tracked executions, 4.692 CPU seconds,
+407,064,576-byte maximum action peak memory, 703,150,086 input download bytes and
+7,492,233 output upload bytes. Earlier attempts and concurrent builds populated
+caches. These workspace-specific observations prove passing behavior and record
+resources; they do not establish a cold baseline or speedup.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache
