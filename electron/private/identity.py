@@ -31,7 +31,7 @@ def _merge(package, overlay):
             package[key] = value
 
 
-def package_json(source, output, version="", remove_scripts=False, extra_metadata=None, remove_fields=()):
+def package_json(source, output, version="", remove_scripts=False, extra_metadata=None, remove_fields=(), dependency_manifests=()):
     package = json.loads(Path(source).read_text(encoding="utf-8"))
     if not isinstance(package, dict):
         raise ValueError("App package manifest must be a JSON object")
@@ -40,6 +40,25 @@ def package_json(source, output, version="", remove_scripts=False, extra_metadat
         if not isinstance(overlay, dict):
             raise ValueError("extra_metadata must be a JSON object")
         _merge(package, overlay)
+    seen = set()
+    for manifest in dependency_manifests:
+        dependency = json.loads(Path(manifest).read_text(encoding="utf-8"))
+        if not isinstance(dependency, dict) or not isinstance(dependency.get("name"), str) or not dependency["name"]:
+            raise ValueError("Dependency manifest requires a package name")
+        name = dependency["name"]
+        if name in seen:
+            raise ValueError("Duplicate dependency manifest: " + name)
+        seen.add(name)
+        dependency_version = _version(dependency.get("version"))
+        matched = False
+        for section in ("dependencies", "optionalDependencies"):
+            if section in package and not isinstance(package[section], dict):
+                raise ValueError(section + " must be a JSON object")
+            if name in package.get(section, {}):
+                package[section][name] = dependency_version
+                matched = True
+        if not matched:
+            raise ValueError("Dependency manifest is not a declared production dependency: " + name)
     if not isinstance(remove_fields, (list, tuple)) or not all(isinstance(field, str) and field for field in remove_fields):
         raise ValueError("remove_fields must contain nonempty top-level field names")
     for field in remove_fields:
@@ -51,4 +70,4 @@ def package_json(source, output, version="", remove_scripts=False, extra_metadat
 
 
 if __name__ == "__main__":
-    package_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4] == "1", sys.argv[5], json.loads(sys.argv[6]))
+    package_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4] == "1", sys.argv[5], json.loads(sys.argv[6]), json.loads(sys.argv[7]))

@@ -20,6 +20,7 @@ class IdentityTest(unittest.TestCase):
         package = json.loads(PACKAGE.read_text())
         packaged = json.loads((APP / "resources/app/package.json").read_text())
         self.assertEqual(package["version"], "3.2.1-beta.2+build.7")
+        self.assertEqual(package["dependencies"]["@example/workspace"], "4.5.6")
         self.assertEqual(packaged, package)
         artifact = self.root / "release.tar.gz"
         artifact.write_bytes(b"final release artifact")
@@ -54,6 +55,43 @@ class IdentityTest(unittest.TestCase):
         source.write_text("[]")
         with self.assertRaisesRegex(ValueError, "JSON object"):
             package_json(source, output)
+
+    def test_declared_dependency_manifests_rewrite_workspace_ranges_without_changing_sources(self):
+        source, first, second = [self.root / name for name in ("package.json", "first.json", "second.json")]
+        original = {"version": "1.2.3", "dependencies": {"@example/shared": "workspace:^", "retained": "^2"},
+                    "optionalDependencies": {"optional": "file:../optional", "@example/shared": "workspace:*"}, "devDependencies": {"builder": "workspace:*"}}
+        source.write_text(json.dumps(original))
+        manifests = []
+        for name, version, filename in [("@example/shared", "3.4.5-beta.1", "shared.json"), ("optional", "2.0.0", "optional.json")]:
+            manifest = self.root / filename
+            manifest.write_text(json.dumps({"name": name, "version": version, "scripts": {"postinstall": "never executed"}}))
+            manifests.append(manifest)
+        package_json(source, first, dependency_manifests=manifests)
+        package_json(source, second, dependency_manifests=list(reversed(manifests)))
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        result = json.loads(first.read_text())
+        self.assertEqual(result["dependencies"], {"@example/shared": "3.4.5-beta.1", "retained": "^2"})
+        self.assertEqual(result["optionalDependencies"], {"optional": "2.0.0", "@example/shared": "3.4.5-beta.1"})
+        self.assertEqual(result["devDependencies"], original["devDependencies"])
+        self.assertEqual(json.loads(source.read_text()), original)
+
+    def test_dependency_manifest_errors_fail_before_output(self):
+        source, manifest, output = [self.root / name for name in ("package.json", "dependency.json", "result.json")]
+        source.write_text(json.dumps({"version": "1.0.0", "dependencies": {"shared": "workspace:*"}}))
+        for package in ([], {"version": "1.0.0"}, {"name": "other", "version": "1.0.0"},
+                        {"name": "shared", "version": "1.2"}, {"name": "shared", "version": 4}):
+            manifest.write_text(json.dumps(package))
+            with self.subTest(package=package), self.assertRaises(ValueError):
+                package_json(source, output, dependency_manifests=[manifest])
+            self.assertFalse(output.exists())
+        manifest.write_text('{"name":"shared","version":"1.0.0"}')
+        with self.assertRaisesRegex(ValueError, "Duplicate dependency"):
+            package_json(source, output, dependency_manifests=[manifest, manifest])
+        self.assertFalse(output.exists())
+        source.write_text('{"version":"1.0.0","dependencies":[]}')
+        with self.assertRaisesRegex(ValueError, "dependencies must be a JSON object"):
+            package_json(source, output, dependency_manifests=[manifest])
+        self.assertFalse(output.exists())
 
     def test_overlay_merges_dependencies_replaces_arrays_then_removes_fields(self):
         source, overlay, output = [self.root / name for name in ("package.json", "overlay.json", "result.json")]

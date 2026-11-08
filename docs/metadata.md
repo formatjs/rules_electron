@@ -14,6 +14,7 @@ electron_package_json(
     src = "package.json",
     version = "2.3.4-beta.1+build.7",
     extra_metadata = "release-metadata.json",
+    dependency_manifests = ["//packages/native:package_json"],
     remove_fields = ["devDependencies"],
     remove_scripts = True,
 )
@@ -27,6 +28,16 @@ not interpret dotted paths. `remove_scripts` then strips scripts. Explicit
 `version` wins over the merged version; the final version must be valid SemVer.
 Source manifests remain unchanged. Rewriting dependency metadata does not
 install or prune package files: declare those through app inputs.
+
+`dependency_manifests` accepts source or generated package JSON files. Each
+declares a nonempty `name` and exact SemVer `version`. Matching entries in
+`dependencies` and `optionalDependencies` receive that version after the overlay
+merge, before field removal. This converts workspace/file ranges into packaged
+versions from the same manifests shipped with the modules. Unknown production
+dependencies, duplicate names and invalid versions fail before writing output.
+Development-only dependencies are untouched. No package manager or lifecycle
+script runs. Native example uses `workspace:*` for its Bazel-built addon and
+checks the packaged exact version on each smoke host; validation is pending.
 
 The desktop smoke checks merged dependency metadata, injected release fields
 and removed development fields in the packaged ASAR.

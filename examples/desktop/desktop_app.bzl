@@ -9,6 +9,7 @@ def desktop_app(name, package_json, **kwargs):
     electron_package_json(
         name = name + "_package",
         src = package_json,
+        dependency_manifests = ["native-package/package.json"],
         extra_metadata = "release-metadata.json",
         remove_fields = ["devDependencies"],
         remove_scripts = True,

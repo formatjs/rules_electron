@@ -282,8 +282,16 @@ py_test(
 )
 
 electron_package_json(
+    name = "workspace_dependency",
+    src = "fixtures/workspace-package.json",
+    version = "4.5.6",
+)
+
+electron_package_json(
     name = "package_identity",
     src = "fixtures/package.json",
+    dependency_manifests = [":workspace_dependency"],
+    extra_metadata = "fixtures/workspace-overlay.json",
     version = "3.2.1-beta.2+build.7",
 )
 
