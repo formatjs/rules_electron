@@ -435,7 +435,11 @@ also verify equal output across changed source paths and mtimes.
 `3888599` adds 17 original platform generators and declared native gperf
 3.1.bcr.2. Its 26-generator dependency audit found zero foreign/CMake actions;
 387 CppCompile actions provide a positive control. Local analysis executed zero
-build actions. This expanded pipeline still awaits hosted validation.
+build actions. [Expanded components](https://formatjs.buildbuddy.io/invocation/e785ce31-c508-4289-8682-74c882a0d81c),
+[BCR consumer](https://formatjs.buildbuddy.io/invocation/6b4b6575-b6d1-4f25-927f-a2f452add7bb)
+and [cross probes](https://formatjs.buildbuddy.io/invocation/21c8bec0-ce34-4508-9318-393ad4b810e0)
+passed. The aggregate profile records all 26 generator actions, including native
+gperf generation; the full source suite reports the binding probe PASSED.
 
 Generated compilation headers now follow native C/C++ owners. Their selected
 set matches the pre-IDL profile; auxiliary testing headers stay outside unrelated

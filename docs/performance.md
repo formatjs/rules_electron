@@ -628,3 +628,13 @@ The shared compilation header list included new auxiliary testing headers.
 owners, retaining the exact pre-IDL header set. This removes those unrelated
 inputs from existing compile actions. Timing impact remains unmeasured; the
 expanded generator pipeline adds work of its own.
+
+The [3888599 source aggregate](https://formatjs.buildbuddy.io/invocation/0d383fd0-cb6b-4a40-92cf-c819f0f5cbd6)
+passed in 13.056 seconds with 33 tracked remote actions and 29.160 CPU seconds.
+Its verified profile records 26 ElectronPython actions, 15 CppCompile actions
+and one CppLink action. Generator cumulative time was 43.995 seconds; critical
+path was 7.799 seconds. The following [full suite](https://formatjs.buildbuddy.io/invocation/879a5861-748a-484b-8022-239e259bd320)
+passed in 3.904 seconds with zero tracked remote actions. The independent BCR
+suite took 53.371 seconds with zero tracked remote actions. These runs reuse
+caches and build different generator sets; they do not establish a controlled
+speedup over the earlier observation.
