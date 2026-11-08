@@ -319,6 +319,7 @@ def failed_action_diagnostics(identifier, key):
     public_headers = set(json.loads(Path(__file__).with_name("public_source_headers.json").read_text()))
     public_files = set(json.loads(Path(__file__).with_name("public_source_files.json").read_text()))
     public_identifiers = set(json.loads(Path(__file__).with_name("public_source_identifiers.json").read_text()))
+    public_basenames = {path.rsplit("/", 1)[-1] for path in public_files}
     for path in public_files:
         if path.endswith((".h", ".hpp", ".inc", ".inl")):
             parts = path.split("/")
@@ -358,9 +359,11 @@ def failed_action_diagnostics(identifier, key):
         # Only exact filenames already present in public source leave memory.
         log = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", log)
         missing = {name for name in re.findall(r"fatal error: ['\"]([^'\"\n]+)['\"] file not found", log) if name in public_headers}
-        missing_inputs = set()
+        missing_inputs, missing_basenames = set(), set()
         for path in re.findall(r"FileNotFoundError: [^\r\n]*?: [\"']([^\"'\r\n]{1,1000})[\"']", log):
             path = posixpath.normpath(path)
+            if posixpath.basename(path) in public_basenames:
+                missing_basenames.add(posixpath.basename(path))
             candidates = [path]
             for prefix in ("v8/", "third_party/", "gen/", "source/", "build/", "gpu/", "ui/", "cc/", "skia/", "electron/"):
                 if "/" + prefix in path:
@@ -411,7 +414,7 @@ def failed_action_diagnostics(identifier, key):
             known = next((name for name in candidates if name in public_files), None)
             if known and 0 < int(line) < 10000 and 0 < int(column) < 10000:
                 ts_sites.append({"file": known, "line": int(line), "column": int(column), "code": code})
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers, "public_missing_shared_libraries": missing_shared_libraries}, sort_keys=True))
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_missing_input_basenames": sorted(missing_basenames)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers, "public_missing_shared_libraries": missing_shared_libraries}, sort_keys=True))
 
 
 if __name__ == "__main__":
