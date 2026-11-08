@@ -52,4 +52,13 @@ remains separate from archive generation.
 
 The Linux example also builds `release_tar.tar.gz` on BB. Its native x64 smoke
 checks archive ownership/timestamps, extracts with Python's data filter, then
-runs the relocated app, native addon and ASAR checks. Validation is pending.
+runs the relocated app, native addon and ASAR checks. The
+[0e7c8dd cross-build](https://formatjs.buildbuddy.io/invocation/53c2f516-85fa-4662-94d3-bde44a3646e8)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42522746234)
+passed, including `TAR_RELEASE_SMOKE_OK` on Linux x64. Linux ARM64 remains
+cross-built without a native host.
+
+The [dfb15d7 assembly suite](https://formatjs.buildbuddy.io/invocation/ad07dce8-0c3b-472b-b498-a74fb3748cb8)
+also passed real ZIP and all four tar rule outputs, changed source paths/mtimes,
+compression boundaries, macOS signed bytes and framework links. This validates
+the compressors in the declared Python toolchain; no host archive tools run.

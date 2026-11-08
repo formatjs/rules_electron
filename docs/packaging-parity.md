@@ -22,7 +22,7 @@ electron-builder replacement.
 | OS registration | Linux desktop/MIME declarations; macOS URL types and native LaunchServices delivery; per-user Windows URI schemes, Open With/Default Apps file handlers and shortcut AppUserModelID | Richer document metadata/icons and verbs |
 | Installers | Linux DEB for amd64/arm64; per-user Windows NSIS with declared tools, independent installer/uninstaller icons and owned-file uninstall | RPM/AppImage, macOS disk images, Windows per-machine NSIS/MSIX and other packaging |
 | Prepackaged release stages | Public immutable app import for archives/installers; layout, CPU, packaged manifest and macOS identity validation; seven cross-build variants and four native hosts pass | Release signing APIs and signature trust policy |
-| Distribution archives | Public ZIP/tar/tar.gz/tar.xz/tar.bz2 rule, explicit compression, executable modes and relative symlinks; native macOS release ZIP smoke | 7z and other archive formats; native tar.gz release smoke |
+| Distribution archives | Public ZIP/tar/tar.gz/tar.xz/tar.bz2 rule, explicit compression, executable modes and relative symlinks; native macOS ZIP and Linux x64 tar.gz launch | 7z and other archive formats |
 | electron-updater | Generic config/manifests, SHA-512/size, content-defined external blockmaps, real client discovery/planning; Linux DEB and Windows NSIS lifecycle smoke; over 99% sample NSIS reuse on both CPUs | Other installed-app update targets, embedded AppImage maps, provider/publishing adapters |
 | Native smoke | Scripts/workflows for four native host types | Hosted results establish actual execution coverage |
 
