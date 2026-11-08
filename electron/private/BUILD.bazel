@@ -161,7 +161,7 @@ py_binary(
     srcs = ["linux.py"],
     main = "linux.py",
     visibility = ["//electron:__pkg__"],
-    deps = [":updates"],
+    deps = [":linux_packaging"],
 )
 
 py_library(
@@ -186,6 +186,7 @@ py_library(
     deps = [
         ":archives",
         ":asar",
+        ":file_mappings",
         ":identity",
     ],
 )

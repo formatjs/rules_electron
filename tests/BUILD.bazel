@@ -6,6 +6,7 @@ load("//electron:defs.bzl", "electron_app", "electron_runtime")
 load("//electron:files.bzl", "electron_files")
 load("//electron:linux.bzl", "electron_deb")
 load("//electron:metadata.bzl", "electron_package_json")
+load("//electron:prepackaged.bzl", "electron_prepackaged_app")
 load(":cross_build.bzl", "cross_build")
 load(":empty_tree.bzl", "empty_tree")
 load(":npm_lock_test.bzl", "npm_lock_test")
@@ -36,10 +37,19 @@ electron_app(
     runtime = ":runtime",
 )
 
+electron_prepackaged_app(
+    name = "empty_tree_import",
+    src = ":empty_tree_app",
+    app_id = "org.example.empty",
+    executable_name = "empty_tree_app",
+    package_json = "fixtures/package.json",
+    product_name = "empty_tree_app",
+)
+
 electron_deb(
     name = "empty_tree_deb",
     package_name = "empty-tree-fixture",
-    app = ":empty_tree_app",
+    app = ":empty_tree_import",
     depends = [],
     description = "Directory preservation fixture",
     maintainer = "Example <example@example.com>",
@@ -47,13 +57,13 @@ electron_deb(
 
 electron_archive(
     name = "empty_tree_zip",
-    app = ":empty_tree_app",
+    app = ":empty_tree_import",
     root_name = "sample",
 )
 
 electron_archive(
     name = "empty_tree_tar",
-    app = ":empty_tree_app",
+    app = ":empty_tree_import",
     format = "tar.gz",
     root_name = "sample",
 )

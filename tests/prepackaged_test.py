@@ -13,6 +13,19 @@ from electron.private.prepackaged import validate
 
 
 class PrepackagedTest(unittest.TestCase):
+    def test_directory_manifest_validates_without_rewriting_app(self):
+        app, binary = self.fixture()
+        before = binary.read_bytes()
+        manifest = self.root / "directories.json"
+        manifest.write_text(json.dumps(["resources/cache/empty"]))
+        self.check(app, directory_manifest=str(manifest))
+        self.assertFalse((app / "resources/cache/empty").exists())
+        self.assertEqual(binary.read_bytes(), before)
+        for paths in (["../escape"], ["sample"], ["sample/child"]):
+            manifest.write_text(json.dumps(paths))
+            with self.subTest(paths=paths), self.assertRaises(ValueError):
+                self.check(app, directory_manifest=str(manifest))
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

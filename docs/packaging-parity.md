@@ -11,7 +11,7 @@ electron-builder replacement.
 | Runtime dependencies | Public integrity-pinned npm v3 imports, production/platform selection, explicit Node-API package, target-built helper/addon | Package-provider adapters, bundled/workspace dependencies; Electron Node/V8 ABI toolchains |
 | ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity | Direct unpacked alias operations |
 | Extra resources/files | Declared file/tree mappings to resources or app content root, outside ASAR; normalized modes | Arbitrary resource-tree directory symlinks |
-| File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories | Prepackaged tree directory manifests; native empty-directory smoke results |
+| File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories, including prepackaged imports | Native empty-directory smoke results |
 | Manifest metadata | Declared deep-merge overlays, dependency version rewrites, top-level field/script removal; shared app/update identity | Package-provider-driven dependency rewrites |
 | Runtime locales | Explicit file mappings or non-macOS ZIP locale selection | Broader runtime-provider integration |
 | Fuses | Named v1 settings, including macOS framework mutation before ad hoc signing | Universal macOS binaries; availability depends on runtime wire |

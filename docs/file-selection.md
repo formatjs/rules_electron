@@ -40,8 +40,9 @@ where `file` is a declared JSON list of normalized tree-relative directory paths
 The manifest must be a separate output, outside the tree. `electron_files`
 propagates this metadata; app/ASAR rules consume it. App assembly also carries
 directory metadata into release ZIP/tar.gz archives and DEB/NSIS packaging.
-No marker files enter the app. Immutable prepackaged tree imports still need
-their own directory-manifest interface.
+No marker files enter the app. Prepackaged imports inherit metadata from app/tree
+providers; external imports can supply an explicit `directory_manifest` JSON
+file. Import validation checks paths and collisions without rewriting app bytes.
 
 The generic renderer bundle contains development fixtures; its filtered view
 excludes them. Native smoke checks both their absence and working renderer/IPC.

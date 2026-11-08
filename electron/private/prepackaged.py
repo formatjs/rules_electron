@@ -7,9 +7,10 @@ import re
 import struct
 import sys
 
-from electron.private.archive import inventory, relative
+from electron.private.archive import Entry, inventory, relative, validate as validate_inventory
 from electron.private.asar import read_header
 from electron.private.identity import build_identity
+from electron.private.files import read_directories
 
 
 def _resolve(name, lookup):
@@ -147,7 +148,7 @@ def _binary(stream, size, platform, cpu):
         raise ValueError("App executable CPU differs from target platform")
 
 
-def validate(source, package_json, platform, cpu, executable_name, product_name, app_id, build_version="", build_number=""):
+def validate(source, package_json, platform, cpu, executable_name, product_name, app_id, build_version="", build_number="", directory_manifest=""):
     relative(executable_name)
     if "/" in executable_name or cpu not in ("x86_64", "aarch64") or platform not in ("linux", "windows", "macos"):
         raise ValueError("Invalid imported app target or executable name")
@@ -156,6 +157,13 @@ def validate(source, package_json, platform, cpu, executable_name, product_name,
         raise ValueError("App manifest requires a package name")
     native_version = build_identity(expected.get("version"), build_version, build_number, platform)
     with inventory(Path(source), platform) as (entries, open_entry):
+        if directory_manifest:
+            for path in read_directories(directory_manifest):
+                name = str(path)
+                if name in entries and entries[name].kind != "directory":
+                    raise ValueError("Imported directory manifest collides with app file")
+                entries[name] = Entry("directory", 0o755)
+            validate_inventory(entries, platform)
         resources = "Contents/Resources" if platform == "macos" else "resources"
         asar, plain = resources + "/app.asar", resources + "/app/package.json"
         if asar in entries and plain in entries:
