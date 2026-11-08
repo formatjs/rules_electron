@@ -119071,6 +119071,7 @@
   "skia/ext/rgba_to_yuva.h",
   "skia/ext/skcolorspace_primaries.h",
   "skia/ext/skcolorspace_trfn.h",
+  "skia/ext/skia_commit_hash.h",
   "skia/ext/skia_histogram.h",
   "skia/ext/skia_memory_dump_provider.h",
   "skia/ext/skia_trace_memory_dump_impl.h",
