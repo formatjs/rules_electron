@@ -396,6 +396,7 @@
     "panic reaches original Rust crash site"
   ],
   "crabby_decode": [
+    "C API accepts declared AVIF memory",
     "C API allocates RGB output",
     "C API allocates conversion image",
     "C API allocates decoder objects",
@@ -407,11 +408,13 @@
     "declared AVIF fixture available",
     "declared PNG reference available",
     "decoded AVIF dimensions and depth match reference",
+    "decoded image remains decoder owned",
     "every decoded RGB byte matches independent lossless PNG",
     "generated libyuv binding matches source headers",
     "independent reference is original RGB8 image",
     "malformed AVIF returns an error across Rust FFI",
     "original Rust RGB conversion succeeds",
+    "original Rust decoder parses AVIF metadata",
     "original Rust decoder reads lossless AVIF through native dav1d",
     "original Rust image conversion succeeds",
     "red conversion has BT601 limited chroma",
