@@ -510,7 +510,7 @@ captures the original Electron executable, sandbox and crash handler. The origin
 default-app pipeline now declares 145 pinned npm packages, API/type generation,
 upstream TypeScript smoke checks, default-app compilation and ASAR generation.
 Node actions compare product bytes across isolated source paths and changed
-mtimes. These execution checks remain pending on BB.
+mtimes. Hosted execution was pending for this revision.
 
 The complete graph analyzes with 132,721 actions, including 67,499 CppCompile,
 330 CppLink and three ElectronNodeProject actions. All three program link actions
@@ -540,3 +540,18 @@ is now pushed. Source cross probes passed; consumer/components execution remains
 pending. The prior consumer reported 62 passing probes, including API features,
 WebUI resource contracts and original native generator checks. Those passes do
 not establish full executable linkage or default-app generation.
+
+The [3e670fc overlay](https://github.com/formatjs/electron/commit/3e670fc8a77446ddbdd024d8043b8177b5114173)
+pins 161 npm packages, including the upstream version helper's `chalk` and
+`dugite` imports. The independent
+[consumer preflight](https://formatjs.buildbuddy.io/invocation/f45b1c95-1ee5-4490-81fb-9ac9f96df5ae)
+passed `default_app:assets_test`: original API/type generation, upstream
+TypeScript smoke, default-app JavaScript compilation, ASAR generation and
+independent payload/integrity checks. Node actions compare bytes across isolated
+source paths and changed mtimes, with declared Python and empty `PATH`.
+
+Program staging now declares Python directly and normalizes the executable,
+sandbox and Crashpad filenames/modes. A separate GN catalog maps 73 runtime
+paths with real credit/version producers; static FFmpeg has no shared file.
+License scanner inputs, portable library layout, runtime assembly, full ELF
+linkage and native source-runtime launch remain open.
