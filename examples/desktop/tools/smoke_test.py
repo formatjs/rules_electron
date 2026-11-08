@@ -170,6 +170,8 @@ def _check_macos_protocol(app, environment, directory, target_arch):
                     raise RuntimeError("macOS protocol dispatch failed: " + json.dumps(details))
                 if process.wait(timeout=25):
                     raise RuntimeError("macOS protocol receiver failed")
+                log.seek(0)
+                assert b"EXAMPLE_ICON_SMOKE_OK" in log.read()
                 assert json.loads(report.read_text()) == {
                     "url": url, "platform": "darwin", "architecture": target_arch,
                 }
@@ -183,6 +185,7 @@ def _check_macos_protocol(app, environment, directory, target_arch):
                         process.wait()
     finally:
         subprocess.run([register, "-u", str(app)], check=True, capture_output=True, timeout=15)
+    print("EXAMPLE_ICON_SMOKE_OK")
     print("EXAMPLE_PROTOCOL_SMOKE_OK")
 
 
