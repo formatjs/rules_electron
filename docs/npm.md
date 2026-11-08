@@ -30,6 +30,10 @@ incompatible required packages fail. Use separate repositories and a target
 `select` when different triples need different trees. Universal script-free
 dependencies need no target attributes.
 
+Production selection follows npm's [lockfile flags](https://docs.npmjs.com/cli/v11/configuring-npm/package-lock-json#packages).
+The checked-in lock remains authoritative; regenerate it with npm when the
+dependency graph changes, then review its versions and integrity hashes.
+
 `strip_node_modules = False` retains the `node_modules/` prefix, useful for
 declared Node tools. The default exposes its contents for the app mapping above.
 Metadata rewriting remains separate: see [manifest overlays](metadata.md).
