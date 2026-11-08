@@ -52,8 +52,9 @@ def extract_runtime(archive, output, platform, exclude_files, occupied, language
         combined = set(entries) | set(occupied)
         if len(combined) != len(entries) + len(occupied):
             raise ValueError("Runtime and app destinations overlap")
-        for path in combined:
-            if any(parent in combined for parent in path.parents):
+        checked = {PurePosixPath(str(path).casefold()) for path in combined} if platform == "windows" else combined
+        for path in checked:
+            if any(parent in checked for parent in path.parents):
                 raise ValueError(f"Runtime file/directory collision: {path}")
         if platform == "windows" and len({str(p).casefold() for p in combined}) != len(combined):
             raise ValueError("Case-insensitive Windows destination collision")
@@ -112,7 +113,10 @@ def brand_macos(output, executable_name, product_name, app_id, version, asar_hea
     plist = output / "Contents/Info.plist"
     metadata = plistlib.loads(plist.read_bytes())
     executable = output / "Contents/MacOS" / metadata["CFBundleExecutable"]
-    executable.rename(executable.with_name(executable_name))
+    destination = executable.with_name(executable_name)
+    if destination != executable and destination.exists():
+        raise ValueError(f"Executable destination already occupied: {executable_name}")
+    executable.rename(destination)
     metadata.update(CFBundleExecutable=executable_name, CFBundleName=product_name,
                     CFBundleDisplayName=product_name, CFBundleIdentifier=app_id,
                     CFBundleShortVersionString=version, CFBundleVersion=build_version or version)

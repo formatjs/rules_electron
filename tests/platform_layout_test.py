@@ -101,6 +101,62 @@ class PlatformLayoutTest(unittest.TestCase):
             self.assertTrue(stat.S_ISLNK(info.external_attr >> 16))
             self.assertEqual(archive.read(info), b"Versions/Current/Foo")
 
+    def platform_runtime(self, platform):
+        if platform == "macos":
+            return self.macos_runtime()
+        runtime = self.root / (platform + ".zip")
+        with ZipFile(runtime, "w") as archive:
+            archive.writestr("electron.exe" if platform == "windows" else "electron", b"runtime")
+        return runtime
+
+    def test_extra_files_follow_content_root_and_stay_outside_asar(self):
+        notice = self.root / "notice.txt"
+        notice.write_bytes(b"Example notice\n")
+        tree = self.root / "support"
+        (tree / "nested").mkdir(parents=True)
+        tool = tree / "nested/tool"
+        tool.write_bytes(b"helper")
+        tool.chmod(0o751)
+        (tree / ".metadata").write_bytes(b"")
+        for platform in ("linux", "windows", "macos"):
+            with self.subTest(platform=platform):
+                resources = "Contents/Resources" if platform == "macos" else "resources"
+                output = self.root / (platform + "-app")
+                assemble(self.manifest(resources), output, platform=platform,
+                         runtime_archive=self.platform_runtime(platform), app_id="org.example.sample", asar=True,
+                         extra_files=[{"source": str(notice), "path": "licenses/NOTICE.txt"},
+                                      {"source": str(tree), "path": "support", "directory": True}])
+                relocated = self.root / (platform + "-relocated")
+                output.rename(relocated)
+                content = relocated / "Contents" if platform == "macos" else relocated
+                self.assertEqual((content / "licenses/NOTICE.txt").read_bytes(), b"Example notice\n")
+                self.assertEqual((content / "support/nested/tool").read_bytes(), b"helper")
+                self.assertEqual((content / "support/nested/tool").stat().st_mode & 0o777, 0o755)
+                self.assertEqual((content / "support/.metadata").stat().st_size, 0)
+                self.assertEqual((content / "licenses/NOTICE.txt").stat().st_mtime, 0)
+                archive = (relocated / resources / "app.asar").read_bytes()
+                length = struct.unpack_from("<I", archive, 12)[0]
+                self.assertEqual(set(json.loads(archive[16:16 + length])["files"]), {"main.cjs", "package.json"})
+
+    def test_extra_files_reject_app_and_runtime_collisions(self):
+        for platform in ("linux", "windows", "macos"):
+            resources = "Resources" if platform == "macos" else "resources"
+            app_resources = "Contents/Resources" if platform == "macos" else "resources"
+            runtime_binary = "MacOS/Electron" if platform == "macos" else "electron.exe" if platform == "windows" else "electron"
+            invalid = [resources + "/app/hidden.cjs", resources + "/app.asar",
+                       resources + "/app.asar.unpacked/addon.node", runtime_binary, "../escape"]
+            if platform == "windows":
+                invalid += ["Resources/App/hidden.cjs", "Electron.EXE", "ELECTRON.EXE/child"]
+            for index, path in enumerate(invalid):
+                with self.subTest(platform=platform, path=path), self.assertRaises(ValueError):
+                    assemble(self.manifest(app_resources), self.root / f"invalid-{platform}-{index}",
+                             platform=platform, runtime_archive=self.platform_runtime(platform), app_id="org.example.sample",
+                             extra_files=[{"source": str(self.main), "path": path}])
+        with self.assertRaisesRegex(ValueError, "Executable destination already occupied"):
+            assemble(self.manifest("Contents/Resources"), self.root / "occupied.app", platform="macos",
+                     runtime_archive=self.macos_runtime(), app_id="org.example.sample", executable_name="sample",
+                     extra_files=[{"source": str(self.main), "path": "MacOS/sample"}])
+
     def test_macos_protocols_brand_main_bundle_only(self):
         output = self.root / "protocol.app"
         assemble(self.manifest("Contents/Resources"), output, platform="macos",

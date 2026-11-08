@@ -53,7 +53,8 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              platform="linux", runtime_archive="", exclude_files=(),
              product_name="Electron", app_id="", runtime_languages=(),
              windows_resource_tool=None, windows_metadata=None,
-             build_version="", build_number="", macos_protocols=None, macos_protocol_roles=None):
+             build_version="", build_number="", macos_protocols=None, macos_protocol_roles=None,
+             extra_files=()):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
     if platform != "macos" and (macos_protocols or macos_protocol_roles):
@@ -72,16 +73,26 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         raise ValueError("asar_unpacked requires asar=True")
     if not asar and (fuses or {}).get("onlyLoadAppFromAsar") == "on":
         raise ValueError("onlyLoadAppFromAsar requires asar=True")
+    expanded = list(_expand(entries))
+    for entry in _expand(extra_files):
+        path = relative_path(("Contents/" if platform == "macos" else "") + entry["path"])
+        checked = PurePosixPath(str(path).casefold()) if platform == "windows" else path
+        if any(checked.is_relative_to(resources + "/" + name) for name in ("app", "app.asar", "app.asar.unpacked")):
+            raise ValueError(f"Extra file occupies app destination: {path}")
+        expanded.append(dict(entry, path=str(path)))
     paths = {}
-    for entry in _expand(entries):
+    for entry in expanded:
         path = relative_path(entry["path"])
         if path.is_relative_to(resources + "/app.asar") or path.is_relative_to(resources + "/app.asar.unpacked"):
             raise ValueError("Runtime app.asar would shadow resources/app")
         if path in paths:
             raise ValueError(f"Duplicate destination: {path}")
         paths[path] = entry
-    for path in paths:
-        if any(parent in paths for parent in path.parents):
+    checked_paths = {PurePosixPath(str(path).casefold()) for path in paths} if platform == "windows" else paths
+    if len(checked_paths) != len(paths):
+        raise ValueError("Case-insensitive Windows destination collision")
+    for path in checked_paths:
+        if any(parent in checked_paths for parent in path.parents):
             raise ValueError(f"File/directory collision: {path}")
 
     package_path = PurePosixPath(resources + "/app/package.json")

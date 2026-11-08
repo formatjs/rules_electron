@@ -57,8 +57,10 @@ Setuid sandbox installation is outside this directory format.
 
 Set `asar = True` for deterministic `resources/app.asar`; `asar_unpacked` lists
 exact app-relative files stored alongside it. `extra_resources` maps files or
-trees beneath `resources/`, outside the app archive. Set `remove_package_scripts`
-to drop development scripts from the packaged manifest. No implicit file filtering
+trees beneath `resources/`, outside the app archive. `extra_files` maps files or
+trees beneath the distribution root, or `Contents/` on macOS; see
+[file mappings](docs/file-mappings.md). Set `remove_package_scripts` to drop
+development scripts from the packaged manifest. No implicit file filtering
 or native-addon rebuilds occur.
 
 V1 `fuses` accepts `"on"`/`"off"` for `runAsNode`, `enableCookieEncryption`,

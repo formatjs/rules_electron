@@ -27,6 +27,7 @@ def desktop_app(name, package_json, **kwargs):
         asar = True,
         asar_unpacked = ["node_modules/example-native/addon.node"],
         executable_name = "sample-desktop",
+        extra_files = {"resources/NOTICE.txt": "licenses/NOTICE.txt"},
         extra_resources = select({
             ":windows": {
                 ":helper": "native/helper.exe",

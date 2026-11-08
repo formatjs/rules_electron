@@ -115,6 +115,7 @@ electron_runtime(
 electron_app(
     name = "app",
     srcs = {"fixtures/main.js": "main.js"},
+    extra_files = {"fixtures/notice.txt": "licenses/NOTICE.txt"},
     package_json = "fixtures/package.json",
     runtime = ":runtime",
     target_compatible_with = ["@platforms//os:linux"],

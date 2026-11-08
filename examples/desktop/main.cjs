@@ -87,6 +87,8 @@ app.whenReady().then(async () => {
         helper: 'native helper ready',
       });
       assert.equal(app.isPackaged, true);
+      assert.equal(fs.readFileSync(path.join(path.dirname(process.resourcesPath), 'licenses/NOTICE.txt'), 'utf8'),
+        'Generic desktop example notice.\n');
       assert.ok(app.getAppPath().endsWith('app.asar'));
       assert.equal(require('./package.json').scripts, undefined);
       const environment = await window.webContents.executeJavaScript('({node: typeof require, bridge: typeof window.desktop.read, ...window.desktop.environment})');
