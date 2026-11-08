@@ -570,6 +570,28 @@ passed in 51.183 seconds with nine tracked executions, 4.692 CPU seconds,
 caches. These workspace-specific observations prove passing behavior and record
 resources; they do not establish a cold baseline or speedup.
 
+## Compositor profile baseline
+
+The [35dcc40 source workflow](https://formatjs.buildbuddy.io/invocation/d00e04bc-bdc4-4c55-865c-765b54c905ab)
+and [BCR consumer](https://formatjs.buildbuddy.io/invocation/50d7daa2-1f3d-4806-9e53-2201eeadddac)
+passed with the 6,341-unit source/object profile. BB now saves separate graphics,
+aggregate, full-suite and consumer traces. The collector verifies artifact digests
+and exports fixed timing categories and action mnemonics.
+
+| Phase | Trace span (s) | Critical path (s) | Cache checks, cumulative (s) |
+| --- | ---: | ---: | ---: |
+| Initial graphics check | 63.629 | 1.216 | 3.748 |
+| Source aggregate | 10.395 | 0.363 | 0.515 |
+| Full source suite | 4.096 | 0.422 | 2.039 |
+| Independent BCR consumer | 48.389 | 1.960 | 1.105 |
+
+Cumulative categories overlap and are not elapsed phase times. These runs reuse
+caches; they establish neither a cold baseline nor a controlled speedup. The
+initial command and independent consumer cost much more than their action
+critical paths. Measure frontend/driver overhead before changing source coverage
+or compiler configuration. Earlier 164.160-second aggregate observations lack
+comparable traces and cannot establish the cause of that difference.
+
 ## Next measurements
 
 Repeat the same target set and product inputs with explicit cold/warm cache

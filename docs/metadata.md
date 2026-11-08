@@ -45,3 +45,7 @@ passed on Linux x64, macOS ARM64 and Windows x64/ARM64. It checks app/helper pli
 build versions, PE version strings, DEB revision 7 and installed update flows.
 Manifest tests verify override SemVer reaches both the assembled app and feed,
 including prerelease/build metadata; invalid inputs fail before output.
+
+[cdb98d6 validation](https://github.com/formatjs/rules_electron/actions/runs/42438901602)
+also checks numeric PE FileVersion/ProductVersion words on both Windows CPUs
+and compiler variants. All four matching native host jobs passed.
