@@ -100,6 +100,7 @@ def classify(log):
         "BLINK_CORE_TEST": r"check failed: blink_core ",
         "BLINK_MODULES_TEST": r"check failed: blink_modules ",
         "LLGUIDANCE_TEST": r"check failed: llguidance ",
+        "CONTENT_METADATA_TEST": r"(?:FAIL|ERROR): test_(?:version_header_matches_source_metadata|git_revision_uses_original_gn_truncation)",
         "DEVTOOLS_RESOURCES_TEST": r"(?:FAIL|ERROR): test_(?:locale_collects_strings_from_multiple_frontend_directories|html_boots_actual_devtools_entrypoint|workspace_identity_uses_declared_source_root)",
         "BLINK_BINDINGS_TEST": r"check failed: blink_bindings ",
         "CRABBY_DECODE_TEST": r"check failed: crabby_decode ",
@@ -253,6 +254,7 @@ def source_test_diagnostics(identifier, key, selected=None):
         "//source/blink_modules:modules_test": "blink_modules",
         "//source/content_rust:llguidance_test": "llguidance",
         "//source/devtools:resources_test": "devtools_resources",
+        "//source/content_metadata:metadata_test": "content_metadata",
         "//source/blink_bindings:bindings_test": "blink_bindings",
         "//source/crabbyavif:decode_test": "crabby_decode",
         "//source/blink_rust:font_format_test": "blink_font",
@@ -493,4 +495,4 @@ if __name__ == "__main__":
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
         elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
-            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "llguidance", "crabby_decode"})
+            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "llguidance", "crabby_decode"})
