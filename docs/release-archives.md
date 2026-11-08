@@ -1,6 +1,6 @@
 # Release archives
 
-`electron_archive` produces a ZIP or tar.gz from an `electron_app`. Compilation,
+`electron_archive` produces ZIP, tar, tar.gz, tar.xz or tar.bz2 from an `electron_app`. Compilation,
 assembly and signing finish before archival. The action uses the declared Python
 execution toolchain; it never runs target binaries or discovers host utilities.
 
@@ -10,19 +10,21 @@ load("@rules_electron//electron:archive.bzl", "electron_archive")
 electron_archive(
     name = "release",
     app = ":app",
-    format = "zip",  # or tar.gz
+    format = "zip",  # tar, tar.gz, tar.xz and tar.bz2 also supported
     compression_level = 6,
 )
 ```
 
-The output is `release.zip` or `release.tar.gz`. Both contain one top-level
+The output uses the selected format's extension. Each contains one top-level
 directory: `executable_name` on Linux/Windows, `product_name.app` on macOS.
 `root_name` overrides that directory; macOS names must end in `.app`. It does
 not change the bundle's internal identity.
 
-Compression levels range from 0 through 9. ZIP level 0 stores entries; tar.gz
-level 0 retains gzip framing without compression. Level 1 favors packaging time;
-level 9 favors size. Choose from measured costs for the consuming application.
+Compression levels range from 0 through 9; tar.bz2 requires 1 through 9. ZIP level
+0 stores entries; tar.gz level 0 retains gzip framing without compression. XZ uses
+the matching LZMA preset and CRC64. Plain tar ignores the compression level.
+Compressors come from the declared Python toolchain. Level 1 favors packaging
+time; level 9 favors size. Choose from measured costs for the consuming application.
 
 Entries have stable ordering, normalized modes, fixed timestamps and no host
 ownership metadata. Executables retain 0755, regular data 0644, directories 0755

@@ -4,13 +4,15 @@ load(":defs.bzl", "ElectronAppInfo")
 
 def _impl(ctx):
     app = ctx.attr.app[ElectronAppInfo]
-    extension = {"zip": ".zip", "tar.gz": ".tar.gz"}[ctx.attr.format]
+    extension = "." + ctx.attr.format
     output = ctx.actions.declare_file(ctx.label.name + extension)
     root = ctx.attr.root_name or (app.product_name + ".app" if app.platform == "macos" else app.executable_name)
     if app.platform == "macos" and not root.endswith(".app"):
         fail("macOS archive root_name must end in .app")
     if ctx.attr.compression_level < 0 or ctx.attr.compression_level > 9:
         fail("compression_level must be between 0 and 9")
+    if ctx.attr.format == "tar.bz2" and ctx.attr.compression_level == 0:
+        fail("tar.bz2 compression_level must be between 1 and 9")
     manifest = ctx.actions.declare_file(ctx.label.name + ".json")
     directories = getattr(app, "directory_manifest", None)
     ctx.actions.write(manifest, json.encode({
@@ -35,9 +37,9 @@ electron_archive = rule(
     implementation = _impl,
     attrs = {
         "app": attr.label(mandatory = True, providers = [ElectronAppInfo]),
-        "format": attr.string(default = "zip", values = ["zip", "tar.gz"]),
+        "format": attr.string(default = "zip", values = ["zip", "tar", "tar.gz", "tar.xz", "tar.bz2"]),
         "root_name": attr.string(doc = "Single top-level directory; defaults to executable_name or product_name.app."),
-        "compression_level": attr.int(default = 6, doc = "0 through 9; ZIP level 0 stores entries."),
+        "compression_level": attr.int(default = 6, doc = "0 through 9; tar.bz2 requires 1 through 9. Ignored for plain tar. ZIP level 0 stores entries."),
         "_archive": attr.label(default = Label("//electron/private:release_archive"), executable = True, cfg = "exec"),
     },
     doc = "Archive app bytes without executing target code; retain executable modes and relative symlinks.",

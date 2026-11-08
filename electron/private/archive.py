@@ -1,9 +1,11 @@
 """Stream app files into reproducible release archives without extracting ZIPs."""
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
+import bz2
 import gzip
 import json
+import lzma
 import os
 from pathlib import Path, PurePosixPath
 import shutil
@@ -137,8 +139,10 @@ def create_archive(source, platform, root_name, format, compression_level, outpu
         raise ValueError("Expected one archive root and a supported platform")
     if platform == "macos" and not root_name.endswith(".app"):
         raise ValueError("macOS archive root must end in .app")
-    if format not in ("zip", "tar.gz") or not 0 <= compression_level <= 9:
+    if format not in ("zip", "tar", "tar.gz", "tar.xz", "tar.bz2") or not 0 <= compression_level <= 9:
         raise ValueError("Invalid archive format or compression level")
+    if format == "tar.bz2" and compression_level == 0:
+        raise ValueError("tar.bz2 compression level must be between 1 and 9")
     with inventory(Path(source), platform) as (entries, open_entry):
         if directory_manifest:
             for path in read_directories(directory_manifest):
@@ -163,8 +167,16 @@ def create_archive(source, platform, root_name, format, compression_level, outpu
                     else:
                         archive.writestr(info, entry.target.encode("utf-8") if entry.kind == "symlink" else b"")
         else:
-            with Path(output).open("wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0, compresslevel=compression_level) as compressed:
-                with tarfile.open(fileobj=compressed, mode="w|", format=tarfile.PAX_FORMAT) as archive:
+            with Path(output).open("wb") as raw:
+                if format == "tar.gz":
+                    stream = gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0, compresslevel=compression_level)
+                elif format == "tar.xz":
+                    stream = lzma.LZMAFile(raw, mode="w", format=lzma.FORMAT_XZ, check=lzma.CHECK_CRC64, preset=compression_level)
+                elif format == "tar.bz2":
+                    stream = bz2.BZ2File(raw, mode="w", compresslevel=compression_level)
+                else:
+                    stream = nullcontext(raw)
+                with stream as compressed, tarfile.open(fileobj=compressed, mode="w|", format=tarfile.PAX_FORMAT) as archive:
                     for name, entry in members:
                         info = tarfile.TarInfo(name)
                         info.mode = entry.mode

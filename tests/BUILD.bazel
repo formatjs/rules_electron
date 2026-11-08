@@ -179,6 +179,16 @@ electron_archive(
     format = "tar.gz",
 )
 
+[electron_archive(
+    name = name,
+    app = ":app",
+    format = format,
+) for name, format in [
+    ("release_xz", "tar.xz"),
+    ("release_bz2", "tar.bz2"),
+    ("release_tar_plain", "tar"),
+]]
+
 py_test(
     name = "archive_test",
     size = "small",
@@ -186,9 +196,15 @@ py_test(
     args = [
         "$(rootpath :release_zip)",
         "$(rootpath :release_tar)",
+        "$(rootpath :release_xz)",
+        "$(rootpath :release_bz2)",
+        "$(rootpath :release_tar_plain)",
     ],
     data = [
+        ":release_bz2",
         ":release_tar",
+        ":release_tar_plain",
+        ":release_xz",
         ":release_zip",
     ],
     target_compatible_with = ["@platforms//os:linux"],

@@ -36,8 +36,8 @@ class ArchiveTest(unittest.TestCase):
         return output
 
     def test_tree_modes_bytes_links_and_reproducibility(self):
-        for format in ("zip", "tar.gz"):
-            for level in (0, 9):
+        for format in ("zip", "tar", "tar.gz", "tar.xz", "tar.bz2"):
+            for level in ((1, 9) if format == "tar.bz2" else (0, 9)):
                 with self.subTest(format=format, level=level):
                     first = self.archive(format, level=level)
                     relocated = self.root / f"other-{format}-{level}"
@@ -86,7 +86,7 @@ class ArchiveTest(unittest.TestCase):
         ]
         source = self.mac_input(entries)
         reverse = self.mac_input(list(reversed(entries)), name="reordered")
-        for format in ("zip", "tar.gz"):
+        for format in ("zip", "tar", "tar.gz", "tar.xz", "tar.bz2"):
             output = self.archive(format, source=source, platform="macos", root_name="Sample.app")
             repeat = self.archive(format, source=reverse, platform="macos", root_name="Sample.app", name="repeat")
             self.assertEqual(output.read_bytes(), repeat.read_bytes())
@@ -102,6 +102,9 @@ class ArchiveTest(unittest.TestCase):
                     self.assertEqual(archive.extractfile("Sample.app/Contents/_CodeSignature/CodeResources").read(), b"signed resource manifest")
 
     def test_invalid_archive_graphs_fail(self):
+        for format, level in [("7z", 6), ("zip", -1), ("tar.xz", 10), ("tar.bz2", 0)]:
+            with self.subTest(format=format, level=level), self.assertRaises(ValueError):
+                self.archive(format, level=level)
         for target in ("/outside", "../outside", "missing", "link", "C:/outside", "empty/../../outside", "sample/../resource 世界"):
             (self.app / "link").unlink()
             (self.app / "link").symlink_to(target)
@@ -129,14 +132,15 @@ class ArchiveTest(unittest.TestCase):
             self.assertEqual(archive.read("Sample 世界/relative"), b"alias/../data")
 
     def test_bazel_rule_outputs_contain_actual_app(self):
-        self.assertEqual(len(RULE_OUTPUTS), 2, "Expected ZIP and tar.gz rule outputs")
+        self.assertEqual(len(RULE_OUTPUTS), 5, "Expected ZIP and four tar rule outputs")
         with ZipFile(RULE_OUTPUTS[0]) as archive:
             self.assertEqual(archive.read("electron/electron")[:4], b"\x7fELF")
             self.assertTrue(archive.getinfo("electron/electron").external_attr >> 16 & 0o111)
             self.assertEqual(json.loads(archive.read("electron/resources/app/package.json"))["name"], "packaging-fixture")
-        with tarfile.open(RULE_OUTPUTS[1]) as archive:
-            self.assertEqual(archive.extractfile("electron/electron").read()[:4], b"\x7fELF")
-            self.assertEqual(archive.extractfile("electron/icudtl.dat").read(), b"Packaging fixture data; not real ICU data.\n")
+        for output in RULE_OUTPUTS[1:]:
+            with self.subTest(output=Path(output).suffix), tarfile.open(output) as archive:
+                self.assertEqual(archive.extractfile("electron/electron").read()[:4], b"\x7fELF")
+                self.assertEqual(archive.extractfile("electron/icudtl.dat").read(), b"Packaging fixture data; not real ICU data.\n")
 
 
 if __name__ == "__main__":
