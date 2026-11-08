@@ -381,6 +381,7 @@ def source_test_diagnostics(identifier, key, selected=None):
 def failed_action_diagnostics(identifier, key):
     public_headers = set(json.loads(Path(__file__).with_name("public_source_headers.json").read_text()))
     public_files = set(json.loads(Path(__file__).with_name("public_source_files.json").read_text()))
+    public_node_packages = set(json.loads(Path(__file__).with_name("public_node_packages.json").read_text()))
     public_identifiers = set(json.loads(Path(__file__).with_name("public_source_identifiers.json").read_text()))
     public_basenames = {path.rsplit("/", 1)[-1] for path in public_files}
     for path in public_files:
@@ -448,6 +449,8 @@ def failed_action_diagnostics(identifier, key):
         missing_modules = set()
         for path in re.findall(r"(?:Cannot find (?:module|package)|Could not resolve entry module) ['\"]([^'\"\r\n]{1,1000})['\"]", log):
             path = posixpath.normpath(path.replace("\\", "/"))
+            if path in public_node_packages:
+                missing_modules.add(path)
             parts = path.split("/")
             missing_modules.update(name for name in ("/".join(parts[index:]) for index in range(len(parts))) if name in public_files)
         nonreproducible = []

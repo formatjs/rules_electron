@@ -57,5 +57,7 @@ retains normalized `0755` executable modes for user-namespace sandboxing.
 
 Example DEBs enable this option. Installed v1/v2 smoke checks helper ownership
 and mode, clears host sandbox overrides, and launches with
-`--disable-namespace-sandbox` to exercise Chromium's setuid fallback. Validation
-is pending. Distribution-specific confinement, RPM and AppImage remain open.
+`--disable-namespace-sandbox` to exercise Chromium's setuid fallback. Both versions,
+installed updater and purge passed on the native Linux x64 host for
+[255731d](https://github.com/formatjs/rules_electron/actions/runs/42520835627/job/128853879770).
+Distribution-specific confinement, RPM and AppImage remain open.
