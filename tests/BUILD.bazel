@@ -231,3 +231,10 @@ py_test(
         "//electron/private:updates",
     ],
 )
+
+py_test(
+    name = "prepackaged_test",
+    size = "small",
+    srcs = ["prepackaged_test.py"],
+    deps = ["//electron/private:prepackaged"],
+)

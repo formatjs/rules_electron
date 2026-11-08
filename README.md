@@ -133,3 +133,7 @@ supported; release signing and other installer formats remain pending.
 App version overrides and build iterations: [identity contract](docs/metadata.md).
 Integrity-pinned npm inputs: [npm runtime trees](docs/npm.md).
 macOS entitlement/hardening inputs: [signing settings](docs/macos-signing.md).
+
+`electron_prepackaged_app` imports immutable app trees/macOS ZIPs for release
+packaging, validating target CPU and packaged identity. See
+[prepackaged apps](docs/prepackaged.md) for validation and signature scope.

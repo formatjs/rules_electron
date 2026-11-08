@@ -2,6 +2,7 @@
 
 load("@rules_electron//electron:defs.bzl", "electron_app")
 load("@rules_electron//electron:metadata.bzl", "electron_package_json")
+load("@rules_electron//electron:prepackaged.bzl", "electron_prepackaged_app")
 
 def desktop_app(name, package_json, **kwargs):
     """Assemble the generic sample with the requested app manifest."""
@@ -13,7 +14,7 @@ def desktop_app(name, package_json, **kwargs):
         remove_scripts = True,
     )
     electron_app(
-        name = name,
+        name = name + "_assembled",
         srcs = {
             "main.cjs": "main.cjs",
             "preload.cjs": "preload.cjs",
@@ -117,5 +118,15 @@ def desktop_app(name, package_json, **kwargs):
         product_name = "Sample Desktop",
         remove_package_scripts = True,
         runtime = ":runtime",
+        **kwargs
+    )
+    electron_prepackaged_app(
+        name = name,
+        src = ":" + name + "_assembled",
+        package_json = ":" + name + "_package",
+        executable_name = "sample-desktop",
+        product_name = "Sample Desktop",
+        app_id = "org.example.sample-desktop",
+        build_number = "7",
         **kwargs
     )

@@ -173,3 +173,22 @@ py_binary(
     visibility = ["//electron:__pkg__"],
     deps = [":identity"],
 )
+
+py_library(
+    name = "prepackaged",
+    srcs = ["prepackaged.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        ":archives",
+        ":asar",
+        ":identity",
+    ],
+)
+
+py_binary(
+    name = "prepackaged_validator",
+    srcs = ["prepackaged.py"],
+    main = "prepackaged.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":prepackaged"],
+)

@@ -78,19 +78,25 @@ def create_archive(files, destination, unpacked=(), symlinks=None):
     return hashlib.sha256(encoded).hexdigest()
 
 
+def read_header(archive, size):
+    """Read a framed ASAR index; return document, raw JSON and data offset."""
+    prefix = archive.read(16)
+    if len(prefix) != 16:
+        raise ValueError("Truncated ASAR header")
+    size_size, header_size, payload_size, json_size = struct.unpack("<IIII", prefix)
+    if (size_size != 4 or header_size != payload_size + 4 or payload_size % 4
+            or not 0 <= payload_size - 4 - json_size <= 3 or header_size + 8 > size):
+        raise ValueError("Invalid ASAR header framing")
+    raw = archive.read(json_size)
+    document = json.loads(raw)
+    if len(raw) != json_size or not isinstance(document, dict) or not isinstance(document.get("files"), dict):
+        raise ValueError("Invalid ASAR file index")
+    return document, raw, header_size + 8
+
+
 def header_hash(path):
     """Hash only the framed archive's raw JSON header."""
     path = Path(path)
     with path.open("rb") as archive:
-        prefix = archive.read(16)
-        if len(prefix) != 16:
-            raise ValueError("Truncated ASAR header")
-        size_size, header_size, payload_size, json_size = struct.unpack("<IIII", prefix)
-        if (size_size != 4 or header_size != payload_size + 4 or payload_size % 4
-                or not 0 <= payload_size - 4 - json_size <= 3 or header_size + 8 > path.stat().st_size):
-            raise ValueError("Invalid ASAR header framing")
-        raw = archive.read(json_size)
-        document = json.loads(raw)
-        if len(raw) != json_size or not isinstance(document, dict) or not isinstance(document.get("files"), dict):
-            raise ValueError("Invalid ASAR file index")
+        _, raw, _ = read_header(archive, path.stat().st_size)
     return hashlib.sha256(raw).hexdigest()
