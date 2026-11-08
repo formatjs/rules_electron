@@ -518,5 +518,8 @@ if __name__ == "__main__":
         if value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and not value.get("success"):
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
+        elif status == "running" and any(name in classify(log) for name in ("TEST_FAILED", "BUILD_FAILED", "FATAL_ERROR")):
+            failed_action_diagnostics(identifier, key)
+            source_test_diagnostics(identifier, key)
         elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
             source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "source_action", "llguidance", "crabby_decode"})
