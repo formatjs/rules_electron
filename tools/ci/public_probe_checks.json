@@ -458,5 +458,19 @@
     "closed stream emits EOF",
     "incomplete tag waits for input",
     "split attribute continues without losing tokenizer state"
+  ],
+  "blink_modules": [
+    "declared ICU data available",
+    "native feature list initializes",
+    "pinned ICU data opens",
+    "source ICU initializes with declared data",
+    "WebSocket token accepts dots",
+    "WebSocket token accepts permitted punctuation",
+    "WebSocket token rejects empty strings and separators",
+    "WebSocket token rejects non-ASCII code points",
+    "WebSocket error text escapes Unicode",
+    "WebSocket error text escapes backslashes and controls",
+    "WebSocket protocol header joins in order",
+    "WebSocket empty protocol list stays empty"
   ]
 }

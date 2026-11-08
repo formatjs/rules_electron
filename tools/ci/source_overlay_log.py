@@ -96,6 +96,7 @@ def classify(log):
         "MEDIA_RUNTIME_TEST": r"check failed: media_runtime ",
         "BLINK_PLATFORM_TEST": r"check failed: blink_platform ",
         "BLINK_CORE_TEST": r"check failed: blink_core ",
+        "BLINK_MODULES_TEST": r"check failed: blink_modules ",
         "BLINK_BINDINGS_TEST": r"check failed: blink_bindings ",
         "CRABBY_DECODE_TEST": r"check failed: crabby_decode ",
         "BLINK_FONT_TEST": r"check failed: blink_font ",
@@ -245,6 +246,7 @@ def source_test_diagnostics(identifier, key, selected=None):
         "//source/compositor:compositor_test": "compositor",
         "//source/blink_platform:platform_test": "blink_platform",
         "//source/blink_core:core_test": "blink_core",
+        "//source/blink_modules:modules_test": "blink_modules",
         "//source/blink_bindings:bindings_test": "blink_bindings",
         "//source/crabbyavif:decode_test": "crabby_decode",
         "//source/blink_rust:font_format_test": "blink_font",
@@ -312,7 +314,7 @@ def source_test_diagnostics(identifier, key, selected=None):
                     # Only public source basenames and bounded line numbers leave memory.
                     sites = ["partition_root.h", "partition_root.cc", "partition_alloc.cc", "partition_address_space.h", "partition_address_space.cc", "allocator_shim_default_dispatch_to_partition_alloc.cc", "partition_bucket.cc", "slot_span_metadata.h", "check.h", "thread_cache.cc", "pkey.cc"]
                     details["public_check_sites"] = [{"file": name, "line": int(line)} for name in sites for line in re.findall(r"(?:^|[/\s\[:])" + re.escape(name) + r"[:(]([0-9]{1,4})(?::|\]|\s|\))", log) if 0 < int(line) < 5000][:8]
-                if probe in ("partition_alloc", "libnode", "embedder", "ipcz", "network", "mojo", "fonts", "codecs", "skia", "gfx", "display", "events", "ui", "ui_webui", "platform_graphics", "gpu_transport", "symphonia", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "crabby_decode"):
+                if probe in ("partition_alloc", "libnode", "embedder", "ipcz", "network", "mojo", "fonts", "codecs", "skia", "gfx", "display", "events", "ui", "ui_webui", "platform_graphics", "gpu_transport", "symphonia", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "crabby_decode"):
                     prefix = "patched libnode" if probe == "libnode" else "PartitionAlloc" if probe == "partition_alloc" else probe
                     details["failed_checks"] = [message for message in public_checks.get(probe, []) if "check failed: " + prefix + " " + message + "\n" in log]
                     details["stages"] = [stage for stage in ["entry", "versions", "invalid", "decode", "png", "pixels", "rgb_freed", "image_freed", "conversion", "atomic", "icu", "i18n", "snapshot", "node", "gin", "platform", "isolate", "modules", "integrity", "callback", "gc", "loop", "shutdown", "done"] if probe + " probe stage: " + stage + "\n" in log]
@@ -478,4 +480,4 @@ if __name__ == "__main__":
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
         elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
-            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "crabby_decode"})
+            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "crabby_decode"})
