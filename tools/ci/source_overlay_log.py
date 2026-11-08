@@ -371,6 +371,9 @@ def failed_action_diagnostics(identifier, key):
             parts = path.split("/")
             candidates.extend("/".join(parts[index:]) for index in range(len(parts)))
             missing_inputs.update(name for name in candidates if name in public_files)
+        for line in log.splitlines():
+            if "FileNotFound" in line:
+                missing_basenames.update(name for name in re.findall(r"[A-Za-z0-9_.+-]+\.[A-Za-z0-9]+", line) if name in public_basenames)
         nonreproducible = []
         for script, outputs in re.findall(r"Generator output differs across source paths and mtimes: ([^;\r\n]+); ([^\r\n]+)", log):
             if script in public_files:
