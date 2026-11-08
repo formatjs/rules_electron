@@ -204,6 +204,14 @@ def classify(log):
 
 def source_test_diagnostics(identifier, key, selected=None):
     probes = {
+        "//:loop_consumer_test": "loop_consumer",
+        "//source:loop_interrupt_test": "loop_interrupt",
+        "//source:crypto_compat_test": "crypto_compat",
+        "//source:fuses_test": "fuses",
+        "//source:node_defines_test": "node_defines",
+        "//source:v8_tasks_test": "v8_tasks",
+        "//tests:electron_bundles_test": "electron_bundles",
+        "//tests:node_builtins_test": "node_builtins",
         "//source:node_dependencies_test": "node_dependencies",
         "//tests:v8_torque_test": "torque",
         "//source:v8_bytecodes_test": "bytecodes",
