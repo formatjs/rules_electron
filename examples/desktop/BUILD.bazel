@@ -228,6 +228,10 @@ electron_nsis_tool(
         name = name,
         app = app,
         desktop_shortcut = True,
+        file_associations = {
+            ".rules-electron-sample": "Sample Document",
+            ".rules-electron-cleanup": "Sample Cleanup Document",
+        },
         protocols = ["sample-desktop"],
         target_compatible_with = ["@platforms//os:windows"],
         tool = ":nsis_tool",

@@ -71,6 +71,20 @@ class NsisTest(unittest.TestCase):
                 "compiler": str(self.root / "unavailable"), "data": str(self.root), "architecture": "x64",
             }, self.root / "setup.exe", self.root / "setup.nsi")
 
+    def test_file_association_inputs_reject_registry_and_script_injection(self):
+        for associations in [
+            {"sample": "Document"}, {".Sample": "Document"}, {".sample\\shell": "Document"},
+            {".sample.other": "Document"}, {".sample": ""}, {".sample": "${NSISDIR}"},
+            {".sample": "line\nbreak"},
+        ]:
+            with self.subTest(associations=associations), self.assertRaises(ValueError):
+                self.render(file_associations=associations)
+
+    def test_file_association_order_is_deterministic(self):
+        first = self.render(file_associations={".second": "Second", ".first": "First"})
+        second = self.render(file_associations={".first": "First", ".second": "Second"})
+        self.assertEqual(first, second)
+
 
 if __name__ == "__main__":
     unittest.main()

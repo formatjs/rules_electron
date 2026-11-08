@@ -20,6 +20,9 @@ import winreg
 APP_ID = "org.example.sample-desktop"
 REGISTRY = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" + APP_ID
 PROTOCOL = r"Software\Classes\sample-desktop"
+EXTENSIONS = [".rules-electron-sample", ".rules-electron-cleanup"]
+CAPABILITIES = "Software\\" + APP_ID + "\\Capabilities"
+REGISTERED_APPS = r"Software\RegisteredApplications"
 
 
 def registry_value(key, name):
@@ -36,6 +39,30 @@ def registry_exists(key):
             return True
     except FileNotFoundError:
         return False
+
+
+def file_handlers(executable):
+    assert registry_value(REGISTERED_APPS, APP_ID) == CAPABILITIES
+    query = ctypes.windll.shlwapi.AssocQueryStringW
+    query.argtypes = [ctypes.c_uint, ctypes.c_uint, ctypes.c_wchar_p, ctypes.c_wchar_p,
+                      ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_uint)]
+    query.restype = ctypes.c_long
+    handlers = []
+    for extension in EXTENSIONS:
+        progid = registry_value(CAPABILITIES + r"\FileAssociations", extension)
+        assert isinstance(progid, str) and progid.startswith("RulesElectron.")
+        key = "Software\\Classes\\" + progid
+        assert registry_value(key, "RulesElectronOwner") == APP_ID
+        assert registry_value(key + r"\DefaultIcon", "") == f'"{executable}",0'
+        assert registry_value("Software\\Classes\\" + extension + r"\OpenWithProgids", progid) == ""
+        command = ctypes.create_unicode_buffer(32768)
+        size = ctypes.c_uint(len(command))
+        # ASSOCF_INIT_FIXED_PROGID | ASSOCF_INIT_FOR_FILE, ASSOCSTR_COMMAND.
+        assert query(0x2800, 1, progid, "open", command, ctypes.byref(size)) == 0
+        assert command.value == f'"{executable}" "%1"'
+        handlers.append(progid)
+    assert registry_value("Software\\Classes\\" + EXTENSIONS[0], "") == "Foreign.Document"
+    return handlers
 
 
 def known_folder(identifier):
@@ -131,6 +158,8 @@ if __name__ == "__main__":
         "app registry": registry_exists("Software\\" + APP_ID),
         "protocol": registry_exists(PROTOCOL), "updater cache": cache.exists(),
         "app data": user_data.exists(), "shortcuts": any(p.exists() for p in shortcuts),
+        "file associations": any(registry_exists("Software\\Classes\\" + extension) for extension in EXTENSIONS),
+        "registered application": registry_value(REGISTERED_APPS, APP_ID) is not None,
     }
     if any(existing.values()):
         raise RuntimeError("Disposable host already contains sample state: " + ", ".join(k for k, v in existing.items() if v))
@@ -163,12 +192,24 @@ if __name__ == "__main__":
             assert registry_value(PROTOCOL, "") == "foreign registration"
             assert not executable.exists()
             winreg.DeleteKey(winreg.HKEY_CURRENT_USER, PROTOCOL)
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, REGISTERED_APPS) as key:
+                winreg.SetValueEx(key, APP_ID, 0, winreg.REG_SZ, "Software\\Foreign\\Capabilities")
+            command(str(first), "/S", nsis_directory=install, success=False)
+            assert registry_value(REGISTERED_APPS, APP_ID) == "Software\\Foreign\\Capabilities"
+            assert not executable.exists()
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REGISTERED_APPS, 0, winreg.KEY_SET_VALUE) as key:
+                winreg.DeleteValue(key, APP_ID)
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, "Software\\Classes\\" + EXTENSIONS[0]) as key:
+                winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "Foreign.Document")
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, "Software\\Classes\\" + EXTENSIONS[0] + r"\OpenWithProgids") as key:
+                winreg.SetValueEx(key, "Foreign.Document", 0, winreg.REG_SZ, "")
             command(str(first), "/S", nsis_directory=install)
             assert registry_value(REGISTRY, "DisplayVersion") == "1.0.0"
             assert registry_value(REGISTRY, "InstallLocation") == str(install)
             assert registry_value(REGISTRY, "QuietUninstallString") == f'"{install}\\Uninstall.exe" /S'
             assert registry_value(PROTOCOL + r"\shell\open\command", "") == f'"{executable}" "%1"'
             assert all(p.is_file() for p in shortcuts)
+            handlers = file_handlers(executable)
             assert digest(cache / "installer.exe") == digest(first)
             smoke(executable, architecture, "1.0.0")
             (install / "keep-user-data.txt").write_text("keep")
@@ -189,11 +230,17 @@ if __name__ == "__main__":
             assert transferred < second.stat().st_size // 2, (transferred, second.stat().st_size)
             assert digest(cache / "installer.exe") == digest(second)
             assert (install / "keep-user-data.txt").read_text() == "keep"
+            assert file_handlers(executable) == handlers
             smoke(executable, architecture, "2.0.0")
             command(str(install / "Uninstall.exe"), "/S")
             wait_for(lambda: registry_value(REGISTRY, "DisplayVersion") is None and not executable.exists() and not (install / "Uninstall.exe").exists())
             assert registry_value(PROTOCOL, "") is None
             assert all(not p.exists() for p in shortcuts)
+            assert registry_value(REGISTERED_APPS, APP_ID) is None
+            assert all(not registry_exists("Software\\Classes\\" + progid) for progid in handlers)
+            assert not registry_exists("Software\\Classes\\" + EXTENSIONS[1])
+            assert registry_value("Software\\Classes\\" + EXTENSIONS[0], "") == "Foreign.Document"
+            assert registry_value("Software\\Classes\\" + EXTENSIONS[0] + r"\OpenWithProgids", "Foreign.Document") == ""
             assert sorted(p.relative_to(install).as_posix() for p in install.rglob("*")) == ["keep-user-data.txt"]
             assert (install / "keep-user-data.txt").read_text() == "keep"
             print(f"NSIS_UPDATE_SMOKE_OK architecture={architecture} range_bytes={transferred} installer_bytes={second.stat().st_size}", flush=True)
@@ -206,3 +253,9 @@ if __name__ == "__main__":
             for path in [cache, user_data]:
                 if path.exists():
                     shutil.rmtree(path)
+            for extension in EXTENSIONS:
+                key = "Software\\Classes\\" + extension
+                if registry_exists(key + r"\OpenWithProgids"):
+                    winreg.DeleteKey(winreg.HKEY_CURRENT_USER, key + r"\OpenWithProgids")
+                if registry_exists(key):
+                    winreg.DeleteKey(winreg.HKEY_CURRENT_USER, key)

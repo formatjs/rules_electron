@@ -47,5 +47,9 @@ and adapters for other npm providers remain open.
 
 The desktop example consumes this public rule for electron-updater, PE tooling
 and minimatch. Its updater lock includes development-only minimatch; native smoke
-checks its absence while executing the real updater and addon. Hosted validation
-of this public import rule is pending.
+checks its absence while executing the real updater and addon.
+[BB unit tests](https://formatjs.buildbuddy.io/invocation/f9613d76-439b-49bc-9258-5e411ec845a5),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/109ceb2b-a4a6-4c3c-8dfd-68578f094755)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42467272905)
+passed, including both Windows compiler variants. Lock selection tests cover
+development/optional packages, explicit target constraints and unsafe inputs.
