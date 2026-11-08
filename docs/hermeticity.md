@@ -397,3 +397,23 @@ control found 20,791 CppCompile actions across platform and bridge dependencies.
 Both queries traversed `deps(...)`; local analysis executed zero build actions.
 Full source profiles remain Linux AMD64. CrabbyAVIF, Blink and full Electron are
 unfinished.
+
+## CrabbyAVIF source integration
+
+The original Chromium DEPS pin supplies CrabbyAVIF source. Three new Rust
+targets bring the captured graph to 122; the existing 119 records and 89 vendor
+package inventories stay unchanged. Native Bazel bindgen actions generate the
+original dav1d/libyuv binding filenames with their captured public definitions.
+Native codec targets retain link ownership. No Cargo build scripts or CMake
+wrappers replace this graph.
+
+The decode probe uses Chromium's parse/frame API and decoder-owned image.
+The pinned convenience ReadMemory API shallow-copies metadata pointers; freeing
+that copied image is unsafe. The probe compares every RGB byte against the
+upstream lossless PNG fixture, then exercises separately owned RGB/YUV buffers.
+Hosted validation of this integration remains pending.
+
+A dependency action audit covering source_components and the decode probe found
+zero foreign/CMake actions, with 24,493 CppCompile actions as positive control.
+Local analysis executes zero build actions. This does not establish a complete
+Electron build; full source profiles still cover Linux AMD64 only.
