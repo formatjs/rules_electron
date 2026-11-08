@@ -615,3 +615,16 @@ passed in 3.737 seconds with zero tracked remote actions, including font-format
 and original mixed-language panic probes. Its independent BCR source suite took
 39.841 seconds with 12 tracked actions and 2.445 CPU seconds. These incremental
 observations reuse caches and do not establish a controlled speedup.
+
+## Blink generator header dependencies
+
+The [d8f41f0 BCR source suite](https://formatjs.buildbuddy.io/invocation/355edf5f-4bd3-4c6c-aeb2-6a75278992d8)
+passed in 461.492 seconds with 3,254 tracked actions, 3,781.265 CPU seconds,
+1,146,408,960 bytes maximum action peak memory and 3,321,451,213 worker input
+bytes. This is an incremental observation, not a controlled timing comparison.
+
+The shared compilation header list included new auxiliary testing headers.
+`3888599` instead selects generator headers through native C/C++ dependency
+owners, retaining the exact pre-IDL header set. This removes those unrelated
+inputs from existing compile actions. Timing impact remains unmeasured; the
+expanded generator pipeline adds work of its own.

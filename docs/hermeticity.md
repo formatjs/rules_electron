@@ -421,3 +421,22 @@ A dependency action audit covering source_components and the decode probe found
 zero foreign/CMake actions, with 24,493 CppCompile actions as positive control.
 Local analysis executes zero build actions. This does not establish a complete
 Electron build; full source profiles still cover Linux AMD64 only.
+
+## Blink generator prerequisites
+
+Original Web IDL collections/database, testing IDLs and event-name generation
+passed hosted validation at `d8f41f0`: [components](https://formatjs.buildbuddy.io/invocation/17d61bc5-9c85-42e3-b767-6c12ff2c63ad),
+[BCR consumer](https://formatjs.buildbuddy.io/invocation/8da194fe-2a3c-4810-bfb3-0511e977fbbd),
+and [cross probes](https://formatjs.buildbuddy.io/invocation/e24e7dad-0ea7-43c3-ae99-8297cecda790).
+The structured binding probe reports PASSED, checking event inheritance,
+component ownership, export metadata and native header paths. Generator actions
+also verify equal output across changed source paths and mtimes.
+
+`3888599` adds 17 original platform generators and declared native gperf
+3.1.bcr.2. Its 26-generator dependency audit found zero foreign/CMake actions;
+387 CppCompile actions provide a positive control. Local analysis executed zero
+build actions. This expanded pipeline still awaits hosted validation.
+
+Generated compilation headers now follow native C/C++ owners. Their selected
+set matches the pre-IDL profile; auxiliary testing headers stay outside unrelated
+compilations. Full Blink and Electron integration remain unfinished.
