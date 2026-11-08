@@ -100,6 +100,8 @@ def classify(log):
         "BLINK_CORE_TEST": r"check failed: blink_core ",
         "BLINK_MODULES_TEST": r"check failed: blink_modules ",
         "LLGUIDANCE_TEST": r"check failed: llguidance ",
+        "CATAPULT_RESOURCE_INPUT": r"DepsException:.*(?:nonexistent file|not in the search path)",
+        "SDK_RUNTIME_ABI_TEST": r"(?:FAIL|ERROR): test_sdk_interfaces_match_pinned_runtime_symbols_and_build_ids",
         "POLICY_TEST": r"(?:FAIL|ERROR): test_(?:pinned_yaml_runtime_and_policy_ids_match_sources|depfile_uses_declared_relative_policy_paths)",
         "CONTENT_WEBUI_TEST": r"(?:FAIL|ERROR): test_tracing_pack_preserves_original_html_and_javascript",
         "CATAPULT_TEST": r"(?:FAIL|ERROR): test_(?:standalone_html_uses_chromium_tracing_route|minified_viewer_contains_entrypoint_and_parses)",
@@ -271,6 +273,7 @@ def source_test_diagnostics(identifier, key, selected=None):
         "//source/content_metadata:catapult_test": "catapult",
         "//source/content_metadata:content_webui_test": "content_webui",
         "//source/content_metadata:policy_test": "policy",
+        "//source/content_metadata:runtime_abi_test": "sdk_runtime_abi",
         "//electron/private:source_action_test": "source_action",
         "//source/blink_bindings:bindings_test": "blink_bindings",
         "//source/crabbyavif:decode_test": "crabby_decode",
@@ -446,8 +449,12 @@ def failed_action_diagnostics(identifier, key):
                 sites.append({"file": name, "line": int(line)})
         ts_sites = []
         check_sites = [{"file": name, "line": int(line)} for name, line in re.findall(r"([A-Za-z_0-9.-]+\.(?:h|c|cc|cpp))[:(]([0-9]{1,5})", log) if name in public_basenames and 0 < int(line) < 10000][:8]
-        fatal_lines = [line for line in log.splitlines() if re.search(r"FATAL|ERROR|Check failed|Assertion|assertion", line)]
+        fatal_lines = [line for line in log.splitlines() if re.search(r"FATAL|ERROR|Check failed|Assertion|assertion|DepsException", line)]
         fatal_identifiers = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line) if word in public_identifiers))[:20] for line in fatal_lines[:6]]
+        for reference in re.findall(r'<(?:script|link)[^>\r\n]{0,300}?(?:src|href)="([^"\r\n]{1,300})"', log):
+            name = posixpath.basename(reference)
+            if name in public_basenames:
+                missing_basenames.add(name)
         missing_shared_libraries = sorted({name for name in re.findall(r"error while loading shared libraries: ([A-Za-z0-9_.+-]{1,120}):", log) if name in public_basenames})[:8]
         ts_codes = sorted(set(re.findall(r"\berror (TS[0-9]{4,5}):", log)))[:16]
         ts_locations = re.findall(r"([^\s()]+)\(([0-9]{1,5}),([0-9]{1,4})\): error (TS[0-9]{4,5}):", log)
@@ -512,4 +519,4 @@ if __name__ == "__main__":
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
         elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
-            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "source_action", "llguidance", "crabby_decode"})
+            source_test_diagnostics(identifier, key, {"symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "source_action", "llguidance", "crabby_decode"})
