@@ -290,6 +290,8 @@ def source_test_diagnostics(identifier, key, selected=None):
         "//source/default_app:assets_test": "default_app",
         "//source/credits:credits_test": "credits",
         "//source/distribution:metadata_test": "distribution_metadata",
+        "//source/distribution:archive_test": "runtime_archive",
+        "//source/distribution:runtime_test": "source_runtime",
         "//electron/private:source_action_test": "source_action",
         "//source/blink_bindings:bindings_test": "blink_bindings",
         "//source/crabbyavif:decode_test": "crabby_decode",
@@ -354,9 +356,10 @@ def source_test_diagnostics(identifier, key, selected=None):
                 log = data.decode("utf-8", errors="replace")
                 details = {"probe": probe, "result": test_result(action["targetLabel"]), "log_bytes": len(data), "diagnostics": classify(log)}
                 details["public_missing_shared_libraries"] = sorted({name for name in re.findall(r"error while loading shared libraries: ([A-Za-z0-9_.+-]{1,120}):", log) if name in public_basenames})[:8]
-                if probe == "api_features":
-                    details["python_exceptions"] = sorted({name for name in ("JSONDecodeError", "FileNotFoundError", "KeyError", "ValueError", "TypeError") if re.search(r"\b" + name + ":", log)})
-                    details["public_python_sites"] = [{"file": path.rsplit("/", 1)[-1], "line": int(line)} for path, line in re.findall(r'File "([^"\n]+)", line ([0-9]{1,5})', log) if path.rsplit("/", 1)[-1] in public_basenames and 0 < int(line) < 10000][-8:]
+                if probe in ("api_features", "runtime_archive", "source_runtime", "credits", "distribution_metadata"):
+                    details["python_exceptions"] = sorted({name for name in ("JSONDecodeError", "FileNotFoundError", "KeyError", "ValueError", "TypeError", "CalledProcessError", "TimeoutExpired", "AssertionError") if re.search(r"\b" + name + ":", log)})
+                    python_files = public_basenames | {"runtime_archive.py", "archive_test.py", "runtime_test.py", "metadata_test.py", "generate_credits.py", "credits_inputs.py", "credits_test.py"}
+                    details["public_python_sites"] = [{"file": path.rsplit("/", 1)[-1], "line": int(line)} for path, line in re.findall(r'File "([^"\n]+)", line ([0-9]{1,5})', log) if path.rsplit("/", 1)[-1] in python_files and 0 < int(line) < 10000][-8:]
                 if probe == "content_webui":
                     methods = ["test_tracing_pack_preserves_original_html_and_javascript", "test_distiller_pack_inlines_pinned_javascript_and_preserves_valid_syntax", "test_electron_repack_preserves_discovery_page_and_component_payloads", "test_neterror_pack_inlines_both_original_image_scales", "test_final_pack_preserves_linux_branding_image", "test_unscaled_resource_pack_preserves_linux_branding_image", "test_final_pack_preserves_unscaled_webid_include_images"]
                     details["failed_methods"] = [name for name in methods if re.search(r"(?:FAIL|ERROR): " + name + r"\b", log)]
@@ -558,6 +561,6 @@ if __name__ == "__main__":
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
         elif status == "running" and command == "test":
-            source_test_diagnostics(identifier, key, {"distribution_metadata", "credits", "default_app", "catapult", "content_webui", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "policy", "web_assets", "tracing_proto"})
+            source_test_diagnostics(identifier, key, {"runtime_archive", "source_runtime", "distribution_metadata", "credits", "default_app", "catapult", "content_webui", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "policy", "web_assets", "tracing_proto"})
         elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
-            source_test_diagnostics(identifier, key, {"distribution_metadata", "credits", "default_app", "symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "source_action", "llguidance", "crabby_decode"})
+            source_test_diagnostics(identifier, key, {"runtime_archive", "source_runtime", "distribution_metadata", "credits", "default_app", "symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "source_action", "llguidance", "crabby_decode"})

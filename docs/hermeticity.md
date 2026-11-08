@@ -559,7 +559,10 @@ directories and 466 shipped metadata entries. Existing pinned repositories
 supply 1,361 inputs; 30 verbatim license/metadata files are checked in. Declared
 empty markers preserve directory discovery. The original scanner and arguments
 replace WebUI's development sample; original version generation and distribution
-notice staging are declared too. Hosted generation/tests remain pending.
+notice staging are declared too. The
+[BB consumer preflight](https://formatjs.buildbuddy.io/invocation/5f518c70-a6df-4842-8a20-b9013d660105)
+passed original credits generation, complete shipped-license checks, original
+version generation, exact notice staging and default-app ASAR checks.
 
 Complete source-component action analysis passed: 133,463 actions, 67,499 C++
 compilations, 330 C++ links and 8,801 declared-Python generators. No CMake or
