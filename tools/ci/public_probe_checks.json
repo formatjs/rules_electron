@@ -342,5 +342,32 @@
     "original Rust decoder initialized through CXX",
     "truncated packet reports Rust error through CXX",
     "unsupported codec rejected through CXX"
+  ],
+  "media_runtime": [
+    "ALSA metadata allocation without audio hardware",
+    "bounded WAV reference chunks",
+    "declared ALSA runtime matches SDK version",
+    "declared audio fixture available",
+    "declared fixture and packet bounds",
+    "decoded FFmpeg frame shape and sample format",
+    "independent 24 bit WAV reference",
+    "lossless FFmpeg samples match independent WAV",
+    "native Chromium audio buffer layout and duration",
+    "native FFmpeg decodes original FLAC packet",
+    "original Chrome AAC and H264 decoders registered",
+    "original FLAC frame bounds",
+    "source FFmpeg FLAC decoder available",
+    "source FFmpeg decoder allocation",
+    "source FFmpeg decoder opens original stream metadata",
+    "source FFmpeg packet and frame allocation",
+    "source FFmpeg padded metadata allocation",
+    "source FFmpeg runtime matches headers",
+    "unconfigured Chromium audio parameters rejected"
+  ],
+  "asound_abi": [
+    "SDK runtime symbol version and build identity",
+    "declared ELF64 little endian inputs",
+    "declared SDK and runtime inputs",
+    "runtime supplies code absent from SDK interface"
   ]
 }
