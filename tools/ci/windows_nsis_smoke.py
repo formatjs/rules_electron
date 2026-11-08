@@ -1,9 +1,11 @@
 """Install, reject corruption, update differentially and uninstall on native Windows."""
 
 from functools import partial
+import csv
 import ctypes
 import hashlib
 import http.server
+import json
 import os
 from pathlib import Path
 import platform
@@ -92,6 +94,26 @@ def wait_for(predicate):
         if time.monotonic() >= deadline:
             raise RuntimeError("Windows installer state did not converge")
         time.sleep(0.25)
+
+
+def update_failure_state(install, cache):
+    processes = {}
+    tasklist = Path(os.environ["SystemRoot"]) / "System32/tasklist.exe"
+    for name in ("sample-desktop.exe", "Sample-2.0.0.exe", "installer.exe", "Uninstall.exe"):
+        result = subprocess.run([str(tasklist), "/FI", "IMAGENAME eq " + name, "/FO", "CSV", "/NH"],
+                                capture_output=True, encoding="utf-8", errors="replace", timeout=30)
+        processes[name] = sum(bool(row) and row[0].casefold() == name.casefold()
+                              for row in csv.reader(result.stdout.splitlines())) if result.returncode == 0 else None
+    version = registry_value(REGISTRY, "DisplayVersion")
+    print("NSIS_UPDATE_FAILURE_STATE " + json.dumps({
+        "registered_version": version if version in (None, "1.0.0", "2.0.0") else "other",
+        "installed_executable": (install / "sample-desktop.exe").is_file(),
+        "ownership_marker": (install / ".rules-electron.ini").is_file(),
+        "uninstaller": (install / "Uninstall.exe").is_file(),
+        "cached_installer": (cache / "installer.exe").is_file(),
+        "pending_installers": len(list((cache / "pending").glob("*.exe"))),
+        "process_counts": processes,
+    }, sort_keys=True), flush=True)
 
 
 class FeedHandler(http.server.SimpleHTTPRequestHandler):
@@ -233,7 +255,11 @@ if __name__ == "__main__":
             updated = command(str(executable), "--install-update-smoke", "--disable-gpu", "--user-data-dir=" + str(directory / "update-profile"), env=environment)
             assert "INSTALLED_UPDATE_SMOKE_OK" in updated, updated
             assert "Cannot download differentially" not in updated, updated
-            wait_for(lambda: registry_value(REGISTRY, "DisplayVersion") == "2.0.0")
+            try:
+                wait_for(lambda: registry_value(REGISTRY, "DisplayVersion") == "2.0.0")
+            except RuntimeError:
+                update_failure_state(install, cache)
+                raise
             assert registry_value(REGISTRY, "InstallLocation") == str(install)
             assert server.transfers and all(ranged for ranged, _ in server.transfers), server.transfers
             transferred = sum(size for _, size in server.transfers)
