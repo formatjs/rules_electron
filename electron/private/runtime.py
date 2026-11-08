@@ -4,6 +4,7 @@ import os
 from pathlib import Path, PurePosixPath
 import plistlib
 import posixpath
+import re
 import shutil
 import stat
 from zipfile import ZipFile
@@ -76,9 +77,38 @@ def extract_runtime(archive, output, platform, exclude_files, occupied, language
                 raise ValueError(f"Invalid runtime symlink chain: {path}") from error
 
 
-def brand_macos(output, executable_name, product_name, app_id, version, asar_header_hash=None, build_version=""):
+def _macos_url_types(protocols, roles):
+    protocols = {} if protocols is None else protocols
+    roles = {} if roles is None else roles
+    if not isinstance(protocols, dict) or not isinstance(roles, dict) or set(roles) - set(protocols):
+        raise ValueError("Invalid macOS protocol mapping or unmatched role")
+    result, seen = [], set()
+    for name, schemes in sorted(protocols.items()):
+        if not isinstance(name, str) or not name.strip() or any(ord(c) < 32 for c in name):
+            raise ValueError("Invalid macOS protocol name")
+        role = roles.get(name, "Editor")
+        if not isinstance(role, str) or role not in {"Editor", "Viewer", "Shell", "QLGenerator", "None"}:
+            raise ValueError("Invalid macOS protocol role")
+        if not isinstance(schemes, (list, tuple)) or not schemes:
+            raise ValueError("macOS protocol needs at least one scheme")
+        normalized = []
+        for scheme in schemes:
+            if not isinstance(scheme, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9+.-]*", scheme):
+                raise ValueError("Invalid macOS protocol scheme")
+            scheme = scheme.lower()
+            if scheme in seen:
+                raise ValueError("Duplicate macOS protocol scheme")
+            seen.add(scheme)
+            normalized.append(scheme)
+        result.append({"CFBundleURLName": name, "CFBundleURLSchemes": sorted(normalized), "CFBundleTypeRole": role})
+    return result
+
+
+def brand_macos(output, executable_name, product_name, app_id, version, asar_header_hash=None, build_version="",
+                protocols=None, protocol_roles=None):
     if not app_id:
         raise ValueError("macOS app_id required")
+    url_types = _macos_url_types(protocols, protocol_roles)
     plist = output / "Contents/Info.plist"
     metadata = plistlib.loads(plist.read_bytes())
     executable = output / "Contents/MacOS" / metadata["CFBundleExecutable"]
@@ -86,6 +116,8 @@ def brand_macos(output, executable_name, product_name, app_id, version, asar_hea
     metadata.update(CFBundleExecutable=executable_name, CFBundleName=product_name,
                     CFBundleDisplayName=product_name, CFBundleIdentifier=app_id,
                     CFBundleShortVersionString=version, CFBundleVersion=build_version or version)
+    if url_types:
+        metadata["CFBundleURLTypes"] = url_types
     metadata.pop("ElectronAsarIntegrity", None)
     if asar_header_hash:
         metadata["ElectronAsarIntegrity"] = {

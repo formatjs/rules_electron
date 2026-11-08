@@ -73,7 +73,8 @@ enable `enableEmbeddedAsarIntegrityValidation` and `onlyLoadAppFromAsar` togethe
 to enforce it. Windows embeds the same hash in PE resources when a declared
 `windows_resource_tool` is supplied. See [ASAR integrity](docs/asar-integrity.md)
 and [Windows resources](docs/windows-resources.md).
-macOS bundle/helper metadata and ad hoc signing are supported. Release signing,
+macOS bundle/helper metadata, ad hoc signing and
+[URL scheme declarations](docs/macos-protocols.md) are supported.
 macOS installers, release signing, icons and broader OS integration remain pending. Linux DEB
 packaging supplies desktop/MIME/protocol/icon metadata and declared package hooks;
 see [Linux packages](docs/linux-packages.md).

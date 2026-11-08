@@ -46,7 +46,7 @@ class PlatformLayoutTest(unittest.TestCase):
         self.assertEqual((output / "locales/en-US.pak").read_bytes(), b"english")
         self.assertFalse((output / "locales/fr.pak").exists())
 
-    def test_macos_branding_framework_links_and_archive(self):
+    def macos_runtime(self):
         runtime = self.root / "macos.zip"
         with ZipFile(runtime, "w") as archive:
             for name in ["", "/Frameworks/Electron Helper.app"]:
@@ -65,6 +65,10 @@ class PlatformLayoutTest(unittest.TestCase):
             archive.writestr("LICENSE", b"runtime license")
             archive.writestr("Electron.app/Contents/Frameworks/Electron Framework.framework/Electron Framework",
                              b"framework" + SENTINEL + b"\x01\x09111100111")
+        return runtime
+
+    def test_macos_branding_framework_links_and_archive(self):
+        runtime = self.macos_runtime()
         output = self.root / "app"
         assemble(self.manifest("Contents/Resources"), output, platform="macos", runtime_archive=runtime,
                  executable_name="sample", product_name="Sample Desktop", app_id="org.example.sample", asar=True, build_number="7",
@@ -96,6 +100,39 @@ class PlatformLayoutTest(unittest.TestCase):
             info = archive.getinfo("Sample Desktop.app/Contents/Frameworks/Foo.framework/Foo")
             self.assertTrue(stat.S_ISLNK(info.external_attr >> 16))
             self.assertEqual(archive.read(info), b"Versions/Current/Foo")
+
+    def test_macos_protocols_brand_main_bundle_only(self):
+        output = self.root / "protocol.app"
+        assemble(self.manifest("Contents/Resources"), output, platform="macos",
+                 runtime_archive=self.macos_runtime(), app_id="org.example.sample",
+                 macos_protocols={"Viewer": ["EXAMPLE+READ", "example.read"], "Editor": ["EXAMPLE"]},
+                 macos_protocol_roles={"Viewer": "Viewer"})
+        metadata = plistlib.loads((output / "Contents/Info.plist").read_bytes())
+        self.assertEqual(metadata["CFBundleURLTypes"], [
+            {"CFBundleURLName": "Editor", "CFBundleURLSchemes": ["example"], "CFBundleTypeRole": "Editor"},
+            {"CFBundleURLName": "Viewer", "CFBundleURLSchemes": ["example+read", "example.read"], "CFBundleTypeRole": "Viewer"},
+        ])
+        for helper in output.glob("Contents/Frameworks/*Helper.app/Contents/Info.plist"):
+            self.assertNotIn("CFBundleURLTypes", plistlib.loads(helper.read_bytes()))
+
+    def test_macos_protocol_validation(self):
+        runtime = self.macos_runtime()
+        for index, (protocols, roles) in enumerate([
+            ({"Example": []}, {}),
+            ({"Example": ["1example"]}, {}),
+            ({"Example": ["example://"]}, {}),
+            ({"Example": ["Example", "example"]}, {}),
+            ({"First": ["example"], "Second": ["EXAMPLE"]}, {}),
+            ({"": ["example"]}, {}),
+            ({"Example": ["example"]}, {"Example": "Owner"}),
+            ({}, {"Missing": "Viewer"}),
+        ]):
+            with self.subTest(protocols=protocols, roles=roles), self.assertRaises(ValueError):
+                assemble(self.manifest("Contents/Resources"), self.root / f"invalid-{index}.app", platform="macos",
+                         runtime_archive=runtime, app_id="org.example.sample",
+                         macos_protocols=protocols, macos_protocol_roles=roles)
+        with self.assertRaisesRegex(ValueError, "macOS target"):
+            assemble([], self.root / "linux", macos_protocols={"Example": ["example"]})
 
     def test_runtime_archive_rejects_traversal_links_and_collisions(self):
         for name, target, occupied in [

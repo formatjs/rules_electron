@@ -53,9 +53,11 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
              platform="linux", runtime_archive="", exclude_files=(),
              product_name="Electron", app_id="", runtime_languages=(),
              windows_resource_tool=None, windows_metadata=None,
-             build_version="", build_number=""):
+             build_version="", build_number="", macos_protocols=None, macos_protocol_roles=None):
     if platform not in ("linux", "macos", "windows"):
         raise ValueError(f"Unsupported platform: {platform}")
+    if platform != "macos" and (macos_protocols or macos_protocol_roles):
+        raise ValueError("macOS protocols require a macOS target")
     embedded_integrity = (fuses or {}).get("enableEmbeddedAsarIntegrityValidation") == "on"
     if embedded_integrity and (not asar or platform == "linux" or platform == "windows" and not windows_resource_tool):
         raise ValueError("enableEmbeddedAsarIntegrityValidation requires ASAR and macOS or a Windows resource tool")
@@ -118,7 +120,8 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         archive.chmod(0o644)
         shutil.rmtree(output / app_prefix)
     if platform == "macos":
-        brand_macos(output, executable_name, product_name, app_id, package["version"], header_hash, build_version=native_version)
+        brand_macos(output, executable_name, product_name, app_id, package["version"], header_hash,
+                    build_version=native_version, protocols=macos_protocols, protocol_roles=macos_protocol_roles)
         binary = output / "Contents/Frameworks/Electron Framework.framework/Electron Framework"
     else:
         original = "electron.exe" if platform == "windows" else "electron"

@@ -15,6 +15,7 @@ import struct
 import sys
 import tempfile
 import time
+import uuid
 
 
 @contextmanager
@@ -123,6 +124,47 @@ def windows_resources(executable, expected_version):
             raise RuntimeError("Missing Windows version string: " + key)
         assert ctypes.wstring_at(address, length.value - 1) == expected, key
     return integrity
+
+
+def check_macos_protocol(app, executable, environment, directory, target_arch):
+    metadata = plistlib.loads((app / "Contents/Info.plist").read_bytes())
+    assert metadata["CFBundleURLTypes"] == [{
+        "CFBundleURLName": "Sample Desktop", "CFBundleURLSchemes": ["sample-desktop"],
+        "CFBundleTypeRole": "Editor",
+    }]
+    register = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+    report = directory / "protocol-result.json"
+    url = "sample-desktop://smoke/" + uuid.uuid4().hex
+    subprocess.run([register, "-f", str(app)], check=True, capture_output=True, timeout=15)
+    try:
+        with tempfile.TemporaryFile() as log:
+            process = subprocess.Popen([
+                str(executable), "--protocol-smoke", str(report), "--disable-gpu",
+                "--user-data-dir=" + str(directory / "protocol-profile"),
+            ], env=environment, cwd=directory, stdout=log, stderr=log)
+            try:
+                deadline = time.monotonic() + 15
+                while not Path(str(report) + ".ready").exists():
+                    if process.poll() is not None or time.monotonic() > deadline:
+                        raise RuntimeError("macOS protocol receiver did not become ready")
+                    time.sleep(0.1)
+                subprocess.run(["/usr/bin/open", url], check=True, capture_output=True, timeout=15)
+                if process.wait(timeout=25):
+                    raise RuntimeError("macOS protocol receiver failed")
+                assert json.loads(report.read_text()) == {
+                    "url": url, "platform": "darwin", "architecture": target_arch,
+                }
+            finally:
+                if process.poll() is None:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait()
+    finally:
+        subprocess.run([register, "-u", str(app)], check=True, capture_output=True, timeout=15)
+    print("EXAMPLE_PROTOCOL_SMOKE_OK")
 
 
 def check_asar_integrity(app, executable, environment, directory, target_os, expected_version):
@@ -251,5 +293,7 @@ if __name__ == "__main__":
             assert report["app_version"] == args.expected_version, report
         assert report["platform"] == {"linux": "linux", "macos": "darwin", "windows": "win32"}[args.target_os], report
         print("EXAMPLE_SMOKE_OK " + json.dumps(report, ensure_ascii=True))
+        if host_os == "macos":
+            check_macos_protocol(app, executable, environment, directory, args.target_arch)
         if host_os in ("macos", "windows"):
             check_asar_integrity(app, executable, environment, directory, host_os, report["app_version"])

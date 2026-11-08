@@ -6,8 +6,19 @@ const assert = require('node:assert/strict');
 const addon = require('example-native');
 
 const smoke = process.argv.includes('--smoke');
+const protocolSmokeIndex = process.argv.indexOf('--protocol-smoke');
+const protocolReport = protocolSmokeIndex >= 0 ? process.argv[protocolSmokeIndex + 1] : null;
 let window;
 let watchdog;
+
+if (protocolSmokeIndex >= 0) {
+  assert.ok(protocolReport && path.isAbsolute(protocolReport));
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    fs.writeFileSync(protocolReport, JSON.stringify({ url, platform: process.platform, architecture: process.arch }));
+    app.quit();
+  });
+}
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'sample', privileges: { standard: true, secure: true, supportFetchAPI: true } },
@@ -18,6 +29,11 @@ function ownFrame(event) {
 }
 
 app.whenReady().then(async () => {
+  if (protocolReport) {
+    fs.writeFileSync(protocolReport + '.ready', 'ready');
+    watchdog = setTimeout(() => app.exit(1), 20000);
+    return;
+  }
   if (process.argv.includes('--install-update-smoke') || process.argv.includes('--reject-update-smoke')) {
     await require('./installed-update-smoke.cjs')(process.argv.includes('--reject-update-smoke'));
     return;
