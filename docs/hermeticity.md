@@ -476,3 +476,10 @@ The `b1c1300` [hosted consumer](https://formatjs.buildbuddy.io/invocation/422d96
 passed the release/beta Electron version contract, original bundle tests, SDK
 ABI checks and native runtime probes. Expanded resources exposed missing CSS
 images and feature JSON inputs; full consumer/components validation is pending.
+
+
+The completed `b1c1300` consumer/components runs failed during expanded resource
+production. Sanitized diagnostics identified Windows-style feature JSON paths,
+cross-directory images and declared branding variables. Source fixes preserve
+existing compile keys and request the original JS2C invocation through native
+providers. New API, image, logo and JS2C contracts remain pending hosted checks.

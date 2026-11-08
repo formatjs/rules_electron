@@ -75073,6 +75073,7 @@
   "gen/electron/shell/common/extensions/api/tabs.h",
   "gen/electron/shell_devtools_discovery_page.html",
   "gen/electron/win-resources/electron.rc",
+  "gen/electron_natives.cc",
   "gen/extensions/browser/api/generated_api_registration.cc",
   "gen/extensions/browser/api/generated_api_registration.h",
   "gen/extensions/buildflags/buildflags.h",

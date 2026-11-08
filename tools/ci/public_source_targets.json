@@ -9940,6 +9940,7 @@
   "target_f9d7f359f27af030": "//services/viz/privileged/mojom/compositing:features__generator",
   "target_f9da3f80e112560f": "//services/network/public/mojom:mojom_proxy_config__parser",
   "target_f9db35885215d674": "//ui/webui/resources/cr_components/localized_link:preprocess_html_css_files",
+  "target_f9e3ba1e6eab70c1": "//electron:electron_js2c",
   "target_f9e486b16613c987": "//third_party/blink/renderer/core/exported:exported",
   "target_f9e773dc8c9c292e": "//components/tracing:tracing_config",
   "target_f9f96b5e3f3df8e7": "//services/network/public/mojom:mojom_shared_dictionary_blink__type_mappings__validator",
