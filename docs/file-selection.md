@@ -34,4 +34,8 @@ source directories are omitted.
 
 The generic renderer bundle contains development fixtures; its filtered view
 excludes them. Native smoke checks both their absence and working renderer/IPC.
-Hosted validation is pending.
+Hosted [unit tests](https://formatjs.buildbuddy.io/invocation/8b1dfd53-a7b2-4d11-bc43-31757b3ae171)
+and [seven cross-builds](https://formatjs.buildbuddy.io/invocation/7ad6bac8-00b0-45be-980b-e133206ae3d6)
+passed. [Native smoke](https://github.com/formatjs/rules_electron/actions/runs/42465475900)
+passed on Linux x64, macOS ARM64 and Windows x64/ARM64, including both Windows
+compiler variants.

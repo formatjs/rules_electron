@@ -11,7 +11,7 @@ electron-builder replacement.
 | Runtime dependencies | Explicit Node-API package, target-built helper/addon | General npm closure handling; Electron Node/V8 ABI toolchains |
 | ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity | Direct unpacked alias operations |
 | Extra resources/files | Declared file/tree mappings to resources or app content root, outside ASAR; normalized modes | Arbitrary resource-tree directory symlinks |
-| File selection | Explicit whitelist; generated tree contents retained | Include/exclude glob rules and map filtering |
+| File selection | Declared file/tree mappings; ordered minimatch include/exclude filters after destination mapping; root tree mounts | Empty directory preservation |
 | Manifest scripts | Root package scripts removable | General dependency manifest rewriting |
 | Runtime locales | Explicit file mappings or non-macOS ZIP locale selection | Broader runtime-provider integration |
 | Fuses | Named v1 settings, including macOS framework mutation before ad hoc signing | Universal macOS binaries; availability depends on runtime wire |
