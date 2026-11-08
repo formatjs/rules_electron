@@ -441,7 +441,7 @@ def failed_action_diagnostics(identifier, key):
         cpp_errors = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", message) if word in public_identifiers))[:20] for message in re.findall(r"(?:fatal )?error(?:\[E[0-9]{4}\])?: ([^\r\n]+)", log)[:12]]
         for path, line in re.findall(r"([^\s:]+):([0-9]{1,5}):[0-9]{1,4}: (?:fatal )?error:", log):
             candidates = [path]
-            for prefix in ("v8/", "third_party/", "gen/", "src/", "include/", "base/", "source/", "build/", "testing/", "net/", "mojo/", "crypto/", "sql/", "url/", "components/", "electron/", "skia/", "gpu/", "ui/", "cc/"):
+            for prefix in ("v8/", "third_party/", "gen/", "src/", "include/", "base/", "source/", "build/", "testing/", "net/", "mojo/", "crypto/", "sql/", "url/", "components/", "electron/", "skia/", "gpu/", "ui/", "cc/", "content/", "printing/", "services/", "storage/", "extensions/", "gin/"):
                 if "/" + prefix in path:
                     candidates.append(prefix + path.split("/" + prefix, 1)[1])
             name = next((name for name in candidates if name in public_files), None)
