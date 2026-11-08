@@ -33,5 +33,9 @@ the execution host's filesystem or select virtual ASAR links. Explicit
 pattern excludes them. Exact paths still fail when absent; patterns may match
 nothing. App patterns require `asar=True`.
 
-BB tests cover the real matcher grammar; native examples select unpacked addons
-through patterns in both main and additional ASARs. Hosted validation is pending.
+[BB unit tests](https://formatjs.buildbuddy.io/invocation/68e851a5-49c6-496a-a8ea-3dd0ce621545),
+[grammar tests and seven cross-build variants](https://formatjs.buildbuddy.io/invocation/0fc36b03-0212-4468-aeae-82642d530866)
+and [native smoke](https://github.com/formatjs/rules_electron/actions/runs/42463874868)
+passed. Native examples select unpacked addons through patterns in both main and
+additional ASARs on Linux x64, macOS ARM64 and Windows x64/ARM64 with GNU LLVM/MSVC.
+Existing installer/update and integrity checks also passed.

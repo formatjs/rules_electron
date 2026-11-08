@@ -9,7 +9,7 @@ electron-builder replacement.
 | Target selection | Seven example OS/CPU/compiler variants | Full source-built Electron runtime |
 | Main/preload/renderer inputs | Explicit files and generated directories | Rich package-provider adapters |
 | Runtime dependencies | Explicit Node-API package, target-built helper/addon | General npm closure handling; Electron Node/V8 ABI toolchains |
-| ASAR | Deterministic standalone/main archives, virtual links and linked entry points, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity | Direct unpacked alias operations; unpack glob patterns |
+| ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity | Direct unpacked alias operations |
 | Extra resources/files | Declared file/tree mappings to resources or app content root, outside ASAR; normalized modes | Arbitrary resource-tree directory symlinks |
 | File selection | Explicit whitelist; generated tree contents retained | Include/exclude glob rules and map filtering |
 | Manifest scripts | Root package scripts removable | General dependency manifest rewriting |
