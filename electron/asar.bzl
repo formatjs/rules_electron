@@ -48,7 +48,7 @@ def _impl(ctx):
 electron_asar = rule(
     implementation = _impl,
     attrs = {
-        "srcs": attr.label_keyed_string_dict(allow_files = True, doc = "File/tree labels mapped to archive-relative paths."),
+        "srcs": attr.label_keyed_string_dict(allow_files = True, doc = "File/tree labels mapped to archive-relative paths; empty destination mounts a tree at the archive root."),
         "unpacked": attr.string_list(doc = "Exact archive-relative files copied to the unpacked sidecar."),
         "unpacked_patterns": attr.string_list(doc = "Ordered minimatch inclusion/exclusion patterns; selected files join explicit unpacked paths. Requires file_matcher."),
         "file_matcher": attr.label(providers = [ElectronFileMatcherInfo], cfg = "exec"),

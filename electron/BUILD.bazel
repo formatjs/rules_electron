@@ -4,6 +4,7 @@ exports_files([
     "archive.bzl",
     "asar.bzl",
     "defs.bzl",
+    "files.bzl",
     "linux.bzl",
     "metadata.bzl",
     "matching.bzl",

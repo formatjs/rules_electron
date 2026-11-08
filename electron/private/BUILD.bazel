@@ -44,6 +44,24 @@ py_library(
 )
 
 py_library(
+    name = "file_collection",
+    srcs = ["collect_files.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        ":file_mappings",
+        ":matching",
+    ],
+)
+
+py_binary(
+    name = "collect_files",
+    srcs = ["collect_files.py"],
+    main = "collect_files.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":file_collection"],
+)
+
+py_library(
     name = "asar_sources",
     srcs = ["asar_sources.py"],
     visibility = ["//tests:__pkg__"],

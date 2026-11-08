@@ -58,6 +58,13 @@ class AsarSourcesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unpacked paths not declared"):
             write_sources(self.entries, self.root / "missing.asar", ["absent.node"])
 
+    def test_tree_can_mount_at_archive_root(self):
+        archive = self.root / "root.asar"
+        write_sources([{"source": str(self.tree), "path": "", "directory": True}], archive)
+        data = archive.read_bytes()
+        length = struct.unpack_from("<I", data, 12)[0]
+        self.assertEqual(set(json.loads(data[16:16 + length])["files"]), {"message.txt"})
+
     def test_links_share_payload_resolve_chains_and_keep_reproducibility(self):
         archive = self.root / "links.asar"
         links = {"entry.cjs": "module.cjs", "chain.cjs": "entry.cjs", "assets-link": "assets",

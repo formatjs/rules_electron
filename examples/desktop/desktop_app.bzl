@@ -9,7 +9,7 @@ def desktop_app(name, package_json, **kwargs):
         srcs = {
             "main.cjs": "main.cjs",
             "preload.cjs": "preload.cjs",
-            ":renderer_bundle": "renderer",
+            ":renderer_files": "",
             "assets/message.json": "assets/message.json",
             "native-package/index.cjs": "node_modules/example-native/index.cjs",
             "native-package/package.json": "node_modules/example-native/package.json",

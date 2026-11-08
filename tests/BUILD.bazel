@@ -7,6 +7,13 @@ load("//electron:metadata.bzl", "electron_package_json")
 load(":cross_build.bzl", "cross_build")
 
 py_test(
+    name = "file_collection_test",
+    size = "small",
+    srcs = ["file_collection_test.py"],
+    deps = ["//electron/private:file_collection"],
+)
+
+py_test(
     name = "asar_sources_test",
     size = "small",
     srcs = ["asar_sources_test.py"],

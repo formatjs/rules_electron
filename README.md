@@ -81,6 +81,7 @@ to enforce it. Windows embeds the same hash in PE resources when a declared
 and [Windows resources](docs/windows-resources.md).
 [Declared ASAR links](docs/asar-links.md) support virtual file/directory aliases and linked entry points.
 [Unpack patterns](docs/file-patterns.md) select sidecar files through declared minimatch tooling.
+[File selection](docs/file-selection.md) filters declared trees before app/resource/ASAR mappings.
 macOS bundle/helper metadata, ad hoc signing and
 [URL scheme declarations](docs/macos-protocols.md) are supported.
 [Declared ICNS icons](docs/macos-icons.md) apply to the main and helper bundles.

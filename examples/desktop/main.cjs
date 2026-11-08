@@ -90,6 +90,8 @@ app.whenReady().then(async () => {
       assert.equal(fs.readFileSync(path.join(path.dirname(process.resourcesPath), 'licenses/NOTICE.txt'), 'utf8'),
         'Generic desktop example notice.\n');
       assert.equal(path.basename(__filename), 'main.cjs');
+      assert.equal(fs.existsSync(path.join(__dirname, 'renderer/development.map')), false);
+      assert.equal(fs.existsSync(path.join(__dirname, 'renderer/development.txt')), false);
       assert.ok(fs.lstatSync(path.join(__dirname, 'linked-main.cjs')).isSymbolicLink());
       assert.deepEqual(JSON.parse(fs.readFileSync(path.join(__dirname, 'linked-assets/message.json'), 'utf8')),
         require('./assets/message.json'));

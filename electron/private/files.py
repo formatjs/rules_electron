@@ -17,9 +17,10 @@ def _walk_error(error):
     raise error
 
 
-def expand(entries):
+def expand(entries, *, allow_root=False):
     for entry in entries:
-        destination = relative_path(entry["path"])
+        destination = (PurePosixPath(".") if allow_root and entry.get("directory", False) and entry["path"] == ""
+                       else relative_path(entry["path"]))
         if not entry.get("directory", False):
             yield entry
             continue

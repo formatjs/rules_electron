@@ -40,13 +40,14 @@ def _path(path):
         fail("Expected normalized relative path: %r" % path)
     return path
 
-def _entries(files, allow_directories = False):
+def _entries(files, allow_directories = False, allow_root = False):
     entries = []
     for target, path in files.items():
         outputs = target[DefaultInfo].files.to_list()
         if len(outputs) != 1 or (outputs[0].is_directory and not allow_directories):
             fail("Each mapping needs one file%s: %s" % (" or tree artifact" if allow_directories else "", target.label))
-        entries.append(struct(source = outputs[0], path = _path(path), executable = False))
+        destination = "" if allow_root and outputs[0].is_directory and path == "" else _path(path)
+        entries.append(struct(source = outputs[0], path = destination, executable = False))
     return entries
 
 def _runtime_impl(ctx):
@@ -111,7 +112,7 @@ def _app_impl(ctx):
     executable_name = _path(ctx.attr.executable_name)
     if "/" in executable_name:
         fail("executable_name must be a filename")
-    app_entries = _entries(ctx.attr.srcs, allow_directories = True)
+    app_entries = _entries(ctx.attr.srcs, allow_directories = True, allow_root = True)
     resource_entries = _entries(ctx.attr.extra_resources, allow_directories = True)
     extra_entries = _entries(ctx.attr.extra_files, allow_directories = True)
     extra_asars, asar_inputs = [], []
@@ -124,7 +125,7 @@ def _app_impl(ctx):
             fail("Extra resource occupies app destination: %s" % entry.path)
     resources = "Contents/Resources" if platform == "macos" else "resources"
     entries = [{"source": e.source.path, "path": e.path, "executable": e.executable} for e in runtime.entries]
-    entries += [{"source": e.source.path, "path": resources + "/app/" + e.path, "executable": False, "directory": e.source.is_directory} for e in app_entries]
+    entries += [{"source": e.source.path, "path": resources + "/app" + ("/" + e.path if e.path else ""), "executable": False, "directory": e.source.is_directory} for e in app_entries]
     entries += [{"source": e.source.path, "path": resources + "/" + e.path, "executable": e.executable, "directory": e.source.is_directory} for e in resource_entries]
     entries.append({"source": ctx.file.package_json.path, "path": resources + "/app/package.json", "executable": False})
     manifest = ctx.actions.declare_file(ctx.label.name + ".manifest.json")
@@ -188,7 +189,7 @@ electron_app = rule(
     attrs = {
         "runtime": attr.label(mandatory = True, providers = [ElectronRuntimeInfo]),
         "package_json": attr.label(mandatory = True, allow_single_file = [".json"]),
-        "srcs": attr.label_keyed_string_dict(allow_files = True, doc = "Single files or tree artifacts mapped to app-relative paths."),
+        "srcs": attr.label_keyed_string_dict(allow_files = True, doc = "Single files or tree artifacts mapped to app-relative paths; empty destination mounts a tree at the app root."),
         "asar": attr.bool(default = False, doc = "Write resources/app.asar instead of resources/app."),
         "asar_unpacked": attr.string_list(doc = "Exact app-relative paths stored alongside ASAR; requires asar=True."),
         "asar_unpacked_patterns": attr.string_list(doc = "Ordered minimatch inclusion/exclusion patterns; selected files join explicit unpacked paths. Requires asar=True and file_matcher."),

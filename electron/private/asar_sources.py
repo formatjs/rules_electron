@@ -12,7 +12,7 @@ from electron.private.matching import select_files
 
 def write_sources(entries, archive, unpacked=(), symlinks=None, unpacked_patterns=(), file_matcher=None):
     files = {}
-    for entry in expand(entries):
+    for entry in expand(entries, allow_root=True):
         path = relative_path(entry["path"])
         if path in files:
             raise ValueError(f"Duplicate ASAR destination: {path}")

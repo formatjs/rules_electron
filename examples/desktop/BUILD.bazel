@@ -3,6 +3,7 @@ load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_electron//electron:archive.bzl", "electron_archive")
 load("@rules_electron//electron:asar.bzl", "electron_asar")
 load("@rules_electron//electron:defs.bzl", "electron_runtime")
+load("@rules_electron//electron:files.bzl", "electron_files")
 load("@rules_electron//electron:linux.bzl", "electron_deb")
 load("@rules_electron//electron:matching.bzl", "electron_file_matcher")
 load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool")
@@ -149,11 +150,24 @@ cc_binary(
 copy_to_directory(
     name = "renderer_bundle",
     srcs = [
+        "renderer/development.map",
+        "renderer/development.txt",
         "renderer/index.html",
         "renderer/index.js",
         "renderer/style.css",
     ],
     root_paths = ["renderer"],
+)
+
+electron_files(
+    name = "renderer_files",
+    srcs = {":renderer_bundle": "renderer"},
+    file_matcher = ":file_matcher",
+    patterns = [
+        "**/*",
+        "!**/*.map",
+        "!**/development.txt",
+    ],
 )
 
 cc_binary(
