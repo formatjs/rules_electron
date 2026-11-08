@@ -29,8 +29,11 @@ Source manifests remain unchanged. Rewriting dependency metadata does not
 install or prune package files: declare those through app inputs.
 
 The desktop smoke checks merged dependency metadata, injected release fields
-and removed development fields in the packaged ASAR. Hosted validation for
-these overlay checks is pending.
+and removed development fields in the packaged ASAR.
+[BB unit tests](https://formatjs.buildbuddy.io/invocation/798646af-1ae2-45d0-8be8-9c1e94a19f6f),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/8e276547-7b7a-4736-9efc-0dec5d6f3b9f)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42466409761)
+passed, including both Windows compiler variants.
 
 `electron_app` accepts explicit `build_number` and `build_version` attributes.
 Package SemVer remains the application/update identity and Windows ProductVersion.

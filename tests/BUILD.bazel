@@ -5,6 +5,9 @@ load("//electron:asar.bzl", "electron_asar")
 load("//electron:defs.bzl", "electron_app", "electron_runtime")
 load("//electron:metadata.bzl", "electron_package_json")
 load(":cross_build.bzl", "cross_build")
+load(":npm_lock_test.bzl", "npm_lock_test")
+
+npm_lock_test(name = "npm_lock_test")
 
 py_test(
     name = "file_collection_test",

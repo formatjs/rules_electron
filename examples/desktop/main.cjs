@@ -106,6 +106,7 @@ app.whenReady().then(async () => {
       assert.ok(app.getAppPath().endsWith('app.asar'));
       assert.equal(require('./package.json').scripts, undefined);
       assert.equal(require('./package.json').devDependencies, undefined);
+      assert.equal(fs.existsSync(path.join(__dirname, 'node_modules/minimatch/package.json')), false);
       assert.deepEqual(require('./package.json').dependencies, {
         'example-native': '1.0.0', 'electron-updater': '6.6.2',
       });

@@ -63,7 +63,6 @@ alias(
 
 exports_files([
     "bootstrap_runtime.BUILD.bazel",
-    "npm.bzl",
     "node_api.BUILD.bazel",
     "updater-package-lock.json",
     "windows-tools-package-lock.json",

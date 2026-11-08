@@ -130,3 +130,4 @@ declared final artifacts. See [updater support](docs/updates.md) and the
 supported; release signing and other installer formats remain pending.
 
 App version overrides and build iterations: [identity contract](docs/metadata.md).
+Integrity-pinned npm inputs: [npm runtime trees](docs/npm.md).

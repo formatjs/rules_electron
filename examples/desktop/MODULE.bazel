@@ -52,7 +52,7 @@ http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "ht
 
 http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
-npm_runtime = use_repo_rule("//:npm.bzl", "npm_runtime")
+npm_runtime = use_repo_rule("@rules_electron//electron:npm.bzl", "npm_runtime")
 
 npm_runtime(
     name = "updater_npm",
