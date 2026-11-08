@@ -24,8 +24,9 @@ Current enforcement:
 - Assembly, ASAR, update metadata and Linux payload actions use the pinned
   execution Python toolchain. Root/example workspaces select its shell bootstrap,
   avoiding ambient Python during startup. A BB regression launches a Python tool
-  with shell utilities available but no Python executable on PATH; validation is
-  pending. POSIX shell bootstrap utilities remain part of the Linux execution
+  with shell utilities available but no Python executable on PATH;
+  [hosted tests passed](https://formatjs.buildbuddy.io/invocation/5d704086-1541-4c55-9701-a832adbf6d7d).
+  POSIX shell bootstrap utilities remain part of the Linux execution
   platform. Signing declares the signer's full runfiles and uses a digest-pinned execution-platform
   rcodesign archive. Target binaries never execute during packaging.
 - Windows resource editing uses an explicit execution Node and pinned pure-JS

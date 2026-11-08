@@ -33,6 +33,11 @@ ordinary cacheable actions, and updater hashes must follow final release signing
 
 Native smoke checks Apple's deep/strict verification, entitlements and runtime
 flags on the main app, helpers, framework and both addon locations, then launches
-the app and exercises renderer/IPC/addons. Hosted validation is pending.
+the app and exercises renderer/IPC/addons.
+[BB tests](https://formatjs.buildbuddy.io/invocation/9ceb90ad-42b6-4c2e-be5c-28150b324ff2),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/01719356-5309-4cfb-bb95-a27255b9c16c)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42470400381)
+passed. The macOS ARM64 host checked eight signed entities and launched the app
+with its real renderer and native addon.
 
 The scope contract follows [rcodesign's settings model](https://docs.rs/apple-codesign/0.29.0/apple_codesign/enum.SettingsScope.html).
