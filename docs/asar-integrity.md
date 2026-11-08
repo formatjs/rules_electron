@@ -58,8 +58,12 @@ Use `extra_asars` for this contract; a generic `extra_resources` mapping supplie
 only the mapped artifact.
 
 The native example loads a module and unpacked Node-API addon/data from an
-additional archive. Its corruption checks cover both archives' headers and
-packed payloads. Hosted validation for this addition is pending.
+additional archive. [BB assembly tests](https://formatjs.buildbuddy.io/invocation/1e28a27f-63cc-4aba-81eb-a525113c8083)
+and [seven cross-build variants](https://formatjs.buildbuddy.io/invocation/8998b4cc-a67a-48bb-8e44-befeaf01e456)
+passed. [Native smoke](https://github.com/formatjs/rules_electron/actions/runs/42455829577)
+passed on Linux x64, macOS ARM64 and Windows x64/ARM64. macOS and all four Windows
+compiler/CPU variants rejected additional-archive header and payload corruption,
+alongside the existing main-archive checks. Windows also checked installed apps.
 
 Unpacked files and extra resources are not protected by the ASAR header's
 packed-file validation; release signing and installation permissions remain
