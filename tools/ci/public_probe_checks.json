@@ -429,5 +429,20 @@
     "generated component metadata matches native export",
     "generated events retain original native header directories",
     "non event interfaces are excluded"
+  ],
+  "blink_platform": [
+    "CSS named colors fold case and reject unknown names",
+    "UTF8 round trip preserves supplementary characters",
+    "UTF8 surrogate encoding is rejected",
+    "combining sequence emoji and flag form grapheme clusters",
+    "declared ICU data available",
+    "emoji joiner stays inside a single grapheme",
+    "generated Unicode properties distinguish ideographs and emoji",
+    "grapheme boundaries match UTF16 offsets",
+    "native feature list initializes",
+    "native gperf color lookup returns CSS navy",
+    "native string interning shares storage",
+    "pinned ICU data opens",
+    "source ICU initializes with declared data"
   ]
 }
