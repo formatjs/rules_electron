@@ -108,6 +108,20 @@ py_library(
     deps = ["//electron/private:updates"],
 )
 
+py_library(
+    name = "github_publication",
+    srcs = ["publish_github.py"],
+    deps = [":publication"],
+)
+
+py_binary(
+    name = "publish_github",
+    srcs = ["publish_github.py"],
+    main = "publish_github.py",
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [":publication"],
+)
+
 py_binary(
     name = "publish_update",
     srcs = ["publish_update.py"],

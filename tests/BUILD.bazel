@@ -549,6 +549,15 @@ py_test(
 )
 
 py_test(
+    name = "github_publication_test",
+    size = "small",
+    srcs = ["github_publication_test.py"],
+    args = ["$(rootpath //electron/tools:publish_github)"],
+    data = ["//electron/tools:publish_github"],
+    deps = ["//electron/private:updates"],
+)
+
+py_test(
     name = "update_test",
     size = "small",
     srcs = ["update_test.py"],
