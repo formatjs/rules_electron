@@ -83,5 +83,6 @@ metadata, custom document icons and activation delivery remain open.
 
 Generic conditional HTTP publication now has an explicit release tool and real
 socket-based integration tests: verified immutable payloads/blockmaps upload
-before ETag-guarded channel promotion. Hosted validation is pending. Provider
+before ETag-guarded channel promotion. The [BB suite](https://formatjs.buildbuddy.io/invocation/dcd45a49-c63b-4107-a8fb-be76a3bcb6b0)
+passed the public executable's socket-based publication tests. Provider
 APIs and production publication remain open. See [updates](updates.md).

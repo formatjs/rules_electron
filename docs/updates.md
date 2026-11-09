@@ -118,3 +118,10 @@ serialize intended promotions. Redirects and asynchronous HTTP 202 responses fai
 HTTPS is required; `--allow-http-loopback` exists for socket-based CI tests only.
 Object-store-specific APIs, GitHub Releases and credential-provider adapters remain
 separate migration work.
+
+The [db220dc BB suite](https://formatjs.buildbuddy.io/invocation/dcd45a49-c63b-4107-a8fb-be76a3bcb6b0)
+passed the public publisher executable against a local HTTP server: exact bytes
+and ordering, idempotent retry, conflicting payloads, corrupt artifacts/blockmaps,
+interrupted uploads, HTTP 202/redirect rejection, concurrent channel updates,
+unsafe files and strong-ETag requirements. This proves protocol behavior without
+publishing to an external release destination.
