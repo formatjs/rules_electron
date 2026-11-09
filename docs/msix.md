@@ -45,7 +45,7 @@ of a modified second block. Native fixture contains a target-built PE, not a
 complete Electron installation.
 
 Current limits: empty directory leaves and symlinks fail explicitly; no placeholder
-files replace them. Production signing, file/protocol registration,
+files replace them. Production signing, URI/file activation behavior,
 language/scale assets and App Installer
 publishing remain open. The source-built signer now passes a
 [BB MSIX signing/verification round trip](https://formatjs.buildbuddy.io/invocation/feb26e4f-2453-4ff3-ab50-81f58c7dd10e),
@@ -84,5 +84,12 @@ owns argument handling. File-handler identities stay stable across package
 versions. Package deployment advertises candidates without setting user defaults.
 The native gate enumerates protocol/file handlers through public Shell APIs,
 matches the package AppUserModelID after install and upgrade, then requires its
-handlers absent after removal. This new registration gate awaits hosted
-validation. Activation delivery and custom document icons remain separate work.
+handlers absent after removal. The
+[a414167 suite](https://formatjs.buildbuddy.io/invocation/e7a825cf-7484-4ddd-89c0-53e6e537dad7)
+and [cross-build](https://formatjs.buildbuddy.io/invocation/9e8e3e21-1436-4f16-be19-7b2fa0265ad7)
+passed. Native [Windows x64](https://github.com/formatjs/rules_electron/actions/runs/42574732274/job/129019965855)
+and [ARM64](https://github.com/formatjs/rules_electron/actions/runs/42574732274/job/129019965955)
+passed both schemes and file types after install/upgrade, then absence after
+removal, plus the real Electron lifecycle. Activation delivery and custom
+document icons remain separate work. The earlier ARM64 run passed these MSIX
+checks before an unrelated NSIS update timeout; see [installer diagnostics](windows-installers.md).

@@ -25742,6 +25742,7 @@
   "LICENSE.v8",
   "android_webview/java/strings/android_webview_strings.grd",
   "angledata/VkICD_mock_icd.json",
+  "ash/ash_export.h",
   "ash/ash_strings.grd",
   "ash/constants/ash_switches.h",
   "ash/keyboard/ui/keyboard_resources.grd",

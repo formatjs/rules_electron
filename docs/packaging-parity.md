@@ -73,6 +73,10 @@ install/helper launch/removal on both Windows CPUs; see [signing proof](signing.
 The [full-app MSIX gate](msix.md) subsequently passed bootstrap Electron
 install/launch/upgrade/removal on both Windows CPUs, with package identity,
 sandboxed renderer, native addon/helper and integrity metadata checks. The full
-source runtime, production signing, MSIX OS associations and updater behavior
+source runtime, production signing, MSIX activation delivery and updater behavior
 remain unverified. Empty directory leaves and symlinks fail
 explicitly. See [MSIX](msix.md).
+
+MSIX URI/file handler registration also passed native Shell enumeration after
+install and upgrade, then removal checks on both Windows CPUs. Rich document
+metadata, custom document icons and activation delivery remain open.

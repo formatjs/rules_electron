@@ -143,3 +143,11 @@ and Win32 image decoding passed before/after installed updates on
 [Windows x64](https://github.com/formatjs/rules_electron/actions/runs/42538722589/job/128908849414)
 and [Windows ARM64](https://github.com/formatjs/rules_electron/actions/runs/42538722589/job/128908849402)
 for a3f7142. Both hosts also passed uninstall ownership checks.
+
+An [ARM64 run at a414167](https://github.com/formatjs/rules_electron/actions/runs/42574365090/job/129018851852)
+downloaded the update but stayed at v1 after 120 seconds. Its failure snapshot
+showed a pending installer and no remaining app/installer processes. The next
+[scheduled run](https://github.com/formatjs/rules_electron/actions/runs/42574732274/job/129019965955)
+passed the full lifecycle. The timeout remains unexplained; installer process
+exit tracing is the next diagnostic. Successful repeat validation does not close
+that intermittent failure.
