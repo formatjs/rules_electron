@@ -1,6 +1,7 @@
 """Resolve an installed MIME icon through GIO/GTK and decode its actual pixels."""
 
 import ctypes as C
+import json
 from pathlib import Path
 import sys
 
@@ -24,7 +25,10 @@ def main(mime_type, expected, size, gray):
     unref = call(objects, "g_object_unref", None, [C.c_void_p])
     try:
         filename = call(gtk, "gtk_icon_info_get_filename", C.c_char_p, [C.c_void_p])(info)
-        assert filename and Path(filename.decode()).resolve() == expected.resolve()
+        resolved = Path(filename.decode()).resolve() if filename else None
+        print("MIME icon lookup: " + json.dumps({"resolved": str(resolved) if resolved else None,
+                                               "expected": str(expected.resolve())}), flush=True)
+        assert resolved == expected.resolve()
         image = call(gtk, "gtk_icon_info_load_icon", C.c_void_p, [C.c_void_p, C.c_void_p])(info, None)
         assert image
         assert call(pixels, "gdk_pixbuf_get_width", C.c_int, [C.c_void_p])(image) == size
