@@ -111,6 +111,9 @@ if __name__ == "__main__":
             if variant.endswith("_msvc"):
                 packages = directory / variant / "packages"
                 subprocess.run([str(packages / "msix_reader.exe"), str(packages / "msix_probe.msix")], check=True)
+                # Inherited PowerShell 7 modules cannot load in Windows PowerShell.
+                powershell_environment = {key: value for key, value in os.environ.items() if key.upper() != "PSMODULEPATH"}
                 subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
-                                "tools/ci/windows_msix_smoke.ps1", "-Packages", str(packages), "-Architecture", target_arch], check=True)
+                                "tools/ci/windows_msix_smoke.ps1", "-Packages", str(packages), "-Architecture", target_arch],
+                               check=True, env=powershell_environment)
                 subprocess.run([sys.executable, "tools/ci/windows_nsis_smoke.py", str(directory / variant / "packages"), target_arch], check=True)
