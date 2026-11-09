@@ -112,7 +112,7 @@ def create_appimage(app, runtime, launcher, mksquashfs, output, app_id, product_
     elf_prefix(launcher, architecture, runtime=True)
     with inventory(Path(app), "linux") as (entries, open_app), tempfile.TemporaryDirectory() as temporary:
         if directory_manifest:
-            for name in read_directories(directory_manifest):
+            for name in map(str, read_directories(directory_manifest)):
                 if name in entries and entries[name].kind != "directory":
                     raise ValueError("AppImage directory metadata collides with file")
                 entries.setdefault(name, Entry("directory", 0o755))
