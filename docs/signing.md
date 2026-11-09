@@ -95,6 +95,13 @@ timestamp verification. `--no-timestamp` is an explicit alternative for test or
 deliberately untimestamped releases; it is never selected implicitly. Hosted
 interface tests cover real PE/MSIX signing, encrypted keys, repeatability,
 identity/trust rejection, output preservation and final updater hashes. Validation
-is pending. Live TSA interoperability, production trust, credential services,
+is pending for the added local HTTPS RFC 3161 exchange and rejection tests.
+The [5d18260 BB suite](https://formatjs.buildbuddy.io/invocation/788bc1e4-d72b-43ae-b3a7-e696ec1b1aec)
+passed the public PE/MSIX interface, encrypted keys, identity/trust rejection,
+repeat signing and final feed hashes; its
+[cross-build](https://formatjs.buildbuddy.io/invocation/5f1f18a2-ca08-419e-bd3e-ad6755d67d6e)
+also passed. A narrow native signer patch adds TLS hostname checks and makes
+invalid explicit transport roots fail instead of skipping verification.
+Live TSA interoperability, production trust, credential services,
 certificate rotation/revocation policy and native Windows release acceptance
 remain open; this command does not establish those claims.

@@ -2,6 +2,7 @@
 
 import base64
 import hashlib
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import os
 from pathlib import Path
 import ssl
@@ -9,6 +10,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 import zlib
 
@@ -36,13 +38,13 @@ class SignWindowsTest(unittest.TestCase):
         self.environment = {**os.environ, "RELEASE_CERT": str(self.certificate),
                             "RELEASE_KEY": str(self.key), "RELEASE_PASSWORD": "fixture-private-password"}
 
-    def sign(self, source, name, success=True, extra=(), environment=None):
+    def sign(self, source, name, success=True, extra=(), environment=None, timestamp=None):
         output = self.root / name
         command = [CLI, "--input", str(source), "--output", str(output),
                    "--certificate-env", "RELEASE_CERT", "--key-env", "RELEASE_KEY",
                    "--password-env", "RELEASE_PASSWORD", "--ca-file", str(self.certificate),
                    "--expected-leaf-sha256", self.fingerprint, "--signing-time", "1700000000",
-                   "--no-timestamp", *extra]
+                   *(timestamp or ["--no-timestamp"]), *extra]
         result = subprocess.run(command, env=environment or self.environment, capture_output=True, timeout=60)
         self.assertEqual(result.returncode == 0, success, result.stderr.decode())
         self.assertEqual(result.stdout if success else result.stderr,
@@ -107,6 +109,104 @@ class SignWindowsTest(unittest.TestCase):
                     "Example", "Signing Probe", "sample", "x64", *logos)
         output = self.sign(source, "signed.msix")
         self.assertGreater(output.stat().st_size, source.stat().st_size)
+
+    def test_real_rfc3161_over_https_and_timestamp_failure(self):
+        def openssl(*args):
+            return subprocess.run([OPENSSL, *map(str, args)], env=self.clean,
+                                  check=True, capture_output=True, timeout=30)
+
+        root_cert, root_key = self.root / "root.pem", self.root / "root.key"
+        openssl("req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+                "-subj", "/CN=Local Timestamp Test Root", "-addext", "basicConstraints=critical,CA:TRUE",
+                "-addext", "keyUsage=critical,keyCertSign,cRLSign", "-keyout", root_key, "-out", root_cert)
+        certificates = {}
+        for name, extensions in [
+            ("tsa", "extendedKeyUsage=critical,timeStamping\n"),
+            ("server", "extendedKeyUsage=serverAuth\nsubjectAltName=IP:127.0.0.1\n"),
+        ]:
+            key, cert, csr = [self.root / (name + suffix) for suffix in (".key", ".pem", ".csr")]
+            extension_file = self.root / (name + ".ext")
+            extension_file.write_text("basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\n" + extensions)
+            openssl("req", "-new", "-newkey", "rsa:2048", "-nodes", "-subj", "/CN=Local " + name,
+                    "-keyout", key, "-out", csr)
+            openssl("x509", "-req", "-in", csr, "-CA", root_cert, "-CAkey", root_key,
+                    "-set_serial", "10" if name == "tsa" else "11", "-days", "1", "-extfile", extension_file, "-out", cert)
+            certificates[name] = (key, cert)
+        serial = self.root / "tsa.serial"
+        serial.write_text("01\n")
+        config = self.root / "tsa.cnf"
+        config.write_text(
+            "[tsa]\ndefault_tsa=local\n[local]\n"
+            + f"serial={serial}\nsigner_cert={certificates['tsa'][1]}\nsigner_key={certificates['tsa'][0]}\ncerts={root_cert}\n"
+            + "signer_digest=sha256\ndefault_policy=1.2.3.4.1\ndigests=sha256\naccuracy=secs:1\n"
+            + "ordering=yes\ntsa_name=yes\ness_cert_id_chain=no\ness_cert_id_alg=sha256\n"
+        )
+        requests, fail = [], []
+        owner = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_POST(self):
+                length = int(self.headers.get("Content-Length", 0))
+                if not 0 < length < 1024 * 1024:
+                    self.send_error(400)
+                    return
+                requests.append(self.headers.get("Content-Type"))
+                query = owner.root / "request.tsq"
+                query.write_bytes(self.rfile.read(length))
+                reply = owner.root / "reply.tsr"
+                if fail:
+                    self.send_error(503)
+                    return
+                openssl("ts", "-reply", "-config", config, "-queryfile", query, "-out", reply)
+                data = reply.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/timestamp-reply")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        tls.load_cert_chain(str(certificates["server"][1]), str(certificates["server"][0]))
+        server.socket = tls.wrap_socket(server.socket, server_side=True)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(thread.join)
+        self.addCleanup(server.shutdown)
+        timestamp = ["--timestamp-url", "https://127.0.0.1:" + str(server.server_port) + "/",
+                     "--https-ca-file", str(root_cert), "--tsa-ca-file", str(root_cert)]
+        signed = self.sign(INPUT, "timestamped.exe", timestamp=timestamp)
+        self.assertTrue(signed.is_file())
+        self.assertEqual(requests, ["application/timestamp-query"])
+        empty_roots = self.root / "empty-roots.pem"
+        empty_roots.write_text("")
+        rejected = self.sign(INPUT, "bad-transport-roots.exe", False,
+                             ["--https-ca-file", str(empty_roots)], timestamp=timestamp)
+        self.assertFalse(rejected.exists())
+        self.assertEqual(len(requests), 1)
+        wrong_extensions = self.root / "wrong-host.ext"
+        wrong_extensions.write_text("basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\n"
+                                    "extendedKeyUsage=serverAuth\nsubjectAltName=IP:127.0.0.2\n")
+        wrong_host = self.root / "wrong-host.pem"
+        openssl("x509", "-req", "-in", self.root / "server.csr", "-CA", root_cert, "-CAkey", root_key,
+                "-set_serial", "12", "-days", "1", "-extfile", wrong_extensions, "-out", wrong_host)
+        tls.load_cert_chain(str(wrong_host), str(certificates["server"][0]))
+        rejected = self.sign(INPUT, "wrong-host.exe", False, timestamp=timestamp)
+        self.assertFalse(rejected.exists())
+        self.assertEqual(len(requests), 1)
+        tls.load_cert_chain(str(certificates["server"][1]), str(certificates["server"][0]))
+        rejected = self.sign(INPUT, "untrusted-tsa.exe", False,
+                             ["--tsa-ca-file", str(self.certificate)], timestamp=timestamp)
+        self.assertFalse(rejected.exists())
+        self.assertEqual(len(requests), 2)
+        fail.append(True)
+        rejected = self.sign(INPUT, "failed-timestamp.exe", False, timestamp=timestamp)
+        self.assertFalse(rejected.exists())
+        self.assertEqual(len(requests), 3)
 
 
 if __name__ == "__main__":

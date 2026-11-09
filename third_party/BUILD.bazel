@@ -4,6 +4,7 @@ exports_files([
     "osslsigncode.BUILD.bazel",
     "osslsigncode-config.patch",
     "osslsigncode-appx.patch",
+    "osslsigncode-tls.patch",
     "squashfs.BUILD.bazel",
     "fuse3.BUILD.bazel",
     "fuse3.patch",

@@ -88,6 +88,7 @@ http_archive(
     patches = [
         "//third_party:osslsigncode-config.patch",
         "//third_party:osslsigncode-appx.patch",
+        "//third_party:osslsigncode-tls.patch",
     ],
     sha256 = "344b91b55789fd541b6783f4086a3886ba9b28dab21b6f1b01ff1ae2096e7a23",
     strip_prefix = "osslsigncode-b8fddbcd64733150181ae72a96bdd528d2fb4ea1",
