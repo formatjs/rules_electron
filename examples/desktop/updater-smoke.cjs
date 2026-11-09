@@ -23,6 +23,7 @@ module.exports = async function checkUpdater() {
   assert.equal(githubConfig.private ?? false, false);
   const githubPath = `/${githubConfig.owner}/${githubConfig.repo}/releases`;
   const githubApi = `/api/v3/repos/${githubConfig.owner}/${githubConfig.repo}/releases/latest`;
+  const download = `${githubPath}/download/v2.0.0/`;
   const directory = path.join(process.resourcesPath, 'update-smoke-feed');
   const requests = [];
   const githubRequests = [];
@@ -43,7 +44,6 @@ module.exports = async function checkUpdater() {
       response.end(JSON.stringify({ tag_name: 'v2.0.0' }));
       return;
     }
-    const download = `${githubPath}/download/v2.0.0/`;
     if (pathname.startsWith(download)) githubRequests.push(pathname);
     const name = decodeURIComponent(pathname.startsWith(download) ? pathname.slice(download.length) : pathname.slice(1));
     if (!fs.readdirSync(directory).includes(name)) {
