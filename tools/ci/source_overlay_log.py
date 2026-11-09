@@ -286,6 +286,8 @@ def source_test_diagnostics(identifier, key, selected=None):
         "//source:printing_wire_test": "printing",
         "//source:asar_path_resolver_test": "asar_paths",
         "//source:asar_reader_test": "asar_reader",
+        "//source:gn_link_plain_test": "gn_link_plain",
+        "//source:gn_link_thin_lto_test": "gn_link_thin_lto",
         "//source:gpu_transport_test": "gpu_transport",
         "//source/media:symphonia_test": "symphonia",
         "//source/media:media_runtime_test": "media_runtime",
@@ -582,6 +584,6 @@ if __name__ == "__main__":
             failed_action_diagnostics(identifier, key)
             source_test_diagnostics(identifier, key)
         elif status == "running" and command == "test":
-            source_test_diagnostics(identifier, key, {"asar_reader", "asar_paths", "printing", "cairo_loader", "runtime_archive", "source_runtime", "distribution_metadata", "credits", "default_app", "catapult", "content_webui", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "policy", "web_assets", "tracing_proto"})
+            source_test_diagnostics(identifier, key, {"gn_link_plain", "gn_link_thin_lto", "asar_reader", "asar_paths", "printing", "cairo_loader", "runtime_archive", "source_runtime", "distribution_metadata", "credits", "default_app", "catapult", "content_webui", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "policy", "web_assets", "tracing_proto"})
         elif value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and command == "test":
-            source_test_diagnostics(identifier, key, {"asar_reader", "asar_paths", "printing", "cairo_loader", "runtime_archive", "source_runtime", "distribution_metadata", "credits", "default_app", "symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "source_action", "llguidance", "crabby_decode"})
+            source_test_diagnostics(identifier, key, {"gn_link_plain", "gn_link_thin_lto", "asar_reader", "asar_paths", "printing", "cairo_loader", "runtime_archive", "source_runtime", "distribution_metadata", "credits", "default_app", "symphonia", "gpu_transport", "platform_graphics", "media_runtime", "asound_abi", "compositor", "blink_font", "blink_crash", "blink_bindings", "blink_platform", "blink_core", "blink_modules", "devtools_resources", "content_metadata", "tracing_proto", "binary_proto", "web_assets", "catapult", "content_webui", "policy", "sdk_runtime_abi", "native_generators", "electron_version", "api_features", "source_action", "llguidance", "crabby_decode"})
