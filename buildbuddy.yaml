@@ -86,15 +86,16 @@ actions:
           bazel --host_jvm_args=-Xmx24g cquery --config=bb-workflow --config=msvc-license \
             --registry="file://$source_registry" --registry=https://bcr.bazel.build \
             --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
-            'filter("bootstrap_electron_linux_x64", deps(//:cross_build_smoke_bundle))' \
-            --output=label > "$source_setup/bootstrap-deps"
-          test ! -s "$source_setup/bootstrap-deps"
-          bazel --host_jvm_args=-Xmx24g cquery --config=bb-workflow --config=msvc-license \
-            --registry="file://$source_registry" --registry=https://bcr.bazel.build \
-            --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
-            'filter("//source/distribution:runtime$", deps(//:cross_build_smoke_bundle))' \
-            --output=label > "$source_setup/source-deps"
-          test -s "$source_setup/source-deps"
+            'filter("bootstrap_electron_linux_x64|//source/distribution:runtime$", deps(//:cross_build_smoke_bundle))' \
+            --output=label > "$source_setup/runtime-deps"
+          python3 - "$source_setup/runtime-deps" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+          labels = Path(sys.argv[1]).read_text().splitlines()
+          assert not any("bootstrap_electron_linux_x64" in label for label in labels), "Bootstrap Linux runtime reached source example"
+          assert any(re.search(r"//source/distribution:runtime(?:\s|$)", label) for label in labels), "Source runtime missing from example"
+          PY
           echo SOURCE_DESKTOP_DEPENDENCY_AUDIT_PASSED
           bazel --host_jvm_args=-Xmx24g test --config=bb-workflow \
             --registry="file://$source_registry" --registry=https://bcr.bazel.build \
