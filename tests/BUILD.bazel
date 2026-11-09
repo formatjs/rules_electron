@@ -110,6 +110,7 @@ py_test(
         "//electron/private:assembly",
         "//electron/private:dmg",
         "@ds_store_sources//:ds_store",
+        "@mac_alias_sources//:mac_alias",
     ],
 )
 

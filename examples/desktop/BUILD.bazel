@@ -24,6 +24,13 @@ load(":desktop_app.bzl", "desktop_app")
 example_icon(name = "example_icon")
 
 example_icon(
+    name = "dmg_background",
+    size = 600,
+    format = "png",
+    gray = 173,
+)
+
+example_icon(
     name = "document_icon",
     format = "png",
     gray = 83,
@@ -103,6 +110,7 @@ electron_dmg(
         160,
     ],
     background_color = "#ddeeff",
+    background_image = ":dmg_background",
     finder_window = [
         120,
         140,

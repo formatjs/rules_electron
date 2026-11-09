@@ -15,6 +15,7 @@ electron_dmg(
     icon_size = 112,
     text_size = 12,
     background_color = "#ddeeff",
+    background_image = "//assets:installer-background.png",
 )
 ```
 
@@ -37,7 +38,18 @@ It declares Cocoa x, y, width and height, with a bottom-left screen origin.
 App/Applications icon positions use centers
 inside that window; `icon_size` allows 16..512 pixels and `text_size` 10..16.
 `background_color` accepts `#RRGGBB`. Omitting `finder_window` retains the plain
-volume layout. Background images and license dialogs remain separate gaps.
+volume layout. License dialogs remain separate work.
+
+`background_image` accepts a declared PNG, up to 64 MiB and 8192 pixels per axis.
+It requires `finder_window`, overrides the background color and copies unchanged
+bytes to `.background.png`. Its Carbon alias uses the explicit volume name/date
+and a path inside that volume, without build paths, host file IDs or filesystem
+discovery. The path-based form also appears in
+[Chromium's Linux-compatible generator](https://chromium.googlesource.com/chromium/src/+/9c363bb2863cd723978a8a245719389a7bf1c20e/chrome/installer/mac/generate_dsstore.py).
+BB tests decode the packaged alias and image bytes, check volume dates and
+compare relocated builds. Native smoke reads Finder's resolved background
+picture and requires the mounted image's exact file. Background-image support
+awaits hosted validation.
 
 Metadata uses checksum-pinned MIT-licensed `ds_store` 1.3.3 and `mac_alias` 2.2.2
 Python sources. No alias filesystem discovery, Finder, mounting or AppleScript

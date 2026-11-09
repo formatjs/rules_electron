@@ -12,6 +12,7 @@ import sys
 SCRIPT = '''
 on run argv
     set targetFolder to (POSIX file (item 1 of argv)) as alias
+    set expectedBackground to item 2 of argv
     set targetWindow to missing value
     tell application "Finder"
         try
@@ -19,7 +20,11 @@ on run argv
             set targetWindow to container window of targetFolder
             delay 1
             set viewSettings to icon view options of targetWindow
-            set snapshot to {(current view of targetWindow is icon view), bounds of targetWindow, toolbar visible of targetWindow, statusbar visible of targetWindow, icon size of viewSettings, text size of viewSettings, background color of viewSettings, position of item "Sample Desktop.app" of targetFolder, position of item "Applications" of targetFolder, bounds of window of desktop}
+            set pictureMatches to false
+            if expectedBackground is not "" then
+                set pictureMatches to (POSIX path of (background picture of viewSettings as alias)) is expectedBackground
+            end if
+            set snapshot to {(current view of targetWindow is icon view), bounds of targetWindow, toolbar visible of targetWindow, statusbar visible of targetWindow, icon size of viewSettings, text size of viewSettings, position of item "Sample Desktop.app" of targetFolder, position of item "Applications" of targetFolder, pictureMatches, bounds of window of desktop}
             close targetWindow
             return snapshot
         on error messageText number messageNumber
@@ -59,7 +64,10 @@ def check_layout(mount):
     mount = Path(mount).resolve(strict=True)
     if not (mount / ".DS_Store").is_file():
         raise ValueError("Missing BB-generated Finder metadata")
-    result = subprocess.run(["/usr/bin/osascript", "-s", "s", "-e", SCRIPT, str(mount)],
+    background = mount / ".background.png"
+    if not background.is_file():
+        raise ValueError("Missing BB-generated Finder background")
+    result = subprocess.run(["/usr/bin/osascript", "-s", "s", "-e", SCRIPT, str(mount), str(background)],
                             capture_output=True, text=True, timeout=30)
     if result.returncode:
         if "-1743" in result.stderr:
@@ -73,8 +81,9 @@ def check_layout(mount):
     expected = {
         "icon_view": True, "bounds": None, "toolbar": False,
         "statusbar": False, "icon_size": 112, "text_size": 12,
-        "background": [56797, 61166, 65535], "app_position": [140, 160],
+        "app_position": [140, 160],
         "applications_position": [460, 160],
+        "background_picture": True,
     }
     if (not isinstance(values, list) or len(values) != len(expected) + 1
             or any(type(value) not in (int, float, bool) for item in values for value in (item if isinstance(item, list) else [item]))):
@@ -91,6 +100,7 @@ def check_layout(mount):
     if failures:
         raise RuntimeError("FINDER_LAYOUT_FAILED " + ",".join(failures))
     print("DMG_FINDER_LAYOUT_OK", flush=True)
+    print("DMG_FINDER_BACKGROUND_OK", flush=True)
     if not (mount / ".VolumeIcon.icns").is_file():
         raise ValueError("Missing BB-generated volume icon")
     bundle = mount / "Sample Desktop.app"

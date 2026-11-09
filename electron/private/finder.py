@@ -2,12 +2,27 @@
 
 from pathlib import Path
 import re
+from datetime import datetime, timezone
 
 from ds_store import DSStore
+from mac_alias import (Alias, TargetInfo, VolumeInfo, ALIAS_EJECTABLE_DISK,
+                       ALIAS_HFS_VOLUME_SIGNATURE, ALIAS_KIND_FILE, ALIAS_NO_CNID)
+
+
+def background_alias(volume_name, source_date_epoch):
+    date = datetime.fromtimestamp(source_date_epoch, timezone.utc)
+    volume = VolumeInfo(name=volume_name, creation_date=date,
+                        fs_type=ALIAS_HFS_VOLUME_SIGNATURE, disk_type=ALIAS_EJECTABLE_DISK,
+                        attribute_flags=0, fs_id=b"\0\0", posix_path="/Volumes/" + volume_name)
+    target = TargetInfo(kind=ALIAS_KIND_FILE, filename=".background.png", folder_cnid=2,
+                        cnid=ALIAS_NO_CNID, creation_date=date, creator_code=b"\0" * 4,
+                        type_code=b"\0" * 4, folder_name=volume_name,
+                        posix_path="/.background.png", carbon_path=volume_name + ":.background.png")
+    return Alias(volume=volume, target=target).to_bytes()
 
 
 def write_layout(output, app_name, applications_link, window, app_position, applications_position,
-                 icon_size, text_size, background_color):
+                 icon_size, text_size, background_color, image_alias=b""):
     if len(window) != 4 or any(type(value) is not int for value in window):
         raise ValueError("Finder window requires x, y, width and height integers")
     x, y, width, height = window
@@ -36,7 +51,7 @@ def write_layout(output, app_name, applications_link, window, app_position, appl
             "ShowTabView": False, "ShowPathbar": False, "ContainerShowSidebar": False,
             "PreviewPaneVisibility": False, "SidebarWidth": 0,
         }
-        store["."]["icvp"] = {
+        settings = {
             "viewOptionsVersion": 1, "arrangeBy": "none", "iconSize": float(icon_size),
             "textSize": float(text_size), "labelOnBottom": True, "showItemInfo": False,
             "showIconPreview": False, "gridOffsetX": 0.0, "gridOffsetY": 0.0,
@@ -44,6 +59,9 @@ def write_layout(output, app_name, applications_link, window, app_position, appl
             "backgroundType": 1, "backgroundColorRed": red,
             "backgroundColorGreen": green, "backgroundColorBlue": blue,
         }
+        if image_alias:
+            settings.update(backgroundType=2, backgroundImageAlias=image_alias)
+        store["."]["icvp"] = settings
         for name, point in sorted(positions.items()):
             store[name]["Iloc"] = tuple(point)
     Path(output).chmod(0o644)

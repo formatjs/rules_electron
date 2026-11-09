@@ -13,12 +13,21 @@ import unittest
 import zlib
 
 from ds_store import DSStore
+from mac_alias import Alias
 
 from electron.private.dmg import create_dmg
 from electron.private.mac_sign import archive_bundle
 
 XORRISO, CONVERTER = [str(Path(value).resolve()) for value in sys.argv[1:3]]
 del sys.argv[1:3]
+
+
+def png(width, height, gray):
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress((b"\0" + bytes([gray, gray, gray, 255]) * width) * height))
+            + chunk(b"IEND", b""))
 
 
 def decode_dmg(data):
@@ -233,6 +242,68 @@ class DmgTest(unittest.TestCase):
             with self.subTest(options=options), self.assertRaises(ValueError):
                 self.build(self.source, output, **dict({"finder_window": [100, 100, 640, 400]}, **options))
             self.assertFalse(output.exists())
+
+    def test_background_image_alias_is_volume_relative_and_reproducible(self):
+        background = self.root / "outside build directory.png"
+        pixels = png(600, 360, 173)
+        background.write_bytes(pixels)
+        options = dict(finder_window=[120, 140, 600, 360], app_position=[140, 160],
+                       applications_position=[460, 160], background_image=background,
+                       volume_name="Sample 世界")
+        first, second = self.root / "picture.dmg", self.root / "moved-picture.dmg"
+        self.build(self.source, first, **options)
+        image = decode_dmg(first.read_bytes())
+        iso = self.root / "picture.iso"
+        iso.write_bytes(image)
+        extracted = self.root / "picture-volume"
+        subprocess.run([XORRISO, "-no_rc", "-osirrox", "on", "-indev", str(iso), "-extract", "/", str(extracted)],
+                       env={"PATH": "", "HOME": str(self.root), "LC_ALL": "C", "TZ": "UTC"},
+                       check=True, capture_output=True, timeout=60)
+        self.assertEqual((extracted / ".background.png").read_bytes(), pixels)
+        with DSStore.open(str(extracted / ".DS_Store"), "r") as store:
+            settings = store["."]["icvp"]
+            self.assertEqual(settings["backgroundType"], 2)
+            data = settings["backgroundImageAlias"]
+        alias = Alias.from_bytes(data)
+        self.assertEqual(alias.volume.name, "Sample 世界")
+        self.assertEqual(alias.volume.posix_path, "/Volumes/Sample 世界")
+        self.assertEqual((alias.target.filename, alias.target.posix_path, alias.target.carbon_path),
+                         (".background.png", "/.background.png", "Sample 世界:.background.png"))
+        self.assertEqual((alias.target.folder_cnid, alias.target.cnid), (2, 0xffffffff))
+        self.assertNotIn(str(self.root).encode(), data)
+        volume_date = struct.unpack_from(">I", image, hfs_volume(image) + 1024 + 16)[0]
+        self.assertEqual(struct.unpack_from(">I", data, 38)[0], volume_date)
+        moved = self.root / "moved inputs"
+        moved.mkdir()
+        moved_background = moved / "different name.png"
+        moved_background.write_bytes(pixels)
+        os.utime(moved_background, (1234567890, 1234567890))
+        moved_app = moved / "different.app"
+        shutil.copytree(self.bundle, moved_app, symlinks=True)
+        self.build(moved_app, second, **dict(options, background_image=moved_background))
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        background.write_bytes(png(600, 360, 174))
+        self.build(self.source, second, **options)
+        self.assertNotEqual(first.read_bytes(), second.read_bytes())
+        self.assertEqual((extracted / "Sample.app/Contents/_CodeSignature/CodeResources").read_bytes(), self.seal)
+        self.assertEqual(self.source.read_bytes(), self.original)
+
+    def test_background_rejects_missing_layout_bad_png_dimensions_and_output_alias(self):
+        background = self.root / "background.png"
+        valid = png(64, 64, 173)
+        background.write_bytes(valid)
+        with self.assertRaisesRegex(ValueError, "requires finder_window"):
+            self.build(self.source, self.root / "no-window.dmg", background_image=background)
+        self.assertFalse((self.root / "no-window.dmg").exists())
+        with self.assertRaisesRegex(ValueError, "outside its inputs"):
+            self.build(self.source, background, background_image=background, finder_window=[0, 0, 640, 400])
+        self.assertEqual(background.read_bytes(), valid)
+        for payload in [b"not PNG", valid[:-1], png(8193, 1, 173)]:
+            background.write_bytes(payload)
+            with self.subTest(size=len(payload)), self.assertRaises(ValueError):
+                self.build(self.source, self.root / "invalid-picture.dmg", background_image=background,
+                           finder_window=[0, 0, 640, 400])
+            self.assertFalse((self.root / "invalid-picture.dmg").exists())
 
     def test_output_cannot_replace_input_or_stage_inside_input_tree(self):
         for source, output in [(self.source, self.source), (self.bundle, self.bundle / "image.dmg")]:

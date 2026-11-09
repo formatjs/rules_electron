@@ -13,7 +13,10 @@ py_library(
     name = "finder",
     srcs = ["finder.py"],
     visibility = ["//tests:__pkg__"],
-    deps = ["@ds_store_sources//:ds_store"],
+    deps = [
+        "@ds_store_sources//:ds_store",
+        "@mac_alias_sources//:mac_alias",
+    ],
 )
 
 py_library(

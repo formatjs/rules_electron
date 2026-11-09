@@ -21,13 +21,14 @@ def _impl(ctx):
         "icon_size": ctx.attr.icon_size,
         "text_size": ctx.attr.text_size,
         "background_color": ctx.attr.background_color,
+        "background_image": ctx.file.background_image.path if ctx.file.background_image else "",
         "xorriso": ctx.executable._xorriso.path,
         "converter": ctx.executable._converter.path,
     }))
     ctx.actions.run(
         executable = ctx.executable._packager,
         arguments = [manifest.path, output.path],
-        inputs = [manifest, app.artifact] + ([ctx.file.volume_icon] if ctx.file.volume_icon else []),
+        inputs = [manifest, app.artifact] + [file for file in [ctx.file.volume_icon, ctx.file.background_image] if file],
         tools = [ctx.attr._xorriso[DefaultInfo].files_to_run, ctx.attr._converter[DefaultInfo].files_to_run],
         outputs = [output],
         mnemonic = "ElectronDmg",
@@ -49,6 +50,7 @@ electron_dmg = rule(
         "icon_size": attr.int(default = 128, doc = "Finder icon size, 16..512, when finder_window is set."),
         "text_size": attr.int(default = 14, doc = "Finder label size, 10..16, when finder_window is set."),
         "background_color": attr.string(default = "#ffffff", doc = "Finder background #RRGGBB when finder_window is set."),
+        "background_image": attr.label(allow_single_file = [".png"], doc = "Declared Finder background PNG; requires finder_window and overrides background_color."),
         "_xorriso": attr.label(default = Label("//electron/tools:xorriso"), executable = True, cfg = "exec"),
         "_converter": attr.label(default = Label("//electron/tools:dmg"), executable = True, cfg = "exec"),
         "_packager": attr.label(default = Label("//electron/private:dmg_packager"), executable = True, cfg = "exec"),

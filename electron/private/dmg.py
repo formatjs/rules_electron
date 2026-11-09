@@ -12,13 +12,13 @@ import tempfile
 
 from electron.private.archive import inventory, relative
 from electron.private.files import normalize
-from electron.private.finder import write_layout
-from electron.private.icons import validate_icns
+from electron.private.finder import background_alias, write_layout
+from electron.private.icons import png_dimensions, validate_icns
 
 
 def create_dmg(source, app_name, volume_name, source_date_epoch, applications_link, xorriso, converter, output,
                finder_window=(), app_position=(160, 180), applications_position=(480, 180),
-               icon_size=128, text_size=14, background_color="#ffffff", volume_icon=""):
+               icon_size=128, text_size=14, background_color="#ffffff", volume_icon="", background_image=""):
     relative(app_name)
     if "/" in app_name or not app_name.endswith(".app"):
         raise ValueError("Expected single app bundle name")
@@ -32,8 +32,11 @@ def create_dmg(source, app_name, volume_name, source_date_epoch, applications_li
     source = Path(source).resolve(strict=True)
     if output.resolve() == source or source.is_dir() and output.resolve().is_relative_to(source):
         raise ValueError("DMG output must be outside its input")
-    if volume_icon and output.resolve() == Path(volume_icon).resolve(strict=True):
-        raise ValueError("DMG output must be outside its inputs")
+    for asset in (volume_icon, background_image):
+        if asset and output.resolve() == Path(asset).resolve(strict=True):
+            raise ValueError("DMG output must be outside its inputs")
+    if background_image and not finder_window:
+        raise ValueError("DMG background image requires finder_window")
     with tempfile.TemporaryDirectory(prefix="electron-dmg-", dir=output.parent) as temporary:
         root = Path(temporary)
         staging = root / "volume"
@@ -79,8 +82,18 @@ def create_dmg(source, app_name, volume_name, source_date_epoch, applications_li
             digest.update(b".VolumeIcon.icns\0" + icon.read_bytes())
         if finder_window:
             layout = staging / ".DS_Store"
+            image_alias = b""
+            if background_image:
+                image = staging / ".background.png"
+                if Path(background_image).stat().st_size > 64 * 1024**2:
+                    raise ValueError("DMG background image exceeds 64 MiB")
+                image.write_bytes(Path(background_image).read_bytes())
+                if max(png_dimensions(image)) > 8192:
+                    raise ValueError("DMG background dimensions exceed 8192 pixels")
+                digest.update(b".background.png\0" + image.read_bytes())
+                image_alias = background_alias(volume_name, source_date_epoch)
             write_layout(layout, app_name, applications_link, finder_window, app_position,
-                         applications_position, icon_size, text_size, background_color)
+                         applications_position, icon_size, text_size, background_color, image_alias)
             digest.update(layout.read_bytes())
         normalize(staging)
         environment = {"PATH": "", "HOME": str(root), "TMPDIR": str(root), "TZ": "UTC", "LC_ALL": "C",
