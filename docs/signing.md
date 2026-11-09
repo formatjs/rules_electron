@@ -43,5 +43,9 @@ checks unsigned/untrusted rejection, trusted signature and bad-digest rejection,
 then installs, executes the packaged helper and removes it. The temporary
 LocalMachine TrustedPeople certificate is removed in `finally`, following
 [Microsoft's test-certificate guidance](https://learn.microsoft.com/en-us/windows/msix/package/create-certificate-package-signing).
-Validation remains pending. Fixture is a minimal PE package; full Electron
+The [1aae3c3 BB suite](https://formatjs.buildbuddy.io/invocation/e8530349-31bc-47c7-8356-c6e0766507d7)
+passed certificate reproducibility, subject/issuer, validity, code-signing purpose
+and chain verification. Cross-build hit a GitHub `rules_shell` download timeout
+before signing; CI now uses the byte-verified official Bazel mirror for that
+exact release. Native validation remains pending. Fixture is a minimal PE package; full Electron
 installation and production credential/service interfaces remain open.
