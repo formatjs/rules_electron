@@ -58,6 +58,8 @@
     "LevelDB temporary directory",
     "Mojo IO thread initialization",
     "NSS corruption fixture write",
+    "NSS declared integrity pair staging",
+    "NSS declared-pair staging directory",
     "NSS integrity file relocation",
     "NSS integrity library cleanup",
     "NSS integrity temporary directory",
