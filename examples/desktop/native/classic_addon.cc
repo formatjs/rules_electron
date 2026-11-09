@@ -5,7 +5,7 @@ static void Answer(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 NODE_MODULE_INIT() {
-  v8::Isolate* isolate = context->GetIsolate();
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   exports->Set(context, v8::String::NewFromUtf8Literal(isolate, "answer"),
                v8::Function::New(context, Answer).ToLocalChecked()).Check();
   exports->Set(context, v8::String::NewFromUtf8Literal(isolate, "moduleAbi"),

@@ -7,8 +7,12 @@ import re
 import urllib.request
 from collections import Counter
 
-from buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id
-from profile_summary import decode_profile, summarize
+try:
+    from .buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id
+    from .profile_summary import decode_profile, summarize
+except ImportError:
+    from buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id
+    from profile_summary import decode_profile, summarize
 
 
 def read_log(selector, key):
@@ -26,14 +30,15 @@ def read_log(selector, key):
     return tail
 
 
-def resource_diagnostics(identifier, key):
+def resource_diagnostics(identifier, key, max_bytes=64 * 1024**2):
     request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
                                      data=json.dumps({"execution_lookup": {"invocation_id": identifier}}).encode(),
                                      headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
     with urllib.request.build_opener(NoRedirect()).open(request, timeout=60) as response:
-        data = response.read(64 * 1024**2 + 1)
-    if len(data) > 64 * 1024**2:
-        raise ValueError("Execution diagnostics exceed 64 MiB")
+        data = response.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        print("BB tracked execution resources:", json.dumps({"invocation_id": identifier, "truncated": True, "reason": "SIZE_LIMIT"}, sort_keys=True))
+        return
     executions = json.loads(data).get("execution", [])
     metadata = [value.get("executedActionMetadata", {}) for value in executions]
     usage = [value.get("usageStats", {}) for value in metadata]

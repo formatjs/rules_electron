@@ -19,8 +19,9 @@ No host Node, npm lifecycle scripts, node-gyp or `binding.gyp` interpretation ru
 Package the resulting single artifact under a `.node` destination.
 
 Windows builds use the matching CPU's MSVC ABI and static CRT, including when the
-app's other native helpers use GNU LLVM. The declared delay-load hook resolves
-Electron exports from the current process after executable renaming. The SDK must
+app's other native helpers use GNU LLVM. These builds require licensed MSVC runtime
+hosts and the existing license acknowledgment flag. The declared delay-load hook
+resolves Electron exports from the current process after executable renaming. The SDK must
 provide Electron's `node.lib`; linking delays `node.exe` resolution. Linux/macOS
 resolve runtime exports at load time. See
 [Electron's native module contract](https://www.electronjs.org/docs/latest/tutorial/using-native-node-modules).

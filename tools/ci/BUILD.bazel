@@ -3,6 +3,16 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 exports_files(["source_runtime_archive.bzl"])
 
 py_library(
+    name = "buildbuddy_logs",
+    srcs = ["buildbuddy_log.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        ":artifacts",
+        ":profiles",
+    ],
+)
+
+py_library(
     name = "source_example_lock",
     srcs = ["source_example_lock.py"],
     visibility = ["//tests:__pkg__"],
