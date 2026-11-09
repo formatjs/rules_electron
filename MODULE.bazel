@@ -68,7 +68,10 @@ http_archive(
     name = "xorriso_sources",
     build_file = "//third_party:xorriso.BUILD.bazel",
     patch_args = ["-p1"],
-    patches = ["//third_party:xorriso-finder-info.patch"],
+    patches = [
+        "//third_party:xorriso-finder-info.patch",
+        "//third_party:xorriso-root-blessing.patch",
+    ],
     sha256 = "b1455ecafbf0692ddafe1d71002a96f2ce2d77f4deae602678261ce033f97bc8",
     strip_prefix = "xorriso-1.5.8",
     urls = ["https://ftp.gnu.org/gnu/xorriso/xorriso-1.5.8.pl02.tar.gz"],

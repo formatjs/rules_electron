@@ -7,6 +7,7 @@ exports_files([
     "udif-identity.patch",
     "xorriso.BUILD.bazel",
     "xorriso-finder-info.patch",
+    "xorriso-root-blessing.patch",
     "node_delay_import.BUILD.bazel",
     "osslsigncode.BUILD.bazel",
     "osslsigncode-config.patch",

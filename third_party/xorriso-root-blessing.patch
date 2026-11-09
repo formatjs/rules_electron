@@ -1,0 +1,14 @@
+--- a/libisofs/hfsplus.c
++++ b/libisofs/hfsplus.c
+@@ -1634,8 +1634,10 @@
+     if (ret < 0)
+         goto ex;
+ 
++    /* The root bypasses create_tree and always uses catalog ID 2. */
+     for (i = 0; i < ISO_HFSPLUS_BLESS_MAX; i++)
+-      target->hfsp_bless_id[i] = 0;
++      target->hfsp_bless_id[i] =
++        target->hfsplus_blessed[i] == (IsoNode *) target->image->root ? 2 : 0;
+ 
+     target->hfsp_nleafs = 2 * (target->hfsp_nfiles + target->hfsp_ndirs);
+     target->hfsp_curleaf = 0;
