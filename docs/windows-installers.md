@@ -14,11 +14,9 @@ subsystem, so updater launch does not open a console window.
 Compilation runs on BB Linux. Matching Windows smoke checks the native PE CPU,
 elevated child token, exact arguments, exit status, detached launch without an
 installer-file lock, and invalid-input failures for both compiler variants.
-The prior wait-mode bridge passed [all native hosts](https://github.com/formatjs/rules_electron/actions/runs/42585450796);
-detached launch validation is pending. Already elevated disposable runners
-exercise the bridge without an interactive UAC prompt. Interactive
-consent/cancellation remains unverified. The machine-scope lifecycle
-gate below validates installer/update behavior separately.
+Already elevated disposable runners exercise the bridge without an interactive
+UAC prompt. Interactive consent/cancellation remains unverified. The machine
+lifecycle gate validates installer/update behavior separately.
 
 Set `electron_nsis.installation_scope = "machine"` for an elevated all-users
 installer. It defaults to `$PROGRAMFILES64/<app_id>`, uses 64-bit HKLM registration
@@ -34,28 +32,22 @@ and package the bridge as `resources/elevate.exe`. The real client then uses its
 elevation branch. An uncached first machine update downloads the complete
 installer; differential cache seeding across users remains open.
 
-The new native gate installs the bootstrap Electron app in Program Files,
-checks HKLM handlers/common shortcuts and unchanged HKCU state, rejects a corrupt
-update, runs a real elevated v1-to-v2 update, checks scope rejection and removes
-owned files while preserving foreign handlers/data. BB/native validation is
-pending. Interactive UAC, production signatures and full source-runtime machine
-installation remain separate gates.
+The [60fe44f BB suite](https://formatjs.buildbuddy.io/invocation/5951b4ef-713b-45db-97b4-45425fb98cee)
+and [cross-build](https://formatjs.buildbuddy.io/invocation/83510536-6d02-4e0e-8325-d4e63e4540b3)
+passed. The [native gate](https://github.com/formatjs/rules_electron/actions/runs/42589695874)
+passed all four hosts. Windows x64/ARM64 checked both elevation bridge compiler
+variants and the MSVC bootstrap Electron machine lifecycle: Program Files/HKLM,
+common shortcuts, unchanged HKCU state, corrupt-update rejection, real elevated
+v1-to-v2 update, scope rejection, removal and preserved foreign handlers/data.
+Production signatures, interactive UAC and full source-runtime machine installs
+remain separate gates.
 
-The first machine gate timed out at its initial scope-rejection probe on both
-Windows CPUs. The bridge quoted every argument, including `/S`; NSIS's raw
-switch parser did not enter silent mode. It now quotes only arguments that need
-quoting. A native probe also checks the raw `/S`/`--updated` representation before
-the installer lifecycle runs. Hosted validation of this fix is pending. NSIS's
+The bridge preserves raw `/S` and `--updated` switches. NSIS's
 [command-line contract](https://nsis.sourceforge.io/Docs/Chapter3.html#installerusage)
-also requires `/D` last, without quotes; the generated installer retains its
-explicit directory-option parser for updater calls.
-
-The switch fix reached real elevated machine updates and the v2 installed-app
-checks. The next failure was the scope-rejection harness: a normal NSIS
-uninstaller launcher returns before its temporary worker, so its exit code did
-not describe the rejected operation. That probe now uses the documented `_?=`
-directory tail to execute the actual uninstaller in place and observe its result.
-Complete machine removal/ownership validation remains pending.
+requires `/D` last and unquoted; the generated installer also parses the updater's
+directory option explicitly. The scope-rejection probe uses `_?=` to run the
+actual uninstaller in place and observe its exit status, rather than its
+short-lived launcher.
 
 `installer_icon` and `uninstaller_icon` accept declared ICO labels, including
 generated icons. NSIS embeds them independently using its
@@ -158,10 +150,10 @@ custom install directories support the updater's installer invocation. Generate
 channel manifests and external blockmaps from final installers with
 `electron_update_feed`; signing must finish before those hashes are calculated.
 
-Current scope: per-user installation, Start Menu/optional desktop shortcuts,
+Current scope: user/machine installation, Start Menu/optional desktop shortcuts,
 AppUserModelID, URI schemes, Open With/Default Apps handlers and declared icons.
-Per-machine installation/elevation policy, custom UI and release Authenticode
-remain pending. Paths must be valid Windows names; NSIS
+Production elevation/consent policy, custom UI and release Authenticode remain
+pending. Paths must be valid Windows names; NSIS
 preprocessor expressions (`${...}` / `$%...`) and control characters in literals
 are rejected.
 

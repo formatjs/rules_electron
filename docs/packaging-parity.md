@@ -19,11 +19,11 @@ electron-builder replacement.
 | macOS app | Branded bundle/helper metadata and ICNS icons, declared main Info.plist extensions, framework links, scoped main/inherited entitlements, hardened runtime, ad hoc signing, deterministic ZIP | Developer ID, production entitlement policy, notarization/stapling |
 | Windows app | Renamed executable, current-process Node-API exports, four compiler/CPU variants; PE version/product strings, ICO icons and ASAR integrity through declared source Node/resedit tooling | General addon delay-load/import-library tooling, Authenticode |
 | App version/build number | Public SemVer manifest override/validation; explicit build number/version; macOS app/helper, Windows PE/NSIS and DEB iteration | — |
-| OS registration | Linux desktop/MIME declarations and declared file-type PNG/SVG icons (native PNG install/update/purge checks pass); macOS URL/document types, document icons and native LaunchServices delivery; per-user Windows URI schemes, Open With/Default Apps file handlers, declared document ICO paths (native x64/ARM64 install/update checks pass) and shortcut AppUserModelID | Richer document metadata and Windows verbs |
-| Installers | Linux DEB for amd64/arm64; native RPM v4 writer and native Fedora install/update/remove checks; source-built AppImages and embedded updater feeds for both Linux CPUs; per-user Windows NSIS with declared tools, independent installer/uninstaller icons and owned-file uninstall; native MSIX writer with signed bootstrap Electron install/upgrade/remove on both Windows CPUs | macOS disk images, Windows per-machine NSIS, production MSIX signing/OS integration and other packaging |
+| OS registration | Linux desktop/MIME declarations and declared file-type PNG/SVG icons (native PNG install/update/purge checks pass); macOS URL/document types, document icons and native LaunchServices delivery; user/machine Windows URI schemes, Open With/Default Apps file handlers, declared document ICO paths (native x64/ARM64 install/update checks pass) and shortcut AppUserModelID | Richer document metadata and Windows verbs |
+| Installers | Linux DEB for amd64/arm64; native RPM v4 writer and native Fedora install/update/remove checks; source-built AppImages and embedded updater feeds for both Linux CPUs; user/machine Windows NSIS with declared tools, independent installer/uninstaller icons and owned-file uninstall; native MSIX writer with signed bootstrap Electron install/upgrade/remove on both Windows CPUs | macOS disk images, production MSIX signing/OS integration and other packaging |
 | Prepackaged release stages | Public immutable app import for archives/installers; layout, CPU, packaged manifest and macOS identity validation; seven cross-build variants and four native hosts pass | Release signing APIs and signature trust policy |
 | Distribution archives | Public ZIP/tar/tar.gz/tar.xz/tar.bz2/7z rule, explicit compression, executable modes and relative symlinks; native macOS ZIP and Linux x64 tar.gz/7z launch | Other archive formats |
-| electron-updater | Generic config/manifests, SHA-512/size, content-defined external blockmaps, real client discovery/planning; Linux DEB/RPM/AppImage and Windows NSIS lifecycle smoke; over 99% sample NSIS reuse on both CPUs and 99.7% AppImage reuse on Linux x64 | Other update targets and provider/publishing adapters |
+| electron-updater | Generic config/manifests, SHA-512/size, content-defined external blockmaps, real client discovery/planning; Linux DEB/RPM/AppImage and Windows user/machine NSIS lifecycle smoke; over 99% per-user sample NSIS reuse on both CPUs and 99.7% AppImage reuse on Linux x64 | Other update targets, provider/publishing adapters and machine cache seeding across users |
 | Native smoke | Scripts/workflows for four native host types | Hosted results establish actual execution coverage |
 
 All compilation, generators, assembly and ad hoc signing run on BB Linux
@@ -93,3 +93,10 @@ output commit. The [BB suite](https://formatjs.buildbuddy.io/invocation/ed0b04c2
 passed real local HTTPS RFC 3161 timestamps and TLS/trust/failure rejection.
 Production trust, remote credential services and native acceptance of release
 identities remain open. See [signing](signing.md).
+
+The [machine NSIS gate](https://github.com/formatjs/rules_electron/actions/runs/42589695874)
+passed Program Files/HKLM install, real elevated updater replacement and owned
+removal on Windows x64/ARM64. Both elevation helper compiler variants passed
+argument/token/exit checks and detached launch. Interactive consent and first-
+update differential cache seeding across users remain open. See
+[Windows installers](windows-installers.md).
