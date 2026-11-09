@@ -1,9 +1,11 @@
 param(
   [Parameter(Mandatory=$true)][string]$Packages,
-  [Parameter(Mandatory=$true)][ValidateSet('x64','arm64')][string]$Architecture
+  [Parameter(Mandatory=$true)][ValidateSet('x64','arm64')][string]$Architecture,
+  [Parameter(Mandatory=$true)][string]$Python
 )
 $ErrorActionPreference = 'Stop'
 $identity = 'org.example.MsixProbe'
+$desktopIdentity = 'org.example.DesktopMsix'
 $signed = Join-Path $Packages 'msix_signed_probe.msix'
 $unsigned = Join-Path $Packages 'msix_probe.msix'
 $changed = Join-Path $Packages 'msix_signed_probe.tampered.msix'
@@ -17,6 +19,7 @@ $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]:
 $certificatePath = 'Cert:\LocalMachine\TrustedPeople\' + $certificate.Thumbprint
 if (Test-Path -LiteralPath $certificatePath) { throw 'MSIX fixture certificate already trusted' }
 if (Get-AppxPackage -Name $identity) { throw 'MSIX fixture package already installed' }
+if (Get-AppxPackage -Name $desktopIdentity) { throw 'MSIX desktop package already installed' }
 Assert-Trust $unsigned 'unsigned'
 Assert-Trust $signed 'untrusted'
 $untrusted = Get-AuthenticodeSignature -LiteralPath $signed
@@ -47,10 +50,32 @@ try {
   Remove-AppxPackage -Package $package.PackageFullName
   if (Get-AppxPackage -Name $identity) { throw 'MSIX uninstall left package registration' }
   Write-Output 'MSIX_INSTALL_REMOVE_OK'
+  $family = $null
+  foreach ($release in @(@{Suffix='v1'; Version='1.0.0'}, @{Suffix='v2'; Version='2.0.0'})) {
+    $desktop = Join-Path $Packages ('msix_signed_desktop_' + $release.Suffix + '.msix')
+    Assert-Trust $desktop 'valid'
+    Add-AppxPackage -Path $desktop -ForceApplicationShutdown
+    $package = Get-AppxPackage -Name $desktopIdentity
+    if (-not $package -or $package.Version.ToString() -ne ($release.Version + '.7') -or
+        $package.Publisher -ne 'CN=Example' -or $package.Architecture.ToString() -ine $Architecture) {
+      throw 'MSIX desktop package identity mismatch'
+    }
+    if ($family -and $family -ne $package.PackageFamilyName) { throw 'MSIX upgrade changed package family' }
+    $family = $package.PackageFamilyName
+    $executable = Join-Path $package.InstallLocation 'sample-desktop.exe'
+    & $Python 'examples/desktop/tools/smoke_test.py' $executable --installed --msix --target-os windows --target-arch $Architecture --expected-version $release.Version
+    if ($LASTEXITCODE -ne 0) { throw 'MSIX installed Electron smoke failed' }
+    Write-Output ('MSIX_DESKTOP_VERSION_OK ' + $release.Version)
+  }
+  Remove-AppxPackage -Package $package.PackageFullName
+  if (Get-AppxPackage -Name $desktopIdentity) { throw 'MSIX desktop uninstall left package registration' }
+  Write-Output 'MSIX_DESKTOP_INSTALL_UPDATE_REMOVE_OK'
 } finally {
   try {
-    $remaining = Get-AppxPackage -Name $identity
-    if ($remaining) { Remove-AppxPackage -Package $remaining.PackageFullName }
+    foreach ($name in @($identity, $desktopIdentity)) {
+      $remaining = Get-AppxPackage -Name $name
+      if ($remaining) { Remove-AppxPackage -Package $remaining.PackageFullName }
+    }
   } finally {
     if ($trusted) { Remove-Item -LiteralPath $certificatePath }
     $certificate.Dispose()

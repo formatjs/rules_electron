@@ -103,7 +103,11 @@ app.whenReady().then(async () => {
       });
       assert.equal(app.isPackaged, true);
       assert.deepEqual(fs.readdirSync(path.join(__dirname, 'renderer/empty')), []);
-      assert.deepEqual(fs.readdirSync(path.join(process.resourcesPath, 'directories/empty')), []);
+      if (process.windowsStore) {
+        assert.equal(fs.existsSync(path.join(process.resourcesPath, 'directories/empty')), false);
+      } else {
+        assert.deepEqual(fs.readdirSync(path.join(process.resourcesPath, 'directories/empty')), []);
+      }
       if (process.platform === 'darwin') {
         assert.equal(fs.lstatSync(path.join(process.resourcesPath, 'linked-config')).isSymbolicLink(), true);
         assert.equal(fs.lstatSync(path.join(process.resourcesPath, 'nested/config')).isSymbolicLink(), true);
@@ -147,9 +151,9 @@ app.whenReady().then(async () => {
       });
       const environment = await window.webContents.executeJavaScript('({node: typeof require, bridge: typeof window.desktop.read, ...window.desktop.environment})');
       assert.deepEqual(environment, { node: 'undefined', bridge: 'function', sandboxed: true, contextIsolated: true });
-      const update_version = await require('./updater-smoke.cjs')();
+      const update_version = process.windowsStore ? null : await require('./updater-smoke.cjs')();
       clearTimeout(watchdog);
-      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify({ ...result, architecture: process.arch, platform: process.platform, update_version, app_version: app.getVersion() }));
+      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify({ ...result, architecture: process.arch, platform: process.platform, update_version, app_version: app.getVersion(), windows_store: Boolean(process.windowsStore) }));
       app.quit();
     } catch (error) {
       console.error(error);

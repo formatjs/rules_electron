@@ -114,6 +114,7 @@ if __name__ == "__main__":
                 # Inherited PowerShell 7 modules cannot load in Windows PowerShell.
                 powershell_environment = {key: value for key, value in os.environ.items() if key.upper() != "PSMODULEPATH"}
                 subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
-                                "tools/ci/windows_msix_smoke.ps1", "-Packages", str(packages), "-Architecture", target_arch],
+                                "tools/ci/windows_msix_smoke.ps1", "-Packages", str(packages), "-Architecture", target_arch,
+                                "-Python", sys.executable],
                                check=True, env=powershell_environment)
                 subprocess.run([sys.executable, "tools/ci/windows_nsis_smoke.py", str(directory / variant / "packages"), target_arch], check=True)

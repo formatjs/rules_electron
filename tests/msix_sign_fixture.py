@@ -21,7 +21,7 @@ def digest(path):
 
 
 if __name__ == "__main__":
-    signer, source, key, certificate, config, output, tampered = sys.argv[1:]
+    signer, source, key, certificate, config, output, tampered, payload_name = sys.argv[1:]
     environment = {"PATH": "", "LC_ALL": "C", "TZ": "UTC", "OPENSSL_CONF": config}
     command = [signer, "sign", "-certs", certificate, "-key", key, "-h", "sha256", "-time", "1767225600", "-in", source, "-out"]
     run(command + [output], environment)
@@ -31,8 +31,10 @@ if __name__ == "__main__":
         if digest(output) != digest(repeated):
             raise ValueError("Public fixture MSIX signature is not reproducible")
     run([signer, "verify", "-CAfile", certificate, "-ignore-cdp", "-time", "1767225600", "-in", output], environment)
+    if not tampered:
+        raise SystemExit(0)
     with ZipFile(output) as package:
-        payload = package.getinfo("helper.exe")
+        payload = package.getinfo(payload_name)
     data = bytearray(Path(output).read_bytes())
     name_size, extra_size = struct.unpack_from("<HH", data, payload.header_offset + 26)
     offset = payload.header_offset + 30 + name_size + extra_size

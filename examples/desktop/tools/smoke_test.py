@@ -339,7 +339,7 @@ def _receive_macos_event(app, environment, directory, kind, item, expected):
                     process.wait()
 
 
-def check_asar_integrity(app, executable, environment, directory, target_os, expected_version):
+def check_asar_integrity(app, executable, environment, directory, target_os, expected_version, writable=True):
     resources = app / ("Contents/Resources" if target_os == "macos" else "resources")
     digests, checks = {}, []
     for relative, entry_name, marker, skip, prefix in [
@@ -378,6 +378,9 @@ def check_asar_integrity(app, executable, environment, directory, target_os, exp
             {"file": "resources\\" + relative.replace("/", "\\"), "alg": "SHA256", "value": digests[relative]}
             for relative in sorted(digests)
         ]
+    print("EXAMPLE_ASAR_METADATA_OK")
+    if not writable:
+        return
     for label, archive, offset, diagnostic in checks:
         with archive.open("r+b") as file:
             file.seek(offset)
@@ -409,6 +412,7 @@ if __name__ == "__main__":
     parser.add_argument("--target-os", choices=["linux", "macos", "windows"], required=True)
     parser.add_argument("--target-arch", choices=["x64", "arm64"], required=True)
     parser.add_argument("--installed", action="store_true")
+    parser.add_argument("--msix", action="store_true")
     parser.add_argument("--expected-version")
     parser.add_argument("--shortcut", action="append", default=[])
     parser.add_argument("--icon-only", action="store_true")
@@ -418,6 +422,8 @@ if __name__ == "__main__":
     host_arch = {"x86_64": "x64", "amd64": "x64", "arm64": "arm64", "aarch64": "arm64"}.get(platform.machine().lower())
     if (host_os, host_arch) != (args.target_os, args.target_arch):
         raise RuntimeError(f"Smoke requires native {args.target_os}/{args.target_arch}; host is {host_os}/{host_arch}")
+    if args.msix and (host_os != "windows" or not args.installed):
+        raise ValueError("MSIX smoke requires an installed Windows package")
     if args.icon_only:
         if host_os != "windows":
             raise RuntimeError("Executable icon smoke requires Windows")
@@ -490,7 +496,8 @@ if __name__ == "__main__":
         assert len(lines) == 1, result.stdout + result.stderr
         report = json.loads(lines[0].removeprefix("EXAMPLE_SMOKE_OK "))
         assert report["architecture"] == args.target_arch, report
-        assert report["update_version"] == "2.0.0", report
+        assert report["update_version"] == (None if args.msix else "2.0.0"), report
+        assert report["windows_store"] == args.msix, report
         if args.expected_version:
             assert report["app_version"] == args.expected_version, report
         assert report["platform"] == {"linux": "linux", "macos": "darwin", "windows": "win32"}[args.target_os], report
@@ -498,4 +505,4 @@ if __name__ == "__main__":
         if host_os == "macos":
             check_macos_protocol(app, environment, directory, args.target_arch)
         if host_os in ("macos", "windows"):
-            check_asar_integrity(app, executable, environment, directory, host_os, report["app_version"])
+            check_asar_integrity(app, executable, environment, directory, host_os, report["app_version"], writable=not args.msix)

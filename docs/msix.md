@@ -51,3 +51,15 @@ including preserved payload hashes and reproducible signed bytes. Signed minimal
 fixtures passed native trust, tamper rejection, install/helper launch/removal and
 certificate cleanup on both Windows CPUs; see [signing stages](signing.md).
 This rule does not establish electron-updater support for MSIX. Existing NSIS updater lifecycle stays independently covered.
+
+The desktop example now includes signed v1/v2 MSIX packages of the real sample
+app, using the explicitly labeled bootstrap Electron runtime. Both contain the
+renderer, preload, npm closure, target-built addon/helper and ASAR integrity
+metadata. Physical empty resource directories are omitted explicitly; virtual
+ASAR directories remain. Installed smoke requires Electron's
+[`process.windowsStore`](https://www.electronjs.org/docs/latest/api/process#processwindowsstore-readonly)
+package identity, keeps Chromium's sandbox enabled and checks both versions
+across a native MSIX upgrade/removal. It reads integrity metadata without
+modifying the installed WindowsApps tree. Portable-app tamper tests remain
+separate. NSIS updater discovery is not run inside MSIX. Hosted validation of
+this full-app gate remains pending.

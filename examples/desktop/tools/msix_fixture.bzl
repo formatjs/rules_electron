@@ -37,7 +37,7 @@ def _signed_impl(ctx):
     certificate = ctx.actions.declare_file(ctx.label.name + ".pem")
     public_certificate = ctx.actions.declare_file(ctx.label.name + ".cer")
     signed = ctx.actions.declare_file(ctx.label.name + ".msix")
-    tampered = ctx.actions.declare_file(ctx.label.name + ".tampered.msix")
+    tampered = ctx.actions.declare_file(ctx.label.name + ".tampered.msix") if ctx.attr.tamper_file else None
     config = ctx.actions.declare_file(ctx.label.name + ".openssl.cnf")
     ctx.actions.write(config, "")
     ctx.actions.run(
@@ -49,18 +49,19 @@ def _signed_impl(ctx):
     )
     ctx.actions.run(
         executable = ctx.executable._sign,
-        arguments = [ctx.executable._signer.path, ctx.file.src.path, ctx.file._key.path, certificate.path, config.path, signed.path, tampered.path],
+        arguments = [ctx.executable._signer.path, ctx.file.src.path, ctx.file._key.path, certificate.path, config.path, signed.path, tampered.path if tampered else "", ctx.attr.tamper_file],
         inputs = [ctx.file.src, ctx.file._key, certificate, config],
         tools = [ctx.attr._signer[DefaultInfo].files_to_run],
-        outputs = [signed, tampered],
+        outputs = [signed] + ([tampered] if tampered else []),
         mnemonic = "ElectronPublicTestSign",
     )
-    return [DefaultInfo(files = depset([signed, tampered, public_certificate]))]
+    return [DefaultInfo(files = depset([signed, public_certificate] + ([tampered] if tampered else [])))]
 
 signed_msix_fixture = rule(
     implementation = _signed_impl,
     attrs = {
         "src": attr.label(mandatory = True, allow_single_file = [".msix"]),
+        "tamper_file": attr.string(default = "helper.exe"),
         "_key": attr.label(default = Label("@rules_electron//tests:public_fixture_key"), allow_single_file = True),
         "_certificate": attr.label(default = Label("@rules_electron//tests:public_test_certificate"), executable = True, cfg = "exec"),
         "_sign": attr.label(default = Label("@rules_electron//tests:msix_sign_fixture"), executable = True, cfg = "exec"),

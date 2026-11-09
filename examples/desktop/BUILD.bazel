@@ -336,6 +336,8 @@ filegroup(
     srcs = [
         ":msix_probe",
         ":msix_reader",
+        ":msix_signed_desktop_v1",
+        ":msix_signed_desktop_v2",
         ":msix_signed_probe",
         ":nsis_v1_feed",
         ":nsis_v2_feed",
@@ -571,3 +573,47 @@ signed_msix_fixture(
     src = ":msix_probe",
     target_compatible_with = ["@platforms//os:windows"],
 )
+
+[
+    desktop_app(
+        name = "msix_app_" + suffix,
+        empty_resources = False,
+        package_json = manifest,
+        target_compatible_with = ["@platforms//os:windows"],
+    )
+    for suffix, manifest in [
+        ("v1", "package.json"),
+        ("v2", "package-v2.json"),
+    ]
+]
+
+[
+    electron_msix(
+        name = "msix_desktop_" + suffix,
+        app = ":msix_app_" + suffix,
+        identity_name = "org.example.DesktopMsix",
+        logo_150 = ":msix_logo_150",
+        logo_44 = ":msix_logo_44",
+        publisher = "CN=Example",
+        publisher_display_name = "Example",
+        store_logo = ":msix_logo_50",
+        target_compatible_with = ["@platforms//os:windows"],
+    )
+    for suffix in [
+        "v1",
+        "v2",
+    ]
+]
+
+[
+    signed_msix_fixture(
+        name = "msix_signed_desktop_" + suffix,
+        src = ":msix_desktop_" + suffix,
+        tamper_file = "",
+        target_compatible_with = ["@platforms//os:windows"],
+    )
+    for suffix in [
+        "v1",
+        "v2",
+    ]
+]

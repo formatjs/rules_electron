@@ -4,7 +4,7 @@ load("@rules_electron//electron:defs.bzl", "electron_app")
 load("@rules_electron//electron:metadata.bzl", "electron_package_json")
 load("@rules_electron//electron:prepackaged.bzl", "electron_prepackaged_app")
 
-def desktop_app(name, package_json, **kwargs):
+def desktop_app(name, package_json, empty_resources = True, **kwargs):
     """Assemble the generic sample with the requested app manifest."""
     electron_package_json(
         name = name + "_package",
@@ -51,21 +51,19 @@ def desktop_app(name, package_json, **kwargs):
             "//conditions:default": {},
         }),
         extra_resources = select({
-            ":windows": {
+            ":windows": dict({
                 ":example_document_icon": "document.ico",
-                ":empty_resources": "directories",
                 ":helper": "native/helper.exe",
                 ":update_config": "app-update.yml",
                 ":update_smoke_feed": "update-smoke-feed",
                 "resources/settings.json": "config/settings.json",
-            },
-            "//conditions:default": {
-                ":empty_resources": "directories",
+            }, **({":empty_resources": "directories"} if empty_resources else {})),
+            "//conditions:default": dict({
                 ":helper": "native/helper",
                 ":update_config": "app-update.yml",
                 ":update_smoke_feed": "update-smoke-feed",
                 "resources/settings.json": "config/settings.json",
-            },
+            }, **({":empty_resources": "directories"} if empty_resources else {})),
         }),
         fuses = select({
             ":macos": {
