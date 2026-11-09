@@ -603,3 +603,11 @@ py_test(
     srcs = ["msix_test.py"],
     deps = ["//electron/private:msix"],
 )
+
+py_binary(
+    name = "msix_fixture_writer",
+    srcs = ["msix_fixture.py"],
+    main = "msix_fixture.py",
+    visibility = ["//visibility:public"],
+    deps = ["//electron/private:msix"],
+)

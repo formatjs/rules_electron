@@ -14,6 +14,7 @@ load("@rules_electron//electron:windows.bzl", "electron_windows_resource_tool")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//tools:cross_bundle.bzl", "cross_smoke_bundle")
 load("//tools:icon.bzl", "example_icon")
+load("//tools:msix_fixture.bzl", "msix_fixture")
 load(":desktop_app.bzl", "desktop_app")
 
 example_icon(name = "example_icon")
@@ -332,6 +333,8 @@ electron_nsis_tool(
 filegroup(
     name = "windows_release_files",
     srcs = [
+        ":msix_probe",
+        ":msix_reader",
         ":nsis_v1_feed",
         ":nsis_v2_feed",
     ],
@@ -517,4 +520,37 @@ py_test(
         "local",
         "manual",
     ],
+)
+
+[
+    example_icon(
+        name = "msix_logo_" + str(size),
+        size = size,
+        format = "png",
+    )
+    for size in [
+        44,
+        150,
+        50,
+    ]
+]
+
+msix_fixture(
+    name = "msix_probe",
+    binary = ":helper",
+    logo_150 = ":msix_logo_150",
+    logo_44 = ":msix_logo_44",
+    package_json = "package.json",
+    store_logo = ":msix_logo_50",
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+cc_binary(
+    name = "msix_reader",
+    srcs = ["native/msix_reader.cc"],
+    linkopts = [
+        "ole32.lib",
+        "shlwapi.lib",
+    ],
+    target_compatible_with = ["@platforms//os:windows"],
 )
