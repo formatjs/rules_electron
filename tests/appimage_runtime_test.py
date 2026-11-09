@@ -124,7 +124,7 @@ class AppImageRuntimeTest(unittest.TestCase):
                 feed = create_feed([dict(source=str(image), name=image.name)], package, root / (compressor + "-feed"),
                                    "linux", "x64", "2026-01-01T00:00:00Z", embedded_blockmaps=[image.name])
                 self.assertEqual(feed["files"][0]["blockMapSize"], map_size)
-                image.chmod(0o755)
+                self.assertEqual(image.stat().st_mode & 0o777, 0o755)
                 working = root / compressor
                 working.mkdir()
                 subprocess.run([str(image), "--appimage-extract"], cwd=working, env=ENV, check=True, capture_output=True)

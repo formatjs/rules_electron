@@ -63,9 +63,14 @@ and [cross-builds](https://formatjs.buildbuddy.io/invocation/990be492-1b3b-4026-
 at `2534183`. The native Linux x64 test executed real gzip/zstd payloads through
 extraction and extract-and-run. ARM64 was linked without execution.
 
-The public packaging rule, launcher, embedded maps and feed additions are pending
-BB validation. The updated gate checks changed paths/mtimes, metadata, resource
-links, empty directories, chunk checksums and exit-after-install behavior.
+Public packaging, launcher and embedded-map/feed gates passed
+[BB tests](https://formatjs.buildbuddy.io/invocation/bfc80e1b-4fe9-4084-9bd1-96ffe6e00c58)
+and [both Linux cross-builds](https://formatjs.buildbuddy.io/invocation/cc507b2f-cc19-4c07-8df0-39715e050a4b)
+at `f178722`. Tests compare directory/ZIP imports across changed paths/mtimes,
+then verify metadata, resource links, tracked empty directories, chunk checksums
+and exit-after-install behavior with a real executable payload. Cross-actions
+produce final AppImages and feeds without executing ARM64 binaries.
+
 FUSE-mounted launch and an installed Electron app's real electron-updater
 replacement/differential-download lifecycle remain open. No emulation substitutes
 for native smoke.
