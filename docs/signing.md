@@ -33,3 +33,15 @@ macOS Developer ID/notarization/stapling and publication remain separate gaps.
 
 Upstream signer, format support and license:
 [osslsigncode](https://github.com/mtrojnar/osslsigncode/tree/b8fddbcd64733150181ae72a96bdd528d2fb4ea1).
+
+Signed MSIX native fixtures are now wired for Windows x64/ARM64. BB builds a
+fixed `CN=Example` certificate from OpenSSL's public `ee-key.pem` test vector,
+with explicit 2026–2036 validity, serial and code-signing extensions. No random
+key or wall clock enters fixture build outputs. BB signs twice, compares bytes,
+verifies the signature and emits a deliberately corrupted package. Native smoke
+checks unsigned/untrusted rejection, trusted signature and bad-digest rejection,
+then installs, executes the packaged helper and removes it. The temporary
+LocalMachine TrustedPeople certificate is removed in `finally`, following
+[Microsoft's test-certificate guidance](https://learn.microsoft.com/en-us/windows/msix/package/create-certificate-package-signing).
+Validation remains pending. Fixture is a minimal PE package; full Electron
+installation and production credential/service interfaces remain open.

@@ -93,3 +93,12 @@ http_archive(
     strip_prefix = "osslsigncode-b8fddbcd64733150181ae72a96bdd528d2fb4ea1",
     urls = ["https://github.com/mtrojnar/osslsigncode/archive/b8fddbcd64733150181ae72a96bdd528d2fb4ea1.tar.gz"],
 )
+
+http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+
+# Public upstream test key; never a release credential.
+http_file(
+    name = "openssl_public_test_key",
+    sha256 = "da972fe61f793c4b2b71ae3526dd2157bc52d1310df4d333894fc2e934d8cac7",
+    urls = ["https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.9/test/certs/ee-key.pem"],
+)

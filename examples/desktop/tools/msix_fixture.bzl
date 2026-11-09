@@ -32,3 +32,38 @@ msix_fixture_app = rule(
         "_writer": attr.label(default = Label("@rules_electron//tests:msix_fixture_writer"), executable = True, cfg = "exec"),
     },
 )
+
+def _signed_impl(ctx):
+    certificate = ctx.actions.declare_file(ctx.label.name + ".pem")
+    public_certificate = ctx.actions.declare_file(ctx.label.name + ".cer")
+    signed = ctx.actions.declare_file(ctx.label.name + ".msix")
+    tampered = ctx.actions.declare_file(ctx.label.name + ".tampered.msix")
+    config = ctx.actions.declare_file(ctx.label.name + ".openssl.cnf")
+    ctx.actions.write(config, "")
+    ctx.actions.run(
+        executable = ctx.executable._certificate,
+        arguments = [ctx.file._key.path, certificate.path, public_certificate.path],
+        inputs = [ctx.file._key],
+        outputs = [certificate, public_certificate],
+        mnemonic = "ElectronPublicTestCertificate",
+    )
+    ctx.actions.run(
+        executable = ctx.executable._sign,
+        arguments = [ctx.executable._signer.path, ctx.file.src.path, ctx.file._key.path, certificate.path, config.path, signed.path, tampered.path],
+        inputs = [ctx.file.src, ctx.file._key, certificate, config],
+        tools = [ctx.attr._signer[DefaultInfo].files_to_run],
+        outputs = [signed, tampered],
+        mnemonic = "ElectronPublicTestSign",
+    )
+    return [DefaultInfo(files = depset([signed, tampered, public_certificate]))]
+
+signed_msix_fixture = rule(
+    implementation = _signed_impl,
+    attrs = {
+        "src": attr.label(mandatory = True, allow_single_file = [".msix"]),
+        "_key": attr.label(default = Label("@rules_electron//tests:public_fixture_key"), allow_single_file = True),
+        "_certificate": attr.label(default = Label("@rules_electron//tests:public_test_certificate"), executable = True, cfg = "exec"),
+        "_sign": attr.label(default = Label("@rules_electron//tests:msix_sign_fixture"), executable = True, cfg = "exec"),
+        "_signer": attr.label(default = Label("@rules_electron//electron/tools:osslsigncode"), executable = True, cfg = "exec"),
+    },
+)

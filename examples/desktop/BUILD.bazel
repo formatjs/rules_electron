@@ -15,7 +15,7 @@ load("@rules_electron//electron:windows.bzl", "electron_windows_resource_tool")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//tools:cross_bundle.bzl", "cross_smoke_bundle")
 load("//tools:icon.bzl", "example_icon")
-load("//tools:msix_fixture.bzl", "msix_fixture_app")
+load("//tools:msix_fixture.bzl", "msix_fixture_app", "signed_msix_fixture")
 load(":desktop_app.bzl", "desktop_app")
 
 example_icon(name = "example_icon")
@@ -336,6 +336,7 @@ filegroup(
     srcs = [
         ":msix_probe",
         ":msix_reader",
+        ":msix_signed_probe",
         ":nsis_v1_feed",
         ":nsis_v2_feed",
     ],
@@ -561,5 +562,11 @@ cc_binary(
         "ole32.lib",
         "shlwapi.lib",
     ],
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+signed_msix_fixture(
+    name = "msix_signed_probe",
+    src = ":msix_probe",
     target_compatible_with = ["@platforms//os:windows"],
 )
