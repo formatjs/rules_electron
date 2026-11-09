@@ -558,7 +558,7 @@ if __name__ == "__main__":
 
     log = read_log({"invocation_id": identifier}, key)
     public_headers = set(json.loads(Path(__file__).with_name("public_source_headers.json").read_text()))
-    print("Source workflow diagnostics:", json.dumps({"log_bytes": len(log.encode()), "diagnostics": classify(log), "network": network_diagnostics(log), "public_missing_headers": missing_headers(log, public_headers), "public_failure_identifiers": public_failures(log), "distribution_failure_context": distribution_failure_context(log)}, sort_keys=True))
+    print("Source workflow diagnostics:", json.dumps({"state": {"COMPLETE_INVOCATION_STATUS": "complete", "PARTIAL_INVOCATION_STATUS": "running", "DISCONNECTED_INVOCATION_STATUS": "disconnected"}.get(root.get("invocationStatus"), "unknown"), "success": root.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log), "network": network_diagnostics(log), "public_missing_headers": missing_headers(log, public_headers), "public_failure_identifiers": public_failures(log), "distribution_failure_context": distribution_failure_context(log)}, sort_keys=True))
     source_profile_diagnostics(root, key)
     for child in root.get("childInvocations", [])[:32]:
         identifier = child["invocationId"]
