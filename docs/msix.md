@@ -45,5 +45,8 @@ complete Electron installation.
 Current limits: empty directory leaves and symlinks fail explicitly; no placeholder
 files replace them. MSIX signing, deployment trust, actual Electron install/launch,
 update/remove, file/protocol registration, language/scale assets and App Installer
-publishing remain open. This rule does not establish electron-updater support for
-MSIX. Existing NSIS updater lifecycle stays independently covered.
+publishing remain open. The source-built signer now passes a
+[BB MSIX signing/verification round trip](https://formatjs.buildbuddy.io/invocation/feb26e4f-2453-4ff3-ab50-81f58c7dd10e),
+including preserved payload hashes and reproducible signed bytes. Native Windows
+trust/deployment remains unverified; see [signing stages](signing.md).
+This rule does not establish electron-updater support for MSIX. Existing NSIS updater lifecycle stays independently covered.
