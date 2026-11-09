@@ -31,7 +31,8 @@ module.exports = function checkActivation() {
     assert.equal(process.windowsStore, true);
     assert.equal(app.isPackaged, true);
     stage = 'directory';
-    if (file) assert.equal(path.dirname(file), directory);
+    if (file) assert.equal(fs.realpathSync.native(path.dirname(file)).toLowerCase(),
+      fs.realpathSync.native(directory).toLowerCase());
     stage = 'content';
     const content = file ? fs.readFileSync(file, 'utf8') : null;
     write({
