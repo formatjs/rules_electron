@@ -11,6 +11,7 @@ exports_files([
     "msix.bzl",
     "matching.bzl",
     "npm.bzl",
+    "native.bzl",
     "prepackaged.bzl",
     "nsis.bzl",
     "update.bzl",

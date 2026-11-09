@@ -8,6 +8,7 @@ load("@rules_electron//electron:files.bzl", "electron_files")
 load("@rules_electron//electron:linux.bzl", "electron_deb", "electron_rpm")
 load("@rules_electron//electron:matching.bzl", "electron_file_matcher")
 load("@rules_electron//electron:msix.bzl", "electron_msix")
+load("@rules_electron//electron:native.bzl", "electron_cc_addon")
 load("@rules_electron//electron:npm.bzl", "electron_npm_package", "electron_npm_tree")
 load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool")
 load("@rules_electron//electron:update.bzl", "electron_update_config", "electron_update_feed")
@@ -36,6 +37,8 @@ electron_npm_package(
     srcs = {
         "native-package/index.cjs": "index.cjs",
         ":native_addon": "addon.node",
+        ":classic_addon": "classic.node",
+        ":incompatible_classic_addon": "bad-abi.node",
     },
     package_json = "native-package/package.json",
 )
@@ -128,6 +131,7 @@ alias(
 exports_files([
     "bootstrap_runtime.BUILD.bazel",
     "node_api.BUILD.bazel",
+    "electron_headers.BUILD.bazel",
     "updater-package-lock.json",
     "windows-tools-package-lock.json",
     "matcher-tools-package-lock.json",
@@ -263,6 +267,19 @@ cc_binary(
         "//conditions:default": [],
     }),
     deps = ["@node_api_headers//:headers"],
+)
+
+electron_cc_addon(
+    name = "classic_addon",
+    srcs = ["native/classic_addon.cc"],
+    headers = "@electron_addon_headers//:headers",
+)
+
+electron_cc_addon(
+    name = "incompatible_classic_addon",
+    srcs = ["native/classic_addon.cc"],
+    defines = ["NODE_EMBEDDER_MODULE_VERSION=139"],
+    headers = "@electron_addon_headers//:headers",
 )
 
 cc_binary(

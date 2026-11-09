@@ -6,6 +6,9 @@ const assert = require('node:assert/strict');
 const appUserModelId = 'org.example.sample-desktop';
 if (process.platform === 'win32') app.setAppUserModelId(appUserModelId);
 const addon = require('example-native');
+const classicAddon = require('example-native/classic.node');
+assert.equal(classicAddon.answer(), 42);
+assert.equal(classicAddon.moduleAbi, Number(process.versions.modules));
 
 const smoke = process.argv.includes('--smoke');
 const protocolSmokeIndex = process.argv.indexOf('--protocol-smoke');
@@ -106,6 +109,20 @@ app.whenReady().then(async () => {
   ipcMain.on('example:complete', async (event, result) => {
     if (!ownFrame(event) || !smoke) return;
     try {
+      assert.throws(() => require('example-native/bad-abi.node'), /NODE_MODULE_VERSION 139/);
+      const { Worker } = require('node:worker_threads');
+      const workerReport = await new Promise((resolve, reject) => {
+        let report;
+        const worker = new Worker(`
+          const { parentPort, workerData } = require('node:worker_threads');
+          const addon = require(workerData);
+          parentPort.postMessage({ answer: addon.answer(), moduleAbi: addon.moduleAbi });
+        `, { eval: true, workerData: require.resolve('example-native/classic.node'), execArgv: [], env: {} });
+        worker.once('message', (value) => { report = value; });
+        worker.once('error', reject);
+        worker.once('exit', (code) => code === 0 ? resolve(report) : reject(new Error('Native addon worker failed')));
+      });
+      assert.deepEqual(workerReport, { answer: 42, moduleAbi: Number(process.versions.modules) });
       assert.deepEqual(result, {
         message: 'Hello from extra resources',
         asset: 'Hello, 世界',
@@ -164,7 +181,7 @@ app.whenReady().then(async () => {
       assert.deepEqual(environment, { node: 'undefined', bridge: 'function', sandboxed: true, contextIsolated: true });
       const update_version = process.windowsStore ? null : await require('./updater-smoke.cjs')();
       clearTimeout(watchdog);
-      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify({ ...result, architecture: process.arch, platform: process.platform, update_version, app_version: app.getVersion(), windows_store: Boolean(process.windowsStore) }));
+      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify({ ...result, architecture: process.arch, platform: process.platform, update_version, app_version: app.getVersion(), windows_store: Boolean(process.windowsStore), classic_module_abi: classicAddon.moduleAbi }));
       app.quit();
     } catch (error) {
       console.error(error);

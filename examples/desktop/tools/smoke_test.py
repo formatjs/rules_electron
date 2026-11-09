@@ -496,6 +496,7 @@ if __name__ == "__main__":
         assert len(lines) == 1, result.stdout + result.stderr
         report = json.loads(lines[0].removeprefix("EXAMPLE_SMOKE_OK "))
         assert report["architecture"] == args.target_arch, report
+        assert report["classic_module_abi"] == 140, report
         assert report["update_version"] == (None if args.msix else "2.0.0"), report
         assert report["windows_store"] == args.msix, report
         if args.expected_version:

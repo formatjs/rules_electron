@@ -32,7 +32,9 @@ def check_app(entry):
     arm64 = "aarch64" in variant
     prefix = "Contents/Resources/" if target_os == "macos" else "resources/"
     binary = "Contents/MacOS/sample-desktop" if target_os == "macos" else "sample-desktop" + (".exe" if target_os == "windows" else "")
-    paths = [binary, prefix + "native/helper" + (".exe" if target_os == "windows" else ""), prefix + "app.asar.unpacked/node_modules/example-native/addon.node"]
+    paths = [binary, prefix + "native/helper" + (".exe" if target_os == "windows" else "")]
+    paths += [prefix + "app.asar.unpacked/node_modules/example-native/" + name
+              for name in ("addon.node", "classic.node", "bad-abi.node")]
     if target_os == "windows":
         paths.append(prefix + "elevate.exe")
     if entry["directory"]:

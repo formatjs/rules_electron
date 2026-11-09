@@ -73,8 +73,10 @@ See [release archives](../../docs/release-archives.md).
 
 Windows addon code resolves stable Node-API exports from the current executable,
 so renaming Electron does not introduce a `node.exe` import dependency. This is a
-small example addon, not a general native-addon rebuild toolchain. Addons using
-Node/V8 internals still need Electron-specific headers, flags and ABI handling.
+small stable-ABI example. A second context-aware Node/V8 addon uses the explicit
+Electron SDK through `electron_cc_addon`; its worker execution and wrong-ABI
+rejection checks are pending hosted validation. Windows Node/V8 addons use MSVC
+ABI even in GNU LLVM app variants. See [native addons](../../docs/native-addons.md).
 
 ## Native smoke handoff
 

@@ -149,3 +149,26 @@ http_archive(
     strip_prefix = "node-v22.20.0/include/node",
     urls = ["https://nodejs.org/dist/v22.20.0/node-v22.20.0-headers.tar.gz"],
 )
+
+# Explicit bootstrap SDK matching Electron 39; no npm rebuild or host Node.
+http_archive(
+    name = "electron_addon_headers",
+    build_file = "//:electron_headers.BUILD.bazel",
+    sha256 = "fb95f3a53d5dcf0c5f850f31b93c64ef64e864e6cea5309cdf2a354a29e7350f",
+    strip_prefix = "node_headers",
+    urls = ["https://artifacts.electronjs.org/headers/dist/v39.0.0/node-v39.0.0-headers.tar.gz"],
+)
+
+http_file(
+    name = "electron_import_x64",
+    downloaded_file_path = "node.lib",
+    sha256 = "b6be2e1f7279b34debeb95fe6b9824398ca6525887fdd4257c7b2079bdcae653",
+    urls = ["https://artifacts.electronjs.org/headers/dist/v39.0.0/win-x64/node.lib"],
+)
+
+http_file(
+    name = "electron_import_arm64",
+    downloaded_file_path = "node.lib",
+    sha256 = "a1293dc4657ae8f3562c55bfd8117f63c728ed925ddb3175bc2a8a96c9166f08",
+    urls = ["https://artifacts.electronjs.org/headers/dist/v39.0.0/win-arm64/node.lib"],
+)

@@ -1,0 +1,44 @@
+load("@rules_cc//cc:cc_import.bzl", "cc_import")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+config_setting(
+    name = "windows",
+    constraint_values = ["@platforms//os:windows"],
+)
+
+config_setting(
+    name = "arm64",
+    constraint_values = ["@platforms//cpu:aarch64"],
+)
+
+cc_import(
+    name = "node_import",
+    interface_library = select({
+        ":arm64": "@electron_import_arm64//file",
+        "//conditions:default": "@electron_import_x64//file",
+    }),
+    system_provided = True,
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+cc_library(
+    name = "headers",
+    hdrs = glob(["include/node/**/*.h"]),
+    defines = [
+        "BUILDING_NODE_EXTENSION",
+        "USING_UV_SHARED=1",
+        "USING_V8_SHARED=1",
+        "V8_ENABLE_CHECKS",
+        "V8_COMPRESS_POINTERS",
+        "V8_COMPRESS_POINTERS_IN_SHARED_CAGE",
+        "V8_31BIT_SMIS_ON_64BIT_ARCH",
+        "V8_ENABLE_SANDBOX",
+        "V8_EXTERNAL_CODE_SPACE",
+    ],
+    includes = ["include/node"],
+    visibility = ["//visibility:public"],
+    deps = select({
+        ":windows": [":node_import"],
+        "//conditions:default": [],
+    }),
+)

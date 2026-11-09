@@ -21,6 +21,7 @@ exports_files(
         "windows_resources.cjs",
         "file_matcher.cjs",
         "release_backend.bzl",
+        "node_delay_load.cc",
     ],
     visibility = ["//visibility:public"],
 )

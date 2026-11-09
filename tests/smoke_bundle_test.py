@@ -40,6 +40,7 @@ class SmokeBundleTest(unittest.TestCase):
             prefix = "Contents/Resources/" if target_os == "macos" else "resources/"
             main = "Contents/MacOS/sample-desktop" if target_os == "macos" else "sample-desktop" + (".exe" if target_os == "windows" else "")
             paths = [main, prefix + "native/helper" + (".exe" if target_os == "windows" else ""), prefix + "app.asar.unpacked/node_modules/example-native/addon.node"]
+            paths += [prefix + "app.asar.unpacked/node_modules/example-native/" + name for name in ("classic.node", "bad-abi.node")]
             if target_os == "windows":
                 paths.append(prefix + "elevate.exe")
             if target_os == "macos":
@@ -124,14 +125,18 @@ class SmokeBundleTest(unittest.TestCase):
             self.assertEqual(Path(first[shard]).read_bytes(), Path(second[shard]).read_bytes())
 
     def test_wrong_architecture_in_build_only_linux_arm64_stops_all_shards(self):
-        source = self.inputs / "linux_aarch64/app/sample-desktop"
-        data = bytearray(source.read_bytes())
-        struct.pack_into("<H", data, 18, 62)
-        source.write_bytes(data)
         outputs = self.outputs(self.root / "outputs")
-        with self.assertRaisesRegex(ValueError, "wrong binary architecture"):
-            build_bundles(self.entries, outputs)
-        self.assertFalse(any(Path(path).exists() for path in outputs.values()))
+        for name in ("sample-desktop", "resources/app.asar.unpacked/node_modules/example-native/classic.node",
+                     "resources/app.asar.unpacked/node_modules/example-native/bad-abi.node"):
+            source = self.inputs / "linux_aarch64/app" / name
+            original = source.read_bytes()
+            data = bytearray(original)
+            struct.pack_into("<H", data, 18, 62)
+            source.write_bytes(data)
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "wrong binary architecture"):
+                build_bundles(self.entries, outputs)
+            self.assertFalse(any(Path(path).exists() for path in outputs.values()))
+            source.write_bytes(original)
 
     def test_missing_or_duplicate_app_variant_stops_all_shards(self):
         outputs = self.outputs(self.root / "outputs")
