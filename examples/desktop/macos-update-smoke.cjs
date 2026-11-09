@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { statSync } = require('node:fs');
 const { app, autoUpdater: nativeUpdater } = require('electron');
 const { autoUpdater, MacUpdater } = require('electron-updater');
 
@@ -45,7 +46,9 @@ module.exports = async function macosUpdateSmoke() {
     return;
   }
   const files = await autoUpdater.downloadUpdate();
-  assert.deepEqual(files, []);
+  assert.equal(files.length, 1);
+  assert.ok(files[0].endsWith('.zip'));
+  assert.ok(statSync(files[0]).size > 0);
   if (mode === 'signature') {
     nativeUpdater.once('update-downloaded', () => app.exit(1));
   } else {
