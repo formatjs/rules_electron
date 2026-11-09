@@ -10,13 +10,57 @@ load("//electron:linux.bzl", "electron_deb")
 load("//electron:metadata.bzl", "electron_package_json")
 load("//electron:npm.bzl", "electron_npm_package", "electron_npm_tree")
 load("//electron:prepackaged.bzl", "electron_prepackaged_app")
-load("//electron:release.bzl", "electron_macos_notarization_tool", "electron_macos_release_tool", "electron_macos_signing_tool")
+load("//electron:release.bzl", "electron_macos_dmg_notarization_tool", "electron_macos_dmg_release_tool", "electron_macos_dmg_signing_tool", "electron_macos_notarization_tool", "electron_macos_release_tool", "electron_macos_signing_tool")
 load("//electron:update.bzl", "electron_update_feed")
 load(":cross_build.bzl", "cross_build")
 load(":empty_tree.bzl", "empty_tree")
 load(":npm_lock_test.bzl", "npm_lock_test")
 
 npm_lock_test(name = "npm_lock_test")
+
+electron_macos_dmg_release_tool(
+    name = "dmg_release_cli",
+    signer = "@rcodesign_linux_x64//:rcodesign",
+)
+
+electron_macos_dmg_signing_tool(
+    name = "dmg_signing_cli",
+    signer = "@rcodesign_linux_x64//:rcodesign",
+)
+
+electron_macos_dmg_notarization_tool(
+    name = "dmg_notary_cli",
+    signer = "@rcodesign_linux_x64//:rcodesign",
+)
+
+py_test(
+    name = "dmg_release_test",
+    srcs = ["dmg_release_test.py"],
+    args = [
+        "$(rootpath :dmg_release_cli)",
+        "$(rlocationpath :dmg_release_cli_backend)",
+        "$(rlocationpath :dmg_release_cli_crypto)",
+        "$(rootpath //electron/tools:xorriso)",
+        "$(rootpath //electron/tools:dmg)",
+    ],
+    data = [
+        ":dmg_release_cli",
+        ":dmg_release_cli_backend",
+        ":dmg_release_cli_crypto",
+        "//electron/tools:dmg",
+        "//electron/tools:xorriso",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    deps = [
+        "//electron/private:dmg",
+        "//electron/private:udif",
+        "//electron/tools:dmg_notarization",
+        "//electron/tools:dmg_release",
+    ],
+)
 
 py_test(
     name = "udif_test",

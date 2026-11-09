@@ -66,7 +66,7 @@ def identity(args, crypto, root, environment):
     return certificates, private
 
 
-def release(args):
+def validate_signing(args):
     if not re.fullmatch(r"[0-9a-fA-F]{64}", args.expected_leaf_sha256):
         raise ValueError("Expected certificate SHA-256")
     if not re.fullmatch(r"[A-Z0-9]{10}", args.expected_team_id):
@@ -81,6 +81,10 @@ def release(args):
         raise ValueError("Timestamp URL requires HTTPS")
     if not 1 <= args.max_wait_seconds <= 7200:
         raise ValueError("Invalid notarization wait limit")
+
+
+def release(args):
+    validate_signing(args)
     source, output = args.input.resolve(strict=True), args.output.absolute()
     if not source.is_file() or output.exists() or output.is_symlink():
         raise ValueError("Output must be new file")

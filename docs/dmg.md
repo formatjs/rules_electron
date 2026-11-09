@@ -23,8 +23,8 @@ configuration, host tools, filesystem times and libc PRNG state do not supply
 image inputs. Existing app file bytes, modes and relative links survive staging.
 
 Sign and notarize the app before immutable import when preparing a production
-release. DMG signing/notarization, Finder backgrounds/icons/layout and license
-dialogs remain separate gaps. The example's app carries ad hoc signatures.
+release. The example's app carries ad hoc signatures. Finder
+backgrounds/icons/layout and license dialogs remain separate gaps.
 
 BB tests independently decode UDIF block maps, check compressed/uncompressed
 CRC32 values, compare relocated ZIP/tree inputs, and read the image payload with
@@ -36,3 +36,51 @@ and [all four native hosts](https://github.com/formatjs/rules_electron/actions/r
 passed. The macOS ARM64 host verified/mounted the image, checked strict app
 signatures and launched the copied app. The writer leaves regular-file Finder
 metadata empty; adding default type/creator codes invalidates strict signatures.
+
+## Release clients
+
+```starlark
+load("@rules_electron//electron:release.bzl", "electron_macos_dmg_release_tool")
+
+electron_macos_dmg_release_tool(
+    name = "release_dmg",
+    signer = "@rcodesign_linux_x64//:rcodesign",
+)
+```
+
+Run on the BB release client, outside cacheable artifact actions:
+
+```sh
+bazel run --config=bb-workflow //:release_dmg -- \
+  --input unsigned.dmg --output notarized.dmg \
+  --identifier org.example.sample \
+  --certificate-env RELEASE_CERTIFICATE_FILE --key-env RELEASE_PRIVATE_KEY_FILE \
+  --password-env RELEASE_KEY_PASSWORD --ca-file apple-roots.pem \
+  --expected-leaf-sha256 "$EXPECTED_LEAF_SHA256" --expected-team-id "$EXPECTED_TEAM_ID" \
+  --signing-time 2026-11-09T01:02:03Z --timestamp-url https://tsa.example.com/ \
+  --api-key-env APPLE_API_KEY_FILE
+```
+
+The client shares the app release client's real OpenSSL preflight: leaf pin,
+single team ID, explicit roots, encrypted key unlock and public-key match.
+The timestamp URL and identifier must be explicit. It requires Developer ID
+policy, then waits for accepted notarization and staples the image. Only the
+final DMG is committed; compute update hashes after this stage.
+
+`electron_macos_dmg_signing_tool` stops after signing and does not accept notary
+credentials. `electron_macos_dmg_notarization_tool` accepts an already signed
+DMG, `--input`, `--output`, `--api-key-env` and optional `--max-wait-seconds`.
+Every client requires a declared execution backend; keys enter through runtime
+environment names, without inherited credentials or tool configuration in child
+processes. Input artifacts remain unchanged.
+
+Signing preserves the image prefix and all footer fields except embedded
+signature location/size. Notarization additionally preserves every existing
+signature blob; only the ticket slot can change. Duplicate, overlapping,
+truncated or malformed signature layouts fail. Output races preserve the
+competing file. These checks protect artifact bytes, and do not verify CMS or
+Apple ticket trust independently of the declared backend.
+
+Tests use real OpenSSL and real rcodesign layouts with simulated certificate
+signature/TSA/Apple boundaries. Live Developer ID/TSA/Apple interoperability and
+production native trust remain unverified.

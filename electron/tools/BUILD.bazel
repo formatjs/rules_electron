@@ -16,9 +16,31 @@ alias(
 )
 
 exports_files([
+    "notarize_dmg.py",
+    "release_dmg.py",
     "notarize_macos.py",
     "sign_macos.py",
 ])
+
+py_library(
+    name = "dmg_notarization",
+    srcs = ["notarize_dmg.py"],
+    deps = [
+        ":notarization",
+        "//electron/private:udif",
+    ],
+)
+
+py_library(
+    name = "dmg_release",
+    srcs = ["release_dmg.py"],
+    deps = [
+        ":dmg_notarization",
+        ":macos_release",
+        ":notarization",
+        "//electron/private:udif",
+    ],
+)
 
 py_library(
     name = "macos_release",
