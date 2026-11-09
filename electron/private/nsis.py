@@ -3,7 +3,7 @@
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import shutil
 import subprocess
@@ -27,7 +27,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
                      output, protocols=(), desktop_shortcut=False, compression="zlib",
                      updater_cache_name="", architecture="x64", payload_archive="",
                      build_version="", build_number="", file_associations=None, app_user_model_id="",
-                     installer_icon="", uninstaller_icon="", directory_manifest=""):
+                     installer_icon="", uninstaller_icon="", directory_manifest="", file_association_icons=None):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", app_id):
         raise ValueError("NSIS app_id must be an ASCII application identifier")
     _filename(app_id)
@@ -106,6 +106,19 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         raise ValueError("Windows app executable missing")
     if seen.intersection({"uninstall.exe", ".rules-electron.ini"}):
         raise ValueError("Runtime occupies installer-owned path")
+    association_icons = {}
+    for extension, name in sorted((file_association_icons or {}).items()):
+        path = PurePosixPath(name)
+        if extension not in associations:
+            raise ValueError("File-type icon requires a registered extension")
+        if not path.parts or path.is_absolute() or ".." in path.parts or str(path) != name:
+            raise ValueError("File-type icon must be a normalized app-relative ICO path")
+        for part in path.parts:
+            _filename(part)
+        if path.suffix.lower() != ".ico" or name not in {item[0] for item in files}:
+            raise ValueError("File-type icon must reference an ICO in the app payload")
+        validate_ico(app / name)
+        association_icons[extension] = name.replace('/', '\\').replace('$', '$$').replace("'", "$\\'")
     registry = "Software\\" + app_id
     uninstall_registry = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" + app_id
     capabilities = registry + "\\Capabilities"
@@ -252,9 +265,10 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
                   'WriteRegStr HKCU ' + q(registered_apps) + ' ' + q(app_id) + ' ' + q(capabilities)]
     for extension, (progid, description) in associations.items():
         key = 'Software\\Classes\\' + progid
+        document_icon = association_icons.get(extension, command_executable)
         lines += ['WriteRegStr HKCU ' + q(key) + ' "" ' + q(description),
                   'WriteRegStr HKCU ' + q(key) + ' "RulesElectronOwner" ' + q(app_id),
-                  'WriteRegStr HKCU ' + q(key + '\\DefaultIcon') + ' "" \'"$INSTDIR\\' + command_executable + '",0\'',
+                  'WriteRegStr HKCU ' + q(key + '\\DefaultIcon') + ' "" \'"$INSTDIR\\' + document_icon + '",0\'',
                   'WriteRegStr HKCU ' + q(key + '\\shell\\open\\command') + ' "" \'"$INSTDIR\\' + command_executable + '" "%1"\'',
                   'WriteRegStr HKCU ' + q('Software\\Classes\\' + extension + '\\OpenWithProgids') + ' ' + q(progid) + ' ""',
                   'WriteRegStr HKCU ' + q(capabilities + '\\FileAssociations') + ' ' + q(extension) + ' ' + q(progid)]

@@ -92,7 +92,13 @@ def check_windows_icon(executable, gray=43):
                    ctypes.POINTER(wintypes.HANDLE), ctypes.POINTER(wintypes.HANDLE), wintypes.UINT)
     info = IconInfo()
     icon = wintypes.HANDLE()
-    assert extract(str(executable), 0, ctypes.byref(icon), None, 1) == 1
+    if executable.suffix.lower() == ".ico":
+        icon = bind(user, "LoadImageW", wintypes.HANDLE, wintypes.HINSTANCE, wintypes.LPCWSTR,
+                    wintypes.UINT, ctypes.c_int, ctypes.c_int, wintypes.UINT)(None, str(executable), 1, 32, 32, 0x10)
+        if not icon:
+            raise ctypes.WinError(ctypes.get_last_error())
+    else:
+        assert extract(str(executable), 0, ctypes.byref(icon), None, 1) == 1
     dc = None
     try:
         if not bind(user, "GetIconInfo", wintypes.BOOL, wintypes.HANDLE, ctypes.POINTER(IconInfo))(icon, ctypes.byref(info)):

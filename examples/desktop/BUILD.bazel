@@ -48,6 +48,12 @@ example_icon(
 )
 
 example_icon(
+    name = "example_document_icon",
+    format = "ico",
+    gray = 83,
+)
+
+example_icon(
     name = "example_installer_icon",
     format = "ico",
     gray = 73,
@@ -275,6 +281,7 @@ electron_nsis_tool(
         name = name,
         app = app,
         desktop_shortcut = True,
+        file_association_icons = {".rules-electron-sample": "resources/document.ico"},
         file_associations = {
             ".rules-electron-sample": "Sample Document",
             ".rules-electron-cleanup": "Sample Cleanup Document",

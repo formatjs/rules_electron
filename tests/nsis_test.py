@@ -96,6 +96,19 @@ class NsisTest(unittest.TestCase):
             with self.subTest(associations=associations), self.assertRaises(ValueError):
                 self.render(file_associations=associations)
 
+    def test_document_icons_reject_unregistered_missing_unsafe_or_invalid_inputs(self):
+        source = self.app / "document.ico"
+        source.write_bytes(b"not an ICO")
+        for extension, name in [
+            (".other", "document.ico"), (".sample", "missing.ico"),
+            (".sample", "../document.ico"), (".sample", "/document.ico"),
+            (".sample", "./document.ico"), (".sample", "folder/../document.ico"),
+            (".sample", "document.ico"), (".sample", "sample.exe"),
+        ]:
+            with self.subTest(extension=extension, name=name), self.assertRaises(ValueError):
+                self.render(file_associations={".sample": "Document"}, file_association_icons={extension: name})
+        self.assertEqual(source.read_bytes(), b"not an ICO")
+
     def test_file_association_order_is_deterministic(self):
         first = self.render(file_associations={".second": "Second", ".first": "First"})
         second = self.render(file_associations={".first": "First", ".second": "Second"})

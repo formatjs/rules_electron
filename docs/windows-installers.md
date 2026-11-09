@@ -101,10 +101,10 @@ custom install directories support the updater's installer invocation. Generate
 channel manifests and external blockmaps from final installers with
 `electron_update_feed`; signing must finish before those hashes are calculated.
 
-Current scope: per-user installation, Start Menu shortcut, optional desktop
-shortcut and URI schemes. Per-machine installation/elevation policy, file
-associations, AppUserModelID shortcut properties, custom installer icons/UI and
-release Authenticode remain pending. Paths must be valid Windows names; NSIS
+Current scope: per-user installation, Start Menu/optional desktop shortcuts,
+AppUserModelID, URI schemes, Open With/Default Apps handlers and declared icons.
+Per-machine installation/elevation policy, custom UI and release Authenticode
+remain pending. Paths must be valid Windows names; NSIS
 preprocessor expressions (`${...}` / `$%...`) and control characters in literals
 are rejected.
 
@@ -125,3 +125,18 @@ passed on both CPUs. x64 downloaded 776,681 of 96,256,700 bytes; ARM64 downloade
 760,466 of 89,390,353 bytes. Each reused over 99% for this sample's version-only
 change. The gate requires less than 50% over ranges, with no full-download
 fallback. Application changes can produce different reuse ratios.
+
+`file_association_icons` maps registered extensions to app-relative ICO paths:
+
+```starlark
+file_associations = {".example": "Example Document"},
+file_association_icons = {".example": "resources/document.ico"},
+```
+
+Include each icon through the app's declared resource/file mappings. Installer
+validation requires a normalized relative path, a regular payload file and a
+valid ICO container. Unspecified associations use the app executable icon.
+Payload ownership covers icon upgrade/removal. User defaults remain unchanged.
+Native shell resolution through
+[`ASSOCSTR_DEFAULTICON`](https://learn.microsoft.com/en-us/windows/win32/api/shlwapi/ne-shlwapi-assocstr)
+and Win32 image decoding before/after update are pending validation.

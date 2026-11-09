@@ -52,6 +52,7 @@ def desktop_app(name, package_json, **kwargs):
         }),
         extra_resources = select({
             ":windows": {
+                ":example_document_icon": "document.ico",
                 ":empty_resources": "directories",
                 ":helper": "native/helper.exe",
                 ":update_config": "app-update.yml",

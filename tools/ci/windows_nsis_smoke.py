@@ -43,7 +43,7 @@ def registry_exists(key):
         return False
 
 
-def file_handlers(executable):
+def file_handlers(executable, architecture):
     assert registry_value(REGISTERED_APPS, APP_ID) == CAPABILITIES
     query = ctypes.windll.shlwapi.AssocQueryStringW
     query.argtypes = [ctypes.c_uint, ctypes.c_uint, ctypes.c_wchar_p, ctypes.c_wchar_p,
@@ -55,7 +55,16 @@ def file_handlers(executable):
         assert isinstance(progid, str) and progid.startswith("RulesElectron.")
         key = "Software\\Classes\\" + progid
         assert registry_value(key, "RulesElectronOwner") == APP_ID
-        assert registry_value(key + r"\DefaultIcon", "") == f'"{executable}",0'
+        document_icon = executable.parent / "resources/document.ico" if extension == EXTENSIONS[0] else executable
+        expected_icon = f'"{document_icon}",0'
+        assert registry_value(key + r"\DefaultIcon", "") == expected_icon
+        resolved_icon = ctypes.create_unicode_buffer(32768)
+        icon_size = ctypes.c_uint(len(resolved_icon))
+        # ASSOCSTR_DEFAULTICON; same fixed ProgID flags as command lookup.
+        assert query(0x2800, 15, progid, None, resolved_icon, ctypes.byref(icon_size)) == 0
+        assert resolved_icon.value == expected_icon
+        if extension == EXTENSIONS[0]:
+            icon(document_icon, architecture, 83)
         assert registry_value("Software\\Classes\\" + extension + r"\OpenWithProgids", progid) == ""
         command = ctypes.create_unicode_buffer(32768)
         size = ctypes.c_uint(len(command))
@@ -240,7 +249,7 @@ if __name__ == "__main__":
             assert registry_value(REGISTRY, "QuietUninstallString") == f'"{install}\\Uninstall.exe" /S'
             assert registry_value(PROTOCOL + r"\shell\open\command", "") == f'"{executable}" "%1"'
             assert all(p.is_file() for p in shortcuts)
-            handlers = file_handlers(executable)
+            handlers = file_handlers(executable, architecture)
             icon(install / "Uninstall.exe", architecture, 113)
             assert digest(cache / "installer.exe") == digest(first)
             smoke(executable, architecture, "1.0.0")
@@ -266,7 +275,7 @@ if __name__ == "__main__":
             assert transferred < second.stat().st_size // 2, (transferred, second.stat().st_size)
             assert digest(cache / "installer.exe") == digest(second)
             assert (install / "keep-user-data.txt").read_text() == "keep"
-            assert file_handlers(executable) == handlers
+            assert file_handlers(executable, architecture) == handlers
             icon(install / "Uninstall.exe", architecture, 113)
             smoke(executable, architecture, "2.0.0")
             command(str(install / "Uninstall.exe"), "/S")
