@@ -45,6 +45,7 @@
     "Chromium SQL memory database",
     "Chromium SQL query and completion",
     "Chromium SQL schema creation",
+    "DOM storage persistent destroy",
     "IDNA and URL canonicalization",
     "LevelDB absolute database path",
     "LevelDB persisted binary value",
