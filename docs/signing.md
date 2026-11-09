@@ -26,8 +26,8 @@ This is BB cryptographic round-trip proof, not native Windows trust/deployment
 proof.
 
 This tool is groundwork, not production signing policy. Release interfaces still
-need credential/service isolation, certificate identity checks, Authenticode trust
-on native Windows, timestamp policy, final-artifact ordering and MSIX deployment
+need credential/service isolation, certificate identity checks, production trust
+and timestamp policy, final-artifact ordering and full Electron MSIX deployment
 proof. Production credentials must stay outside ordinary cacheable build actions.
 macOS Developer ID/notarization/stapling and publication remain separate gaps.
 
@@ -51,5 +51,15 @@ through fixed official GitHub release-asset API IDs, verifies their unchanged
 BCR SHA-256 hashes, then passes them to Bazel through `--distdir`. The zlib
 1.3.2 download uses upstream's byte-identical fossil archive.
 This only fetches immutable sources; compilers and package generators still run
-as declared Bazel actions. Native validation remains pending. Fixture is a minimal PE package; full Electron
+as declared Bazel actions.
+
+The [1909e3b BB suite](https://formatjs.buildbuddy.io/invocation/80d0f8fa-c8b3-48b8-9b64-a87f4e338a8e)
+and [cross-build](https://formatjs.buildbuddy.io/invocation/9094cc22-1549-4470-93ea-90c07dede702)
+passed. Native [Windows x64](https://github.com/formatjs/rules_electron/actions/runs/42571326791/job/129009330403)
+and [ARM64](https://github.com/formatjs/rules_electron/actions/runs/42571326791/job/129009330204)
+passed exact WinVerifyTrust results: unsigned `0x800b0100`, untrusted root
+`0x800b0109`, trusted success `0x00000000`, changed payload `0x80096010`.
+Both installed the signed package, executed its native helper, removed the
+package and removed the temporary certificate. No runtime compilation or signing
+occurs on those hosts. Fixture remains a minimal PE package; full Electron
 installation and production credential/service interfaces remain open.

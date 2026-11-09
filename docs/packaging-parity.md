@@ -68,6 +68,8 @@ manifest hash, and modified second-block rejection. Public rule wiring passed th
 [seven-variant cross-build](https://formatjs.buildbuddy.io/invocation/17147615-873f-4a49-b471-e67118b15631)
 and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42561564137),
 including both Windows Packaging API gates. Fixture remains a minimal PE app.
-Full Electron deployment, signing, install/update/remove, OS associations and
-updater behavior remain unverified. Empty directory leaves and symlinks fail
+Signed minimal fixtures also passed native trust/tamper rejection and
+install/helper launch/removal on both Windows CPUs; see [signing proof](signing.md).
+Full Electron deployment, production signing, install/update/remove, OS
+associations and updater behavior remain unverified. Empty directory leaves and symlinks fail
 explicitly. See [MSIX](msix.md).

@@ -43,10 +43,11 @@ of a modified second block. Native fixture contains a target-built PE, not a
 complete Electron installation.
 
 Current limits: empty directory leaves and symlinks fail explicitly; no placeholder
-files replace them. MSIX signing, deployment trust, actual Electron install/launch,
+files replace them. Production signing, actual Electron install/launch,
 update/remove, file/protocol registration, language/scale assets and App Installer
 publishing remain open. The source-built signer now passes a
 [BB MSIX signing/verification round trip](https://formatjs.buildbuddy.io/invocation/feb26e4f-2453-4ff3-ab50-81f58c7dd10e),
-including preserved payload hashes and reproducible signed bytes. Native Windows
-trust/deployment remains unverified; see [signing stages](signing.md).
+including preserved payload hashes and reproducible signed bytes. Signed minimal
+fixtures passed native trust, tamper rejection, install/helper launch/removal and
+certificate cleanup on both Windows CPUs; see [signing stages](signing.md).
 This rule does not establish electron-updater support for MSIX. Existing NSIS updater lifecycle stays independently covered.
