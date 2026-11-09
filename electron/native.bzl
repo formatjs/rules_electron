@@ -2,6 +2,8 @@
 
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 
+_RUNTIME_STAGE = str(Label("@llvm//toolchain:runtime_stage"))
+
 def _abi(settings, attr):
     platforms = settings["//command_line_option:platforms"]
     features = settings["//command_line_option:features"]
@@ -12,12 +14,13 @@ def _abi(settings, attr):
     return {
         "//command_line_option:platforms": platforms,
         "//command_line_option:features": features,
+        _RUNTIME_STAGE: "stage1_hosted" if attr.sdk_cxxstdlib else settings[_RUNTIME_STAGE],
     }
 
 _electron_abi = transition(
     implementation = _abi,
-    inputs = ["//command_line_option:platforms", "//command_line_option:features"],
-    outputs = ["//command_line_option:platforms", "//command_line_option:features"],
+    inputs = ["//command_line_option:platforms", "//command_line_option:features", _RUNTIME_STAGE],
+    outputs = ["//command_line_option:platforms", "//command_line_option:features", _RUNTIME_STAGE],
 )
 
 def _impl(ctx):
@@ -31,11 +34,12 @@ _addon = rule(
     attrs = {
         "srcs": attr.label_list(cfg = _electron_abi),
         "windows_platform": attr.label(),
+        "sdk_cxxstdlib": attr.bool(),
         "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },
 )
 
-def electron_cc_addon(name, srcs, headers, deps = [], copts = [], defines = [], linkopts = [], visibility = None, tags = []):
+def electron_cc_addon(name, srcs, headers, deps = [], copts = [], defines = [], linkopts = [], sdk_cxxstdlib = False, visibility = None, tags = []):
     """Build an addon; Windows uses Electron's MSVC ABI regardless of app compiler."""
     if not any([d == "NODE_GYP_MODULE_NAME" or d.startswith("NODE_GYP_MODULE_NAME=") for d in defines]):
         identifier = "electron_" + "".join([name[i] if name[i] in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_" else "_" for i in range(len(name))])
@@ -53,9 +57,9 @@ def electron_cc_addon(name, srcs, headers, deps = [], copts = [], defines = [], 
         name = name + "_unix.node",
         srcs = srcs,
         deps = [headers] + deps,
-        copts = ["-std=c++20"] + copts,
+        copts = ["-std=c++20"] + (["-nostdinc++"] if sdk_cxxstdlib else []) + copts,
         defines = defines,
-        linkopts = select({":" + macos: ["-Wl,-undefined,dynamic_lookup"], "//conditions:default": []}) + linkopts,
+        linkopts = select({":" + macos: ["-Wl,-undefined,dynamic_lookup"], "//conditions:default": []}) + (["-nostdlib++"] if sdk_cxxstdlib else []) + linkopts,
         linkshared = True,
         target_compatible_with = select({":" + windows: ["@platforms//:incompatible"], "//conditions:default": []}),
         visibility = ["//visibility:private"],
@@ -75,6 +79,7 @@ def electron_cc_addon(name, srcs, headers, deps = [], copts = [], defines = [], 
     )
     _addon(
         name = name,
+        sdk_cxxstdlib = sdk_cxxstdlib,
         srcs = select({":" + windows: [":" + name + "_windows.dll"], "//conditions:default": [":" + name + "_unix.node"]}),
         windows_platform = select({
             ":" + windows + "_x86_64": "@llvm//platforms:windows_x86_64_msvc",

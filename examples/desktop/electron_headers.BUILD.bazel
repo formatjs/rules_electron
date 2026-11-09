@@ -11,6 +11,29 @@ config_setting(
     constraint_values = ["@platforms//cpu:aarch64"],
 )
 
+config_setting(
+    name = "macos",
+    constraint_values = ["@platforms//os:osx"],
+)
+
+cc_import(
+    name = "cxxabi",
+    static_library = "@llvm//runtimes/libcxx:libcxxabi.static",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+cc_import(
+    name = "unwind",
+    static_library = "@llvm//runtimes/libunwind:libunwind.static",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+cc_library(
+    name = "macos_cxxabi",
+    linkopts = ["-lc++abi"],
+    target_compatible_with = ["@platforms//os:osx"],
+)
+
 cc_import(
     name = "node_import",
     interface_library = select({
@@ -42,6 +65,10 @@ cc_library(
         "@electron_libcxx//:runtime",
     ] + select({
         ":windows": [":node_import"],
-        "//conditions:default": [],
+        ":macos": [":macos_cxxabi"],
+        "//conditions:default": [
+            ":cxxabi",
+            ":unwind",
+        ],
     }),
 )

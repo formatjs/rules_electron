@@ -18,6 +18,11 @@ Inputs come from Chromium 142.0.7444.52:
   supply visibility, sanitizer and Windows VCRuntime policy. Compiler, C runtime
   and exception ABI runtime remain declared hermetic LLVM toolchain inputs.
 
+`sdk_cxxstdlib = True` selects the toolchain's hosted C-runtime stage. Linux
+imports the toolchain's source-built libc++abi/libunwind archives explicitly;
+macOS uses the declared SDK's libc++abi; Windows uses VCRuntime. The default
+toolchain libc++ headers cannot enter this SDK's include search path.
+
 The addon passes `std::shared_ptr<v8::BackingStore>` into Electron, gets it back,
 checks shared ownership and returns the same bytes to JavaScript. Main-thread
 and worker smoke both check the result. This exercises the STL boundary omitted

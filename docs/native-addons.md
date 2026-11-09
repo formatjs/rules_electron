@@ -18,6 +18,12 @@ The SDK and C++ runtime must match Electron; ordinary Node headers are insuffici
 No host Node, npm lifecycle scripts, node-gyp or `binding.gyp` interpretation runs.
 Package the resulting single artifact under a `.node` destination.
 
+Set `sdk_cxxstdlib = True` when the SDK supplies its own C++ headers and runtime.
+This selects hermetic LLVM's hosted C-runtime stage, keeping declared target C
+headers/CRTs while excluding its default C++ headers and automatic C++ linkage.
+The SDK must supply its C++ library and exception ABI dependencies explicitly.
+This prevents incompatible libc++ wrappers from mixing through `#include_next`.
+
 Windows builds use the matching CPU's MSVC ABI and static CRT, including when the
 app's other native helpers use GNU LLVM. These builds require licensed MSVC runtime
 hosts and the existing license acknowledgment flag. The declared delay-load hook

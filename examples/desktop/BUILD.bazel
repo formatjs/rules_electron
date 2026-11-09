@@ -276,6 +276,7 @@ electron_cc_addon(
     name = "classic_addon",
     srcs = ["native/classic_addon.cc"],
     headers = "@electron_addon_headers//:headers",
+    sdk_cxxstdlib = True,
 )
 
 electron_cc_addon(
@@ -283,6 +284,7 @@ electron_cc_addon(
     srcs = ["native/classic_addon.cc"],
     defines = ["NODE_EMBEDDER_MODULE_VERSION=139"],
     headers = "@electron_addon_headers//:headers",
+    sdk_cxxstdlib = True,
 )
 
 cc_binary(
