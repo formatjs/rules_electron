@@ -57,7 +57,7 @@ updater's copy/download planner consumes the same v2 format; final SHA-512 still
 verifies the complete downloaded artifact. Embedded AppImage maps require a
 separate packaging stage.
 
-The desktop example pins electron-updater 6.6.2 and its script-free npm closure
+The desktop example pins electron-updater 6.8.11 and its script-free npm closure
 through an integrity-checked lockfile. Native smoke exercises discovery, channel
 routing, artifact hashes and actual updater blockmap planning over local HTTP.
 Its metadata fixture is not an installer. A separate [Linux DEB test](linux-packages.md)
@@ -69,3 +69,9 @@ signature rejection and release-identity verification remain pending.
 Protocol references: [auto update](https://www.electron.build/v26/docs/features/auto-update/),
 [channel routing](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/providers/Provider.ts),
 [external blockmap reader](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/AppUpdater.ts).
+
+The example uses the published 6.8.11 Linux package-manager detector. Version
+6.6.2 throws when `which zypper` fails, before trying dnf on Fedora. The updated
+client probes available managers independently. CI supplies only a headless
+elevation adapter; dnf/dpkg perform real installation. Dependency tarballs remain
+integrity-pinned, with no npm lifecycle scripts executed during builds.

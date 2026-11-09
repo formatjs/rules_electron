@@ -140,7 +140,7 @@ app.whenReady().then(async () => {
       assert.equal(require('./package.json').devDependencies, undefined);
       assert.equal(fs.existsSync(path.join(__dirname, 'node_modules/minimatch/package.json')), false);
       assert.deepEqual(require('./package.json').dependencies, {
-        'example-native': '1.0.0', 'electron-updater': '6.6.2',
+        'example-native': '1.0.0', 'electron-updater': '6.8.11',
       });
       assert.deepEqual(require('./package.json').releaseMetadata, {
         channel: 'stable', features: ['native-addon', 'updater'],

@@ -122,7 +122,8 @@ only under the destination package manager. The installed `package-type` marker
 selects real `RpmUpdater`; generate its feed from the final RPM with
 `electron_update_feed`.
 
-RPM validation is pending. CI cross-builds both CPUs on BB. Native Linux x64
+RPM lifecycle validation is pending; the example pins electron-updater 6.8.11
+for its corrected dnf detection. CI cross-builds both CPUs on BB. Native Linux x64
 smoke provisions an immutable official Fedora 43 container, installs the BB
 artifact through dnf, checks real RPM digests/file verification, launches v1,
 rejects a corrupted update, installs v2 through `RpmUpdater`, launches v2 and

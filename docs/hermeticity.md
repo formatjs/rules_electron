@@ -581,3 +581,12 @@ comparisons guard output. The
 passed real transitive-DSO relocation, missing-dependency and wrong-SONAME tests.
 This validates the assembler boundary; full Electron linkage, runtime ZIP
 execution and packed-app browser/IPC/pixel checks remain unverified.
+
+The [b0c68b6 SDK closure fix](https://github.com/formatjs/electron/commit/b0c68b6586d3a97f0053b4a803710b095fbc08ab)
+propagates pinned `DT_NEEDED` edges through SDK `cc_import` dependencies and
+rejects undeclared dependencies outside the explicit host ABI. The prior
+consumer failed loading pixman in a platform generator. Its
+[BB consumer preflight](https://formatjs.buildbuddy.io/invocation/afd95121-7730-4d8c-af38-6293257e011d)
+passed the narrow Cairo paint/loader regression, alongside archive, credits,
+metadata and default-app checks. Full source-runtime linkage and launch remain
+unverified; the preceding component workflow hit BB's free-tier run timeout.

@@ -109,14 +109,13 @@ if len(args) == 1:
     args = shlex.split(args[0])
 assert args[:2] == ["/bin/bash", "-c"] and len(args) == 3
 command = shlex.split(args[2])
-assert command[:2] == ["dpkg", "-i"]
-assert command[3:] == ["||", "apt-get", "install", "-f", "-y"]
+if command == ["apt-get", "install", "-f", "-y"]:
+    sys.exit(subprocess.run(["/usr/bin/sudo", "-n", *command]).returncode)
+assert command[:2] == ["dpkg", "-i"] and len(command) == 3
 package = pathlib.Path(command[2]).resolve()
 assert package.is_file() and package.name == "Sample-2.0.0.deb"
 assert package.is_relative_to(pathlib.Path(os.environ["XDG_CACHE_HOME"]).resolve())
 result = subprocess.run(["/usr/bin/sudo", "-n", "dpkg", "-i", str(package)])
-if result.returncode:
-    result = subprocess.run(["/usr/bin/sudo", "-n", "apt-get", "install", "-f", "-y"])
 sys.exit(result.returncode)
 ''')
             (broker / "gksudo").chmod(0o755)

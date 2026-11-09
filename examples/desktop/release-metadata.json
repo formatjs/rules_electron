@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "electron-updater": "6.6.2"
+    "electron-updater": "6.8.11"
   },
   "releaseMetadata": {
     "channel": "stable",

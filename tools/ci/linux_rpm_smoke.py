@@ -62,11 +62,11 @@ if len(args) == 1:
     args = shlex.split(args[0])
 assert args[:2] == ["/bin/bash", "-c"] and len(args) == 3
 command = shlex.split(args[2])
-assert pathlib.Path(command[0]).name in ("dnf", "yum") and command[1:3] == ["-y", "install"] and len(command) == 4
-package = pathlib.Path(command[3]).resolve()
+assert pathlib.Path(command[0]).name in ("dnf", "yum") and command[1:4] == ["install", "--nogpgcheck", "-y"] and len(command) == 5
+package = pathlib.Path(command[4]).resolve()
 assert package.is_file() and package.name == "Sample-2.0.0.rpm"
 assert package.is_relative_to(pathlib.Path(os.environ["XDG_CACHE_HOME"]).resolve())
-sys.exit(subprocess.run(["/usr/bin/sudo", "-n", "/usr/bin/dnf", "-y", "install", str(package)]).returncode)
+sys.exit(subprocess.run(["/usr/bin/sudo", "-n", "/usr/bin/dnf", "install", "--nogpgcheck", "-y", str(package)]).returncode)
 ''')
             (broker / "gksudo").chmod(0o755)
             server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(RpmFeedHandler, directory=str(feed)))
