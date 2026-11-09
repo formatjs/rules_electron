@@ -54,9 +54,17 @@ See the [release plan](release-plan.md) and [updater contract](updates.md).
 Linux package behavior and its native validation live in [Linux packages](linux-packages.md).
 Windows installer scope and validation live in [Windows installers](windows-installers.md).
 
-MSIX implementation is in progress. Private writer emits deterministic ZIP64,
-compressed footprint XML, explicit publisher/CPU/version/logo metadata and
-64 KiB SHA-256 block maps. BB tests independently decode ZIP records and block
-ranges. This is not yet a public packaging rule: Windows Packaging API
-acceptance, signing, install/update/remove, OS associations and updater behavior
-remain unverified. Empty directory leaves and symlinks fail explicitly.
+MSIX implementation is in progress. Public `electron_msix` emits unsigned
+deterministic ZIP64, compressed footprint XML, explicit publisher/CPU/version/PNG
+logo metadata and 64 KiB SHA-256 block maps. The
+[7aec9d1 BB suite](https://formatjs.buildbuddy.io/invocation/12d5556f-174d-4355-8b2a-e7deaeb27346)
+independently decoded ZIP records and block ranges; its
+[cross-build](https://formatjs.buildbuddy.io/invocation/61df5b32-7025-4dc8-ae76-edac23b58d92)
+compiled the Windows verifier on BB. Matching Windows x64/ARM64
+[native jobs](https://github.com/formatjs/rules_electron/actions/runs/42560665516)
+passed actual `IAppxPackageReader`, manifest/CPU/version, every payload and
+manifest hash, and modified second-block rejection. This proof covers the private
+writer with a minimal PE fixture. Public-rule wiring is pending its own CI.
+Full Electron deployment, signing, install/update/remove, OS associations and
+updater behavior remain unverified. Empty directory leaves and symlinks fail
+explicitly. See [MSIX](msix.md).

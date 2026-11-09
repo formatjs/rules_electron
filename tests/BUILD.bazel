@@ -609,5 +609,4 @@ py_binary(
     srcs = ["msix_fixture.py"],
     main = "msix_fixture.py",
     visibility = ["//visibility:public"],
-    deps = ["//electron/private:msix"],
 )

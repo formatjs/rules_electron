@@ -271,3 +271,11 @@ py_library(
         ":identity",
     ],
 )
+
+py_binary(
+    name = "msix_packager",
+    srcs = ["msix.py"],
+    main = "msix.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":msix"],
+)
