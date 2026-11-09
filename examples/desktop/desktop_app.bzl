@@ -44,7 +44,10 @@ def desktop_app(name, package_json, empty_resources = True, **kwargs):
             "linked-assets": "assets",
         },
         executable_name = "sample-desktop",
-        extra_files = {"resources/NOTICE.txt": "licenses/NOTICE.txt"},
+        extra_files = select({
+            ":windows": {"resources/NOTICE.txt": "licenses/NOTICE.txt"},
+            "//conditions:default": {":license_files": "licenses"},
+        }),
         extra_asars = {":shared_archive": "plugins/shared.asar"},
         resource_symlinks = select({
             ":macos": {"linked-config": "config", "nested/config": "linked-config"},

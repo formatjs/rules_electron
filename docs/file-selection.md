@@ -54,11 +54,16 @@ then writes selected links to separate metadata. Selected links whose targets
 were excluded fail before copying.
 
 Standalone ASAR and `electron_app(asar = True)` consume this metadata as virtual
-links. Linux/macOS `extra_resources` materializes filesystem links in app ZIPs.
-Generated links in plain app inputs or `extra_files`, and Windows resource links,
-currently fail explicitly. Missing targets, cycles, escapes and collisions fail
+links. Linux/macOS plain app inputs, `extra_resources` and `extra_files`
+materialize filesystem links in app ZIPs. Windows filesystem links currently
+fail explicitly; ASAR virtual links work on Windows. Missing targets, cycles, escapes and collisions fail
 before assembly writes output. Consumers must preserve the provider alongside
 the tree; copying only `DefaultInfo.files` drops logical link metadata.
+
+The initial generated-link [BB tests](https://formatjs.buildbuddy.io/invocation/59ed27a9-34ff-45c9-af55-3e401e25a01b)
+and [seven cross-builds](https://formatjs.buildbuddy.io/invocation/9d7f8d48-1b38-4b5f-afba-34c30a596dda)
+passed, including ASAR and resource ZIP/import/TAR/DEB action boundaries.
+Native generated-link smoke remains unverified.
 
 The generic renderer bundle contains development fixtures; its filtered view
 excludes them. It also declares an empty renderer directory and an empty extra

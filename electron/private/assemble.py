@@ -75,25 +75,35 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         expanded.extend(_expand([{"source": archive["unpacked"], "path": destination + ".unpacked", "directory": True}]))
         extra_hashes[destination.removeprefix("Contents/")] = digest
     for entry in _expand(extra_files):
-        if "symlink_target" in entry:
-            raise ValueError("Generated symlinks require app ASAR inputs or extra_resources")
         path = relative_path(("Contents/" if platform == "macos" else "") + entry["path"])
         checked = PurePosixPath(str(path).casefold()) if platform == "windows" else path
         if any(checked.is_relative_to(resources + "/" + name) for name in ("app", "app.asar", "app.asar.unpacked")):
             raise ValueError(f"Extra file occupies app destination: {path}")
-        expanded.append(dict(entry, path=str(path)))
+        if "symlink_target" in entry:
+            target = relative_path(("Contents/" if platform == "macos" else "") + entry["symlink_target"])
+            expanded.append(dict(entry, path=str(path), symlink_target=str(target), extra_file_link=True))
+        else:
+            expanded.append(dict(entry, path=str(path)))
     paths = {}
     asar_symlinks = dict(asar_symlinks or {})
     resource_symlinks = dict(resource_symlinks or {})
+    extra_symlinks = {}
     app_prefix = PurePosixPath(resources + "/app")
     resource_root = PurePosixPath(resources)
     for entry in expanded:
         path = relative_path(entry["path"])
         if "symlink_target" in entry:
             target = relative_path(entry["symlink_target"])
+            if entry.get("extra_file_link"):
+                if platform == "windows":
+                    raise ValueError("Filesystem symlinks currently require Linux or macOS")
+                if path in extra_symlinks:
+                    raise ValueError(f"Duplicate generated link: {path}")
+                extra_symlinks[path] = target
+                continue
             if path.is_relative_to(app_prefix):
-                if not asar:
-                    raise ValueError("Generated app symlinks require asar=True")
+                if not asar and platform == "windows":
+                    raise ValueError("Filesystem symlinks currently require Linux or macOS")
                 if not target.is_relative_to(app_prefix):
                     raise ValueError("Generated ASAR link escapes app")
                 links, prefix = asar_symlinks, app_prefix
@@ -132,6 +142,24 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         for alias, target in resource_symlinks.items():
             path = resource_root / alias
             paths[path] = {"symlink": posixpath.relpath(str(resource_root / target), str(path.parent))}
+    filesystem_links = dict(extra_symlinks)
+    if not asar:
+        filesystem_links.update({app_prefix / alias: app_prefix / target for alias, target in asar_symlinks.items()})
+    if filesystem_links:
+        for path in filesystem_links:
+            if path in paths:
+                raise ValueError(f"Link/file collision: {path}")
+        existing_links = {str(path): posixpath.normpath(str(path.parent / entry["symlink"]))
+                          for path, entry in paths.items() if "symlink" in entry}
+        namespace = ArchivePaths({str(path) for path, entry in paths.items() if not entry.get("empty_directory") and "symlink" not in entry},
+                                 {**existing_links, **{str(path): str(target) for path, target in filesystem_links.items()}},
+                                 {str(path) for path, entry in paths.items() if entry.get("empty_directory")})
+        for path in extra_symlinks:
+            target = PurePosixPath(namespace.links[str(path)])
+            if any(target.is_relative_to(resource_root / name) for name in ("app", "app.asar", "app.asar.unpacked")):
+                raise ValueError("Extra file link targets app destination")
+        for path, target in filesystem_links.items():
+            paths[path] = {"symlink": posixpath.relpath(str(target), str(path.parent))}
     checked_paths = {PurePosixPath(str(path).casefold()): entry for path, entry in paths.items()} if platform in ("windows", "macos") else paths
     if len(checked_paths) != len(paths):
         raise ValueError("Case-insensitive destination collision")
@@ -143,7 +171,7 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
     package = json.loads(Path(paths[package_path]["source"]).read_text())
     native_version = build_identity(package.get("version"), build_version, build_number, platform) if (build_version or build_number) else package.get("version", "")
     app_prefix = PurePosixPath(resources + "/app")
-    app_files = {str(path.relative_to(app_prefix)): path for path, value in paths.items() if path.is_relative_to(app_prefix) and not value.get("empty_directory")}
+    app_files = {str(path.relative_to(app_prefix)): path for path, value in paths.items() if path.is_relative_to(app_prefix) and not value.get("empty_directory") and "symlink" not in value}
     app_directories = {str(path.relative_to(app_prefix)) for path, value in paths.items() if path != app_prefix and path.is_relative_to(app_prefix) and value.get("empty_directory")}
     main = relative_path(package.get("main", "index.js"))
     index = ArchivePaths(app_files, asar_symlinks, app_directories)

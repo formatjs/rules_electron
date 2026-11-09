@@ -139,7 +139,8 @@ def _app_impl(ctx):
     entries += [{"source": e.source.path, "path": resources + "/" + e.path, "executable": e.executable, "directory": e.source.is_directory, "directory_manifest": e.directory_manifest.path if e.directory_manifest else "", "symlink_manifest": e.symlink_manifest.path if e.symlink_manifest else ""} for e in resource_entries]
     entries.append({"source": ctx.file.package_json.path, "path": resources + "/app/package.json", "executable": False})
     manifest = ctx.actions.declare_file(ctx.label.name + ".manifest.json")
-    zip_output = platform == "macos" or bool(ctx.attr.resource_symlinks) or any([e.symlink_manifest != None for e in resource_entries])
+    filesystem_entries = resource_entries + extra_entries + ([] if ctx.attr.asar else app_entries)
+    zip_output = platform == "macos" or bool(ctx.attr.resource_symlinks) or any([e.symlink_manifest != None for e in filesystem_entries])
     output = ctx.actions.declare_file(ctx.label.name + ".zip") if zip_output else ctx.actions.declare_directory(ctx.label.name)
     directories = ctx.actions.declare_file(ctx.label.name + ".directories.json")
     ctx.actions.write(manifest, json.encode({

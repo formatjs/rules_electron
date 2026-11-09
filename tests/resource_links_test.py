@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from zipfile import ZipFile
 
-APP, RELEASE, DEB, NOTICE, ASAR, TREE = map(Path, sys.argv[1:])
+APP, RELEASE, DEB, NOTICE, ASAR, TREE, PLAIN = map(Path, sys.argv[1:])
 del sys.argv[1:]
 
 
@@ -68,6 +68,20 @@ class ResourceLinksTest(unittest.TestCase):
                     self.assertEqual((root / "generated/mounted/current/message.txt").read_bytes(), b"tree payload\n")
                     (root / "generated/mounted/message.txt").write_bytes(b"changed generated payload")
                     self.assertEqual((root / "generated/mounted/nested/alias").read_bytes(), b"changed generated payload")
+                    extra = Path(directory) / prefix / "licenses/generated/mounted"
+                    self.assertEqual((extra / "current/message.txt").read_bytes(), b"tree payload\n")
+                    (extra / "message.txt").write_bytes(b"updated extra file")
+                    self.assertEqual((extra / "nested/alias").read_bytes(), b"updated extra file")
+
+    def test_plain_app_links_survive_bazel_zip_import_and_tar_actions(self):
+        with tarfile.open(PLAIN) as archive, tempfile.TemporaryDirectory() as directory:
+            archive.extractall(directory, filter="data")
+            root = Path(directory) / "sample"
+            for generated in (root / "resources/app/assets/mounted", root / "licenses/generated/mounted"):
+                self.assertTrue((generated / "current").is_symlink())
+                self.assertEqual((generated / "current/message.txt").read_bytes(), b"tree payload\n")
+                (generated / "message.txt").write_bytes(b"plain app update")
+                self.assertEqual((generated / "nested/alias").read_bytes(), b"plain app update")
 
 
 if __name__ == "__main__":

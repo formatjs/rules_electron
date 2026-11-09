@@ -32,6 +32,15 @@ electron_files(
     directories = ["empty"],
 )
 
+electron_files(
+    name = "license_files",
+    srcs = {"resources/NOTICE.txt": "NOTICE.txt"},
+    symlinks = {
+        "current": "",
+        "notice-alias.txt": "NOTICE.txt",
+    },
+)
+
 electron_npm_package(
     name = "native_package",
     srcs = {

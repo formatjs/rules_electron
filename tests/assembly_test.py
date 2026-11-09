@@ -25,14 +25,49 @@ class AssemblyTest(unittest.TestCase):
         self.assertEqual(json.loads(data[16:16 + length])["files"]["generated"]["files"]["alias"], {"link": "generated/payload"})
         self.assertEqual((output / "resources/generated/alias").read_bytes(), b"generated")
         for name, entries, options in [
-            ("plain", self.entries + [entry], {}),
             ("windows", self.entries + [dict(entry, path="resources/generated")], {"platform": "windows", "asar": True}),
             ("duplicate", self.entries + [entry], {"asar": True, "asar_symlinks": {"generated/alias": "main.js"}}),
-            ("extra", self.entries, {"asar": True, "extra_files": [dict(entry, path="extra")]}),
+            ("windows-plain", self.entries + [entry], {"platform": "windows"}),
+            ("windows-extra", self.entries, {"platform": "windows", "asar": True, "extra_files": [dict(entry, path="extra")]}),
         ]:
             with self.subTest(name=name), self.assertRaises(ValueError):
                 assemble(entries, self.root / name, **options)
             self.assertFalse((self.root / name).exists())
+
+    def test_plain_app_and_extra_file_links_survive_relocation_and_target_updates(self):
+        tree = self.root / "generated"
+        tree.mkdir()
+        (tree / "entry.js").write_bytes(b"generated main")
+        links = self.root / "links.json"
+        links.write_text('{"alias.js":"entry.js","current":""}')
+        entry = {"source": str(tree), "path": "resources/app/generated", "directory": True, "symlink_manifest": str(links)}
+        self.package.write_text('{"main":"generated/current/alias.js"}')
+        output = self.root / "plain-app"
+        assemble(self.entries + [entry], output, extra_files=[dict(entry, path="licenses/generated")])
+        moved = self.root / "relocated-plain-app"
+        output.rename(moved)
+        for root in (moved / "resources/app/generated", moved / "licenses/generated"):
+            self.assertEqual((root / "current/alias.js").read_bytes(), b"generated main")
+            (root / "entry.js").write_bytes(b"updated")
+            self.assertEqual((root / "current/alias.js").read_bytes(), b"updated")
+            self.assertEqual((root / "alias.js").readlink().as_posix(), "entry.js")
+
+    def test_extra_file_links_reject_app_targets_cycles_and_collisions_before_writing(self):
+        tree = self.root / "extra"
+        tree.mkdir()
+        links = self.root / "extra-links.json"
+        for index, (mount, values) in enumerate([
+            ("resources", {"alias": "app/main.js"}),
+            ("resources", {"alias": "app"}),
+            ("licenses", {"alias": "missing"}),
+            ("licenses", {"a": "b", "b": "a"}),
+        ]):
+            links.write_text(json.dumps(values))
+            output = self.root / ("invalid-extra-" + str(index))
+            with self.subTest(values=values), self.assertRaises(ValueError):
+                assemble(self.entries, output, extra_files=[{"source": str(tree), "path": mount, "directory": True,
+                                                             "symlink_manifest": str(links)}])
+            self.assertFalse(output.exists())
 
     def test_resource_directory_links_preserve_aliases_after_relocation(self):
         entries = self.entries + [{"source": str(self.main), "path": "resources/versions/v1/payload"}]

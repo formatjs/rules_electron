@@ -151,6 +151,12 @@ app.whenReady().then(async () => {
       }
       assert.equal(fs.readFileSync(path.join(path.dirname(process.resourcesPath), 'licenses/NOTICE.txt'), 'utf8'),
         'Generic desktop example notice.\n');
+      if (process.platform !== 'win32') {
+        const licenses = path.join(path.dirname(process.resourcesPath), 'licenses');
+        assert.ok(fs.lstatSync(path.join(licenses, 'current')).isSymbolicLink());
+        assert.equal(fs.readFileSync(path.join(licenses, 'current/notice-alias.txt'), 'utf8'),
+          'Generic desktop example notice.\n');
+      }
       assert.equal(path.basename(__filename), 'main.cjs');
       assert.equal(fs.existsSync(path.join(__dirname, 'renderer/development.map')), false);
       assert.equal(fs.existsSync(path.join(__dirname, 'renderer/development.txt')), false);
