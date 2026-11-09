@@ -22,7 +22,9 @@ launch/update lifecycle. No emulation substitutes for native smoke.
 
 The next BB gate builds type-2 runtime commit
 `fedfad51acc2860b2916a1eef32ba4a500ff31ef`, libfuse 3.15.0 and Squashfuse 0.5.2
-with native C/C++ rules. Linux target configuration is checked in; no configure,
+with native C/C++ rules. Runtime alone selects LLVM's musl platform for its CPU
+and PIC compilation; application settings remain independent. Linux target
+configuration is checked in; no configure,
 Meson or Make step runs. The libfuse mount patch comes from the pinned runtime
 source. Runtime allocator uses BCR's native mimalloc 3.5.3 target.
 
