@@ -1,0 +1,50 @@
+--- a/appx.c
++++ b/appx.c
+@@ -1458,8 +1458,6 @@
+ {
+     ZIP_CENTRAL_DIRECTORY_ENTRY *entry;
+     ZIP_LOCAL_HEADER header;
+-    time_t tim;
+-    struct tm *timeinfo;
+     uint64_t offset, crc, len, pos = 0, dummy = 0, written = 0;
+     uint64_t size = dataSize, sizeToWrite = dataSize;
+     uint8_t *dataToWrite = data;
+@@ -1475,18 +1473,12 @@
+     }
+     sizeToWrite = size;
+ 
+-    time(&tim);
+-    timeinfo = localtime(&tim);
+-
+     header.version = 0x14;
+     header.flags = 0;
+     header.compression = COMPRESSION_DEFLATE;
+-    header.modTime = (uint16_t)(timeinfo->tm_hour << 11 | \
+-                                timeinfo->tm_min << 5 | \
+-                                timeinfo->tm_sec >> 1);
+-    header.modDate = (uint16_t)((timeinfo->tm_year - 80) << 9 | \
+-                                (timeinfo->tm_mon + 1) << 5 | \
+-                                timeinfo->tm_mday);
++    /* ZIP metadata is fixed; signed attributes carry signing time. */
++    header.modTime = 0;
++    header.modDate = 33;
+ 
+     size = dataSize;
+     crc = crc32(0L, Z_NULL, 0);
+@@ -1632,6 +1624,16 @@
+         header.compressedSize = entry->overrideData->compressedSize;
+         header.uncompressedSize = entry->overrideData->uncompressedSize;
+         header.crc32 = entry->overrideData->crc32;
++        /* Rewritten footprint sizes must replace ZIP64 extra data too. */
++        uint64_t position = 4;
++        if (header.uncompressedSizeInZip64) {
++            for (unsigned i = 0; i < 8; ++i)
++                header.extraField[position++] = (uint8_t)(header.uncompressedSize >> (8 * i));
++        }
++        if (header.compressedSizeInZip64) {
++            for (unsigned i = 0; i < 8; ++i)
++                header.extraField[position++] = (uint8_t)(header.compressedSize >> (8 * i));
++        }
+     }
+     zipWriteLocalHeader(bio, sizeOnDisk, &header);
+     if (entry->overrideData) {

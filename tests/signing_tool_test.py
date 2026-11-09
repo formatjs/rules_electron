@@ -83,11 +83,25 @@ class SigningToolTest(unittest.TestCase):
             subprocess.run([SIGNER, "sign", "-certs", str(cert), "-key", str(key), "-h", "sha256",
                             "-time", "1700000000", "-in", str(source), "-out", str(signed)],
                            env=environment, check=True, capture_output=True)
+            repeated = root / "repeated.msix"
+            subprocess.run([SIGNER, "sign", "-certs", str(cert), "-key", str(key), "-h", "sha256",
+                            "-time", "1700000000", "-in", str(source), "-out", str(repeated)],
+                           env=environment, check=True, capture_output=True)
+            self.assertEqual(signed.read_bytes(), repeated.read_bytes())
             result = subprocess.run([SIGNER, "verify", "-CAfile", str(cert), "-ignore-cdp", "-in", str(signed)],
                                     env=environment, capture_output=True)
             self.assertEqual(result.returncode, 0, (result.stdout + result.stderr).decode(errors="replace")[-2000:])
             with ZipFile(signed) as archive:
                 self.assertEqual(archive.namelist()[-1], "AppxSignature.p7x")
+                self.assertEqual(archive.getinfo("AppxSignature.p7x").date_time, (1980, 1, 1, 0, 0, 0))
+                raw = signed.read_bytes()
+                for info in archive.infolist():
+                    header = struct.unpack_from("<IHHHHHIIIHH", raw, info.header_offset)
+                    if header[7] == 0xffffffff and header[8] == 0xffffffff:
+                        extra = info.header_offset + 30 + header[-2]
+                        kind, length, uncompressed, compressed = struct.unpack_from("<HHQQ", raw, extra)
+                        self.assertEqual((kind, length), (1, 16))
+                        self.assertEqual((uncompressed, compressed), (info.file_size, info.compress_size))
                 self.assertEqual(archive.read("AppxSignature.p7x")[:4], b"PKCX")
                 self.assertIn(b"application/vnd.ms-appx.signature", archive.read("[Content_Types].xml"))
                 self.assertEqual({name: archive.read(name) for name in original}, original)
