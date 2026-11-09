@@ -5,7 +5,19 @@ load("//third_party:appimage_runtime.bzl", "static_pie_runtime")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["notarize_macos.py"])
+exports_files([
+    "notarize_macos.py",
+    "sign_macos.py",
+])
+
+py_library(
+    name = "macos_release",
+    srcs = ["sign_macos.py"],
+    deps = [
+        ":notarization",
+        "//electron/private:assembly",
+    ],
+)
 
 py_library(
     name = "notarization",

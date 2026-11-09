@@ -27,8 +27,9 @@ signing, then creates the deterministic bundle ZIP.
 
 Signing uses the declared execution-platform rcodesign, an empty configuration,
 explicit environment and disabled timestamping. This stage signs ad hoc. It
-does not accept release credentials; Developer ID, release timestamping,
-notarization and stapling remain open. Release credentials belong outside
+does not accept release credentials. Separate release clients below carry
+Developer ID signing, timestamping, notarization and stapling. Production Apple
+acceptance remains unverified. Release credentials belong outside
 ordinary cacheable actions, and updater hashes must follow final release signing.
 
 Native smoke checks Apple's deep/strict verification, entitlements and runtime
@@ -42,13 +43,52 @@ with its real renderer and native addon.
 
 The scope contract follows [rcodesign's settings model](https://docs.rs/apple-codesign/0.29.0/apple_codesign/enum.SettingsScope.html).
 
-The release adapter must override rcodesign 0.29's wall-clock signing time and
+The release adapter overrides rcodesign 0.29's wall-clock signing time and
 default HTTP timestamp URL. Its `--for-notarization` mode requires a Developer ID
 certificate and timestamp, and enables hardened runtime across signed Mach-O
 files. These checks do not replace final native trust verification. The pinned
 `verify` command only verifies Mach-O files and warns that verification is
 incomplete; it cannot serve as the sole bundle release gate. See the
 [pinned CLI source](https://github.com/indygreg/apple-platform-rs/blob/apple-codesign/0.29.0/apple-codesign/src/cli/mod.rs).
+
+## Developer ID release client
+
+```starlark
+load("@rules_electron//electron:release.bzl", "electron_macos_release_tool")
+
+electron_macos_release_tool(
+    name = "release_mac",
+    signer = "@rcodesign_linux_x64//:rcodesign",
+)
+```
+
+```sh
+bazel run --config=bb-workflow //:release_mac -- \
+  --input assembled-app.zip --output released-app.zip \
+  --certificate-env RELEASE_CERT_FILE --key-env RELEASE_KEY_FILE \
+  --password-env RELEASE_KEY_PASSWORD --ca-file release-roots.pem \
+  --expected-leaf-sha256 "$release_certificate_sha256" \
+  --expected-team-id "$apple_team_id" --signing-time 2026-11-09T01:02:03Z \
+  --timestamp-url https://timestamp.example.com/ --api-key-env NOTARY_API_KEY_FILE
+```
+
+The client uses declared source-built OpenSSL to check the certificate pin,
+team OU, explicit trust roots and matching private key. Encrypted keys are
+unlocked through stdin into a private temporary file outside the bundle.
+Certificate inputs are stripped of private-key blocks before reaching rcodesign.
+Identity validation uses only explicit roots. Signer and crypto dependencies are
+declared; keys stay outside host keychains and cacheable actions.
+
+Signing requires explicit UTC time, HTTPS timestamps, Developer ID policy and
+hardened runtime. Optional `--entitlements` and `--entitlements-inherit` XML files
+use the same explicit main/nested scopes as assembly. The signed ZIP proceeds
+through mandatory notarization/stapling; no intermediate release output is
+committed. Only the final ZIP can feed update metadata.
+
+Tests exercise real OpenSSL identity/key validation and simulated signing/service
+responses. Live Developer ID/TSA/Apple interoperability and native Gatekeeper
+acceptance remain unverified. This combined client requires notarization;
+standalone signed-only releases remain open.
 
 ## Notarization client
 
@@ -74,8 +114,8 @@ bazel run --config=bb-workflow //:notarize -- \
 The environment variable holds the path to rcodesign's App Store Connect API
 key JSON. Credentials stay outside rule attributes and action environments.
 Input must already have valid Developer ID signatures, hardened runtime and
-timestamps. Developer ID release signing remains open; assembly currently signs
-ad hoc.
+timestamps. Use the combined release client above to prepare and notarize assembly's
+ad hoc ZIP in one operation.
 
 The client copies and validates the app ZIP, preserving executable modes, links
 and empty directories. It removes a prior ticket from the snapshot and invokes
@@ -89,4 +129,4 @@ Tests cover this protocol with a simulated service result, payload preservation,
 failure isolation, final feed hashes and the real declared backend's invalid-
 credential rejection. They do not contact Apple. Live Apple interoperability,
 ticket trust and native Gatekeeper acceptance remain unverified. DMG/PKG
-notarization and the Developer ID signing adapter remain separate gaps.
+notarization remains a separate gap.
