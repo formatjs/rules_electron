@@ -16,6 +16,10 @@ on:
         description: Read BB logs without downloading artifacts or running smoke
         type: boolean
         default: false
+      source_workflows_only:
+        description: Find BB source workflows for exact commit without reading logs
+        type: boolean
+        default: false
       build_repository:
         description: Repository for read-only diagnostics
         type: choice
@@ -45,12 +49,18 @@ jobs:
           BUILD_SHA: ${{ inputs.commit_sha }}
         run: python3 tools/ci/buildbuddy_log.py
       - name: Read verified Electron source-overlay logs
-        if: inputs.build_repository == 'formatjs/electron'
+        if: inputs.build_repository == 'formatjs/electron' && !inputs.source_workflows_only
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_RO_PUBLIC_KEY }}
           INVOCATION_URL: ${{ inputs.invocation_url }}
           BUILD_SHA: ${{ inputs.commit_sha }}
         run: python3 tools/ci/source_overlay_log.py
+      - name: Find exact Electron source-overlay workflows
+        if: inputs.build_repository == 'formatjs/electron' && inputs.source_workflows_only
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_RO_PUBLIC_KEY }}
+          BUILD_SHA: ${{ inputs.commit_sha }}
+        run: python3 tools/ci/source_workflow_lookup.py
 
   download:
     if: >-

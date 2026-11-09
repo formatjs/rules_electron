@@ -499,6 +499,12 @@ py_test(
 )
 
 py_test(
+    name = "source_workflow_lookup_test",
+    srcs = ["source_workflow_lookup_test.py"],
+    deps = ["//tools/ci:source_workflow_lookup"],
+)
+
+py_test(
     name = "source_link_diagnostics_test",
     size = "small",
     srcs = ["source_link_diagnostics_test.py"],

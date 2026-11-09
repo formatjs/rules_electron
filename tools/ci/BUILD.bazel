@@ -1,6 +1,13 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 py_library(
+    name = "source_workflow_lookup",
+    srcs = ["source_workflow_lookup.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [":artifacts"],
+)
+
+py_library(
     name = "source_link_diagnostics",
     srcs = ["source_link_diagnostics.py"],
     visibility = ["//tests:__pkg__"],
