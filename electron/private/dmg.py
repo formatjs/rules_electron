@@ -13,11 +13,12 @@ import tempfile
 from electron.private.archive import inventory, relative
 from electron.private.files import normalize
 from electron.private.finder import write_layout
+from electron.private.icons import validate_icns
 
 
 def create_dmg(source, app_name, volume_name, source_date_epoch, applications_link, xorriso, converter, output,
                finder_window=(), app_position=(160, 180), applications_position=(480, 180),
-               icon_size=128, text_size=14, background_color="#ffffff"):
+               icon_size=128, text_size=14, background_color="#ffffff", volume_icon=""):
     relative(app_name)
     if "/" in app_name or not app_name.endswith(".app"):
         raise ValueError("Expected single app bundle name")
@@ -31,6 +32,8 @@ def create_dmg(source, app_name, volume_name, source_date_epoch, applications_li
     source = Path(source).resolve(strict=True)
     if output.resolve() == source or source.is_dir() and output.resolve().is_relative_to(source):
         raise ValueError("DMG output must be outside its input")
+    if volume_icon and output.resolve() == Path(volume_icon).resolve(strict=True):
+        raise ValueError("DMG output must be outside its inputs")
     with tempfile.TemporaryDirectory(prefix="electron-dmg-", dir=output.parent) as temporary:
         root = Path(temporary)
         staging = root / "volume"
@@ -69,6 +72,11 @@ def create_dmg(source, app_name, volume_name, source_date_epoch, applications_li
             raise ValueError("Invalid macOS app bundle")
         if applications_link:
             (staging / "Applications").symlink_to("/Applications")
+        if volume_icon:
+            icon = staging / ".VolumeIcon.icns"
+            icon.write_bytes(Path(volume_icon).read_bytes())
+            validate_icns(icon)
+            digest.update(b".VolumeIcon.icns\0" + icon.read_bytes())
         if finder_window:
             layout = staging / ".DS_Store"
             write_layout(layout, app_name, applications_link, finder_window, app_position,

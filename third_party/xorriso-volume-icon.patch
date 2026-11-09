@@ -1,0 +1,21 @@
+--- a/libisofs/hfsplus.c
++++ b/libisofs/hfsplus.c
+@@ -861,6 +861,18 @@
+ 		    iso_msb ((uint8_t *) &common->uid, px_get_uid (t, t->hfsp_leafs[curnode].node), 4);
+ 		    iso_msb ((uint8_t *) &common->gid, px_get_gid (t, t->hfsp_leafs[curnode].node), 4);
+ 		    iso_msb ((uint8_t *) &common->mode, px_get_mode (t, t->hfsp_leafs[curnode].node, (t->hfsp_leafs[curnode].type == HFSPLUS_DIR)), 2);
++
++                    if (t->hfsp_leafs[curnode].type == HFSPLUS_DIR &&
++                        t->hfsp_leafs[curnode].cat_id == 2) {
++                        IsoNode *icon = NULL;
++                        int icon_ret = iso_dir_get_node(t->image->root,
++                                                       ".VolumeIcon.icns", &icon);
++                        if (icon_ret < 0)
++                            return icon_ret;
++                        /* kHasCustomIcon (0x0400), big-endian. */
++                        if (icon_ret > 0 && icon->type == LIBISO_FILE)
++                            common->finder_info[0] |= 0x04;
++                    }
+ 
+ 		    /*
+ 		      FIXME:

@@ -7,6 +7,7 @@ electron_dmg(
     name = "release",
     app = ":app",
     volume_name = "Sample Desktop",
+    volume_icon = "//assets:volume.icns",
     source_date_epoch = 1577836800,
     finder_window = [120, 140, 600, 360],
     app_position = [140, 160],
@@ -36,16 +37,21 @@ It declares Cocoa x, y, width and height, with a bottom-left screen origin.
 App/Applications icon positions use centers
 inside that window; `icon_size` allows 16..512 pixels and `text_size` 10..16.
 `background_color` accepts `#RRGGBB`. Omitting `finder_window` retains the plain
-volume layout. Background images, custom volume icons and license dialogs
-remain separate gaps.
+volume layout. Background images and license dialogs remain separate gaps.
 
 Metadata uses checksum-pinned MIT-licensed `ds_store` 1.3.3 and `mac_alias` 2.2.2
 Python sources. No alias filesystem discovery, Finder, mounting or AppleScript
 runs in artifact actions. Geometry/color inputs and metadata bytes participate
 in deterministic image identity. BB tests decode the packaged settings and
 auto-open catalog ID, preserve app seals and compare relocated input bytes.
-Native smoke reads settings through Finder without changing them. Hosted
-validation remains pending. See the [codec contract](https://ds-store.readthedocs.io/en/latest/index.html).
+Native smoke reads settings through Finder without changing them. The
+[02da44f BB suite](https://formatjs.buildbuddy.io/invocation/72077f05-f043-461a-9c1a-30812c6c80e5),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/ca91b301-efe5-433b-9f40-963cc2ec0e8c)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42720828995)
+passed window geometry, icon positions/sizes, background color, strict app
+signatures and the full existing installer/update smoke. The native geometry
+check converts Cocoa bounds using the actual display height. See the
+[codec contract](https://ds-store.readthedocs.io/en/latest/index.html).
 
 BB tests independently decode UDIF block maps, check compressed/uncompressed
 CRC32 values, compare relocated ZIP/tree inputs, and read the image payload with
@@ -57,6 +63,14 @@ and [all four native hosts](https://github.com/formatjs/rules_electron/actions/r
 passed. The macOS ARM64 host verified/mounted the image, checked strict app
 signatures and launched the copied app. The writer leaves regular-file Finder
 metadata empty; adding default type/creator codes invalidates strict signatures.
+
+`volume_icon` accepts a declared ICNS file. The writer validates and copies its
+bytes to `.VolumeIcon.icns` and sets the HFS+ root folder's custom-icon flag.
+The signed app bundle stays immutable; icon bytes participate in volume identity.
+BB tests read catalog flags independently, compare relocated image bytes and
+reject malformed icons or output/input aliases. Native smoke asks NSWorkspace
+for the mounted volume icon and checks its fixture pixels. This icon extension
+awaits hosted validation. The flag follows [Apple TN1150](https://developer.apple.com/library/archive/technotes/tn/tn1150.html).
 
 ## Release clients
 

@@ -14,6 +14,7 @@ def _impl(ctx):
         "volume_name": ctx.attr.volume_name or app.product_name,
         "source_date_epoch": ctx.attr.source_date_epoch,
         "applications_link": ctx.attr.applications_link,
+        "volume_icon": ctx.file.volume_icon.path if ctx.file.volume_icon else "",
         "finder_window": ctx.attr.finder_window,
         "app_position": ctx.attr.app_position,
         "applications_position": ctx.attr.applications_position,
@@ -26,7 +27,7 @@ def _impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._packager,
         arguments = [manifest.path, output.path],
-        inputs = [manifest, app.artifact],
+        inputs = [manifest, app.artifact] + ([ctx.file.volume_icon] if ctx.file.volume_icon else []),
         tools = [ctx.attr._xorriso[DefaultInfo].files_to_run, ctx.attr._converter[DefaultInfo].files_to_run],
         outputs = [output],
         mnemonic = "ElectronDmg",
@@ -39,6 +40,7 @@ electron_dmg = rule(
     attrs = {
         "app": attr.label(mandatory = True, providers = [ElectronAppInfo]),
         "volume_name": attr.string(doc = "Volume label, up to 32 UTF-8 bytes; defaults to product_name."),
+        "volume_icon": attr.label(allow_single_file = [".icns"], doc = "Declared volume ICNS, separate from the signed app bundle."),
         "source_date_epoch": attr.int(default = 0, doc = "Explicit Unix timestamp for all image dates; defaults to epoch."),
         "applications_link": attr.bool(default = True, doc = "Add the standard /Applications link beside the app."),
         "finder_window": attr.int_list(doc = "Optional Cocoa x, y, width, height (bottom-left screen origin). Enables icon view and auto-open metadata."),

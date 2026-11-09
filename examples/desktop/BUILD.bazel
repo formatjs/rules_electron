@@ -113,6 +113,7 @@ electron_dmg(
     source_date_epoch = 1577836800,
     target_compatible_with = ["@platforms//os:osx"],
     text_size = 12,
+    volume_icon = ":example_icon",
 )
 
 filegroup(

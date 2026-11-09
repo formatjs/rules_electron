@@ -58,6 +58,40 @@ def decode_dmg(data):
     return bytes(result)
 
 
+def hfs_volume(image):
+    count = struct.unpack_from(">I", image, 512 + 4)[0]
+    offsets = [struct.unpack_from(">I", image, block * 512 + 8)[0] * 512
+               for block in range(1, count + 1)
+               if image[block * 512 + 48:block * 512 + 80].rstrip(b"\0") == b"Apple_HFS"]
+    if len(offsets) != 1 or image[offsets[0] + 1024:offsets[0] + 1026] != b"H+":
+        raise ValueError("Expected one HFS+ volume")
+    return offsets[0]
+
+
+def folder_finder_flags(image):
+    volume = hfs_volume(image)
+    header = volume + 1024
+    block_size = struct.unpack_from(">I", image, header + 40)[0]
+    catalog = volume + struct.unpack_from(">I", image, header + 288)[0] * block_size
+    node_size = struct.unpack_from(">H", image, catalog + 32)[0]
+    node = struct.unpack_from(">I", image, catalog + 24)[0]
+    flags, visited = {}, set()
+    while node:
+        if node in visited or len(visited) > 10000:
+            raise ValueError("Invalid HFS+ catalog chain")
+        visited.add(node)
+        start = catalog + node * node_size
+        count = struct.unpack_from(">H", image, start + 10)[0]
+        for index in range(count):
+            record = start + struct.unpack_from(">H", image, start + node_size - 2 * (index + 1))[0]
+            data = record + 2 + struct.unpack_from(">H", image, record)[0]
+            if struct.unpack_from(">H", image, data)[0] == 1:
+                identity = struct.unpack_from(">I", image, data + 8)[0]
+                flags[identity] = struct.unpack_from(">H", image, data + 56)[0]
+        node = struct.unpack_from(">I", image, start)[0]
+    return flags
+
+
 class DmgTest(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -89,6 +123,7 @@ class DmgTest(unittest.TestCase):
         output = self.root / "release.dmg"
         self.build(self.source, output)
         image = decode_dmg(output.read_bytes())
+        self.assertEqual(folder_finder_flags(image)[2] & 0x0400, 0)
         self.assertEqual(image[512:514], b"PM")
         iso = self.root / "decoded.iso"
         iso.write_bytes(image)
@@ -132,18 +167,29 @@ class DmgTest(unittest.TestCase):
         self.assertFalse((self.root / "invalid.dmg").exists())
 
     def test_finder_layout_survives_image_conversion_and_relocation(self):
+        def chunk(kind, data):
+            return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+        png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 128, 128, 8, 6, 0, 0, 0))
+               + chunk(b"IDAT", zlib.compress((b"\0" + bytes([43, 43, 43, 255]) * 128) * 128)) + chunk(b"IEND", b""))
+        icon_bytes = b"icns" + struct.pack(">I", 16 + len(png)) + b"ic07" + struct.pack(">I", 8 + len(png)) + png
+        icon = self.root / "volume.icns"
+        icon.write_bytes(icon_bytes)
         options = dict(finder_window=[120, 140, 600, 360], app_position=[140, 160],
                        applications_position=[460, 160], icon_size=112, text_size=12,
-                       background_color="#ddeeff")
+                       background_color="#ddeeff", volume_icon=icon)
         first, second = self.root / "layout.dmg", self.root / "relocated-layout.dmg"
         self.build(self.source, first, **options)
         image = decode_dmg(first.read_bytes())
+        flags = folder_finder_flags(image)
+        self.assertEqual(flags[2] & 0x0400, 0x0400)
+        self.assertTrue(all(not value & 0x0400 for identity, value in flags.items() if identity != 2))
         iso = self.root / "layout.iso"
         iso.write_bytes(image)
         extracted = self.root / "finder-volume"
         subprocess.run([XORRISO, "-no_rc", "-osirrox", "on", "-indev", str(iso), "-extract", "/", str(extracted)],
                        env={"PATH": "", "HOME": str(self.root), "LC_ALL": "C", "TZ": "UTC"},
                        check=True, capture_output=True, timeout=60)
+        self.assertEqual((extracted / ".VolumeIcon.icns").read_bytes(), icon_bytes)
         with DSStore.open(str(extracted / ".DS_Store"), "r") as store:
             self.assertEqual(store["Sample.app"]["Iloc"], (140, 160))
             self.assertEqual(store["Applications"]["Iloc"], (460, 160))
@@ -154,22 +200,28 @@ class DmgTest(unittest.TestCase):
             self.assertEqual(settings["backgroundType"], 1)
             self.assertEqual([settings[key] for key in ["backgroundColorRed", "backgroundColorGreen", "backgroundColorBlue"]],
                              [221 / 255, 238 / 255, 1.0])
-        partitions = struct.unpack_from(">I", image, 512 + 4)[0]
-        hfs_offsets = [struct.unpack_from(">I", image, block * 512 + 8)[0] * 512
-                       for block in range(1, partitions + 1)
-                       if image[block * 512 + 48:block * 512 + 80].rstrip(b"\0") == b"Apple_HFS"]
-        self.assertEqual(len(hfs_offsets), 1)
-        volume = hfs_offsets[0]
+        volume = hfs_volume(image)
         self.assertEqual(image[volume + 1024:volume + 1026], b"H+")
         self.assertEqual(struct.unpack_from(">I", image, volume + 1024 + 88)[0], 2)
         moved = self.root / "moved.app"
         shutil.copytree(self.bundle, moved, symlinks=True)
         for item in [moved, *moved.rglob("*")]:
             os.utime(item, (1234567890, 1234567890), follow_symlinks=False)
-        self.build(moved, second, **options)
+        moved_icon = self.root / "moved.icns"
+        moved_icon.write_bytes(icon_bytes)
+        os.utime(moved_icon, (1234567890, 1234567890))
+        self.build(moved, second, **dict(options, volume_icon=moved_icon))
         self.assertEqual(first.read_bytes(), second.read_bytes())
         self.assertEqual((extracted / "Sample.app/Contents/_CodeSignature/CodeResources").read_bytes(), self.seal)
         self.assertEqual(self.source.read_bytes(), self.original)
+        with self.assertRaisesRegex(ValueError, "outside its inputs"):
+            self.build(self.source, icon, volume_icon=icon)
+        self.assertEqual(icon.read_bytes(), icon_bytes)
+        invalid_icon = self.root / "invalid.icns"
+        invalid_icon.write_bytes(b"not an icon")
+        with self.assertRaisesRegex(ValueError, "ICNS"):
+            self.build(self.source, self.root / "invalid-icon.dmg", volume_icon=invalid_icon)
+        self.assertFalse((self.root / "invalid-icon.dmg").exists())
 
     def test_invalid_finder_layout_never_creates_an_image(self):
         for index, options in enumerate([

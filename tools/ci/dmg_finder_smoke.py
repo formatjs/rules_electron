@@ -29,6 +29,25 @@ on run argv
 end run
 '''
 
+ICON_SCRIPT = '''
+ObjC.import('AppKit');
+function run(argv) {
+    const image = $.NSWorkspace.sharedWorkspace.iconForFile($(argv[0]));
+    const bitmap = $.NSBitmapImageRep.imageRepWithData(image.TIFFRepresentation);
+    const width = Number(bitmap.pixelsWide), height = Number(bitmap.pixelsHigh);
+    const samples = [];
+    for (const x of [0.25, 0.5, 0.75]) {
+        for (const y of [0.25, 0.5, 0.75]) {
+            const color = bitmap.colorAtXY(Math.floor(width * x), Math.floor(height * y))
+                .colorUsingColorSpace($.NSColorSpace.sRGBColorSpace);
+            samples.push([color.redComponent, color.greenComponent, color.blueComponent, color.alphaComponent]
+                .map(value => Math.round(Number(value) * 255)));
+        }
+    }
+    return JSON.stringify({width, height, samples});
+}
+'''
+
 
 def check_layout(mount):
     if platform.system() != "Darwin" or platform.machine().lower() != "arm64":
@@ -68,6 +87,23 @@ def check_layout(mount):
     if failures:
         raise RuntimeError("FINDER_LAYOUT_FAILED " + ",".join(failures))
     print("DMG_FINDER_LAYOUT_OK", flush=True)
+    if not (mount / ".VolumeIcon.icns").is_file():
+        raise ValueError("Missing BB-generated volume icon")
+    icon = subprocess.run(["/usr/bin/osascript", "-l", "JavaScript", "-e", ICON_SCRIPT, str(mount)],
+                          capture_output=True, text=True, timeout=30)
+    if icon.returncode:
+        raise RuntimeError("DMG_VOLUME_ICON_READ_FAILED")
+    rendered = json.loads(icon.stdout)
+    if (set(rendered) != {"width", "height", "samples"}
+            or any(type(rendered[key]) is not int or not 1 <= rendered[key] <= 4096 for key in ("width", "height"))
+            or len(rendered["samples"]) != 9
+            or any(not isinstance(row, list) or len(row) != 4 or any(type(value) is not int or not 0 <= value <= 255 for value in row)
+                   for row in rendered["samples"])):
+        raise RuntimeError("DMG_VOLUME_ICON_RESPONSE_INVALID")
+    print("DMG_VOLUME_ICON_OBSERVED " + json.dumps(rendered, sort_keys=True), flush=True)
+    if rendered["samples"] != [[43, 43, 43, 255]] * 9:
+        raise RuntimeError("DMG_VOLUME_ICON_PIXELS_MISMATCH")
+    print("DMG_VOLUME_ICON_OK", flush=True)
 
 
 if __name__ == "__main__":

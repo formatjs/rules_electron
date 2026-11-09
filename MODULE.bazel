@@ -71,6 +71,7 @@ http_archive(
     patches = [
         "//third_party:xorriso-finder-info.patch",
         "//third_party:xorriso-root-blessing.patch",
+        "//third_party:xorriso-volume-icon.patch",
     ],
     sha256 = "b1455ecafbf0692ddafe1d71002a96f2ce2d77f4deae602678261ce033f97bc8",
     strip_prefix = "xorriso-1.5.8",

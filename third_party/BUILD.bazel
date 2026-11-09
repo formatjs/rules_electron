@@ -8,6 +8,7 @@ exports_files([
     "xorriso.BUILD.bazel",
     "xorriso-finder-info.patch",
     "xorriso-root-blessing.patch",
+    "xorriso-volume-icon.patch",
     "node_delay_import.BUILD.bazel",
     "osslsigncode.BUILD.bazel",
     "osslsigncode-config.patch",

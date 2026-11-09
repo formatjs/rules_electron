@@ -217,4 +217,7 @@ now receives unfiltered start notifications, whitelists names locally and
 resolves a live process's module basename when its provider name differs.
 Only fixture names and numeric exit codes leave the observer; PID/time/path
 values stay internal. Success still requires start plus zero exit status.
-This adjustment awaits hosted validation.
+The [02da44f native matrix](https://github.com/formatjs/rules_electron/actions/runs/42720828995)
+passed actual installer starts and zero exits for user/machine updates on both
+Windows CPUs, plus install/update/remove behavior. No name recovery was needed
+in that observation; the precise provider failure remains unproven.
