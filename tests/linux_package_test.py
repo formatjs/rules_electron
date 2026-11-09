@@ -5,6 +5,7 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+import zlib
 import xml.etree.ElementTree as ET
 
 from electron.private.linux import create_payload
@@ -12,6 +13,43 @@ from electron.private.archive import create_archive
 
 
 class LinuxPackageTest(unittest.TestCase):
+    def png(self, width=2, height=2):
+        def chunk(kind, payload):
+            return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", zlib.crc32(kind + payload))
+        return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)) +
+                chunk(b"IDAT", zlib.compress((b"\0" + b"\x21\x42\x63\xff" * width) * height)) + chunk(b"IEND", b""))
+
+    def test_file_type_png_and_svg_icons_use_mime_names_and_keep_source_bytes(self):
+        png = self.root / "document.png"
+        png.write_bytes(self.png())
+        sources = [{"source": str(png), "mime_type": "application/x-sample"},
+                   {"source": str(self.icon), "mime_type": "application/x-sample"}]
+        output = self.payload(file_association_icons=sources)
+        with tarfile.open(output) as archive:
+            for size, extension, source in [("2x2", ".png", png), ("scalable", ".svg", self.icon)]:
+                icon = archive.getmember("usr/share/icons/hicolor/" + size + "/mimetypes/application-x-sample" + extension)
+                self.assertEqual(icon.mode, 0o644)
+                self.assertEqual(archive.extractfile(icon).read(), source.read_bytes())
+        self.assertEqual(png.read_bytes(), self.png())
+
+    def test_file_type_icons_reject_unregistered_duplicate_non_square_and_corrupt_images(self):
+        png, other = self.root / "document.png", self.root / "other.png"
+        png.write_bytes(self.png())
+        other.write_bytes(self.png())
+        icons = [{"source": str(png), "mime_type": "application/x-sample"}]
+        bad = [([{**icons[0], "mime_type": "application/x-unregistered"}], self.png()),
+               (icons + [{"source": str(other), "mime_type": "application/x-sample"}], self.png()),
+               (icons, self.png(2, 3)), (icons, self.png()[:-1] + bytes([self.png()[-1] ^ 1])),
+               (icons, self.png()[:-5]), (icons, b"not PNG")]
+        for index, (mappings, data) in enumerate(bad):
+            png.write_bytes(data)
+            with self.subTest(index=index), self.assertRaises(ValueError):
+                self.payload(name="invalid-icon", file_association_icons=mappings)
+        self.icon.write_text("<invalid/>")
+        with self.assertRaises(ValueError):
+            self.payload(name="invalid-icon", file_association_icons=[{"source": str(self.icon), "mime_type": "application/x-sample"}])
+        self.assertFalse((self.root / "invalid-icon.tar.gz").exists())
+
     def test_zip_payload_preserves_directory_aliases_and_matches_directory_bytes(self):
         (self.app / "data/v1").mkdir(parents=True)
         (self.app / "data/v1/payload").write_bytes(b"payload")

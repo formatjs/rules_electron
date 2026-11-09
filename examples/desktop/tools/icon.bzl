@@ -15,7 +15,7 @@ def _impl(ctx):
 example_icon = rule(
     implementation = _impl,
     attrs = {
-        "format": attr.string(default = "icns", values = ["icns", "ico"]),
+        "format": attr.string(default = "icns", values = ["icns", "ico", "png"]),
         "gray": attr.int(default = 43),
         "_writer": attr.label(default = Label("//tools:icon_writer"), executable = True, cfg = "exec"),
     },

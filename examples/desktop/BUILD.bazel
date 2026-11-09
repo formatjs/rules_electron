@@ -17,6 +17,12 @@ load(":desktop_app.bzl", "desktop_app")
 
 example_icon(name = "example_icon")
 
+example_icon(
+    name = "document_icon",
+    format = "png",
+    gray = 83,
+)
+
 electron_files(
     name = "empty_resources",
     directories = ["empty"],
@@ -332,6 +338,7 @@ filegroup(
             "hicolor-icon-theme",
         ],
         description = "Generic Bazel Electron packaging example",
+        file_association_icons = {":document_icon": "application/x-sample-desktop"},
         file_associations = {"application/x-sample-desktop": ["*.sample-desktop"]},
         icons = {"assets/sample.svg": "scalable"},
         maintainer = "Example Maintainers <maintainers@example.invalid>",

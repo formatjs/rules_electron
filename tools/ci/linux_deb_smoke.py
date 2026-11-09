@@ -16,6 +16,7 @@ from smoke_test import display_server
 PACKAGE = "rules-electron-sample-desktop"
 APP_ID = "org.example.sample-desktop"
 LAUNCHER = Path("/usr/bin/sample-desktop")
+DOCUMENT_ICON = Path("/usr/share/icons/hicolor/32x32/mimetypes/application-x-sample-desktop.png")
 
 
 class FeedHandler(http.server.SimpleHTTPRequestHandler):
@@ -60,6 +61,14 @@ def launch_smoke(expected):
     print("DEB_SETUID_SANDBOX_OK " + expected)
 
 
+def mime_icon_smoke():
+    with display_server() as display:
+        result = subprocess.run([sys.executable, "tools/ci/linux_mime_icon_smoke.py", "application/x-sample-desktop",
+                                 str(DOCUMENT_ICON), "32", "83"],
+                                env=dict(os.environ, DISPLAY=display), capture_output=True, text=True, check=True, timeout=30)
+        print(result.stdout.strip())
+
+
 def main(directory):
     if platform.system() != "Linux" or platform.machine().lower() not in ("x86_64", "amd64"):
         raise RuntimeError("DEB installation smoke requires native Linux x64")
@@ -79,6 +88,7 @@ def main(directory):
         cache = Path("/usr/share/applications/mimeinfo.cache").read_text()
         assert "x-scheme-handler/sample-desktop=" in cache and APP_ID + ".desktop" in cache
         assert Path("/usr/share/icons/hicolor/scalable/apps/" + APP_ID + ".svg").is_file()
+        mime_icon_smoke()
         launch_smoke("1.0.0")
         with tempfile.TemporaryDirectory(prefix="electron-installed-") as temporary:
             temporary = Path(temporary)
@@ -137,6 +147,7 @@ sys.exit(result.returncode)
                 server.server_close()
                 thread.join(timeout=5)
         launch_smoke("2.0.0")
+        mime_icon_smoke()
     finally:
         if installed:
             command("sudo", "dpkg", "--purge", PACKAGE)
@@ -144,6 +155,7 @@ sys.exit(result.returncode)
     assert not Path("/opt/" + APP_ID).exists()
     assert not Path("/usr/share/applications/" + APP_ID + ".desktop").exists()
     assert not Path("/usr/share/mime/packages/" + APP_ID + ".xml").exists()
+    assert not DOCUMENT_ICON.exists()
     assert APP_ID + ".desktop" not in Path("/usr/share/applications/mimeinfo.cache").read_text()
     print("DEB_INSTALL_UPDATE_PURGE_OK")
 

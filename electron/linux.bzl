@@ -13,7 +13,7 @@ def _payload_impl(ctx):
             architecture = name
     if not architecture:
         fail("Unsupported DEB target architecture")
-    for target in ctx.attr.icons:
+    for target in ctx.attr.icons.keys() + ctx.attr.file_association_icons.keys():
         if len(target.files.to_list()) != 1:
             fail("Each icon mapping requires exactly one file")
     manifest = ctx.actions.declare_file(ctx.label.name + ".json")
@@ -33,11 +33,12 @@ def _payload_impl(ctx):
         "protocols": ctx.attr.protocols,
         "file_associations": ctx.attr.file_associations,
         "icons": [{"source": f.path, "size": size} for t, size in ctx.attr.icons.items() for f in t.files.to_list()],
+        "file_association_icons": [{"source": f.path, "mime_type": mime} for t, mime in ctx.attr.file_association_icons.items() for f in t.files.to_list()],
     }))
     ctx.actions.run(
         executable = ctx.executable._payload,
         arguments = [manifest.path, ctx.outputs.tar.path, ctx.outputs.version.path],
-        inputs = [manifest, app.artifact, app.package_json] + ([directories] if directories else []) + [f for t in ctx.attr.icons for f in t.files.to_list()],
+        inputs = [manifest, app.artifact, app.package_json] + ([directories] if directories else []) + [f for t in ctx.attr.icons.keys() + ctx.attr.file_association_icons.keys() for f in t.files.to_list()],
         outputs = [ctx.outputs.tar, ctx.outputs.version],
         mnemonic = "ElectronLinuxPayload",
         progress_message = "Packaging Electron Linux payload %{label}",
@@ -54,6 +55,7 @@ _linux_payload = rule(
         "protocols": attr.string_list(),
         "file_associations": attr.string_list_dict(doc = "MIME types mapped to filename globs, e.g. application/x-example: [*.example]."),
         "icons": attr.label_keyed_string_dict(allow_files = True, doc = "PNG labels mapped to pixel sizes, or SVG to scalable."),
+        "file_association_icons": attr.label_keyed_string_dict(allow_files = True, doc = "Declared PNG/SVG icons mapped to registered MIME types. PNG dimensions choose the hicolor size; SVG is scalable."),
         "_amd64": attr.label(default = Label("@platforms//cpu:x86_64")),
         "_arm64": attr.label(default = Label("@platforms//cpu:aarch64")),
         "_payload": attr.label(default = Label("//electron/private:linux_payload"), executable = True, cfg = "exec"),
@@ -61,7 +63,7 @@ _linux_payload = rule(
     outputs = {"tar": "%{name}.tar.gz", "version": "%{name}.version"},
 )
 
-def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, setuid_sandbox = False, **kwargs):
+def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, setuid_sandbox = False, file_association_icons = {}, **kwargs):
     """Build a DEB with desktop integration; scripts are declared inputs, never run during packaging.
 
     Args:
@@ -81,6 +83,7 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         prerm: Optional declared maintainer script.
         postrm: Optional declared maintainer script.
         setuid_sandbox: Install a matching chrome-sandbox ELF helper as root:root 4755.
+        file_association_icons: PNG/SVG labels mapped to registered MIME types.
         **kwargs: Standard target attributes, including visibility.
     """
     compatible = ["@platforms//os:linux"] + kwargs.pop("target_compatible_with", [])
@@ -90,6 +93,7 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         revision = revision,
         description = description,
         icons = icons,
+        file_association_icons = file_association_icons,
         protocols = protocols,
         file_associations = file_associations,
         categories = categories,

@@ -18,6 +18,9 @@ def png(size, gray):
 
 if __name__ == "__main__":
     gray = int(sys.argv[2])
+    if Path(sys.argv[1]).suffix == ".png":
+        Path(sys.argv[1]).write_bytes(png(32, gray))
+        sys.exit(0)
     if Path(sys.argv[1]).suffix == ".ico":
         sizes = [16, 24, 32, 48, 64, 128, 256]
         directory, payload = bytearray(), bytearray()

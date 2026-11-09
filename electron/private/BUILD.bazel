@@ -156,6 +156,7 @@ py_library(
     deps = [
         ":archives",
         ":file_mappings",
+        ":icons",
         ":updates",
     ],
 )

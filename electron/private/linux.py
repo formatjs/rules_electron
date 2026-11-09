@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 from electron.private.update import _version
 from electron.private.files import read_directories
 from electron.private.archive import Entry, inventory, resolve
+from electron.private.icons import png_dimensions
 
 
 def _identifier(value, field):
@@ -28,16 +29,17 @@ def _desktop_string(value):
 
 def create_payload(app, package_json, app_id, product_name, executable_name,
                    architecture, revision, description, categories, protocols,
-                   file_associations, icons, output, version_output, directory_manifest="", setuid_sandbox=False):
+                   file_associations, icons, output, version_output, directory_manifest="", setuid_sandbox=False,
+                   file_association_icons=()):
     with inventory(Path(app), "linux") as (app_entries, open_app):
         _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
                         architecture, revision, description, categories, protocols, file_associations,
-                        icons, output, version_output, directory_manifest, setuid_sandbox)
+                        icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons)
 
 
 def _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
                     architecture, revision, description, categories, protocols,
-                    file_associations, icons, output, version_output, directory_manifest, setuid_sandbox):
+                    file_associations, icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons):
     _identifier(app_id, "app_id")
     _identifier(executable_name, "executable_name")
     if architecture not in ("amd64", "arm64"):
@@ -125,6 +127,29 @@ def _create_payload(app_entries, open_app, package_json, app_id, product_name, e
             raise ValueError("Duplicate icon size")
         entries[destination] = (Entry("file", 0o755 if source.stat().st_mode & 0o111 else 0o644, source.stat().st_size, source),
                                 lambda entry: entry.source.open("rb"))
+    for icon in file_association_icons:
+        source, mime_type = Path(icon["source"]), icon["mime_type"]
+        if mime_type not in file_associations:
+            raise ValueError("File-type icon requires a registered MIME association")
+        if source.suffix.lower() == ".png":
+            width, height = png_dimensions(source)
+            if width != height:
+                raise ValueError("File-type PNG icons must be square")
+            size = str(width) + "x" + str(height)
+        elif source.suffix.lower() == ".svg":
+            try:
+                tag = ET.parse(source).getroot().tag
+            except ET.ParseError as error:
+                raise ValueError("Invalid SVG file-type icon") from error
+            if tag not in ("svg", "{http://www.w3.org/2000/svg}svg"):
+                raise ValueError("Expected an SVG file-type icon")
+            size = "scalable"
+        else:
+            raise ValueError("File-type icons require PNG or SVG")
+        destination = "usr/share/icons/hicolor/" + size + "/mimetypes/" + mime_type.replace("/", "-") + source.suffix.lower()
+        if destination in entries:
+            raise ValueError("Duplicate file-type icon size")
+        entries[destination] = (Entry("file", 0o644, source.stat().st_size, source), lambda entry: entry.source.open("rb"))
     directories = empty | {str(parent) for name in [*entries, *generated, *empty] for parent in PurePosixPath(name).parents if str(parent) != "."}
     if directories & (entries.keys() | generated.keys()):
         raise ValueError("Linux payload file/directory collision")

@@ -14,6 +14,7 @@ electron_deb(
     depends = ["libgtk-3-0", "libnss3", "libasound2", "libgbm1"],
     protocols = ["example"],
     file_associations = {"application/x-example": ["*.example"]},
+    file_association_icons = {"document.png": "application/x-example"},
     icons = {"icon.svg": "scalable"},
     setuid_sandbox = True,
 )
@@ -22,6 +23,13 @@ electron_deb(
 The app must declare `app_id`. Files install beneath `/opt/<app_id>`, with a
 launcher in `/usr/bin`, a desktop entry, optional MIME definitions and hicolor
 icons. PNG icon mappings use pixel sizes such as `"256"`; SVG uses `"scalable"`.
+`file_association_icons` maps declared PNG/SVG files to registered MIME types.
+Square PNG headers select the hicolor pixel-size directory; SVG uses `scalable`.
+Files install in `mimetypes/` using the
+[standard MIME icon name](https://specifications.freedesktop.org/shared-mime-info/latest/ar01s02.html):
+the MIME type with `/` replaced by `-`. Unknown MIME mappings, duplicate sizes,
+non-square PNGs, malformed PNG headers/chunks and non-SVG roots fail packaging. Native icon resolution,
+pixel decoding and purge validation are pending.
 Desktop/MIME registration advertises handlers; choosing user defaults remains an
 OS/user operation.
 
