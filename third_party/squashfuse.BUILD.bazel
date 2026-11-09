@@ -1,6 +1,13 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_electron//third_party:squashfuse.bzl", "squashfuse_swap")
 
 package(default_visibility = ["//visibility:public"])
+
+squashfuse_swap(
+    name = "swap_includes",
+    header = "squashfs_fs.h",
+    upstream = "gen_swap.sh",
+)
 
 cc_library(
     name = "squashfuse",
@@ -28,9 +35,10 @@ cc_library(
         "ll_inode",
         "nonstd-daemon",
     ]],
-    hdrs = glob(["*.h"]),
+    hdrs = glob(["*.h"]) + [":swap_includes"],
     copts = ["-std=gnu11"],
     include_prefix = "squashfuse",
+    includes = ["."],
     local_defines = [
         "_GNU_SOURCE",
         "_FILE_OFFSET_BITS=64",

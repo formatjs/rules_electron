@@ -1,3 +1,5 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
 exports_files([
     "squashfs.BUILD.bazel",
     "fuse3.BUILD.bazel",
@@ -6,3 +8,9 @@ exports_files([
     "squashfuse.patch",
     "appimage_runtime.BUILD.bazel",
 ])
+
+py_binary(
+    name = "squashfuse_swap",
+    srcs = ["squashfuse_swap.py"],
+    visibility = ["//visibility:public"],
+)
