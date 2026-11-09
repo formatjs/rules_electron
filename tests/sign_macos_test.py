@@ -102,15 +102,20 @@ class MacOSReleaseTest(unittest.TestCase):
         else:
             self.fail("Unexpected backend operation")
 
-    def invoke(self, name="release.zip", extra=(), environment=None, effect=None, success=True):
+    def invoke(self, name="release.zip", extra=(), environment=None, effect=None, success=True, sign_only=False):
         output = self.root / name
         stdout, stderr = io.StringIO(), io.StringIO()
+        arguments = self.arguments(output, extra)
+        if sign_only:
+            index = arguments.index("--api-key-env")
+            del arguments[index:index + 2]
+            arguments.append("--sign-only")
         with patch.dict(os.environ, environment or self.environment), \
                 patch.object(sign_macos.subprocess, "run", side_effect=effect or self.service), \
                 redirect_stdout(stdout), redirect_stderr(stderr):
-            status = sign_macos.main(self.arguments(output, extra))
+            status = sign_macos.main(arguments)
         self.assertEqual(status, 0 if success else 1)
-        self.assertEqual(stdout.getvalue(), "MACOS_RELEASED\n" if success else "")
+        self.assertEqual(stdout.getvalue(), ("MACOS_SIGNED\n" if sign_only else "MACOS_RELEASED\n") if success else "")
         self.assertEqual(stderr.getvalue(), "" if success else "MACOS_RELEASE_FAILED\n")
         self.assertNotIn("never-log-password", stdout.getvalue() + stderr.getvalue())
         self.assertNotIn(str(self.key), stdout.getvalue() + stderr.getvalue())
@@ -146,6 +151,31 @@ class MacOSReleaseTest(unittest.TestCase):
                 output = self.invoke(name, extra, environment, success=False)
                 self.assertFalse(output.exists())
                 self.assertEqual(self.calls, [])
+
+    def test_sign_only_needs_no_notary_credentials_and_preserves_bundle(self):
+        environment = {key: value for key, value in self.environment.items() if key != "NOTARY_API"}
+        output = self.invoke(sign_only=True, environment=environment)
+        self.assertEqual(self.calls, ["sign"])
+        with ZipFile(output) as archive:
+            self.assertEqual(archive.read("Example.app/Contents/MacOS/sample"), b"signed Mach-O fixture")
+            self.assertEqual(archive.read("Example.app/Contents/Resources/payload"), b"unchanged resource")
+            self.assertNotIn("Example.app/Contents/CodeResources", archive.namelist())
+
+    def test_sign_only_rejects_notary_credentials(self):
+        output = self.invoke(extra=["--sign-only"], success=False)
+        self.assertFalse(output.exists())
+        self.assertEqual(self.calls, [])
+
+    def test_sign_only_output_race_preserves_competing_file(self):
+        output = self.root / "race.zip"
+        def competing(command, **options):
+            result = self.service(command, **options)
+            if command[0] == SIGNER:
+                output.write_bytes(b"competing output")
+            return result
+        self.invoke(name=output.name, sign_only=True, effect=competing, success=False)
+        self.assertEqual(output.read_bytes(), b"competing output")
+        self.assertEqual(self.calls, ["sign"])
 
     def test_timestamp_policy_and_signing_time_fail_before_backend(self):
         for i, extra in enumerate([["--timestamp-url", "http://timestamp.example.com/"],

@@ -1,4 +1,4 @@
-"""Pin release identity, sign a snapshot, then require notarization and stapling."""
+"""Pin release identity and sign; optionally stop before notarization and stapling."""
 
 import argparse
 import base64
@@ -84,7 +84,13 @@ def release(args):
     source, output = args.input.resolve(strict=True), args.output.absolute()
     if not source.is_file() or output.exists() or output.is_symlink():
         raise ValueError("Output must be new file")
-    credential(args.api_key_env)
+    if args.sign_only:
+        if args.api_key_env:
+            raise ValueError("Signing-only client does not accept notary credentials")
+    elif not args.api_key_env:
+        raise ValueError("Notarization requires API key environment name")
+    else:
+        credential(args.api_key_env)
     signer, crypto = backend(args.backend), backend(args.crypto)
     with tempfile.TemporaryDirectory(prefix=".electron-macos-release-", dir=output.parent) as temporary:
         root = Path(temporary)
@@ -104,8 +110,11 @@ def release(args):
                        env=environment, check=True, capture_output=True, timeout=600)
         signed = root / "signed.zip"
         archive_bundle(bundle, signed, bundle.name)
-        notarize(argparse.Namespace(input=signed, output=output, api_key_env=args.api_key_env,
-                                   backend=args.backend, max_wait_seconds=args.max_wait_seconds))
+        if args.sign_only:
+            os.link(signed, output)
+        else:
+            notarize(argparse.Namespace(input=signed, output=output, api_key_env=args.api_key_env,
+                                       backend=args.backend, max_wait_seconds=args.max_wait_seconds))
 
 
 def main(argv=None):
@@ -124,7 +133,8 @@ def main(argv=None):
     parser.add_argument("--timestamp-url", required=True)
     parser.add_argument("--entitlements")
     parser.add_argument("--entitlements-inherit")
-    parser.add_argument("--api-key-env", required=True)
+    parser.add_argument("--api-key-env")
+    parser.add_argument("--sign-only", action="store_true")
     parser.add_argument("--max-wait-seconds", type=int, default=600)
     args = parser.parse_args(argv)
     try:
@@ -132,7 +142,7 @@ def main(argv=None):
     except Exception:
         print("MACOS_RELEASE_FAILED", file=sys.stderr)
         return 1
-    print("MACOS_RELEASED")
+    print("MACOS_SIGNED" if args.sign_only else "MACOS_RELEASED")
     return 0
 
 

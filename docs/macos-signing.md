@@ -87,8 +87,19 @@ committed. Only the final ZIP can feed update metadata.
 
 Tests exercise real OpenSSL identity/key validation and simulated signing/service
 responses. Live Developer ID/TSA/Apple interoperability and native Gatekeeper
-acceptance remain unverified. This combined client requires notarization;
-standalone signed-only releases remain open.
+acceptance remain unverified. This combined client requires notarization.
+
+For signed-only distribution, declare `electron_macos_signing_tool` with the
+same `signer` and optional `openssl` inputs. Pass the same identity, signing time,
+timestamp and entitlement arguments, omitting `--api-key-env`. This client
+sets `--sign-only`, never submits to Apple, and atomically writes the signed ZIP.
+It retains Developer ID policy and hardened runtime; signing alone does not
+prove notarization or Gatekeeper acceptance. Run the separate notarization
+client before producing update metadata for a notarized release.
+
+[BB tests](https://formatjs.buildbuddy.io/invocation/0b741934-eb98-4086-90ce-c14835ef0543)
+and [seven cross-builds](https://formatjs.buildbuddy.io/invocation/cd690a32-acec-4abf-b198-0ccf20ccb41f)
+passed for the combined client, including real OpenSSL identity validation.
 
 ## Notarization client
 
