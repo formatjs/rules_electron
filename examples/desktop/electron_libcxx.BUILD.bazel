@@ -116,6 +116,7 @@ cc_library(
         "-no_rtti",
         "-thin_lto",
     ],
+    implementation_deps = ["@electron_libc_headers//:headers"],
     includes = ["src"],
     linkstatic = True,
     local_defines = [

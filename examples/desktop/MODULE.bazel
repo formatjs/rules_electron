@@ -191,3 +191,11 @@ http_archive(
     strip_prefix = "llvm-project-1ab4113d0e0d30ba923ea070530a0e65910b26cb/libcxxabi/include",
     urls = ["https://github.com/llvm/llvm-project/archive/1ab4113d0e0d30ba923ea070530a0e65910b26cb.tar.gz"],
 )
+
+http_archive(
+    name = "electron_libc_headers",
+    build_file = "//:electron_libc.BUILD.bazel",
+    sha256 = "959c7c0e4b82256ea9fbad2c89a1519fbaa14321b396cebba131c63d83c64c8e",
+    strip_prefix = "llvm-project-1ab4113d0e0d30ba923ea070530a0e65910b26cb/libc",
+    urls = ["https://github.com/llvm/llvm-project/archive/1ab4113d0e0d30ba923ea070530a0e65910b26cb.tar.gz"],
+)

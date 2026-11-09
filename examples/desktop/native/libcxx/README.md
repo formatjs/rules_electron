@@ -17,6 +17,11 @@ Inputs come from Chromium 142.0.7444.52:
 - [C++ runtime settings](https://chromium.googlesource.com/chromium/src/+/142.0.7444.52/build/config/c%2B%2B/BUILD.gn)
   supply visibility, sanitizer and Windows VCRuntime policy. Compiler, C runtime
   and exception ABI runtime remain declared hermetic LLVM toolchain inputs.
+- [LLVM-libc shared headers](https://chromium.googlesource.com/chromium/src/+/142.0.7444.52/third_party/llvm-libc/BUILD.gn)
+  supply floating-point parsing internals. All 141 declared headers match the
+  pinned Chromium LLVM-libc revision `0c61a55402c6a0d9d6ca2aeb3c6a2613a8bc8c55`
+  byte for byte. They share the stable LLVM archive above; `LIBC_NAMESPACE`
+  stays private to libc++ compilation.
 
 `sdk_cxxstdlib = True` selects the toolchain's hosted C-runtime stage. Linux
 imports the toolchain's source-built libc++abi/libunwind archives explicitly;
