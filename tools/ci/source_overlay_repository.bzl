@@ -14,8 +14,9 @@ def _impl(ctx):
 
     # Preserve registry BUILD bytes as data; the staging tool restores them.
     build_files = {}
-    files = [".bazelversion", "tools/stage_bcr_entry.py", "registry_build_files.json"]
-    pending = ["bcr", "tools"]
+    ctx.file("registry_stage_script", ctx.read("tools/stage_bcr_entry.py"), executable = False)
+    files = [".bazelversion", "registry_stage_script", "registry_build_files.json"]
+    pending = ["bcr"]
     root = str(ctx.path(".").realpath) + "/"
     for _ in range(20000):
         if not pending:

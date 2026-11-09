@@ -38,7 +38,7 @@ def stage_registry(output):
         root = Path(temporary)
         shutil.copytree(source / "bcr", root / "bcr")
         restore_build_files(root, json.loads((source / "registry_build_files.json").read_text()))
-        subprocess.run([sys.executable, str(source / "tools/stage_bcr_entry.py"),
+        subprocess.run([sys.executable, str(source / "registry_stage_script"),
                         "--source-registry", str(root / "bcr"), "--target-registry", str(output),
                         "--module", "electron", "--version", pin["version"]],
                        check=True, capture_output=True)
