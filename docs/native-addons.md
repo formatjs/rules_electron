@@ -36,5 +36,12 @@ Node/V8 addon. Its explicit bootstrap SDK pins Electron 39 headers/import librar
 and V8's compression, sandbox and external-code-space settings. Native smoke calls
 V8 functions in the main thread and a worker, checks ABI 140 and rejects a module
 deliberately built for ABI 139. All seven payload variants check addon architecture.
-Hosted build/runtime validation for this new adapter is pending. Source-generated
-SDK inputs and broader addon compiler/runtime combinations still need coverage.
+All seven variants [cross-built on BB](https://formatjs.buildbuddy.io/invocation/dd78db17-584f-45c7-acc8-0341811df7ae).
+Native Linux x64, macOS ARM64 and Windows x64/ARM64 pass main/worker calls and
+wrong-ABI rejection in [the native run](https://github.com/formatjs/rules_electron/actions/runs/42647252981).
+
+The fixture currently exercises signatures without STL boundary types. Electron
+39's Windows import library exposes backing-store APIs using `std::__Cr`.
+The example SDK does not yet configure that Chromium libc++ ABI. STL-facing APIs
+need matching C++ headers/runtime inputs in addition to Node/V8 headers; this
+remains an open SDK task. Source-generated SDK inputs also remain open.
