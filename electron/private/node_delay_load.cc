@@ -9,4 +9,7 @@ static FARPROC WINAPI LoadElectron(unsigned event, PDelayLoadInfo info) {
   return nullptr;
 }
 
-extern "C" const PfnDliHook __pfnDliNotifyHook2 = LoadElectron;
+extern "C" {
+PfnDliHook __pfnDliNotifyHook2 = LoadElectron;
+PfnDliHook __pfnDliFailureHook2 = nullptr;
+}

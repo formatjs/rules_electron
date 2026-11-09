@@ -1,0 +1,16 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+cc_library(
+    name = "delayimp",
+    srcs = ["mingw-w64-crt/misc/delayimp.c"],
+    hdrs = ["mingw-w64-headers/include/delayimp.h"],
+    defines = [
+        "WINBOOL=BOOL",
+        "__C89_NAMELESS=",
+    ],
+    strip_include_prefix = "mingw-w64-headers/include",
+    target_compatible_with = ["@platforms//os:windows"],
+    visibility = ["//visibility:public"],
+)
+
+exports_files(["DISCLAIMER.PD"])

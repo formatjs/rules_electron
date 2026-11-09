@@ -26,6 +26,11 @@ provide Electron's `node.lib`; linking delays `node.exe` resolution. Linux/macOS
 resolve runtime exports at load time. See
 [Electron's native module contract](https://www.electronjs.org/docs/latest/tutorial/using-native-node-modules).
 
+Delay loading compiles the original public-domain MinGW-w64 14 implementation
+with native Bazel C rules and declared MSVC SDK headers. Two public header aliases
+bridge its MinGW type/anonymous-union spellings. No Visual Studio `delayimp.h` or
+prebuilt `delayimp.lib` is assumed; hooks and the resolver ship in the addon.
+
 The public desktop fixture keeps its stable Node-API addon and adds a context-aware
 Node/V8 addon. Its explicit bootstrap SDK pins Electron 39 headers/import libraries
 and V8's compression, sandbox and external-code-space settings. Native smoke calls
