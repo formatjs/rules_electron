@@ -31,7 +31,12 @@ _runtime = rule(
 )
 
 def static_pie_runtime(name, **kwargs):
-    cc_binary(name = name + "_native", **kwargs)
+    cc_binary(
+        name = name + "_native",
+        tags = ["manual"] + kwargs.pop("tags", []),
+        target_compatible_with = kwargs.pop("target_compatible_with", []) + ["@llvm//constraints/libc:musl"],
+        **kwargs
+    )
     _runtime(
         name = name,
         binary = ":" + name + "_native",

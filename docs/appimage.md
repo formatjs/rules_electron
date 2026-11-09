@@ -27,7 +27,8 @@ electron_update_feed(
 )
 ```
 
-The rule accepts a PNG/SVG icon, desktop description/categories, URI schemes and
+The application must declare `app_id`. The rule accepts a PNG/SVG icon, desktop
+description/categories, URI schemes and
 MIME types. Its native AppRun launcher reads the declared executable basename,
 passes application arguments and honors electron-updater's
 `APPIMAGE_EXIT_AFTER_INSTALL=true` before starting the app. AppRun,

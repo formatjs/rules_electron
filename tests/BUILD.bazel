@@ -565,9 +565,18 @@ py_test(
     ],
 )
 
+electron_app(
+    name = "appimage_app",
+    srcs = {"fixtures/main.js": "main.js"},
+    app_id = "org.example.appimage",
+    package_json = "fixtures/package.json",
+    runtime = ":runtime",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
 electron_appimage(
     name = "appimage_fixture",
-    app = ":app",
+    app = ":appimage_app",
     file_associations = ["application/x-example"],
     icon = "fixtures/appimage.svg",
     protocols = ["example"],

@@ -6,6 +6,8 @@ def _impl(ctx):
     app = ctx.attr.app[ElectronAppInfo]
     if app.platform != "linux":
         fail("electron_appimage requires an assembled Linux app")
+    if not app.app_id:
+        fail("electron_appimage requires app_id on its electron_app")
     architecture = None
     for name in ["x64", "arm64"]:
         if ctx.target_platform_has_constraint(getattr(ctx.attr, "_" + name)[platform_common.ConstraintValueInfo]):
