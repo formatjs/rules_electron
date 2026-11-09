@@ -590,3 +590,10 @@ consumer failed loading pixman in a platform generator. Its
 passed the narrow Cairo paint/loader regression, alongside archive, credits,
 metadata and default-app checks. Full source-runtime linkage and launch remain
 unverified; the preceding component workflow hit BB's free-tier run timeout.
+
+The f7fd796 source overlay [BB preflight](https://formatjs.buildbuddy.io/invocation/4139368a-13da-4ca6-9897-9208f3a06566)
+passed a relocated NSS/NSPR runtime fixture built with native Bazel rules. It
+regenerates module integrity metadata after ELF search-path repair, verifies all
+four modules with original NSS, initializes NSS, generates random bytes and
+rejects modified modules/checksums. Assembly repeats across paths and mtimes.
+Full source Electron archive and browser/ASAR runtime smoke remain unverified.
