@@ -1,0 +1,13 @@
+--- a/libisofs/hfsplus.c
++++ b/libisofs/hfsplus.c
+@@ -911,8 +911,8 @@
+ 			      return ret;
+ 			    else 
+ 			      {
+-				memcpy (common->file_type, "????", 4);
+-				memcpy (common->file_creator, "????", 4);
++				memset (common->file_type, 0, 4);
++				memset (common->file_creator, 0, 4);
+ 			      }
+ 			  }
+ 

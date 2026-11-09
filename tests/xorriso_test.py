@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 import struct
+import stat
 import subprocess
 import shutil
 import sys
@@ -51,6 +52,28 @@ class XorrisoTest(unittest.TestCase):
             self.assertEqual(len(hfs), 1)
             start = struct.unpack_from(">I", hfs[0], 8)[0] * 512
             self.assertEqual(data[start + 1024:start + 1026], b"H+")
+            block_size = struct.unpack_from(">I", data, start + 1024 + 40)[0]
+            catalog_block = struct.unpack_from(">I", data, start + 1024 + 288)[0]
+            catalog = start + catalog_block * block_size
+            node_size = struct.unpack_from(">H", data, catalog + 32)[0]
+            leaf = struct.unpack_from(">I", data, catalog + 24)[0]
+            regular_files = 0
+            visited = set()
+            while leaf:
+                self.assertNotIn(leaf, visited)
+                visited.add(leaf)
+                node = data[catalog + leaf * node_size:catalog + (leaf + 1) * node_size]
+                self.assertEqual(struct.unpack_from(">b", node, 8)[0], -1)
+                for index in range(struct.unpack_from(">H", node, 10)[0]):
+                    offset = struct.unpack_from(">H", node, node_size - 2 * (index + 1))[0]
+                    record = offset + 2 + struct.unpack_from(">H", node, offset)[0]
+                    if struct.unpack_from(">H", node, record)[0] != 2:
+                        continue
+                    if stat.S_ISREG(struct.unpack_from(">H", node, record + 42)[0]):
+                        regular_files += 1
+                        self.assertEqual(node[record + 48:record + 80], bytes(32))
+                leaf = struct.unpack_from(">I", node, 0)[0]
+            self.assertGreaterEqual(regular_files, 2)
             extracted = root / "extracted"
             subprocess.run([TOOL, "-no_rc", "-local_charset", "UTF-8", "-osirrox", "on", "-indev", str(image), "-extract", "/", str(extracted)],
                            env=environment, check=True, capture_output=True, timeout=60)
