@@ -6,12 +6,14 @@ import shutil
 import sys
 
 from electron.private.files import expand, normalize, relative_path
+from electron.private.asar_paths import ArchivePaths
 from electron.private.matching import select_files
 
 
-def collect(entries, output, patterns=(), file_matcher=None, directories=()):
+def collect(entries, output, patterns=(), file_matcher=None, directories=(), symlinks=None, symlink_manifest=None):
     expanded = list(expand(entries, allow_root=True))
     expanded.extend({"path": str(relative_path(path)), "empty_directory": True} for path in directories)
+    expanded.extend({"path": path, "symlink_target": target} for path, target in (symlinks or {}).items())
     names = {entry["path"] for entry in expanded}
     selected = select_files(names, patterns, file_matcher) if patterns else names
     files = {}
@@ -25,10 +27,18 @@ def collect(entries, output, patterns=(), file_matcher=None, directories=()):
     for path in files:
         if any(parent in files and not files[parent].get("empty_directory") for parent in path.parents):
             raise ValueError(f"File/directory collision: {path}")
+    links = {str(path): entry["symlink_target"] for path, entry in files.items() if "symlink_target" in entry}
+    if links:
+        ArchivePaths({str(path) for path, entry in files.items() if not entry.get("empty_directory") and "symlink_target" not in entry},
+                     links, {str(path) for path, entry in files.items() if entry.get("empty_directory")})
+    if links and not symlink_manifest:
+        raise ValueError("Symlinks require separate output manifest")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     for path, entry in sorted(files.items()):
         destination = output / str(path)
+        if "symlink_target" in entry:
+            continue
         if entry.get("empty_directory"):
             destination.mkdir(parents=True, exist_ok=True)
             continue
@@ -37,10 +47,12 @@ def collect(entries, output, patterns=(), file_matcher=None, directories=()):
         shutil.copyfile(source, destination)
         destination.chmod(0o755 if entry.get("executable") or source.stat().st_mode & 0o111 else 0o644)
     normalize(output)
+    if symlink_manifest:
+        Path(symlink_manifest).write_text(json.dumps(links, sort_keys=True, separators=(",", ":")) + "\n")
     return sorted(str(path) for path, entry in files.items() if entry.get("empty_directory"))
 
 
 if __name__ == "__main__":
     options = json.loads(Path(sys.argv[1]).read_text())
-    directories = collect(output=sys.argv[2], **options)
+    directories = collect(output=sys.argv[2], symlink_manifest=sys.argv[4], **options)
     Path(sys.argv[3]).write_text(json.dumps(directories, separators=(",", ":")) + "\n")

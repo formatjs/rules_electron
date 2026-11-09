@@ -54,6 +54,7 @@ py_library(
     srcs = ["collect_files.py"],
     visibility = ["//tests:__pkg__"],
     deps = [
+        ":asar",
         ":file_mappings",
         ":matching",
     ],

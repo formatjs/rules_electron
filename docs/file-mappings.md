@@ -33,8 +33,10 @@ collisions and links into app/ASAR paths fail before assembly writes output.
 Linux apps with links use a ZIP-backed `ElectronAppInfo` artifact, avoiding
 unsupported symlinks in Bazel tree outputs. Release archives and DEB packaging
 stream that ZIP; immutable imports validate its layout and CPU. macOS retains
-links through signing and its app ZIP. Windows junction/link installation and
-generated-tree link metadata remain open.
+links through signing and its app ZIP. Generated trees carry logical resource
+links through `ElectronFileTreeInfo.symlink_manifest`; see
+[file selection](file-selection.md). Windows junction/link installation remains
+open.
 
 The [a27aaca BB suite](https://formatjs.buildbuddy.io/invocation/8a023435-0143-4889-ae2c-0b44090de2ed)
 passed actual app ZIP, immutable import, TAR and DEB action boundaries, including

@@ -134,6 +134,10 @@ app.whenReady().then(async () => {
       });
       assert.equal(app.isPackaged, true);
       assert.deepEqual(fs.readdirSync(path.join(__dirname, 'renderer/empty')), []);
+      assert.equal(fs.readFileSync(path.join(__dirname, 'renderer/page.html'), 'utf8'),
+        fs.readFileSync(path.join(__dirname, 'renderer/index.html'), 'utf8'));
+      assert.equal(fs.readFileSync(path.join(__dirname, 'renderer/current/index.js'), 'utf8'),
+        fs.readFileSync(path.join(__dirname, 'renderer/index.js'), 'utf8'));
       if (process.windowsStore) {
         assert.equal(fs.existsSync(path.join(process.resourcesPath, 'directories/empty')), false);
       } else {

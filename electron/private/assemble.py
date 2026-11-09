@@ -75,14 +75,40 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         expanded.extend(_expand([{"source": archive["unpacked"], "path": destination + ".unpacked", "directory": True}]))
         extra_hashes[destination.removeprefix("Contents/")] = digest
     for entry in _expand(extra_files):
+        if "symlink_target" in entry:
+            raise ValueError("Generated symlinks require app ASAR inputs or extra_resources")
         path = relative_path(("Contents/" if platform == "macos" else "") + entry["path"])
         checked = PurePosixPath(str(path).casefold()) if platform == "windows" else path
         if any(checked.is_relative_to(resources + "/" + name) for name in ("app", "app.asar", "app.asar.unpacked")):
             raise ValueError(f"Extra file occupies app destination: {path}")
         expanded.append(dict(entry, path=str(path)))
     paths = {}
+    asar_symlinks = dict(asar_symlinks or {})
+    resource_symlinks = dict(resource_symlinks or {})
+    app_prefix = PurePosixPath(resources + "/app")
+    resource_root = PurePosixPath(resources)
     for entry in expanded:
         path = relative_path(entry["path"])
+        if "symlink_target" in entry:
+            target = relative_path(entry["symlink_target"])
+            if path.is_relative_to(app_prefix):
+                if not asar:
+                    raise ValueError("Generated app symlinks require asar=True")
+                if not target.is_relative_to(app_prefix):
+                    raise ValueError("Generated ASAR link escapes app")
+                links, prefix = asar_symlinks, app_prefix
+            elif path.is_relative_to(resource_root) and target.is_relative_to(resource_root):
+                if platform == "windows":
+                    raise ValueError("Resource symlinks currently require Linux or macOS")
+                links, prefix = resource_symlinks, resource_root
+            else:
+                raise ValueError("Generated link escapes resources")
+            alias = str(path.relative_to(prefix))
+            if alias in links:
+                raise ValueError(f"Duplicate generated link: {alias}")
+            relative = target.relative_to(prefix)
+            links[alias] = "" if relative == PurePosixPath(".") else str(relative)
+            continue
         if path.is_relative_to(resources + "/app.asar") or path.is_relative_to(resources + "/app.asar.unpacked"):
             raise ValueError("Runtime app.asar would shadow resources/app")
         if path in paths:

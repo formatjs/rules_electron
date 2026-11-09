@@ -11,6 +11,29 @@ from electron.private.assemble import assemble
 
 
 class AssemblyTest(unittest.TestCase):
+    def test_generated_link_manifest_keeps_asar_and_resource_namespaces_separate(self):
+        tree = self.root / "generated"
+        tree.mkdir()
+        (tree / "payload").write_bytes(b"generated")
+        links = self.root / "links.json"
+        links.write_text('{"alias":"payload"}')
+        entry = {"source": str(tree), "path": "resources/app/generated", "directory": True, "symlink_manifest": str(links)}
+        output = self.root / "generated-app"
+        assemble(self.entries + [entry, dict(entry, path="resources/generated")], output, asar=True)
+        data = (output / "resources/app.asar").read_bytes()
+        length = struct.unpack_from("<I", data, 12)[0]
+        self.assertEqual(json.loads(data[16:16 + length])["files"]["generated"]["files"]["alias"], {"link": "generated/payload"})
+        self.assertEqual((output / "resources/generated/alias").read_bytes(), b"generated")
+        for name, entries, options in [
+            ("plain", self.entries + [entry], {}),
+            ("windows", self.entries + [dict(entry, path="resources/generated")], {"platform": "windows", "asar": True}),
+            ("duplicate", self.entries + [entry], {"asar": True, "asar_symlinks": {"generated/alias": "main.js"}}),
+            ("extra", self.entries, {"asar": True, "extra_files": [dict(entry, path="extra")]}),
+        ]:
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                assemble(entries, self.root / name, **options)
+            self.assertFalse((self.root / name).exists())
+
     def test_resource_directory_links_preserve_aliases_after_relocation(self):
         entries = self.entries + [{"source": str(self.main), "path": "resources/versions/v1/payload"}]
         output = self.root / "linked"

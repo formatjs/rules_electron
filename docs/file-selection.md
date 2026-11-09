@@ -30,7 +30,8 @@ order. Use one collection per mapping when inputs need different filters.
 Outputs retain relative paths and executable status, with normalized 0755/0644
 modes and epoch timestamps. The resulting tree works with app `srcs`,
 `extra_resources`, `extra_files` or standalone ASAR mappings. Filtering does not
-read undeclared host paths. Directory symlinks remain unsupported.
+read undeclared host paths. Raw directory symlinks remain unsupported inside
+Bazel tree artifacts.
 
 Use `directories = ["renderer/cache"]` to declare empty output directories;
 the same patterns filter those paths. Bazel does not reliably preserve bare
@@ -43,6 +44,21 @@ directory metadata into release ZIP/tar.gz archives and DEB/NSIS packaging.
 No marker files enter the app. Prepackaged imports inherit metadata from app/tree
 providers; external imports can supply an explicit `directory_manifest` JSON
 file. Import validation checks paths and collisions without rewriting app bytes.
+
+Use `symlinks = {"renderer/current": "renderer"}` for logical links. Targets
+are collection-root-relative; an empty target means the collection root.
+Generated rules can return `ElectronFileTreeInfo(symlink_manifest = file)` with
+a separate JSON object using the same mapping. Tree outputs contain ordinary
+files and directories only. `electron_files` remounts and filters link paths,
+then writes selected links to separate metadata. Selected links whose targets
+were excluded fail before copying.
+
+Standalone ASAR and `electron_app(asar = True)` consume this metadata as virtual
+links. Linux/macOS `extra_resources` materializes filesystem links in app ZIPs.
+Generated links in plain app inputs or `extra_files`, and Windows resource links,
+currently fail explicitly. Missing targets, cycles, escapes and collisions fail
+before assembly writes output. Consumers must preserve the provider alongside
+the tree; copying only `DefaultInfo.files` drops logical link metadata.
 
 The generic renderer bundle contains development fixtures; its filtered view
 excludes them. It also declares an empty renderer directory and an empty extra

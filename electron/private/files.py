@@ -20,6 +20,26 @@ def read_directories(manifest):
     return {relative_path(path) for path in declared}
 
 
+def read_symlinks(manifest):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("Duplicate symlink path")
+            result[key] = value
+        return result
+    declared = json.loads(Path(manifest).read_text(), object_pairs_hook=unique)
+    if not isinstance(declared, dict):
+        raise ValueError("Expected symlink path mapping")
+    for path, target in declared.items():
+        relative_path(path)
+        if not isinstance(target, str):
+            raise ValueError("Expected symlink target string")
+        if target:
+            relative_path(target)
+    return declared
+
+
 def _walk_error(error):
     raise error
 
@@ -29,11 +49,17 @@ def expand(entries, *, allow_root=False):
         destination = (PurePosixPath(".") if allow_root and entry.get("directory", False) and entry["path"] == ""
                        else relative_path(entry["path"]))
         if not entry.get("directory", False):
+            if entry.get("symlink_manifest"):
+                raise ValueError("Symlink metadata requires input tree")
             yield entry
             continue
         source = Path(entry["source"])
         if not source.is_dir():
             raise ValueError(f"Expected input tree: {source}")
+        if entry.get("symlink_manifest"):
+            for path, target in sorted(read_symlinks(entry["symlink_manifest"]).items()):
+                mapped = destination / target if target else destination
+                yield {"path": str(destination / path), "symlink_target": "" if mapped == PurePosixPath(".") else str(mapped)}
         empty = set()
         if entry.get("directory_manifest"):
             empty.update(str(path) for path in read_directories(entry["directory_manifest"]))

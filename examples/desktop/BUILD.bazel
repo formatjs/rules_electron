@@ -256,6 +256,10 @@ electron_files(
         "!**/*.map",
         "!**/development.txt",
     ],
+    symlinks = {
+        "renderer/current": "renderer",
+        "renderer/page.html": "renderer/index.html",
+    },
 )
 
 cc_binary(

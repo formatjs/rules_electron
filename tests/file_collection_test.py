@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from electron.private.collect_files import collect
 
@@ -84,6 +85,39 @@ class FileCollectionTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             collect([], self.root / "invalid", directories=["../escape"])
         self.assertFalse((self.root / "invalid").exists())
+
+    def test_generated_links_remain_metadata_through_remounts(self):
+        original = self.root / "input-links.json"
+        original.write_text(json.dumps({"current": "", "nested/alias": "helper"}))
+        first, second = self.root / "first", self.root / "second"
+        first_links, second_links = self.root / "first.json", self.root / "second.json"
+        collect([dict(self.entries[0], path="assets", symlink_manifest=str(original))], first,
+                symlink_manifest=first_links)
+        collect([{"source": str(first), "path": "renderer", "directory": True,
+                  "symlink_manifest": str(first_links)}], second, symlink_manifest=second_links)
+        self.assertEqual(json.loads(second_links.read_text()), {
+            "renderer/assets/current": "renderer/assets", "renderer/assets/nested/alias": "renderer/assets/helper"})
+        self.assertEqual((second / "renderer/assets/helper").read_bytes(), b"executable")
+        self.assertFalse((second / "renderer/assets/current").exists())
+        self.assertFalse(any(path.is_symlink() for path in second.rglob("*")))
+
+    def test_invalid_or_filtered_link_targets_fail_before_copy(self):
+        manifest = self.root / "links.json"
+        entry = dict(self.entries[0], symlink_manifest=str(manifest))
+        for value in (["helper"], {"alias": 1}, {"../escape": "helper"}, {"alias": "../helper"},
+                      {"alias": "missing"}, {"a": "b", "b": "a"}, {"helper": ".hidden"}):
+            manifest.write_text(json.dumps(value))
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                collect([entry], self.root / "invalid-links", symlink_manifest=self.root / "output-links.json")
+            self.assertFalse((self.root / "invalid-links").exists())
+        manifest.write_text('{"alias":"helper"}')
+        with patch("electron.private.collect_files.select_files", return_value={"alias"}), self.assertRaisesRegex(ValueError, "target missing"):
+            collect([entry], self.root / "filtered-target", patterns=["alias"], symlink_manifest=self.root / "output-links.json")
+        self.assertFalse((self.root / "filtered-target").exists())
+        manifest.write_text('{"alias":"helper","alias":".hidden"}')
+        with self.assertRaisesRegex(ValueError, "Duplicate symlink path"):
+            collect([entry], self.root / "duplicate-links", symlink_manifest=self.root / "output-links.json")
+        self.assertFalse((self.root / "duplicate-links").exists())
 
 
 if __name__ == "__main__":

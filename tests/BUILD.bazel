@@ -95,13 +95,39 @@ py_test(
 
 empty_tree(name = "empty_tree")
 
+empty_tree(
+    name = "linked_tree",
+    symlinks = True,
+)
+
+electron_files(
+    name = "linked_tree_view",
+    srcs = {":linked_tree": "mounted"},
+)
+
+electron_files(
+    name = "linked_tree_nested_view",
+    srcs = {":linked_tree_view": ""},
+)
+
+electron_asar(
+    name = "linked_tree_asar",
+    srcs = {":linked_tree_nested_view": "assets"},
+)
+
 electron_app(
     name = "resource_links_app",
-    srcs = {"fixtures/main.js": "main.js"},
+    srcs = {
+        "fixtures/main.js": "main.js",
+        ":linked_tree_nested_view": "assets",
+    },
     app_id = "org.example.links",
     asar = True,
     executable_name = "sample",
-    extra_resources = {"fixtures/notice.txt": "data/v1/notice.txt"},
+    extra_resources = {
+        "fixtures/notice.txt": "data/v1/notice.txt",
+        ":linked_tree_nested_view": "generated",
+    },
     package_json = "fixtures/package.json",
     product_name = "Sample",
     resource_symlinks = {
@@ -144,9 +170,13 @@ py_test(
         "$(rootpath :resource_links_tar)",
         "$(rootpath :resource_links_deb)",
         "$(rootpath fixtures/notice.txt)",
+        "$(rootpath :linked_tree_asar)",
+        "$(rootpath :linked_tree_nested_view)",
     ],
     data = [
         "fixtures/notice.txt",
+        ":linked_tree_asar",
+        ":linked_tree_nested_view",
         ":resource_links_app",
         ":resource_links_deb",
         ":resource_links_tar",

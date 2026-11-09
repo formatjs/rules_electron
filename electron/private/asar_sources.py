@@ -12,10 +12,14 @@ from electron.private.matching import select_files
 
 def write_sources(entries, archive, unpacked=(), symlinks=None, unpacked_patterns=(), file_matcher=None):
     files, directories = {}, set()
+    symlinks = dict(symlinks or {})
     for entry in expand(entries, allow_root=True):
         path = relative_path(entry["path"])
-        if path in files or path in directories:
+        if path in files or path in directories or str(path) in symlinks:
             raise ValueError(f"Duplicate ASAR destination: {path}")
+        if "symlink_target" in entry:
+            symlinks[str(path)] = entry["symlink_target"]
+            continue
         if entry.get("empty_directory"):
             directories.add(path)
             continue

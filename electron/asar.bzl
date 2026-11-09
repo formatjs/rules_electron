@@ -22,9 +22,11 @@ def _impl(ctx):
         inputs.append(file)
         entry = {"source": file.path, "path": destination, "directory": file.is_directory}
         if ElectronFileTreeInfo in target:
-            directories = target[ElectronFileTreeInfo].directory_manifest
-            inputs.append(directories)
-            entry["directory_manifest"] = directories.path
+            for field in ["directory_manifest", "symlink_manifest"]:
+                metadata = getattr(target[ElectronFileTreeInfo], field, None)
+                if metadata:
+                    inputs.append(metadata)
+                    entry[field] = metadata.path
         entries.append(entry)
     archive = ctx.actions.declare_file(ctx.label.name + ".asar")
     unpacked = ctx.actions.declare_directory(ctx.label.name + ".asar.unpacked")
