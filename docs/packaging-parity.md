@@ -9,7 +9,7 @@ electron-builder replacement.
 | Target selection | Seven example OS/CPU/compiler variants | Full source-built Electron runtime |
 | Main/preload/renderer inputs | Explicit files and generated directories | Rich package-provider adapters |
 | Runtime dependencies | Integrity-pinned npm v3 imports and bundled-owner validation; explicit workspace/generated package providers and nested layouts; target-built Node-API addon/helper | Provider-specific adapters; Electron Node/V8 ABI toolchains |
-| ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity | Direct unpacked alias operations |
+| ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity; source reader alias/sidecar/cache test | Full source-runtime unpacked alias smoke |
 | Extra resources/files | Declared file/tree mappings outside ASAR; Linux/macOS resource link declarations; BB ZIP/import/TAR/DEB boundaries and native macOS signed-link checks pass | Windows links and generated-tree link metadata |
 | File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories, including prepackaged imports | — |
 | Manifest metadata | Deep-merge overlays, source/generated dependency-manifest version rewrites, top-level field/script removal; shared app/update identity | Provider-specific metadata adapters |

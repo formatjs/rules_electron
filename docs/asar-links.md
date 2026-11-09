@@ -26,7 +26,11 @@ The source overlay's [canonical resolver patch](https://github.com/formatjs/elec
 addresses direct unpacked aliases, chained directory/file links, root aliases and
 canonical extraction cache keys. Its focused resolver test passed in the
 [BB consumer preflight](https://formatjs.buildbuddy.io/invocation/0133feee-c4e4-4e99-8560-c5cca00d3180).
-Real reader integration and full-runtime filesystem smoke remain unverified.
+The [6c5ad31 consumer preflight](https://formatjs.buildbuddy.io/invocation/2ad91d1f-91e3-4950-a76a-65a631b812cd)
+also passed `asar_reader_test`, compiling the real `Archive`, `asar_util` and
+temporary-file implementation. It checks unpacked alias reads/writes, shared
+packed-file extraction identity, final-link stats, directory enumeration and
+cycle rejection. Full-runtime Node filesystem smoke remains unverified.
 The bootstrap runtime used by native examples
 does not contain this patch; direct unpacked alias support remains a migration
 gate until source-runtime smoke passes.
