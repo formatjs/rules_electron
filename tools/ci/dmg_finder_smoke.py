@@ -1,6 +1,8 @@
 """Read BB-generated DMG settings through the matching native Finder."""
 
+import json
 from pathlib import Path
+import re
 import platform
 import subprocess
 import sys
@@ -15,17 +17,10 @@ on run argv
             open targetFolder
             set targetWindow to container window of targetFolder
             delay 1
-            if current view of targetWindow is not icon view then error "FINDER_LAYOUT_VIEW"
-            if bounds of targetWindow is not {120, 140, 720, 500} then error "FINDER_LAYOUT_BOUNDS"
-            if toolbar visible of targetWindow then error "FINDER_LAYOUT_TOOLBAR"
-            if statusbar visible of targetWindow then error "FINDER_LAYOUT_STATUSBAR"
-            set options to icon view options of targetWindow
-            if icon size of options is not 112 then error "FINDER_LAYOUT_ICON_SIZE"
-            if text size of options is not 12 then error "FINDER_LAYOUT_TEXT_SIZE"
-            if background color of options is not {56797, 61166, 65535} then error "FINDER_LAYOUT_BACKGROUND"
-            if position of item "Sample Desktop.app" of targetFolder is not {140, 160} then error "FINDER_LAYOUT_APP_POSITION"
-            if position of item "Applications" of targetFolder is not {460, 160} then error "FINDER_LAYOUT_APPLICATIONS_POSITION"
+            set viewSettings to icon view options of targetWindow
+            set snapshot to {(current view of targetWindow is icon view), bounds of targetWindow, toolbar visible of targetWindow, statusbar visible of targetWindow, icon size of viewSettings, text size of viewSettings, background color of viewSettings, position of item "Sample Desktop.app" of targetFolder, position of item "Applications" of targetFolder}
             close targetWindow
+            return snapshot
         on error messageText number messageNumber
             if targetWindow is not missing value then close targetWindow
             error messageText number messageNumber
@@ -41,15 +36,31 @@ def check_layout(mount):
     mount = Path(mount).resolve(strict=True)
     if not (mount / ".DS_Store").is_file():
         raise ValueError("Missing BB-generated Finder metadata")
-    result = subprocess.run(["/usr/bin/osascript", "-e", SCRIPT, str(mount)],
+    result = subprocess.run(["/usr/bin/osascript", "-s", "s", "-e", SCRIPT, str(mount)],
                             capture_output=True, text=True, timeout=30)
     if result.returncode:
         if "-1743" in result.stderr:
             raise RuntimeError("FINDER_AUTOMATION_DENIED")
-        markers = [name for name in ["VIEW", "BOUNDS", "TOOLBAR", "STATUSBAR", "ICON_SIZE", "TEXT_SIZE",
-                                     "BACKGROUND", "APP_POSITION", "APPLICATIONS_POSITION"]
-                   if "FINDER_LAYOUT_" + name in result.stderr]
-        raise RuntimeError("FINDER_LAYOUT_FAILED " + ",".join(markers))
+        codes = re.findall(r"\((-?\d+)\)", result.stderr)
+        raise RuntimeError("FINDER_LAYOUT_SCRIPT_FAILED " + ",".join(codes))
+    try:
+        values = json.loads(result.stdout.replace("{", "[").replace("}", "]"))
+    except ValueError:
+        raise RuntimeError("FINDER_LAYOUT_RESPONSE_INVALID") from None
+    expected = {
+        "icon_view": True, "bounds": [120, 140, 720, 500], "toolbar": False,
+        "statusbar": False, "icon_size": 112, "text_size": 12,
+        "background": [56797, 61166, 65535], "app_position": [140, 160],
+        "applications_position": [460, 160],
+    }
+    if (not isinstance(values, list) or len(values) != len(expected)
+            or any(type(value) not in (int, float, bool) for item in values for value in (item if isinstance(item, list) else [item]))):
+        raise RuntimeError("FINDER_LAYOUT_RESPONSE_INVALID")
+    observed = dict(zip(expected, values))
+    print("DMG_FINDER_OBSERVED " + json.dumps(observed, sort_keys=True), flush=True)
+    failures = [name for name, value in expected.items() if observed[name] != value]
+    if failures:
+        raise RuntimeError("FINDER_LAYOUT_FAILED " + ",".join(failures))
     print("DMG_FINDER_LAYOUT_OK", flush=True)
 
 
