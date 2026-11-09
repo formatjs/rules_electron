@@ -404,6 +404,7 @@ def check_asar_integrity(app, executable, environment, directory, target_os, exp
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--setuid-sandbox", action="store_true")
+    parser.add_argument("--no-sandbox", action="store_true")
     parser.add_argument("app")
     parser.add_argument("--target-os", choices=["linux", "macos", "windows"], required=True)
     parser.add_argument("--target-arch", choices=["x64", "arm64"], required=True)
@@ -429,10 +430,12 @@ if __name__ == "__main__":
         ctypes.windll.kernel32.SetErrorMode(0x8003)
     if args.setuid_sandbox and (host_os != "linux" or not args.installed):
         raise ValueError("Setuid sandbox smoke requires an installed Linux app")
+    if args.no_sandbox and (host_os != "linux" or not args.installed or args.setuid_sandbox):
+        raise ValueError("No-sandbox smoke requires an installed Linux container app")
     if host_os == "linux":
         if not shutil.which("Xvfb"):
             raise RuntimeError("Install Xvfb for the Electron smoke test")
-        if not args.setuid_sandbox:
+        if not args.setuid_sandbox and not args.no_sandbox:
             subprocess.run(["unshare", "--user", "--map-root-user", "true"], check=True)
     source = Path(args.app).resolve()
     with relocation_directory() as directory:
@@ -475,6 +478,7 @@ if __name__ == "__main__":
             result = subprocess.run([
                 str(executable), "--smoke", "--disable-gpu", "--disable-dev-shm-usage",
                 *(["--disable-namespace-sandbox"] if args.setuid_sandbox else []),
+                *(["--no-sandbox"] if args.no_sandbox else []),
                 "--user-data-dir=" + str(directory / "profile"),
                 *[value for shortcut in args.shortcut for value in ["--shortcut-smoke", shortcut]],
             ], cwd=directory, env=environment, capture_output=True, encoding="utf-8", errors="replace", timeout=45)

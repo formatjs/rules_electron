@@ -23,7 +23,7 @@ def version():
 
 def launch(expected):
     print(command(sys.executable, "examples/desktop/tools/smoke_test.py", str(LAUNCHER),
-                  "--installed", "--expected-version", expected, "--target-os", "linux", "--target-arch", "x64"), flush=True)
+                  "--installed", "--no-sandbox", "--expected-version", expected, "--target-os", "linux", "--target-arch", "x64"), flush=True)
 
 
 def main(directory):
