@@ -22,6 +22,13 @@ through aliases to unpacked files still depend on the runtime's sidecar path
 handling; those aliases are not materialized in the sidecar. Input-tree filesystem
 symlinks remain a separate mapping concern.
 
+The source overlay's [canonical resolver patch](https://github.com/formatjs/electron/commit/0a54b87346be709f43bb70a8b80209def644ce2c)
+addresses direct unpacked aliases, chained directory/file links, root aliases and
+canonical extraction cache keys. Its focused BB resolver test and full reader
+integration remain unverified. The bootstrap runtime used by native examples
+does not contain this patch; direct unpacked alias support remains a migration
+gate until source-runtime smoke passes.
+
 The example exercises linked main entry, packed directory reads, chained file
 links and an unpacked native addon resolved through a file link.
 
