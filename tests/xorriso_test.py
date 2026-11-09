@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import struct
 import subprocess
+import shutil
 import sys
 import tempfile
 import unittest
@@ -28,11 +29,20 @@ class XorrisoTest(unittest.TestCase):
             image = root / "image.iso"
             environment = {"PATH": "", "HOME": str(root), "TZ": "UTC", "LC_ALL": "C",
                            "SOURCE_DATE_EPOCH": "1577836800"}
-            subprocess.run([TOOL, "-no_rc", "-local_charset", "UTF-8", "-as", "mkisofs", "-hfsplus", "-R", "-uid", "0", "-gid", "0", "-apm-block-size", "512",
-                            "-input-charset", "UTF-8", "-output-charset", "UTF-8",
-                            "-V", "Example", "--modification-date=2020010100000000", "-o", str(image), str(source)],
-                           env=environment, check=True, capture_output=True, timeout=60)
+            def create_image(payload, output):
+                subprocess.run([TOOL, "-no_rc", "-local_charset", "UTF-8", "-as", "mkisofs", "-hfsplus", "-R", "-uid", "0", "-gid", "0", "-apm-block-size", "512",
+                                "-input-charset", "UTF-8", "-output-charset", "UTF-8", "-hfsplus-serial-no", "0011223344556677",
+                                "--set_all_file_dates", "2020010100000000", "-V", "Example", "--modification-date=2020010100000000", "-o", str(output), str(payload)],
+                               env=environment, check=True, capture_output=True, timeout=60)
+            create_image(source, image)
             data = image.read_bytes()
+            relocated = root / "different parent/payload"
+            shutil.copytree(source, relocated, symlinks=True)
+            for path in [relocated, *relocated.rglob("*")]:
+                os.utime(path, (1234567890, 1234567890), follow_symlinks=False)
+            second = root / "second.iso"
+            create_image(relocated, second)
+            self.assertEqual(data, second.read_bytes())
             self.assertEqual(data[512:514], b"PM")
             count = struct.unpack_from(">I", data, 516)[0]
             self.assertLess(count, 64)
