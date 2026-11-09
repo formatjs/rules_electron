@@ -1,8 +1,8 @@
-load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_electron//third_party:appimage_runtime.bzl", "static_pie_runtime")
 
 package(default_visibility = ["//visibility:public"])
 
-cc_binary(
+static_pie_runtime(
     name = "runtime",
     srcs = ["src/runtime/runtime.c"],
     additional_linker_inputs = ["src/runtime/data_sections.ld"],
