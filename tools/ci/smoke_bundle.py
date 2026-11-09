@@ -45,8 +45,9 @@ def check_app(entry):
                 check_binary(source, target_os, arm64)
     else:
         with ZipFile(entry["source"]) as archive:
+            root = "Sample Desktop.app/" if target_os == "macos" else "app/"
             for name in paths:
-                with archive.open("Sample Desktop.app/" + name) as source:
+                with archive.open(root + name) as source:
                     check_binary(source, target_os, arm64)
 
 

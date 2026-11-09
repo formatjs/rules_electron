@@ -137,7 +137,7 @@ jobs:
         env:
           SMOKE_VARIANTS: ${{ toJSON(matrix.variants) }}
           SMOKE_SHARD: ${{ matrix.shard }}
-        run: python tools/ci/run_native_smoke.py
+        run: python -m tools.ci.run_native_smoke
 
   publish_status:
     if: always() && !inputs.logs_only && needs.download.result != 'skipped'

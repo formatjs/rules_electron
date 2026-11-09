@@ -100,7 +100,10 @@ py_library(
         "run_native_smoke.py",
     ],
     visibility = ["//tests:__pkg__"],
-    deps = [":smoke_shards"],
+    deps = [
+        ":smoke_shards",
+        "//electron/private:archives",
+    ],
 )
 
 py_library(

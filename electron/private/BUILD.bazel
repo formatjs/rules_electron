@@ -6,6 +6,7 @@ py_library(
     visibility = [
         "//electron/tools:__pkg__",
         "//tests:__pkg__",
+        "//tools/ci:__pkg__",
     ],
     deps = [":file_mappings"],
 )

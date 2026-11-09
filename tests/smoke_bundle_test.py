@@ -2,12 +2,13 @@ import os
 import json
 from pathlib import Path
 import shutil
+import stat
 import struct
 import tempfile
 import unittest
-from zipfile import ZipFile
+from zipfile import ZipFile, ZipInfo
 
-from tools.ci.run_native_smoke import extract_variant
+from tools.ci.run_native_smoke import extract_variant, prepare_app
 from tools.ci.smoke_bundle import build_bundles, build_shard, validate_apps
 from tools.ci.smoke_shards import ALL_VARIANTS, SHARDS, archive_name
 
@@ -73,6 +74,50 @@ class SmokeBundleTest(unittest.TestCase):
     def outputs(self, directory):
         directory.mkdir()
         return {shard: str(directory / archive_name(shard)) for shard in SHARDS}
+
+    def test_linux_zip_apps_keep_architecture_gate_and_native_filesystem_links(self):
+        for entry in self.entries:
+            if entry.get("package") or not entry["variant"].startswith("linux_"):
+                continue
+            source = Path(entry["source"])
+            output = source.parent / "app.zip"
+            with ZipFile(output, "w") as archive:
+                for file in source.rglob("*"):
+                    if not file.is_file():
+                        continue
+                    info = ZipInfo("app/" + file.relative_to(source).as_posix())
+                    info.external_attr = file.stat().st_mode << 16
+                    archive.writestr(info, file.read_bytes())
+                info = ZipInfo("app/current")
+                info.create_system = 3
+                info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(info, b"resources")
+                info = ZipInfo("app/resources/cache/empty/")
+                info.external_attr = ((stat.S_IFDIR | 0o755) << 16) | 0x10
+                archive.writestr(info, b"")
+            entry.update(source=str(output), directory=False)
+        outputs = self.outputs(self.root / "zipped-outputs")
+        self.build_independently(self.entries, outputs)
+        unpacked = self.root / "zipped-unpacked"
+        with ZipFile(outputs["linux-x64"]) as archive:
+            extract_variant(archive, unpacked, "linux_x86_64")
+        app = prepare_app(unpacked, "linux_x86_64", "linux")
+        self.assertEqual((app / "current").readlink().as_posix(), "resources")
+        self.assertEqual((app / "current/native/helper").read_bytes(), (app / "resources/native/helper").read_bytes())
+        self.assertEqual((app / "sample-desktop").stat().st_mode & 0o777, 0o755)
+        self.assertEqual(list((app / "resources/cache/empty").iterdir()), [])
+
+    def test_native_linux_zip_rejects_escaping_links_before_extracting(self):
+        root = self.root / "malformed/linux_x86_64"
+        root.mkdir(parents=True)
+        with ZipFile(root / "app.zip", "w") as archive:
+            info = ZipInfo("app/escape")
+            info.create_system = 3
+            info.external_attr = (stat.S_IFLNK | 0o777) << 16
+            archive.writestr(info, b"../outside")
+        with self.assertRaises(ValueError):
+            prepare_app(root.parent, "linux_x86_64", "linux")
+        self.assertFalse((root / "app").exists())
 
     def build_independently(self, entries, outputs):
         validation = Path(next(iter(outputs.values()))).parent / "matrix.validated"

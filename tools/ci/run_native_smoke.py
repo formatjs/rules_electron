@@ -11,6 +11,8 @@ import tarfile
 import tempfile
 from zipfile import ZipFile
 
+from electron.private.archive import inventory
+
 try:
     from .smoke_shards import SHARDS, archive_name
 except ImportError:
@@ -24,6 +26,40 @@ VARIANTS = {
     "windows_aarch64_gnullvm": ("windows", "arm64"),
     "windows_aarch64_msvc": ("windows", "arm64"),
 }
+
+
+def prepare_app(directory, variant, target_os):
+    root = Path(directory) / variant
+    tree, archive = root / "app", root / "app.zip"
+    if tree.exists() == archive.exists():
+        raise ValueError("Expected exactly one native app input")
+    if tree.is_dir():
+        return tree
+    if not archive.is_file() or target_os == "windows":
+        raise ValueError("Unexpected native app input format")
+    if target_os == "macos":
+        return archive
+    with inventory(archive, "linux") as (entries, open_entry):
+        if len(entries) > 200000 or sum(entry.size for entry in entries.values()) > 4 * 1024**3:
+            raise ValueError("Linux app exceeds extraction limits")
+        tree.mkdir()
+        for name, entry in sorted(entries.items()):
+            if entry.kind == "symlink":
+                continue
+            output = tree / name
+            output.parent.mkdir(parents=True, exist_ok=True)
+            if entry.kind == "directory":
+                output.mkdir(exist_ok=True)
+            else:
+                with open_entry(entry) as source, output.open("wb") as destination:
+                    shutil.copyfileobj(source, destination)
+            output.chmod(entry.mode)
+        for name, entry in sorted(entries.items()):
+            if entry.kind == "symlink":
+                output = tree / name
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.symlink_to(entry.target)
+    return tree
 
 
 def extract_variant(archive, destination, variant):
@@ -74,7 +110,7 @@ if __name__ == "__main__":
         for variant in variants:
             extract_variant(archive, directory, variant)
             target_os, target_arch = VARIANTS[variant]
-            app = directory / variant / ("app.zip" if target_os == "macos" else "app")
+            app = prepare_app(directory, variant, target_os)
             subprocess.run([
                 sys.executable, "examples/desktop/tools/smoke_test.py", str(app),
                 "--target-os", target_os, "--target-arch", target_arch,
