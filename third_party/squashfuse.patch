@@ -2,11 +2,13 @@ diff --git a/config.h b/config.h
 new file mode 100644
 --- /dev/null
 +++ b/config.h
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,18 @@
 +#ifndef SQFS_CONFIG_H
 +#define SQFS_CONFIG_H
 +#define _FILE_OFFSET_BITS 64
 +#define FUSE_USE_VERSION 32
++#define PACKAGE_NAME "squashfuse"
++#define PACKAGE_STRING "squashfuse 0.5.2"
 +#define HAVE_ZLIB_H 1
 +#define HAVE_ZSTD_H 1
 +#define HAVE_LINUX_TYPES_LE16 1
