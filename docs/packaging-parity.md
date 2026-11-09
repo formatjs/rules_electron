@@ -23,7 +23,7 @@ electron-builder replacement.
 | Installers | Linux DEB for amd64/arm64; native RPM v4 writer and native Fedora install/update/remove checks; source-built AppImages and embedded updater feeds for both Linux CPUs; per-user Windows NSIS with declared tools, independent installer/uninstaller icons and owned-file uninstall | macOS disk images, Windows per-machine NSIS/MSIX and other packaging |
 | Prepackaged release stages | Public immutable app import for archives/installers; layout, CPU, packaged manifest and macOS identity validation; seven cross-build variants and four native hosts pass | Release signing APIs and signature trust policy |
 | Distribution archives | Public ZIP/tar/tar.gz/tar.xz/tar.bz2/7z rule, explicit compression, executable modes and relative symlinks; native macOS ZIP and Linux x64 tar.gz/7z launch | Other archive formats |
-| electron-updater | Generic config/manifests, SHA-512/size, content-defined external blockmaps, real client discovery/planning; Linux DEB/RPM/AppImage and Windows NSIS lifecycle smoke; over 99% sample NSIS reuse on both CPUs and 99.7% AppImage reuse on Linux x64 | AppImage installed-app lifecycle validation; other update targets and provider/publishing adapters |
+| electron-updater | Generic config/manifests, SHA-512/size, content-defined external blockmaps, real client discovery/planning; Linux DEB/RPM/AppImage and Windows NSIS lifecycle smoke; over 99% sample NSIS reuse on both CPUs and 99.7% AppImage reuse on Linux x64 | Other update targets and provider/publishing adapters |
 | Native smoke | Scripts/workflows for four native host types | Hosted results establish actual execution coverage |
 
 All compilation, generators, assembly and ad hoc signing run on BB Linux
@@ -53,3 +53,10 @@ passed, including macOS signature checks and both Windows compiler variants.
 See the [release plan](release-plan.md) and [updater contract](updates.md).
 Linux package behavior and its native validation live in [Linux packages](linux-packages.md).
 Windows installer scope and validation live in [Windows installers](windows-installers.md).
+
+MSIX implementation is in progress. Private writer emits deterministic ZIP64,
+compressed footprint XML, explicit publisher/CPU/version/logo metadata and
+64 KiB SHA-256 block maps. BB tests independently decode ZIP records and block
+ranges. This is not yet a public packaging rule: Windows Packaging API
+acceptance, signing, install/update/remove, OS associations and updater behavior
+remain unverified. Empty directory leaves and symlinks fail explicitly.

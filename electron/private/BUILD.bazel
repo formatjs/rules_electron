@@ -259,3 +259,15 @@ py_binary(
     visibility = ["//electron:__pkg__"],
     deps = [":appimage"],
 )
+
+py_library(
+    name = "msix",
+    srcs = ["msix.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        ":archives",
+        ":file_mappings",
+        ":icons",
+        ":identity",
+    ],
+)

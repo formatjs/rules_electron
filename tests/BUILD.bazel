@@ -596,3 +596,10 @@ electron_update_feed(
     release_date = "2026-01-01T00:00:00Z",
     target_compatible_with = ["@platforms//os:linux"],
 )
+
+py_test(
+    name = "msix_test",
+    size = "small",
+    srcs = ["msix_test.py"],
+    deps = ["//electron/private:msix"],
+)
