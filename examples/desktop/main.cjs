@@ -8,6 +8,7 @@ if (process.platform === 'win32') app.setAppUserModelId(appUserModelId);
 const addon = require('example-native');
 const classicAddon = require('example-native/classic.node');
 assert.equal(classicAddon.answer(), 42);
+assert.deepEqual([...new Uint8Array(classicAddon.backingStore())], [0x12, 0x34, 0x56, 0x78]);
 assert.equal(classicAddon.moduleAbi, Number(process.versions.modules));
 
 const smoke = process.argv.includes('--smoke');
@@ -116,13 +117,15 @@ app.whenReady().then(async () => {
         const worker = new Worker(`
           const { parentPort, workerData } = require('node:worker_threads');
           const addon = require(workerData);
-          parentPort.postMessage({ answer: addon.answer(), moduleAbi: addon.moduleAbi });
+          parentPort.postMessage({ answer: addon.answer(), moduleAbi: addon.moduleAbi,
+            backingStore: [...new Uint8Array(addon.backingStore())] });
         `, { eval: true, workerData: require.resolve('example-native/classic.node'), execArgv: [], env: {} });
         worker.once('message', (value) => { report = value; });
         worker.once('error', reject);
         worker.once('exit', (code) => code === 0 ? resolve(report) : reject(new Error('Native addon worker failed')));
       });
-      assert.deepEqual(workerReport, { answer: 42, moduleAbi: Number(process.versions.modules) });
+      assert.deepEqual(workerReport, { answer: 42, moduleAbi: Number(process.versions.modules),
+        backingStore: [0x12, 0x34, 0x56, 0x78] });
       assert.deepEqual(result, {
         message: 'Hello from extra resources',
         asset: 'Hello, 世界',

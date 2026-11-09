@@ -172,3 +172,22 @@ http_file(
     sha256 = "a1293dc4657ae8f3562c55bfd8117f63c728ed925ddb3175bc2a8a96c9166f08",
     urls = ["https://artifacts.electronjs.org/headers/dist/v39.0.0/win-arm64/node.lib"],
 )
+
+# Chromium's exact libc++ ABI, built from original source with native Bazel rules.
+http_archive(
+    name = "electron_libcxx",
+    build_file = "//:electron_libcxx.BUILD.bazel",
+    patch_args = ["-p1"],
+    patches = ["//:native/libcxx/chromium-config.patch"],
+    sha256 = "959c7c0e4b82256ea9fbad2c89a1519fbaa14321b396cebba131c63d83c64c8e",
+    strip_prefix = "llvm-project-1ab4113d0e0d30ba923ea070530a0e65910b26cb/libcxx",
+    urls = ["https://github.com/llvm/llvm-project/archive/1ab4113d0e0d30ba923ea070530a0e65910b26cb.tar.gz"],
+)
+
+http_archive(
+    name = "electron_libcxxabi_headers",
+    build_file = "//:electron_libcxxabi.BUILD.bazel",
+    sha256 = "959c7c0e4b82256ea9fbad2c89a1519fbaa14321b396cebba131c63d83c64c8e",
+    strip_prefix = "llvm-project-1ab4113d0e0d30ba923ea070530a0e65910b26cb/libcxxabi/include",
+    urls = ["https://github.com/llvm/llvm-project/archive/1ab4113d0e0d30ba923ea070530a0e65910b26cb.tar.gz"],
+)

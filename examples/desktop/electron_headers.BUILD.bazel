@@ -37,7 +37,10 @@ cc_library(
     ],
     includes = ["include/node"],
     visibility = ["//visibility:public"],
-    deps = select({
+    deps = [
+        "@electron_libcxx//:headers",
+        "@electron_libcxx//:runtime",
+    ] + select({
         ":windows": [":node_import"],
         "//conditions:default": [],
     }),

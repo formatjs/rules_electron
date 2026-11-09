@@ -40,8 +40,10 @@ All seven variants [cross-built on BB](https://formatjs.buildbuddy.io/invocation
 Native Linux x64, macOS ARM64 and Windows x64/ARM64 pass main/worker calls and
 wrong-ABI rejection in [the native run](https://github.com/formatjs/rules_electron/actions/runs/42647252981).
 
-The fixture currently exercises signatures without STL boundary types. Electron
-39's Windows import library exposes backing-store APIs using `std::__Cr`.
-The example SDK does not yet configure that Chromium libc++ ABI. STL-facing APIs
-need matching C++ headers/runtime inputs in addition to Node/V8 headers; this
-remains an open SDK task. Source-generated SDK inputs also remain open.
+The bootstrap SDK now builds Chromium's exact libc++ sources with native Bazel
+rules, original ABI version 2/`std::__Cr` configuration and declared toolchain
+runtime inputs. The new main/worker probes pass shared backing-store ownership
+across V8's STL boundary and check the returned bytes. These probes still need
+BB cross-build and native validation; the results above cover the earlier
+non-STL probes. See the [source inputs](../examples/desktop/native/libcxx/README.md).
+Source-generated SDK inputs remain open.

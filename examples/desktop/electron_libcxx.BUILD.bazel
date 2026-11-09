@@ -1,0 +1,141 @@
+# Native translation of Chromium 142.0.7444.52 buildtools/third_party/libc++.
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+config_setting(
+    name = "windows",
+    constraint_values = ["@platforms//os:windows"],
+)
+
+config_setting(
+    name = "linux",
+    constraint_values = ["@platforms//os:linux"],
+)
+
+cc_library(
+    name = "headers",
+    hdrs = glob(
+        ["include/**"],
+        exclude = [
+            "include/**/*.in",
+            "include/CMakeLists.txt",
+            "include/module.modulemap",
+        ],
+    ),
+    defines = [
+        "_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS",
+        "_LIBCXXABI_DISABLE_VISIBILITY_ANNOTATIONS",
+        "_LIBCPP_INSTRUMENTED_WITH_ASAN=0",
+        "_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE",
+        "CR_LIBCXX_REVISION=b77132b512d5411f8393fd3decb3abaeaf1d3ec8",
+    ],
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "runtime",
+    srcs = [
+        "src/algorithm.cpp",
+        "src/any.cpp",
+        "src/atomic.cpp",
+        "src/barrier.cpp",
+        "src/bind.cpp",
+        "src/call_once.cpp",
+        "src/charconv.cpp",
+        "src/chrono.cpp",
+        "src/condition_variable.cpp",
+        "src/condition_variable_destructor.cpp",
+        "src/error_category.cpp",
+        "src/exception.cpp",
+        "src/filesystem/directory_iterator.cpp",
+        "src/filesystem/filesystem_error.cpp",
+        "src/filesystem/operations.cpp",
+        "src/filesystem/path.cpp",
+        "src/functional.cpp",
+        "src/future.cpp",
+        "src/hash.cpp",
+        "src/ios.cpp",
+        "src/ios.instantiations.cpp",
+        "src/iostream.cpp",
+        "src/locale.cpp",
+        "src/memory.cpp",
+        "src/mutex.cpp",
+        "src/mutex_destructor.cpp",
+        "src/new.cpp",
+        "src/new_handler.cpp",
+        "src/new_helpers.cpp",
+        "src/optional.cpp",
+        "src/random.cpp",
+        "src/random_shuffle.cpp",
+        "src/regex.cpp",
+        "src/ryu/d2fixed.cpp",
+        "src/ryu/d2s.cpp",
+        "src/ryu/f2s.cpp",
+        "src/shared_mutex.cpp",
+        "src/stdexcept.cpp",
+        "src/string.cpp",
+        "src/strstream.cpp",
+        "src/system_error.cpp",
+        "src/thread.cpp",
+        "src/typeinfo.cpp",
+        "src/valarray.cpp",
+        "src/variant.cpp",
+        "src/vector.cpp",
+        "src/verbose_abort.cpp",
+    ] + select({
+        ":linux": [
+            "src/filesystem/directory_entry.cpp",
+            "src/filesystem/filesystem_clock.cpp",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        ":windows": [
+            "src/support/win32/locale_win32.cpp",
+            "src/support/win32/support.cpp",
+            "src/support/win32/thread_win32.cpp",
+        ],
+        "//conditions:default": [],
+    }),
+    copts = select({
+        ":windows": [
+            "/std:c++latest",
+            "/EHsc",
+            "/GR",
+            "/clang:-Wno-macro-redefined",
+        ],
+        "//conditions:default": [
+            "-std=c++23",
+            "-fexceptions",
+            "-frtti",
+            "-fvisibility=hidden",
+        ],
+    }),
+    features = [
+        "-no_exceptions",
+        "-no_rtti",
+        "-thin_lto",
+    ],
+    includes = ["src"],
+    linkstatic = True,
+    local_defines = [
+        "_LIBCPP_BUILDING_LIBRARY",
+        "_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER",
+    ] + select({
+        ":windows": [
+            "_CRTBLD",
+            "_CRT_SECURE_NO_WARNINGS",
+            "_CRT_NONSTDC_NO_WARNINGS",
+            "_CRT_STDIO_ISO_WIDE_SPECIFIERS",
+        ],
+        "//conditions:default": ["LIBCXX_BUILDING_LIBCXXABI"],
+    }),
+    textual_hdrs = glob([
+        "src/**/*.h",
+        "src/**/*.ipp",
+    ]),
+    visibility = ["//visibility:public"],
+    deps = [":headers"] + select({
+        ":windows": [],
+        "//conditions:default": ["@electron_libcxxabi_headers//:headers"],
+    }),
+)
