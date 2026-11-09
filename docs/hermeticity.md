@@ -607,3 +607,10 @@ The [737a6f7 overlay](https://github.com/formatjs/electron/commit/737a6f7eaf645d
 uses the environment loader for Node realms and preserves the standalone loader
 for contexts without Node. Assertions stay enabled. Full runtime smoke remains
 the validation gate; this patch has not yet passed it.
+
+The 737a6f7 [component build](https://formatjs.buildbuddy.io/invocation/78fd58fc-4957-4d53-9c4b-7161fe3870e2)
+compiled the complete captured source graph. Its
+[tests](https://formatjs.buildbuddy.io/invocation/9e7be178-17a1-40c8-af81-719cc7aa10af)
+and the consumer passed 71 distinct public probes. Relocated run-as-Node and
+browser `--version` now pass; packaged browser startup fails Chromium's storage
+absolute-path check. Renderer/IPC and full ASAR alias smoke remain unverified.
