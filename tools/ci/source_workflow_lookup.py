@@ -16,6 +16,9 @@ REPOSITORY = "https://github.com/formatjs/electron"
 WORKFLOWS = {"Electron source components", "Electron source cross-compile", "Electron BCR consumer"}
 STATES = {"COMPLETE_INVOCATION_STATUS": "complete", "PARTIAL_INVOCATION_STATUS": "running",
           "DISCONNECTED_INVOCATION_STATUS": "disconnected"}
+ERRORS = {"Exact commit required": "COMMIT", "Read-only key required": "KEY",
+          "Repeated lookup page": "PAGINATION", "Lookup response exceeds limit": "RESPONSE_SIZE",
+          "Invalid lookup page": "PAGE", "Invalid workflow identifier": "IDENTIFIER"}
 
 
 def public_workflows(records, sha):
@@ -73,6 +76,9 @@ if __name__ == "__main__":
         result = lookup(os.environ["BUILDBUDDY_API_KEY"], os.environ["BUILD_SHA"])
     except HTTPError as error:
         print("SOURCE_WORKFLOW_LOOKUP_FAILED status=" + str(error.code), file=sys.stderr)
+        sys.exit(1)
+    except ValueError as error:
+        print("SOURCE_WORKFLOW_LOOKUP_FAILED reason=" + ERRORS.get(str(error), "RESPONSE"), file=sys.stderr)
         sys.exit(1)
     except Exception:
         print("SOURCE_WORKFLOW_LOOKUP_FAILED", file=sys.stderr)
