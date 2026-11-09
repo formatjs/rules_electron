@@ -485,5 +485,11 @@
     "complete grammar accepts matching tokens",
     "reset restores initial grammar state",
     "invalid token fails through C ABI"
+  ],
+  "printing": [
+    "default features",
+    "crossed identities preserve distinct papers and allowed standard duplicates",
+    "paper identity ordering is independent of insertion order",
+    "same display name and vendor reject duplicate identity"
   ]
 }
