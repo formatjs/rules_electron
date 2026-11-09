@@ -3,7 +3,7 @@ load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_electron//electron:appimage.bzl", "electron_appimage")
 load("@rules_electron//electron:archive.bzl", "electron_archive")
 load("@rules_electron//electron:asar.bzl", "electron_asar")
-load("@rules_electron//electron:defs.bzl", "electron_runtime")
+load("@rules_electron//electron:defs.bzl", "electron_app", "electron_runtime")
 load("@rules_electron//electron:dmg.bzl", "electron_dmg")
 load("@rules_electron//electron:files.bzl", "electron_files")
 load("@rules_electron//electron:linux.bzl", "electron_deb", "electron_rpm")
@@ -105,6 +105,7 @@ filegroup(
         ":macos_update_certificate",
         ":macos_update_v1",
         ":macos_update_v2_feed",
+        ":plain_links",
         ":release_dmg",
     ],
     target_compatible_with = ["@platforms//os:osx"],
@@ -336,6 +337,55 @@ electron_files(
         "renderer/current": "renderer",
         "renderer/page.html": "renderer/index.html",
     },
+)
+
+electron_app(
+    name = "plain_link_app",
+    srcs = {
+        "plain-links.cjs": "main.cjs",
+        ":renderer_files": "",
+    },
+    app_id = "org.example.sample-plain-desktop",
+    asar = False,
+    executable_name = "sample-plain-desktop",
+    fuses = {
+        "enableNodeCliInspectArguments": "off",
+        "enableNodeOptionsEnvironmentVariable": "off",
+        "onlyLoadAppFromAsar": "off",
+        "runAsNode": "off",
+    },
+    macos_entitlements = select({
+        ":macos": "entitlements.plist",
+        "//conditions:default": None,
+    }),
+    macos_entitlements_inherit = select({
+        ":macos": "entitlements.plist",
+        "//conditions:default": None,
+    }),
+    macos_hardened_runtime = select({
+        ":macos": True,
+        "//conditions:default": False,
+    }),
+    macos_signer = select({
+        ":macos": "@rcodesign_linux_x64//:rcodesign",
+        "//conditions:default": None,
+    }),
+    package_json = "plain-package.json",
+    product_name = "Sample Plain Desktop",
+    runtime = ":runtime",
+    target_compatible_with = select({
+        ":windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
+)
+
+electron_archive(
+    name = "plain_links",
+    app = ":plain_link_app",
+    target_compatible_with = select({
+        ":windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_binary(
@@ -610,6 +660,7 @@ filegroup(
         ":appimage_v2_feed",
         ":deb_v1",
         ":deb_v2_feed",
+        ":plain_links",
         ":release_7z",
         ":release_tar",
         ":rpm_v1",

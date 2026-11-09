@@ -54,7 +54,17 @@ The Linux/macOS example also mounts the generated renderer provider at
 `extra_resources[":renderer_files"] = "generated"` and
 `extra_files[":renderer_files"] = "generated-files"`. Native smoke checks real
 file/directory symlinks after relocation, canonical paths, filtered files and
-empty directories through both mounts. These new checks await hosted validation.
+empty directories through both mounts. The
+[3809857 BB cross-build](https://formatjs.buildbuddy.io/invocation/6f88f68a-a180-4f80-aa58-7bd146a55e2c)
+and [native matrix](https://github.com/formatjs/rules_electron/actions/runs/42693629082)
+passed these checks on Linux x64/macOS ARM64, including installed updates and
+macOS signing/DMG relocation.
+
+`:plain_link_app` uses `asar = False` with the same generated provider. Its
+`:plain_links` release ZIP goes through validated extraction and native Electron
+filesystem checks on Linux x64/macOS ARM64, including a strict macOS signature
+check. Linux ARM64 is cross-built only. This separate gate also awaits hosted
+validation.
 
 [BB assembly tests](https://formatjs.buildbuddy.io/invocation/f79a67e5-511b-4ef9-99c7-a4f235c02e35)
 and [seven cross-build variants](https://formatjs.buildbuddy.io/invocation/2c48cc35-4af3-4a3f-a72d-3334074ca928)

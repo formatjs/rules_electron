@@ -115,6 +115,9 @@ if __name__ == "__main__":
                 sys.executable, "examples/desktop/tools/smoke_test.py", str(app),
                 "--target-os", target_os, "--target-arch", target_arch,
             ], check=True)
+            if target_os in ("linux", "macos"):
+                subprocess.run([sys.executable, "-m", "tools.ci.plain_links_smoke",
+                                str(directory / variant / "packages/plain_links.zip"), target_os, target_arch], check=True)
             if target_os == "macos":
                 image = directory / variant / "packages/release_dmg.dmg"
                 mount = directory / variant / "mounted-dmg"

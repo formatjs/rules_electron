@@ -86,9 +86,11 @@ Electron 39's [pinned Squirrel verifier](https://github.com/Squirrel/Squirrel.Ma
 checks candidates against the installed app's designated requirement. The
 fixture pins a certificate hash; it does not use `anchor trusted`.
 [Apple documents](https://developer.apple.com/library/archive/documentation/Security/Conceptual/CodeSigningGuide/Procedures/Procedures.html)
-that these requirements need no system trust grant. This gate still awaits a
-clean hosted result without trust setup. It does not prove production Developer
-ID/notarization acceptance.
+that these requirements need no system trust grant. The
+[3809857 BB cross-build](https://formatjs.buildbuddy.io/invocation/6f88f68a-a180-4f80-aa58-7bd146a55e2c)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42693629082)
+passed, including every macOS lifecycle check without trust setup. Production
+Developer ID/notarization acceptance remains unverified.
 
 Protocol references: [auto update](https://www.electron.build/v26/docs/features/auto-update/),
 [channel routing](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/providers/Provider.ts),
