@@ -22,8 +22,8 @@ bazel_dep(name = "rules_nodejs", version = "6.7.7")
 
 node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
 node.toolchain(node_version = "22.20.0")
-use_repo(node, "nodejs_toolchains")
-register_toolchains("@nodejs_toolchains//:all")
+use_repo(node, electron_nodejs_toolchains = "nodejs_toolchains")
+register_toolchains("@electron_nodejs_toolchains//:all")
 
 electron_rust = use_extension("@rules_rs//rs/toolchains:module_extension.bzl", "toolchains")
 electron_rust.toolchain(edition = "2021", version = "nightly/2025-09-25")
