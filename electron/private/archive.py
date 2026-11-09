@@ -1,4 +1,4 @@
-"""Stream app files into reproducible release archives without extracting ZIPs."""
+"""Reproducible app archives from validated file and ZIP inventories."""
 
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
@@ -9,6 +9,8 @@ import lzma
 import os
 from pathlib import Path, PurePosixPath
 import shutil
+import subprocess
+import tempfile
 import stat
 import sys
 import tarfile
@@ -144,13 +146,43 @@ def inventory(source, platform):
             yield entries, lambda entry: archive.open(entry.source)
 
 
-def create_archive(source, platform, root_name, format, compression_level, output, directory_manifest=""):
+def sevenzip_archive(members, open_entry, tool, level, output):
+    if not tool:
+        raise ValueError("7z archives require a declared execution tool")
+    tool, output = str(Path(tool).resolve()), str(Path(output).resolve())
+    with tempfile.TemporaryDirectory(prefix="electron-7z-") as temporary:
+        root = Path(temporary)
+        for name, entry in members:
+            destination = root / name
+            if entry.kind == "symlink":
+                continue
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if entry.kind == "directory":
+                destination.mkdir(exist_ok=True)
+            else:
+                with open_entry(entry) as source, destination.open("wb") as target:
+                    shutil.copyfileobj(source, target, 1024**2)
+            destination.chmod(entry.mode)
+        for name, entry in members:
+            if entry.kind == "symlink":
+                (root / name).symlink_to(entry.target)
+        for name, entry in reversed(members):
+            os.utime(root / name, (315532800, 315532800), follow_symlinks=False)
+        Path(output).unlink(missing_ok=True)
+        subprocess.run([tool, "a", "-t7z", "-snl", "-mx=" + str(level),
+                        "-m0=Copy" if not level else "-m0=LZMA2:d1m", "-mmt=2", "-ms=off",
+                        "-mtc=off", "-mta=off", "-mtm=off", "-bd", "-bso0", "-bsp0",
+                        output, "./" + members[0][0]], cwd=root,
+                       env={"PATH": "", "LC_ALL": "C.UTF-8", "TZ": "UTC", "SOURCE_DATE_EPOCH": "0"}, check=True)
+
+
+def create_archive(source, platform, root_name, format, compression_level, output, directory_manifest="", sevenzip=""):
     relative(root_name)
     if "/" in root_name or platform not in ("linux", "windows", "macos"):
         raise ValueError("Expected one archive root and a supported platform")
     if platform == "macos" and not root_name.endswith(".app"):
         raise ValueError("macOS archive root must end in .app")
-    if format not in ("zip", "tar", "tar.gz", "tar.xz", "tar.bz2") or not 0 <= compression_level <= 9:
+    if format not in ("zip", "tar", "tar.gz", "tar.xz", "tar.bz2", "7z") or not 0 <= compression_level <= 9:
         raise ValueError("Invalid archive format or compression level")
     if format == "tar.bz2" and compression_level == 0:
         raise ValueError("tar.bz2 compression level must be between 1 and 9")
@@ -163,7 +195,9 @@ def create_archive(source, platform, root_name, format, compression_level, outpu
                 entries[path] = Entry("directory", 0o755)
             validate(entries, platform)
         members = [(root_name, Entry("directory", 0o755))] + [(root_name + "/" + name, entry) for name, entry in sorted(entries.items())]
-        if format == "zip":
+        if format == "7z":
+            sevenzip_archive(members, open_entry, sevenzip, compression_level, output)
+        elif format == "zip":
             with ZipFile(output, "w") as archive:
                 for name, entry in members:
                     info = ZipInfo(name + ("/" if entry.kind == "directory" else ""), (1980, 1, 1, 0, 0, 0))

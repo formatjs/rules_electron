@@ -1,6 +1,6 @@
 # Release archives
 
-`electron_archive` produces ZIP, tar, tar.gz, tar.xz or tar.bz2 from an `electron_app`. Compilation,
+`electron_archive` produces ZIP, tar, tar.gz, tar.xz, tar.bz2 or 7z from an `electron_app`. Compilation,
 assembly and signing finish before archival. The action uses the declared Python
 execution toolchain; it never runs target binaries or discovers host utilities.
 
@@ -23,7 +23,7 @@ not change the bundle's internal identity.
 Compression levels range from 0 through 9; tar.bz2 requires 1 through 9. ZIP level
 0 stores entries; tar.gz level 0 retains gzip framing without compression. XZ uses
 the matching LZMA preset and CRC64. Plain tar ignores the compression level.
-Compressors come from the declared Python toolchain. Level 1 favors packaging
+ZIP/tar compressors come from the declared Python toolchain. Level 1 favors packaging
 time; level 9 favors size. Choose from measured costs for the consuming application.
 
 Entries have stable ordering, normalized modes, fixed timestamps and no host
@@ -32,8 +32,7 @@ and symlinks 0777. Relative symlinks stay links, including macOS framework chain
 Escaping, dangling and cyclic links, special files, duplicate ZIP paths and
 file/directory collisions fail. macOS/Windows also reject case collisions.
 
-macOS input ZIPs stream directly into the release archive without extracting to
-disk. File bytes, embedded code signatures and link targets remain unchanged.
+ZIP/tar outputs stream macOS input ZIPs without extracting to disk. File bytes, embedded code signatures and link targets remain unchanged.
 Archive reproducibility requires identical input bytes: a release signing service
 may introduce its own timestamps. This rule does not sign or notarize artifacts.
 
@@ -62,3 +61,29 @@ The [dfb15d7 assembly suite](https://formatjs.buildbuddy.io/invocation/ad07dce8-
 also passed real ZIP and all four tar rule outputs, changed source paths/mtimes,
 compression boundaries, macOS signed bytes and framework links. This validates
 the compressors in the declared Python toolchain; no host archive tools run.
+
+For `format = "7z"`, supply `sevenzip` as an execution-platform executable label.
+The example pins its standalone Linux 7zip bootstrap tool by SHA-256; consumers
+may provide a Bazel source-built tool. No execution-host search or package manager
+runs during archive creation.
+
+```starlark
+electron_archive(
+    name = "release_7z",
+    app = ":app",
+    format = "7z",
+    sevenzip = ":execution_7zip",
+    compression_level = 1,
+)
+```
+
+7z stages the validated inventory privately, then preserves relative symlinks,
+empty directories, normalized Unix modes and file bytes. Time fields are omitted.
+Compression uses independent LZMA2 streams, a 1 MiB dictionary and two fixed
+threads; level 0 selects Copy. Input paths and mtimes never enter product bytes.
+
+7z validation is pending. BB tests exercise levels 0/1/9, real extraction, changed
+roots/mtimes, executable modes, Unicode names, directory/file links and macOS ZIP
+seal-byte preservation. The Linux example cross-builds both CPUs; its native x64
+smoke uses the host's independent p7zip reader, then launches the relocated app.
+Archive creation remains on BB. Installed-app updates remain a separate contract.

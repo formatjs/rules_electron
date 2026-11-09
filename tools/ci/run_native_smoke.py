@@ -97,6 +97,14 @@ if __name__ == "__main__":
                     "--target-os", "linux", "--target-arch", "x64",
                 ], check=True)
                 print("TAR_RELEASE_SMOKE_OK", flush=True)
+                sevenzip = directory / variant / "packages/release_7z.7z"
+                unpacked = directory / variant / "7z-release"
+                subprocess.run(["7z", "x", "-y", "-bso0", "-bsp0", "-o" + str(unpacked), str(sevenzip)], check=True)
+                subprocess.run([
+                    sys.executable, "examples/desktop/tools/smoke_test.py", str(unpacked / "sample-desktop"),
+                    "--target-os", "linux", "--target-arch", "x64",
+                ], check=True)
+                print("SEVENZIP_RELEASE_SMOKE_OK", flush=True)
                 subprocess.run([sys.executable, "tools/ci/linux_deb_smoke.py", str(directory / variant / "packages")], check=True)
                 subprocess.run([sys.executable, "tools/ci/linux_rpm_container.py", str(directory / variant / "packages")], check=True)
             if variant.endswith("_msvc"):

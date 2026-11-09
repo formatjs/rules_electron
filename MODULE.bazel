@@ -27,3 +27,14 @@ npm_runtime(
     dev_dependency = True,
     lock = "//tests:fixtures/bundled-package-lock.json",
 )
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "sevenzip_linux_x64",
+    build_file_content = "exports_files([\"bin/7zz\"])\n",
+    dev_dependency = True,
+    sha256 = "98ac470cf076f19241b5ee259e135de0adc3c3b8076c41682d6468c2a9990845",
+    strip_prefix = "7zip",
+    urls = ["https://github.com/electron-userland/electron-builder-binaries/releases/download/7zip%401.1.0/7zip-linux-x64.tar.gz"],
+)

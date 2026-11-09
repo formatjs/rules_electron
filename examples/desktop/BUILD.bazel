@@ -98,6 +98,14 @@ electron_archive(
 )
 
 electron_archive(
+    name = "release_7z",
+    app = ":app",
+    compression_level = 1,
+    format = "7z",
+    sevenzip = "@sevenzip_linux_x64//:bin/7zz",
+)
+
+electron_archive(
     name = "release_tar",
     app = ":app",
     compression_level = 1,
@@ -419,6 +427,7 @@ filegroup(
     srcs = [
         ":deb_v1",
         ":deb_v2_feed",
+        ":release_7z",
         ":release_tar",
         ":rpm_v1",
         ":rpm_v2_feed",

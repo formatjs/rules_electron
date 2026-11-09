@@ -122,7 +122,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xvfb libgtk-3-0 libnss3 libasound2 libgbm1 desktop-file-utils shared-mime-info hicolor-icon-theme libglib2.0-bin
+          sudo apt-get install -y --no-install-recommends xvfb libgtk-3-0 libnss3 libasound2 libgbm1 desktop-file-utils shared-mime-info hicolor-icon-theme libglib2.0-bin p7zip-full
       - name: Smoke BB-built apps on native host
         env:
           SMOKE_VARIANTS: ${{ toJSON(matrix.variants) }}

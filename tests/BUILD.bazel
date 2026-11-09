@@ -495,3 +495,16 @@ py_test(
     srcs = ["rpm_test.py"],
     deps = ["//electron/private:rpm_packaging"],
 )
+
+py_test(
+    name = "sevenzip_test",
+    size = "small",
+    srcs = ["sevenzip_test.py"],
+    args = ["$(rootpath @sevenzip_linux_x64//:bin/7zz)"],
+    data = ["@sevenzip_linux_x64//:bin/7zz"],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    deps = ["//electron/private:archives"],
+)

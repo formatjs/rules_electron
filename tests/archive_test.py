@@ -102,7 +102,7 @@ class ArchiveTest(unittest.TestCase):
                     self.assertEqual(archive.extractfile("Sample.app/Contents/_CodeSignature/CodeResources").read(), b"signed resource manifest")
 
     def test_invalid_archive_graphs_fail(self):
-        for format, level in [("7z", 6), ("zip", -1), ("tar.xz", 10), ("tar.bz2", 0)]:
+        for format, level in [("rar", 6), ("zip", -1), ("tar.xz", 10), ("tar.bz2", 0)]:
             with self.subTest(format=format, level=level), self.assertRaises(ValueError):
                 self.archive(format, level=level)
         for target in ("/outside", "../outside", "missing", "link", "C:/outside", "empty/../../outside", "sample/../resource 世界"):
