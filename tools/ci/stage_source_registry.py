@@ -48,9 +48,15 @@ def stage_registry(output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--setup-directory", type=Path)
     args = parser.parse_args()
     try:
         stage_registry(args.output.absolute())
+        if args.setup_directory:
+            source, _ = source_inputs()
+            args.setup_directory.mkdir(parents=True, exist_ok=True)
+            for name in ("source_bootstrap", "source_audit", "source_downloader.cfg"):
+                shutil.copyfile(source / name, args.setup_directory / name)
     except Exception:
         print("SOURCE_REGISTRY_STAGE_FAILED", file=sys.stderr)
         return 1

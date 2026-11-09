@@ -1,5 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
+exports_files(["source_runtime_archive.bzl"])
+
 py_library(
     name = "source_registry",
     srcs = ["stage_source_registry.py"],

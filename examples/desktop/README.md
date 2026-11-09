@@ -34,7 +34,28 @@ including Linux ARM64 without a native host.
 **Temporary bootstrap:** official Electron 39.0.0 distributions are SHA256-pinned
 test runtimes, not source-built Electron or a production release recommendation.
 Replace `:runtime` with source-built `electron_runtime` outputs once the overlay
-links a full runtime. Core rules never download Electron themselves.
+runtime is integrated here. The overlay's standalone Linux x64 source runtime
+now passes browser/renderer/IPC and ASAR smoke. Core rules never download Electron
+themselves.
+
+The BB `Source-built desktop example` workflow reuses this entire fixture in an
+ignored sibling workspace. It replaces Linux x64's runtime with the pinned
+source ZIP; other six variants retain explicit bootstrap runtimes. A producer
+transition selects the Chromium SDK ABI without changing app/addon targets.
+Dependency analysis requires the source runtime and rejects Linux x64 bootstrap
+dependencies before building the usual four native smoke shards. This integration
+is pending hosted validation.
+
+The workflow triggers on `codex/source-example-ci`, so ordinary packaging pushes
+do not rebuild Chromium. Push a reviewed main commit to that branch to run it:
+
+```sh
+git push origin main:codex/source-example-ci
+```
+
+All builds stay on BB; successful source-example status uses the same verified
+artifact handoff and matching native smoke hosts. Its generated module lock is
+retained as a BB artifact while the combined dependency graph stabilizes.
 
 Linux and Windows produce directory artifacts, with executable `sample-desktop`
 or `sample-desktop.exe`. macOS produces `app.zip` containing `Sample Desktop.app`.

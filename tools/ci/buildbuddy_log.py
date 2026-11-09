@@ -7,7 +7,7 @@ import re
 import urllib.request
 from collections import Counter
 
-from buildbuddy_artifacts import NoRedirect, api_request, artifact_uri, invocation_id
+from buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id
 from profile_summary import decode_profile, summarize
 
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     invocation = invocations[0]
     if (invocation.get("commitSha") != os.environ["BUILD_SHA"]
             or invocation.get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron"
-            or invocation.get("pattern") not in ("Cross-build Electron Apps", "Test Linux assembly")):
+            or invocation.get("pattern") not in (*SMOKE_WORKFLOWS, "Test Linux assembly")):
         raise ValueError("Invocation does not match this repository's CI commit")
     tail = read_log(selector, key)
     print(tail)

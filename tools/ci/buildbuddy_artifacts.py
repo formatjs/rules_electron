@@ -19,6 +19,7 @@ except ImportError:
 API = "https://formatjs.buildbuddy.io/api/v1/"
 ARCHIVE = "electron-cross-smoke.zip"
 MAX_BYTES = 2 * 1024**3
+SMOKE_WORKFLOWS = ("Cross-build Electron Apps", "Source-built desktop example")
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -43,7 +44,7 @@ def artifact_uri(response, expected_sha, artifact_name=ARCHIVE, max_bytes=MAX_BY
     invocation = invocations[0]
     if (invocation.get("commitSha") != expected_sha
             or invocation.get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron"
-            or invocation.get("pattern") != "Cross-build Electron Apps"
+            or invocation.get("pattern") not in SMOKE_WORKFLOWS
             or not invocation.get("success")
             or invocation.get("invocationStatus") != "COMPLETE_INVOCATION_STATUS"):
         raise ValueError("Expected successful matrix invocation for this repository and commit")

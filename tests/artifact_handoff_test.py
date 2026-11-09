@@ -34,6 +34,18 @@ class ArtifactHandoffTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             artifact_uri(response, "a" * 40)
 
+    def test_source_workflow_artifacts_keep_exact_commit_and_completion_checks(self):
+        response = self.response()
+        response["invocation"][0]["pattern"] = "Source-built desktop example"
+        self.assertEqual(artifact_uri(response, "a" * 40)[1:], ("b" * 64, 12))
+        for field, value in [("commitSha", "c" * 40), ("success", False),
+                             ("repoUrl", "https://github.com/example/other"),
+                             ("invocationStatus", "PARTIAL_INVOCATION_STATUS")]:
+            invalid = copy.deepcopy(response)
+            invalid["invocation"][0][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                artifact_uri(invalid, "a" * 40)
+
     def test_invocation_host_is_fixed_before_using_credentials(self):
         identifier = "12345678-1234-1234-1234-123456789abc"
         self.assertEqual(invocation_id("https://formatjs.buildbuddy.io/invocation/" + identifier), identifier)

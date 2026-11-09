@@ -47,3 +47,61 @@ actions:
             --experimental_profile_additional_tasks=remote_cache_check \
             //:cross_build_smoke_bundle
           cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"
+
+  - name: "Source-built desktop example"
+    container_image: "ubuntu-24.04"
+    allow_concurrent_runs: false
+    allow_concurrent_runs_on_branches: []
+    timeout: 2h
+    triggers:
+      push:
+        branches: ["codex/source-example-ci"]
+    resource_requests:
+      cpu: 8
+      memory: 32GB
+      disk: 100GB
+    steps:
+      - run: |
+          set -euo pipefail
+          source_root="$PWD"
+          source_setup="$(mktemp -d /tmp/electron-example-setup.XXXXXX)"
+          source_registry="$(mktemp -d /tmp/electron-example-registry.XXXXXX)"
+          source_distdir="$(mktemp -d /tmp/electron-example-distdir.XXXXXX)"
+          bazel run --config=bb-workflow //tools/ci:stage_source_registry -- \
+            --output="$source_registry" --setup-directory="$source_setup"
+          bash "$source_setup/source_bootstrap" "$source_distdir"
+          python3 tools/ci/prefetch_signing_sources.py "$source_distdir"
+          cat tools/ci/public-downloader.cfg "$source_setup/source_downloader.cfg" > "$source_setup/downloader.cfg"
+          python3 tools/ci/prepare_source_example.py \
+            --source="$source_root/examples/desktop" --output="$source_root/examples/source-desktop"
+          cd examples/source-desktop
+          python3 "$source_setup/source_audit" --registry="file://$source_registry" \
+            --downloader-config="$source_setup/downloader.cfg" --distdir="$source_distdir"
+          bazel --host_jvm_args=-Xmx24g cquery --config=bb-workflow --config=msvc-license \
+            --registry="file://$source_registry" --registry=https://bcr.bazel.build \
+            --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
+            'filter("bootstrap_electron_linux_x64", deps(//:cross_build_smoke_bundle))' \
+            --output=label > "$source_setup/bootstrap-deps"
+          test ! -s "$source_setup/bootstrap-deps"
+          bazel --host_jvm_args=-Xmx24g cquery --config=bb-workflow --config=msvc-license \
+            --registry="file://$source_registry" --registry=https://bcr.bazel.build \
+            --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
+            'filter("//source/distribution:runtime$", deps(//:cross_build_smoke_bundle))' \
+            --output=label > "$source_setup/source-deps"
+          test -s "$source_setup/source-deps"
+          echo SOURCE_DESKTOP_DEPENDENCY_AUDIT_PASSED
+          bazel --host_jvm_args=-Xmx24g test --config=bb-workflow \
+            --registry="file://$source_registry" --registry=https://bcr.bazel.build \
+            --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
+            //tools:file_matcher_test
+          bazel --host_jvm_args=-Xmx24g build --config=bb-workflow --config=msvc-license --remote_download_toplevel \
+            --registry="file://$source_registry" --registry=https://bcr.bazel.build \
+            --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
+            --profile="$BUILDBUDDY_ARTIFACTS_DIRECTORY/cross-build-profile.json.gz" \
+            --experimental_profile_additional_tasks=remote_queue \
+            --experimental_profile_additional_tasks=remote_process_time \
+            --experimental_profile_additional_tasks=remote_download \
+            --experimental_profile_additional_tasks=remote_cache_check \
+            //:cross_build_smoke_bundle
+          cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"
+          cp MODULE.bazel.lock "$BUILDBUDDY_ARTIFACTS_DIRECTORY/source-example-MODULE.bazel.lock"

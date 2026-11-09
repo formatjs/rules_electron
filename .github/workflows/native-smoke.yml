@@ -65,7 +65,7 @@ jobs:
   download:
     if: >-
       !inputs.logs_only && (inputs.invocation_url != '' ||
-      (github.event.context == 'Cross-build Electron Apps' &&
+      ((github.event.context == 'Cross-build Electron Apps' || github.event.context == 'Source-built desktop example') &&
       github.event.sender.login == 'buildbuddy-io[bot]' && github.event.state == 'success'))
     runs-on: ubuntu-latest
     strategy:
