@@ -28,7 +28,7 @@ class XorrisoTest(unittest.TestCase):
             image = root / "image.iso"
             environment = {"PATH": "", "HOME": str(root), "TZ": "UTC", "LC_ALL": "C",
                            "SOURCE_DATE_EPOCH": "1577836800"}
-            subprocess.run([TOOL, "-no_rc", "-local_charset", "UTF-8", "-as", "mkisofs", "-hfsplus", "-r", "-apm-block-size", "512",
+            subprocess.run([TOOL, "-no_rc", "-local_charset", "UTF-8", "-as", "mkisofs", "-hfsplus", "-R", "-uid", "0", "-gid", "0", "-apm-block-size", "512",
                             "-input-charset", "UTF-8", "-output-charset", "UTF-8",
                             "-V", "Example", "--modification-date=2020010100000000", "-o", str(image), str(source)],
                            env=environment, check=True, capture_output=True, timeout=60)
