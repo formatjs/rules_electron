@@ -63,9 +63,15 @@ class RpmTest(unittest.TestCase):
             info = tarfile.TarInfo("opt/sample/alias")
             info.type, info.linkname = tarfile.SYMTYPE, "世界"
             archive.addfile(info)
+            info = tarfile.TarInfo("usr/bin")
+            info.type, info.mode = tarfile.DIRTYPE, 0o755
+            archive.addfile(info)
+            info = tarfile.TarInfo("usr/bin/sample")
+            info.mode, info.size = 0o755, 8
+            archive.addfile(info, io.BytesIO(b"launcher"))
         self.options = dict(payload=self.payload, package_json=self.package, package_name="sample", architecture="aarch64",
                             release="8", summary="Sample", description="Sample document app", license="MIT",
-                            requires=["glibc >= 2.31", "libc.so.6()(64bit)"], maintainer="Example")
+                            requires=["glibc >= 2.31", "libc.so.6()(64bit)"], maintainer="Example", app_id="sample")
 
     def test_container_digests_cpio_modes_links_and_reproducibility(self):
         output = self.root / "first.rpm"
@@ -85,6 +91,8 @@ class RpmTest(unittest.TestCase):
         self.assertEqual(files["./opt/sample/世界"], (0o100755, b"payload"))
         self.assertEqual(files["./opt/sample/alias"], (0o120777, "世界".encode()))
         self.assertEqual(files["./opt/sample/empty"], (0o40755, b""))
+        self.assertNotIn("./usr/bin", files)
+        self.assertEqual(files["./usr/bin/sample"], (0o100755, b"launcher"))
         self.assertEqual(tags[1001], ["1.2.3~rc.1"])
         self.assertEqual(tags[1022], ["aarch64"])
         self.assertIn("libc.so.6()(64bit)", tags[1049])

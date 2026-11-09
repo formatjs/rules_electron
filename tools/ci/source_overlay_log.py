@@ -50,10 +50,11 @@ def distribution_failure_context(log):
              for repository, prefix, line, column in re.findall(r"external/(electron[^/\s]*)/((?:[A-Za-z0-9_.+-]+/)*)BUILD\.bazel:(\d+):(\d+)", log)]
     identifiers = set(json.loads(Path(__file__).with_name("public_source_identifiers.json").read_text()))
     targets = json.loads(Path(__file__).with_name("public_source_targets.json").read_text())
+    source_names = {label.rsplit(":", 1)[-1] for label in targets.values()}
     loaders = []
     for executable, library in re.findall(r"(?:^|[/\s])([A-Za-z0-9_.+-]+): error while loading shared libraries: (lib[A-Za-z0-9_.+-]+)", log):
         target = re.search(r"target_[0-9a-f]{16}", executable)
-        name = executable if executable in identifiers or executable.split(".")[0] in identifiers else targets.get(target[0]) if target else None
+        name = executable if executable in identifiers or executable in source_names or executable.split(".")[0] in identifiers else targets.get(target[0]) if target else None
         loaders.append({"executable": name, "library": library})
     return {"sites": sites[:8], "loaders": loaders[:8]}
 

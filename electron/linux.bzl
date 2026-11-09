@@ -139,6 +139,7 @@ def _rpm_impl(ctx):
     scripts = {name: getattr(ctx.file, name) for name in ["prein", "postin", "preun", "postun"]}
     ctx.actions.write(manifest, json.encode(dict({
         "payload": ctx.file.payload.path,
+        "app_id": app.app_id,
         "package_json": app.package_json.path,
         "package_name": ctx.attr.package_name,
         "architecture": architecture,

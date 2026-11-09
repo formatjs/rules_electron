@@ -37,8 +37,10 @@ def main(directory):
         assert "Header SHA256 digest: OK" in verification and "Payload SHA256 digest: OK" in verification
         assert command("rpm", "-qp", "--qf", "%{ARCH}", str(package)) == "x86_64"
         assert "gtk3" in command("rpm", "-qp", "--requires", str(package))
+    installed = False
     try:
         command("sudo", "dnf", "-y", "install", str(first))
+        installed = True
         assert version() == "1.0.0-7"
         assert command("rpm", "-V", PACKAGE) == ""
         assert (Path("/opt") / APP_ID / "resources/package-type").read_text().strip() == "rpm"
@@ -97,7 +99,8 @@ sys.exit(subprocess.run(["/usr/bin/sudo", "-n", "/usr/bin/dnf", "-y", "install",
         mime_icon_smoke()
         launch("2.0.0")
     finally:
-        command("sudo", "rpm", "-e", PACKAGE)
+        if installed:
+            command("sudo", "rpm", "-e", PACKAGE)
     for path in [Path("/opt") / APP_ID, LAUNCHER, DOCUMENT_ICON,
                  Path("/usr/share/applications") / (APP_ID + ".desktop"),
                  Path("/usr/share/mime/packages") / (APP_ID + ".xml")]:

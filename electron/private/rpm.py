@@ -94,7 +94,7 @@ class Payload:
 
 
 def build_rpm(payload, package_json, package_name, architecture, release, summary, description,
-              license, requires, maintainer, output, prein="", postin="", preun="", postun=""):
+              license, requires, maintainer, app_id, output, prein="", postin="", preun="", postun=""):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]*", package_name):
         raise ValueError("Invalid RPM package name")
     if architecture not in ("x86_64", "aarch64"):
@@ -108,6 +108,9 @@ def build_rpm(payload, package_json, package_name, architecture, release, summar
     dependencies = requirements(requires)
     if any([prein, postin, preun, postun]):
         dependencies.append(("/bin/sh", "", 0))
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", app_id):
+        raise ValueError("Invalid RPM app_id")
+    prefix = "opt/" + app_id
     files = []
     with tempfile.TemporaryDirectory() as temporary:
         compressed = Path(temporary) / "payload.gz"
@@ -121,6 +124,8 @@ def build_rpm(payload, package_json, package_name, architecture, release, summar
                     if not path.parts or path.is_absolute() or ".." in path.parts or str(path) != name or "\0" in name or name in seen:
                         raise ValueError("Invalid or duplicate RPM payload path")
                     seen.add(name)
+                    if entry.isdir() and name != prefix and not name.startswith(prefix + "/"):
+                        continue
                     if entry.size > 0xffffffff:
                         raise ValueError("RPM v4 payload files must be smaller than 4 GiB")
                     if entry.isfile():

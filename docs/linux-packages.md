@@ -99,7 +99,8 @@ electron_rpm(
 ```
 
 Payload layout, desktop/MIME/icons, internal links and optional setuid helper
-follow the DEB contract. `release` defaults to the app build number, then `1`.
+follow the DEB contract. RPM owns private app directories and installed files;
+shared OS directory ownership stays with distribution packages. `release` defaults to the app build number, then `1`.
 RPM versions map SemVer prereleases to `~`; SemVer build metadata does not affect
 RPM version ordering. App and updater versions retain the full manifest version.
 `requires` accepts capability names and simple comparisons such as
