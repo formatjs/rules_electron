@@ -8,28 +8,29 @@ $signed = Join-Path $Packages 'msix_signed_probe.msix'
 $unsigned = Join-Path $Packages 'msix_probe.msix'
 $changed = Join-Path $Packages 'msix_signed_probe.tampered.msix'
 $certificateFile = Join-Path $Packages 'msix_signed_probe.cer'
+$reader = Join-Path $Packages 'msix_reader.exe'
+function Assert-Trust([string]$Path, [string]$Expected) {
+  & $reader --signature $Path $Expected
+  if ($LASTEXITCODE -ne 0) { throw 'MSIX native trust check failed' }
+}
 $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($certificateFile)
 $certificatePath = 'Cert:\LocalMachine\TrustedPeople\' + $certificate.Thumbprint
 if (Test-Path -LiteralPath $certificatePath) { throw 'MSIX fixture certificate already trusted' }
 if (Get-AppxPackage -Name $identity) { throw 'MSIX fixture package already installed' }
-if ((Get-AuthenticodeSignature -LiteralPath $unsigned).Status -ne 'NotSigned') {
-  throw 'MSIX unsigned package status unexpected'
-}
+Assert-Trust $unsigned 'unsigned'
+Assert-Trust $signed 'untrusted'
 $untrusted = Get-AuthenticodeSignature -LiteralPath $signed
-if ($untrusted.Status -ne 'NotTrusted') { throw ('MSIX untrusted signature status: ' + $untrusted.Status) }
 if ($untrusted.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) { throw 'MSIX signer certificate mismatch' }
 Write-Output 'MSIX_UNTRUSTED_CERTIFICATE_REJECTED'
 $trusted = $false
 try {
   Import-Certificate -FilePath $certificateFile -CertStoreLocation 'Cert:\LocalMachine\TrustedPeople' | Out-Null
   $trusted = $true
+  Assert-Trust $signed 'valid'
   $verified = Get-AuthenticodeSignature -LiteralPath $signed
-  if ($verified.Status -ne 'Valid' -or $verified.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) {
-    throw ('MSIX trusted signature status: ' + $verified.Status)
-  }
+  if ($verified.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) { throw 'MSIX trusted signer certificate mismatch' }
   Write-Output 'MSIX_WINDOWS_SIGNATURE_OK'
-  $tampered = Get-AuthenticodeSignature -LiteralPath $changed
-  if ($tampered.Status -ne 'HashMismatch') { throw ('MSIX tamper status: ' + $tampered.Status) }
+  Assert-Trust $changed 'tampered'
   Write-Output 'MSIX_WINDOWS_SIGNATURE_TAMPER_REJECTED'
   Add-AppxPackage -Path $signed
   $package = Get-AppxPackage -Name $identity

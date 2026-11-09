@@ -561,6 +561,7 @@ cc_binary(
     linkopts = [
         "ole32.lib",
         "shlwapi.lib",
+        "wintrust.lib",
     ],
     target_compatible_with = ["@platforms//os:windows"],
 )

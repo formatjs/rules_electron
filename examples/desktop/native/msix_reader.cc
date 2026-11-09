@@ -2,6 +2,8 @@
 #include <appxpackaging.h>
 #include <shlwapi.h>
 #include <wrl/client.h>
+#include <wintrust.h>
+#include <softpub.h>
 
 #include <cstdio>
 #include <cstdlib>
@@ -23,6 +25,35 @@ static void require(bool condition, const char* step) {
     std::fprintf(stderr, "MSIX_ASSERT_FAILURE %s\n", step);
     std::exit(1);
   }
+}
+
+static void validate_signature(const wchar_t* path, const wchar_t* expected) {
+  WINTRUST_FILE_INFO file{};
+  file.cbStruct = sizeof(file);
+  file.pcwszFilePath = path;
+  WINTRUST_DATA trust{};
+  trust.cbStruct = sizeof(trust);
+  trust.dwUIChoice = WTD_UI_NONE;
+  trust.fdwRevocationChecks = WTD_REVOKE_NONE;
+  trust.dwUnionChoice = WTD_CHOICE_FILE;
+  trust.pFile = &file;
+  trust.dwStateAction = WTD_STATEACTION_VERIFY;
+  trust.dwProvFlags = WTD_REVOCATION_CHECK_NONE | WTD_CACHE_ONLY_URL_RETRIEVAL;
+  GUID action = WINTRUST_ACTION_GENERIC_VERIFY_V2;
+  const LONG result = WinVerifyTrust(INVALID_HANDLE_VALUE, &action, &trust);
+  trust.dwStateAction = WTD_STATEACTION_CLOSE;
+  WinVerifyTrust(INVALID_HANDLE_VALUE, &action, &trust);
+  std::printf("MSIX_TRUST_RESULT 0x%08lx\n", static_cast<unsigned long>(result));
+  bool matches = false;
+  if (std::wcscmp(expected, L"unsigned") == 0)
+    matches = result == TRUST_E_NOSIGNATURE;
+  else if (std::wcscmp(expected, L"untrusted") == 0)
+    matches = result == CERT_E_UNTRUSTEDROOT;
+  else if (std::wcscmp(expected, L"valid") == 0)
+    matches = result == ERROR_SUCCESS;
+  else if (std::wcscmp(expected, L"tampered") == 0)
+    matches = result == TRUST_E_BAD_DIGEST;
+  require(matches, "signature_trust_result");
 }
 
 static void validate(IAppxFile* file, IAppxBlockMapReader* blockmap,
@@ -63,6 +94,10 @@ static void validate(IAppxFile* file, IAppxBlockMapReader* blockmap,
 }
 
 int wmain(int argc, wchar_t** argv) {
+  if (argc == 4 && std::wcscmp(argv[1], L"--signature") == 0) {
+    validate_signature(argv[2], argv[3]);
+    return 0;
+  }
   require(argc == 2, "arguments");
   check(CoInitializeEx(nullptr, COINIT_MULTITHREADED), "com_initialize");
   ComPtr<IAppxFactory> factory;
