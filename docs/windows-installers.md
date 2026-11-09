@@ -3,13 +3,16 @@
 `@rules_electron//electron/tools:windows_elevate` builds a native elevation bridge
 for the selected Windows CPU/compiler. Map it to `resources/elevate.exe` for the
 pinned electron-updater NSIS elevation contract. It accepts an absolute executable
-path followed by arguments, invokes the Windows `runas` verb, waits and returns
-the child exit code. Unicode, empty arguments, quotes and trailing backslashes
+path followed by arguments and invokes the Windows `runas` verb. Default launch
+exits after process creation, releasing the helper image before an updater
+replaces the installed app. An initial `--wait` waits and returns the child exit
+code for explicit release/test commands. Unicode, empty arguments, quotes and trailing backslashes
 are preserved without a shell interpreter. The helper uses the Windows GUI
 subsystem, so updater launch does not open a console window.
 
 Compilation runs on BB Linux. Matching Windows smoke checks the native PE CPU,
-elevated child token, exact arguments, exit status and invalid-input failures for
+elevated child token, exact arguments, exit status, detached launch without an
+installer-file lock, and invalid-input failures for
 both compiler variants. Validation is pending. Already elevated disposable runners
 exercise the bridge without an interactive UAC prompt. Consent/cancellation and
 per-machine installer/update lifecycle remain open; adding this helper alone does

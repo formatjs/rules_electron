@@ -30,6 +30,15 @@ int main() {
   const DWORD expected = static_cast<DWORD>(payload.size() * sizeof(wchar_t));
   const bool complete = WriteFile(output, payload.data(), expected, &written, nullptr) && written == expected;
   CloseHandle(output);
+  if (count >= 4 && std::wstring(arguments[2]) == L"--hold") {
+    DWORD waited = 0;
+    while (GetFileAttributesW(arguments[3]) == INVALID_FILE_ATTRIBUTES) {
+      if (waited >= 30000)
+        return 6;
+      Sleep(20);
+      waited += 20;
+    }
+  }
   LocalFree(arguments);
   return complete ? 37 : 5;
 }

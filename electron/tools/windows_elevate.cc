@@ -28,9 +28,11 @@ std::wstring Quote(std::wstring_view argument) {
 }
 
 DWORD Elevate(int count, wchar_t** arguments) {
-  if (count < 2)
+  const bool wait = count > 1 && std::wstring_view(arguments[1]) == L"--wait";
+  const int executable_index = wait ? 2 : 1;
+  if (count <= executable_index)
     return ERROR_INVALID_PARAMETER;
-  const std::wstring executable = arguments[1];
+  const std::wstring executable = arguments[executable_index];
   const bool absolute = executable.compare(0, 2, L"\\\\") == 0 ||
       (executable.size() >= 3 && executable[1] == L':' &&
        (executable[2] == L'\\' || executable[2] == L'/'));
@@ -45,7 +47,7 @@ DWORD Elevate(int count, wchar_t** arguments) {
   if (!GetBinaryTypeW(executable.c_str(), &binary_type))
     return GetLastError();
   std::wstring parameters;
-  for (int index = 2; index < count; ++index) {
+  for (int index = executable_index + 1; index < count; ++index) {
     if (!parameters.empty())
       parameters += L' ';
     parameters += Quote(arguments[index]);
@@ -64,6 +66,10 @@ DWORD Elevate(int count, wchar_t** arguments) {
     return GetLastError();
   if (!operation.hProcess)
     return ERROR_INVALID_HANDLE;
+  if (!wait) {
+    CloseHandle(operation.hProcess);
+    return ERROR_SUCCESS;
+  }
   DWORD exit_code = ERROR_GEN_FAILURE;
   if (WaitForSingleObject(operation.hProcess, INFINITE) != WAIT_OBJECT_0 ||
       !GetExitCodeProcess(operation.hProcess, &exit_code))
