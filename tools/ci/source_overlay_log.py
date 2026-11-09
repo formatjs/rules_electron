@@ -382,6 +382,8 @@ def source_test_diagnostics(identifier, key, selected=None):
                     details["python_exceptions"] = sorted({name for name in ("JSONDecodeError", "FileNotFoundError", "KeyError", "ValueError", "TypeError", "CalledProcessError", "TimeoutExpired", "AssertionError") if re.search(r"\b" + name + ":", log)})
                     python_files = public_basenames | {"runtime_archive.py", "archive_test.py", "runtime_test.py", "metadata_test.py", "generate_credits.py", "credits_inputs.py", "credits_test.py"}
                     details["public_python_sites"] = [{"file": path.rsplit("/", 1)[-1], "line": int(line)} for path, line in re.findall(r'File "([^"\n]+)", line ([0-9]{1,5})', log) if path.rsplit("/", 1)[-1] in python_files and 0 < int(line) < 10000][-8:]
+                if probe == "runtime_archive" and any(site["file"] == "archive_test.py" for site in details.get("public_python_sites", [])):
+                    details["public_nss_probe_exit_codes"] = sorted({int(code) for code in re.findall(r"(?m)^AssertionError: ([1-8]) != 0\r?$", log)})
                 if probe == "content_webui":
                     methods = ["test_tracing_pack_preserves_original_html_and_javascript", "test_distiller_pack_inlines_pinned_javascript_and_preserves_valid_syntax", "test_electron_repack_preserves_discovery_page_and_component_payloads", "test_neterror_pack_inlines_both_original_image_scales", "test_final_pack_preserves_linux_branding_image", "test_unscaled_resource_pack_preserves_linux_branding_image", "test_final_pack_preserves_unscaled_webid_include_images"]
                     details["failed_methods"] = [name for name in methods if re.search(r"(?:FAIL|ERROR): " + name + r"\b", log)]
