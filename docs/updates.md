@@ -73,6 +73,16 @@ hash rejection and installed-app upgrades.
 differential range downloads. Other targets,
 signature rejection and release-identity verification remain pending.
 
+The macOS ARM64 lifecycle gate adds BB-signed v1/v2 ZIPs and a candidate signed
+by a different public test key. Signing uses fixed certificate dates, a fixed
+signing time and no timestamp service; the action checks repeated output bytes.
+No release credentials enter those fixture actions. The native host temporarily
+trusts only the declared public fixture for code signing, then tests corrupt ZIP
+rejection, wrong-identity rejection, real Squirrel replacement/relaunch and full
+v2 app behavior. It removes that trust and its temporary keychain afterward.
+These lifecycle results remain unverified until the hosted job passes; fixture
+trust does not prove production Developer ID/notarization acceptance.
+
 Protocol references: [auto update](https://www.electron.build/v26/docs/features/auto-update/),
 [channel routing](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/providers/Provider.ts),
 [external blockmap reader](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/AppUpdater.ts).

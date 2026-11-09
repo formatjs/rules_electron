@@ -25,6 +25,7 @@ def desktop_app(name, package_json, empty_resources = True, **kwargs):
             "@updater_npm//:runtime": "node_modules",
             "updater-smoke.cjs": "updater-smoke.cjs",
             "installed-update-smoke.cjs": "installed-update-smoke.cjs",
+            "macos-update-smoke.cjs": "macos-update-smoke.cjs",
         },
         app_id = "org.example.sample-desktop",
         macos_extra_plist = select({

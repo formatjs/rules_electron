@@ -64,6 +64,10 @@ app.whenReady().then(async () => {
     watchdog = setTimeout(() => app.exit(1), 20000);
     return;
   }
+  if (process.argv.includes('--mac-update-smoke')) {
+    await require('./macos-update-smoke.cjs')();
+    return;
+  }
   if (process.argv.includes('--install-update-smoke') || process.argv.includes('--reject-update-smoke')) {
     await require('./installed-update-smoke.cjs')(process.argv.includes('--reject-update-smoke'));
     return;

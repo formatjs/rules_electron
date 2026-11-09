@@ -18,6 +18,12 @@ load(":npm_lock_test.bzl", "npm_lock_test")
 
 npm_lock_test(name = "npm_lock_test")
 
+py_test(
+    name = "macos_update_smoke_test",
+    srcs = ["macos_update_smoke_test.py"],
+    deps = ["//tools/ci:macos_update_smoke"],
+)
+
 electron_macos_dmg_release_tool(
     name = "dmg_release_cli",
     signer = "@rcodesign_linux_x64//:rcodesign",
@@ -929,6 +935,22 @@ alias(
     name = "public_fixture_key",
     actual = "@openssl_public_test_key//file",
     visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "other_public_fixture_key",
+    actual = "@openssl_other_public_test_key//file",
+    visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "macos_sign_fixture",
+    srcs = ["macos_sign_fixture.py"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//electron/private:assembly",
+        "//electron/tools:notarization",
+    ],
 )
 
 cc_binary(

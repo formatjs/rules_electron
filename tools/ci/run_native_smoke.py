@@ -130,6 +130,7 @@ if __name__ == "__main__":
                     print("DMG_NATIVE_SMOKE_OK", flush=True)
                 finally:
                     subprocess.run(["/usr/bin/hdiutil", "detach", str(mount)], check=True, timeout=120)
+                subprocess.run([sys.executable, "tools/ci/macos_update_smoke.py", str(directory / variant / "packages")], check=True)
             if variant == "linux_x86_64":
                 release = directory / variant / "packages/release_tar.tar.gz"
                 extracted = directory / variant / "tar-release"

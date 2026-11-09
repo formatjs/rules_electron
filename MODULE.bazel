@@ -144,3 +144,9 @@ http_file(
     sha256 = "da972fe61f793c4b2b71ae3526dd2157bc52d1310df4d333894fc2e934d8cac7",
     urls = ["https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.9/test/certs/ee-key.pem"],
 )
+
+http_file(
+    name = "openssl_other_public_test_key",
+    sha256 = "92a47fb08a0585b019f35815b9667535b48b41562e61ea9cb5a5ef465901cfb5",
+    urls = ["https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.9/test/certs/ca-key.pem"],
+)

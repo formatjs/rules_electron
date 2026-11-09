@@ -1,5 +1,11 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
+py_library(
+    name = "macos_update_smoke",
+    srcs = ["macos_update_smoke.py"],
+    visibility = ["//tests:__pkg__"],
+)
+
 exports_files(["source_runtime_archive.bzl"])
 
 py_library(

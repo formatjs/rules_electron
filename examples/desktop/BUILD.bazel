@@ -17,6 +17,7 @@ load("@rules_electron//electron:windows.bzl", "electron_windows_resource_tool")
 load("@rules_python//python:defs.bzl", "py_test")
 load("//tools:cross_bundle.bzl", "cross_smoke_bundle")
 load("//tools:icon.bzl", "example_icon")
+load("//tools:macos_fixture.bzl", "signed_macos_fixture")
 load("//tools:msix_fixture.bzl", "msix_fixture_app", "signed_msix_fixture")
 load(":desktop_app.bzl", "desktop_app")
 
@@ -99,9 +100,60 @@ electron_dmg(
 
 filegroup(
     name = "macos_release_files",
-    srcs = [":release_dmg"],
+    srcs = [
+        ":macos_bad_identity_feed",
+        ":macos_update_certificate",
+        ":macos_update_v1",
+        ":macos_update_v2_feed",
+        ":release_dmg",
+    ],
     target_compatible_with = ["@platforms//os:osx"],
 )
+
+signed_macos_fixture(
+    name = "macos_update_v1",
+    app = ":app",
+    entitlements = "entitlements.plist",
+    target_compatible_with = ["@platforms//os:osx"],
+)
+
+signed_macos_fixture(
+    name = "macos_update_v2",
+    app = ":app_v2",
+    entitlements = "entitlements.plist",
+    target_compatible_with = ["@platforms//os:osx"],
+)
+
+signed_macos_fixture(
+    name = "macos_bad_identity",
+    app = ":app_v2",
+    entitlements = "entitlements.plist",
+    target_compatible_with = ["@platforms//os:osx"],
+    wrong_identity = True,
+)
+
+filegroup(
+    name = "macos_update_certificate",
+    srcs = [":macos_update_v1"],
+    output_group = "certificate",
+    target_compatible_with = ["@platforms//os:osx"],
+)
+
+[
+    electron_update_feed(
+        name = name,
+        architecture = "arm64",
+        artifacts = {artifact: "Sample-2.0.0-arm64-mac.zip"},
+        package_json = "package-v2.json",
+        platform = "macos",
+        release_date = "2026-01-02T03:04:05Z",
+        target_compatible_with = ["@platforms//os:osx"],
+    )
+    for name, artifact in [
+        ("macos_update_v2_feed", ":macos_update_v2"),
+        ("macos_bad_identity_feed", ":macos_bad_identity"),
+    ]
+]
 
 electron_asar(
     name = "shared_archive",
@@ -342,10 +394,6 @@ desktop_app(
 desktop_app(
     name = "app_v2",
     package_json = "package-v2.json",
-    target_compatible_with = select({
-        ":macos": ["@platforms//:incompatible"],
-        "//conditions:default": [],
-    }),
 )
 
 electron_nsis_tool(
