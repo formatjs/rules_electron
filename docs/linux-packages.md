@@ -28,8 +28,11 @@ Square PNG headers select the hicolor pixel-size directory; SVG uses `scalable`.
 Files install in `mimetypes/` using the
 [standard MIME icon name](https://specifications.freedesktop.org/shared-mime-info/latest/ar01s02.html):
 the MIME type with `/` replaced by `-`. Unknown MIME mappings, duplicate sizes,
-non-square PNGs, malformed PNG headers/chunks and non-SVG roots fail packaging. Native icon resolution,
-pixel decoding and purge validation are pending.
+non-square PNGs, malformed PNG headers/chunks and non-SVG roots fail packaging. [BB tests](https://formatjs.buildbuddy.io/invocation/fb94dbba-3278-42e5-bd81-82bbc4d7ee10),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/e5b19f38-f0ff-4c51-b0ff-bba60be49d74)
+and [native Linux x64 smoke](https://github.com/formatjs/rules_electron/actions/runs/42539365870/job/128910750036)
+passed for af0448f: icon lookup and PNG decoding after v1 installation and real
+DebUpdater v2 installation, followed by purge.
 GTK can choose a current theme's generic MIME icon before inherited hicolor
 icons; see [theme lookup order](https://docs.gtk.org/gtk3/method.IconTheme.choose_icon.html).
 The smoke checks named lookup through normal theme inheritance and GIO MIME
