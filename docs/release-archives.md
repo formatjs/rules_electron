@@ -82,8 +82,13 @@ empty directories, normalized Unix modes and file bytes. Time fields are omitted
 Compression uses independent LZMA2 streams, a 1 MiB dictionary and two fixed
 threads; level 0 selects Copy. Input paths and mtimes never enter product bytes.
 
-7z validation is pending. BB tests exercise levels 0/1/9, real extraction, changed
-roots/mtimes, executable modes, Unicode names, directory/file links and macOS ZIP
-seal-byte preservation. The Linux example cross-builds both CPUs; its native x64
-smoke uses the host's independent p7zip reader, then launches the relocated app.
+[BB tests](https://formatjs.buildbuddy.io/invocation/f1b88d88-6931-46ac-b4bb-240edab428e6)
+passed levels 0/1/9, real extraction, changed roots/mtimes, executable modes,
+Unicode names, directory/file links and macOS ZIP seal-byte preservation.
+[BB cross-build matrix](https://formatjs.buildbuddy.io/invocation/ce7223d5-b1b1-4b20-b116-32613f2579ae)
+passed, with 7z outputs for both Linux CPUs. The native Linux x64
+[7z extraction/launch gate](https://github.com/formatjs/rules_electron/actions/runs/42543234956/job/128922799241)
+passed with independent p7zip (`SEVENZIP_RELEASE_SMOKE_OK`). The later RPM
+installed-update gate failed on the older client's dnf detector; this link
+establishes archive extraction/launch coverage, not a green combined job.
 Archive creation remains on BB. Installed-app updates remain a separate contract.
