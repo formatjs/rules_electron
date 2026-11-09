@@ -86,3 +86,35 @@ already contains its raw-deflate v2 map and big-endian size trailer. The feed
 validates coverage and emits `blockMapSize`. The [installed AppImage gate](https://github.com/formatjs/rules_electron/actions/runs/42556985004)
 passed real client replacement on Linux x64, with FUSE launch, hash rejection,
 versioned/custom filenames and 99.7% differential reuse. See [AppImage](appimage.md).
+
+Generic HTTP publication uses `@rules_electron//electron/tools:publish_update`.
+Run it explicitly from the BB Linux release workflow after building and downloading
+the feed output. Build the publisher for Linux, independently of the feed's target
+platform. Pass its absolute output directory as `--feed`:
+
+```sh
+bazel run --config=bb-workflow @rules_electron//electron/tools:publish_update -- \
+  --feed "$release_feed_directory" --channel latest.yml \
+  --destination https://releases.example.com/windows/arm64/ \
+  --token-env RELEASE_TOKEN
+```
+
+Supply `RELEASE_TOKEN` privately to the release process. Its value never enters
+rule attributes or artifact build actions. Omit `--token-env` for anonymous
+endpoints. Publication is an explicit network side effect; artifact construction
+remains hermetic. No external publication runs in ordinary CI.
+
+The destination must support conditional HTTP PUT, HEAD and GET. Before making
+requests, the tool snapshots the flat native feed, checks SHA-512/size metadata,
+checks each external blockmap against payload bytes, and rejects extra files or
+symlinks. Payloads and blockmaps upload before channel metadata, using
+`If-None-Match: *`. Existing immutable objects are reused only after downloading
+and verifying identical bytes. Rerunning resumes interrupted uploads.
+
+An existing channel must expose a strong ETag. Its final write uses `If-Match`;
+a new channel uses `If-None-Match: *`. Concurrent changes fail publication instead
+of overwriting channel metadata. The release workflow chooses versions and must
+serialize intended promotions. Redirects and asynchronous HTTP 202 responses fail.
+HTTPS is required; `--allow-http-loopback` exists for socket-based CI tests only.
+Object-store-specific APIs, GitHub Releases and credential-provider adapters remain
+separate migration work.

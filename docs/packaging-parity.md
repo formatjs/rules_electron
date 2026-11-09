@@ -80,3 +80,8 @@ explicitly. See [MSIX](msix.md).
 MSIX URI/file handler registration also passed native Shell enumeration after
 install and upgrade, then removal checks on both Windows CPUs. Rich document
 metadata, custom document icons and activation delivery remain open.
+
+Generic conditional HTTP publication now has an explicit release tool and real
+socket-based integration tests: verified immutable payloads/blockmaps upload
+before ETag-guarded channel promotion. Hosted validation is pending. Provider
+APIs and production publication remain open. See [updates](updates.md).

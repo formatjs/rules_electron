@@ -312,6 +312,18 @@ py_test(
 )
 
 py_test(
+    name = "publication_test",
+    size = "small",
+    srcs = ["publication_test.py"],
+    args = ["$(rootpath //electron/tools:publish_update)"],
+    data = ["//electron/tools:publish_update"],
+    deps = [
+        "//electron/private:updates",
+        "//electron/tools:publication",
+    ],
+)
+
+py_test(
     name = "update_test",
     size = "small",
     srcs = ["update_test.py"],

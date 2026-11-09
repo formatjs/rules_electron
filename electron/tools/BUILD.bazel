@@ -1,6 +1,20 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//third_party:appimage_runtime.bzl", "static_pie_runtime")
 
 package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "publication",
+    srcs = ["publish_update.py"],
+    deps = ["//electron/private:updates"],
+)
+
+py_binary(
+    name = "publish_update",
+    srcs = ["publish_update.py"],
+    main = "publish_update.py",
+    deps = ["//electron/private:updates"],
+)
 
 alias(
     name = "mksquashfs",
