@@ -91,8 +91,14 @@ class RpmTest(unittest.TestCase):
         self.assertEqual(tags[1035][1], hashlib.sha256(b"payload").hexdigest())
         before = self.payload.read_bytes()
         os.utime(self.payload, (123456789, 123456789))
-        build_rpm(output=self.root / "second.rpm", **self.options)
-        self.assertEqual(data, (self.root / "second.rpm").read_bytes())
+        mirror = self.root / "relocated 世界"
+        mirror.mkdir()
+        copied_payload, copied_package = mirror / "payload.tar.gz", mirror / "manifest.json"
+        copied_payload.write_bytes(before)
+        copied_package.write_bytes(self.package.read_bytes())
+        os.utime(copied_payload, (918273645, 918273645))
+        build_rpm(output=mirror / "second.rpm", **dict(self.options, payload=copied_payload, package_json=copied_package))
+        self.assertEqual(data, (mirror / "second.rpm").read_bytes())
         self.assertEqual(before, self.payload.read_bytes())
 
     def test_invalid_metadata_and_unsafe_payloads_fail(self):

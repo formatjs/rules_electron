@@ -44,6 +44,15 @@ def public_action_targets(log):
     return sorted({targets[name] for name in re.findall(r"\btarget_[0-9a-f]{16}", log) if name in targets})[:8]
 
 
+def distribution_failure_context(log):
+    log = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", log)
+    sites = [{"file": path, "line": int(line), "column": int(column)}
+             for path, line, column in re.findall(r"\b(source/(?:distribution|default_app|credits)/BUILD\.bazel):(\d+):(\d+)", log)]
+    loaders = [{"executable": executable, "library": library}
+               for executable, library in re.findall(r"\b(python3(?:\.1[123])?|node|electron|patchelf): error while loading shared libraries: (lib[A-Za-z0-9_.+-]+)", log)]
+    return {"sites": sites[:8], "loaders": loaders[:8]}
+
+
 def classify(log):
     patterns = {
         "UNKNOWN_OPTION": r"Unrecognized option|unrecognized flag|bad option",
@@ -507,7 +516,7 @@ def failed_action_diagnostics(identifier, key):
             known = next((name for name in candidates if name in public_files), None)
             if known and 0 < int(line) < 10000 and 0 < int(column) < 10000:
                 ts_sites.append({"file": known, "line": int(line), "column": int(column), "code": code})
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_action_targets": public_action_targets(log), "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_constraint_identifiers": cpp_constraints, "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_missing_input_basenames": sorted(missing_basenames)[:8], "python_exceptions": python_exceptions, "public_python_error_identifiers": python_error_identifiers, "public_missing_modules": sorted(missing_modules)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers, "public_missing_shared_libraries": missing_shared_libraries}, sort_keys=True))
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_action_targets": public_action_targets(log), "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_constraint_identifiers": cpp_constraints, "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_missing_input_basenames": sorted(missing_basenames)[:8], "python_exceptions": python_exceptions, "public_python_error_identifiers": python_error_identifiers, "public_missing_modules": sorted(missing_modules)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers, "public_missing_shared_libraries": missing_shared_libraries, "distribution_failure_context": distribution_failure_context(log)}, sort_keys=True))
 
 
 if __name__ == "__main__":
@@ -541,7 +550,7 @@ if __name__ == "__main__":
 
     log = read_log({"invocation_id": identifier}, key)
     public_headers = set(json.loads(Path(__file__).with_name("public_source_headers.json").read_text()))
-    print("Source workflow diagnostics:", json.dumps({"log_bytes": len(log.encode()), "diagnostics": classify(log), "network": network_diagnostics(log), "public_missing_headers": missing_headers(log, public_headers), "public_failure_identifiers": public_failures(log)}, sort_keys=True))
+    print("Source workflow diagnostics:", json.dumps({"log_bytes": len(log.encode()), "diagnostics": classify(log), "network": network_diagnostics(log), "public_missing_headers": missing_headers(log, public_headers), "public_failure_identifiers": public_failures(log), "distribution_failure_context": distribution_failure_context(log)}, sort_keys=True))
     source_profile_diagnostics(root, key)
     for child in root.get("childInvocations", [])[:32]:
         identifier = child["invocationId"]
@@ -552,7 +561,7 @@ if __name__ == "__main__":
         if not 0 <= duration <= 7 * 24 * 3600 * 1000000:
             raise ValueError("Source phase duration exceeds limit")
         command = value.get("command") if value.get("command") in ("build", "test") else "unknown"
-        print("Source child:", json.dumps({"id": identifier, "state": status, "command": command, "duration_usec": duration, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log), "network": network_diagnostics(log), "public_missing_headers": missing_headers(log, public_headers), "public_action_targets": public_action_targets(log), "public_failure_identifiers": public_failures(log), "public_sources": public_sources(log)}, sort_keys=True))
+        print("Source child:", json.dumps({"id": identifier, "state": status, "command": command, "duration_usec": duration, "success": value.get("success") is True, "log_bytes": len(log.encode()), "diagnostics": classify(log), "network": network_diagnostics(log), "public_missing_headers": missing_headers(log, public_headers), "public_action_targets": public_action_targets(log), "public_failure_identifiers": public_failures(log), "distribution_failure_context": distribution_failure_context(log), "public_sources": public_sources(log)}, sort_keys=True))
         resource_diagnostics(identifier, key)
         if value.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS" and not value.get("success"):
             failed_action_diagnostics(identifier, key)
