@@ -1,0 +1,38 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "osslsigncode",
+    srcs = [
+        "appx.c",
+        "cab.c",
+        "cat.c",
+        "config.h",
+        "helpers.c",
+        "helpers.h",
+        "msi.c",
+        "osslsigncode.c",
+        "osslsigncode.h",
+        "pe.c",
+        "script.c",
+        "utf.c",
+        "utf.h",
+    ],
+    copts = ["-std=gnu11"],
+    local_defines = [
+        "_GNU_SOURCE",
+        "HAVE_CONFIG_H=1",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        "@openssl//:ssl",
+        "@zlib",
+    ],
+)
+
+exports_files([
+    "tests/files/unsigned.exe",
+    "COPYING.txt",
+    "LICENSE.txt",
+])

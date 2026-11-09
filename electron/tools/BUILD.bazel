@@ -28,3 +28,8 @@ static_pie_runtime(
     linkopts = ["-static-pie"],
     target_compatible_with = ["@platforms//os:linux"],
 )
+
+alias(
+    name = "osslsigncode",
+    actual = "@osslsigncode_sources//:osslsigncode",
+)

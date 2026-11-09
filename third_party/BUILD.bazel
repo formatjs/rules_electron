@@ -1,6 +1,8 @@
 load("@rules_python//python:defs.bzl", "py_binary")
 
 exports_files([
+    "osslsigncode.BUILD.bazel",
+    "osslsigncode-config.patch",
     "squashfs.BUILD.bazel",
     "fuse3.BUILD.bazel",
     "fuse3.patch",

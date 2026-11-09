@@ -63,8 +63,11 @@ independently decoded ZIP records and block ranges; its
 compiled the Windows verifier on BB. Matching Windows x64/ARM64
 [native jobs](https://github.com/formatjs/rules_electron/actions/runs/42560665516)
 passed actual `IAppxPackageReader`, manifest/CPU/version, every payload and
-manifest hash, and modified second-block rejection. This proof covers the private
-writer with a minimal PE fixture. Public-rule wiring is pending its own CI.
+manifest hash, and modified second-block rejection. Public rule wiring passed the
+[d15af96 suite](https://formatjs.buildbuddy.io/invocation/6c7b7ec2-2838-4c41-86c1-011e27e199a2),
+[seven-variant cross-build](https://formatjs.buildbuddy.io/invocation/17147615-873f-4a49-b471-e67118b15631)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42561564137),
+including both Windows Packaging API gates. Fixture remains a minimal PE app.
 Full Electron deployment, signing, install/update/remove, OS associations and
 updater behavior remain unverified. Empty directory leaves and symlinks fail
 explicitly. See [MSIX](msix.md).

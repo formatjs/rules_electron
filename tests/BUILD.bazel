@@ -610,3 +610,20 @@ py_binary(
     main = "msix_fixture.py",
     visibility = ["//visibility:public"],
 )
+
+py_test(
+    name = "signing_tool_test",
+    size = "medium",
+    srcs = ["signing_tool_test.py"],
+    args = [
+        "$(rootpath //electron/tools:osslsigncode)",
+        "$(rootpath @openssl//:openssl)",
+        "$(rootpath @osslsigncode_sources//:tests/files/unsigned.exe)",
+    ],
+    data = [
+        "//electron/tools:osslsigncode",
+        "@openssl",
+        "@osslsigncode_sources//:tests/files/unsigned.exe",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
+)
