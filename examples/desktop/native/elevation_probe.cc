@@ -9,6 +9,12 @@ int main() {
   wchar_t** arguments = CommandLineToArgvW(GetCommandLineW(), &count);
   if (!arguments || count < 2)
     return 1;
+  if (count >= 5 && std::wstring(arguments[2]) == L"--raw-options") {
+    const std::wstring command = GetCommandLineW();
+    if (command.find(L" /S ") == std::wstring::npos ||
+        command.find(L" --updated") == std::wstring::npos)
+      return 8;
+  }
   HANDLE token = nullptr;
   TOKEN_ELEVATION elevation{};
   DWORD size = 0;

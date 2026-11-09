@@ -26,6 +26,10 @@ def main():
         result = subprocess.run([str(helper), "--wait", str(probe), str(output), *arguments], timeout=60)
         assert result.returncode == 37
         assert output.read_bytes() == "".join(value + "\0" for value in arguments).encode("utf-16-le")
+        raw_options = Path(temporary) / "raw-options.bin"
+        result = subprocess.run([str(helper), "--wait", str(probe), str(raw_options), "--raw-options", "/S", "--updated"], timeout=30)
+        assert result.returncode == 37
+        assert raw_options.read_bytes() == "--raw-options\0/S\0--updated\0".encode("utf-16-le")
         rejected = subprocess.run([str(helper), str(Path(temporary) / "missing.exe")], timeout=30)
         assert rejected.returncode == 2
         rejected = subprocess.run([str(helper)], timeout=30)

@@ -41,6 +41,15 @@ owned files while preserving foreign handlers/data. BB/native validation is
 pending. Interactive UAC, production signatures and full source-runtime machine
 installation remain separate gates.
 
+The first machine gate timed out at its initial scope-rejection probe on both
+Windows CPUs. The bridge quoted every argument, including `/S`; NSIS's raw
+switch parser did not enter silent mode. It now quotes only arguments that need
+quoting. A native probe also checks the raw `/S`/`--updated` representation before
+the installer lifecycle runs. Hosted validation of this fix is pending. NSIS's
+[command-line contract](https://nsis.sourceforge.io/Docs/Chapter3.html#installerusage)
+also requires `/D` last, without quotes; the generated installer retains its
+explicit directory-option parser for updater calls.
+
 `installer_icon` and `uninstaller_icon` accept declared ICO labels, including
 generated icons. NSIS embeds them independently using its
 [`Icon` and `UninstallIcon` attributes](https://nsis.sourceforge.io/Docs/Chapter4.html#instattribs).

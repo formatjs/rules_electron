@@ -9,6 +9,8 @@
 namespace {
 
 std::wstring Quote(std::wstring_view argument) {
+  if (!argument.empty() && argument.find_first_of(L" \t\n\v\"") == std::wstring_view::npos)
+    return std::wstring(argument);
   std::wstring result = L"\"";
   size_t slashes = 0;
   for (wchar_t character : argument) {
