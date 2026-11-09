@@ -13,7 +13,8 @@ def network_diagnostics(log):
         "CONNECTION_REFUSED": r"connection refused",
     }
     repositories = ["bazel-contrib/rules_python", "bazel-contrib/bazel-lib",
-                    "bazelbuild/rules_cc", "bazelbuild/bazel-skylib"]
+                    "bazelbuild/rules_cc", "bazelbuild/bazel-skylib",
+                    "bazelbuild/rules_java", "bazel-contrib/rules_perl"]
     codes = re.findall(r"(?:GET returned|returned error|(?:HTTP(?: response)?|response|status)(?: code)?)\s*:?\s*([45][0-9]{2})", log, re.I)
     return {
         "categories": sorted(name for name, pattern in patterns.items() if re.search(pattern, log, re.I)),
