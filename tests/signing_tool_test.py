@@ -40,7 +40,7 @@ class SigningToolTest(unittest.TestCase):
             self.assertEqual(outputs[0].read_bytes(), outputs[1].read_bytes())
             verify = [SIGNER, "verify", "-CAfile", str(cert), "-ignore-cdp", "-in"]
             result = subprocess.run(verify + [str(outputs[0])], env=environment, capture_output=True)
-            self.assertEqual(result.returncode, 0, result.stdout.decode(errors="replace")[-1500:])
+            self.assertEqual(result.returncode, 0, (result.stdout + result.stderr).decode(errors="replace")[-2000:])
             data = bytearray(outputs[0].read_bytes())
             pe = int.from_bytes(data[60:64], "little")
             optional = int.from_bytes(data[pe + 20:pe + 22], "little")
@@ -85,7 +85,7 @@ class SigningToolTest(unittest.TestCase):
                            env=environment, check=True, capture_output=True)
             result = subprocess.run([SIGNER, "verify", "-CAfile", str(cert), "-ignore-cdp", "-in", str(signed)],
                                     env=environment, capture_output=True)
-            self.assertEqual(result.returncode, 0, result.stdout.decode(errors="replace")[-1500:])
+            self.assertEqual(result.returncode, 0, (result.stdout + result.stderr).decode(errors="replace")[-2000:])
             with ZipFile(signed) as archive:
                 self.assertEqual(archive.namelist()[-1], "AppxSignature.p7x")
                 self.assertEqual(archive.read("AppxSignature.p7x")[:4], b"PKCX")
