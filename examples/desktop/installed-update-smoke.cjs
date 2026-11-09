@@ -1,13 +1,13 @@
 const assert = require('node:assert/strict');
 const { app } = require('electron');
-const { autoUpdater, DebUpdater, RpmUpdater, NsisUpdater } = require('electron-updater');
+const { autoUpdater, AppImageUpdater, DebUpdater, RpmUpdater, NsisUpdater } = require('electron-updater');
 
 // Installed-app CI path. Uses the real downloader and platform installer.
 module.exports = async function installUpdate(expectFailure) {
   assert.ok(['linux', 'win32'].includes(process.platform));
   assert.equal(app.getVersion(), '1.0.0');
-  const packageType = process.platform === 'linux' ? require('node:fs').readFileSync(require('node:path').join(process.resourcesPath, 'package-type'), 'utf8').trim() : '';
-  assert.ok(autoUpdater instanceof (process.platform === 'win32' ? NsisUpdater : packageType === 'rpm' ? RpmUpdater : DebUpdater));
+  const packageType = process.platform === 'linux' && process.env.APPIMAGE ? 'appimage' : process.platform === 'linux' ? require('node:fs').readFileSync(require('node:path').join(process.resourcesPath, 'package-type'), 'utf8').trim() : '';
+  assert.ok(autoUpdater instanceof (process.platform === 'win32' ? NsisUpdater : packageType === 'appimage' ? AppImageUpdater : packageType === 'rpm' ? RpmUpdater : DebUpdater));
   const feed = new URL(process.env.RULES_ELECTRON_UPDATE_FEED);
   assert.equal(feed.protocol, 'http:');
   assert.equal(feed.hostname, '127.0.0.1');

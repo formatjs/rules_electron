@@ -105,6 +105,7 @@ if __name__ == "__main__":
                     "--target-os", "linux", "--target-arch", "x64",
                 ], check=True)
                 print("SEVENZIP_RELEASE_SMOKE_OK", flush=True)
+                subprocess.run([sys.executable, "tools/ci/linux_appimage_smoke.py", str(directory / variant / "packages")], check=True)
                 subprocess.run([sys.executable, "tools/ci/linux_deb_smoke.py", str(directory / variant / "packages")], check=True)
                 subprocess.run([sys.executable, "tools/ci/linux_rpm_container.py", str(directory / variant / "packages")], check=True)
             if variant.endswith("_msvc"):

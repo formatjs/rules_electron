@@ -80,3 +80,8 @@ integrity-pinned, with no npm lifecycle scripts executed during builds.
 passed all four native hosts: DEB and Fedora RPM install/update/removal, NSIS
 differential installation on both Windows CPUs, plus macOS discovery. Compilation
 and packaging ran on BB; the Fedora container only installed and executed outputs.
+
+AppImages use `embedded_blockmaps` on `electron_update_feed`; the final artifact
+already contains its raw-deflate v2 map and big-endian size trailer. The feed
+validates coverage and emits `blockMapSize`. The example's installed AppImage
+client and FUSE launch gate is pending; see [AppImage](appimage.md).

@@ -74,3 +74,12 @@ produce final AppImages and feeds without executing ARM64 binaries.
 FUSE-mounted launch and an installed Electron app's real electron-updater
 replacement/differential-download lifecycle remain open. No emulation substitutes
 for native smoke.
+
+The desktop example now builds real Electron v1/v2 AppImages and a v2 feed for
+both Linux CPUs on BB. Its pending Linux x64 native gate uses FUSE-mounted
+launches, then the pinned client's `autoUpdater` / `AppImageUpdater` for corrupt
+SHA-512 rejection and differential replacement. It requires ranged transfers
+below full file size, checks exact installed bytes, preserves a custom filename,
+renames a versioned filename and relaunches v2 in extraction and mounted modes.
+Chromium sandbox stays enabled. Native hosts install FUSE/GUI dependencies only;
+no compilation or packaging runs there.

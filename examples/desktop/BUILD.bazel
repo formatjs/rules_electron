@@ -1,5 +1,6 @@
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_electron//electron:appimage.bzl", "electron_appimage")
 load("@rules_electron//electron:archive.bzl", "electron_archive")
 load("@rules_electron//electron:asar.bzl", "electron_asar")
 load("@rules_electron//electron:defs.bzl", "electron_runtime")
@@ -422,9 +423,40 @@ electron_update_feed(
     target_compatible_with = ["@platforms//os:linux"],
 )
 
+[
+    electron_appimage(
+        name = name,
+        app = app,
+        file_associations = ["application/x-sample-desktop"],
+        icon = "assets/sample.svg",
+        protocols = ["sample-desktop"],
+        target_compatible_with = ["@platforms//os:linux"],
+    )
+    for name, app in [
+        ("appimage_v1", ":app"),
+        ("appimage_v2", ":app_v2"),
+    ]
+]
+
+electron_update_feed(
+    name = "appimage_v2_feed",
+    architecture = select({
+        ":linux_arm64": "arm64",
+        "//conditions:default": "x64",
+    }),
+    artifacts = {":appimage_v2": "Sample-2.0.0.AppImage"},
+    embedded_blockmaps = ["Sample-2.0.0.AppImage"],
+    package_json = "package-v2.json",
+    platform = "linux",
+    release_date = "2026-01-02T03:04:05Z",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
 filegroup(
     name = "linux_release_files",
     srcs = [
+        ":appimage_v1",
+        ":appimage_v2_feed",
         ":deb_v1",
         ":deb_v2_feed",
         ":release_7z",

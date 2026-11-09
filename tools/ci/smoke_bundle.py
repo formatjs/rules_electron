@@ -80,7 +80,7 @@ def add_entry(archive, entry, names):
         info = ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
         info.create_system = 3
         info.external_attr = file.stat().st_mode << 16
-        info.compress_type = ZIP_STORED if entry.get("package") and file.suffix in (".deb", ".exe") else ZIP_DEFLATED
+        info.compress_type = ZIP_STORED if entry.get("package") and file.suffix in (".deb", ".exe", ".AppImage") else ZIP_DEFLATED
         # Python 3.11 ZipFile.open uses ZipInfo's level, not the archive's.
         info._compresslevel = 1
         with file.open("rb") as content, archive.open(info, "w", force_zip64=True) as destination:
