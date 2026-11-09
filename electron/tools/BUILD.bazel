@@ -6,6 +6,11 @@ load("//third_party:appimage_runtime.bzl", "static_pie_runtime")
 package(default_visibility = ["//visibility:public"])
 
 alias(
+    name = "dmg",
+    actual = "@udif_sources//:dmg",
+)
+
+alias(
     name = "xorriso",
     actual = "@xorriso_sources//:xorriso",
 )

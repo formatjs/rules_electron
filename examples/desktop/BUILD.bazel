@@ -4,6 +4,7 @@ load("@rules_electron//electron:appimage.bzl", "electron_appimage")
 load("@rules_electron//electron:archive.bzl", "electron_archive")
 load("@rules_electron//electron:asar.bzl", "electron_asar")
 load("@rules_electron//electron:defs.bzl", "electron_runtime")
+load("@rules_electron//electron:dmg.bzl", "electron_dmg")
 load("@rules_electron//electron:files.bzl", "electron_files")
 load("@rules_electron//electron:linux.bzl", "electron_deb", "electron_rpm")
 load("@rules_electron//electron:matching.bzl", "electron_file_matcher")
@@ -84,8 +85,22 @@ cross_smoke_bundle(
     name = "cross_build_smoke_bundle",
     app = ":smoke_app",
     linux_packages = ":linux_release_files",
+    macos_packages = ":macos_release_files",
     windows_packages = ":windows_release_files",
     windows_runtime_tools = ":windows_elevation_tools",
+)
+
+electron_dmg(
+    name = "release_dmg",
+    app = ":app",
+    source_date_epoch = 1577836800,
+    target_compatible_with = ["@platforms//os:osx"],
+)
+
+filegroup(
+    name = "macos_release_files",
+    srcs = [":release_dmg"],
+    target_compatible_with = ["@platforms//os:osx"],
 )
 
 electron_asar(

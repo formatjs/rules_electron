@@ -1,6 +1,24 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 py_library(
+    name = "dmg",
+    srcs = ["dmg.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        ":archives",
+        ":file_mappings",
+    ],
+)
+
+py_binary(
+    name = "dmg_packager",
+    srcs = ["dmg.py"],
+    main = "dmg.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":dmg"],
+)
+
+py_library(
     name = "archives",
     srcs = ["archive.py"],
     visibility = [

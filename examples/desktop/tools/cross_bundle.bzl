@@ -51,6 +51,15 @@ _linux_targets = transition(
     outputs = ["//command_line_option:platforms"],
 )
 
+def _macos_split(settings, attr):
+    return {name: value for name, value in _split(settings, attr).items() if name.startswith("macos_")}
+
+_macos_targets = transition(
+    implementation = _macos_split,
+    inputs = ["//command_line_option:features"],
+    outputs = ["//command_line_option:platforms", "//command_line_option:features"],
+)
+
 def _windows_split(settings, attr):
     return {name: value for name, value in _split(settings, attr).items() if name.endswith("_msvc")}
 
@@ -86,7 +95,7 @@ def _impl(ctx):
             inputs[variant].append(directories)
             entry["directory_manifest"] = directories.path
         entries.append(entry)
-    for targets in [ctx.split_attr.linux_packages, ctx.split_attr.windows_packages, ctx.split_attr.windows_runtime_tools]:
+    for targets in [ctx.split_attr.linux_packages, ctx.split_attr.macos_packages, ctx.split_attr.windows_packages, ctx.split_attr.windows_runtime_tools]:
         for variant, target in targets.items():
             for file in target[DefaultInfo].files.to_list():
                 inputs[variant].append(file)
@@ -137,6 +146,7 @@ cross_smoke_bundle = rule(
     attrs = {
         "app": attr.label(mandatory = True, cfg = _targets),
         "linux_packages": attr.label(mandatory = True, cfg = _linux_targets),
+        "macos_packages": attr.label(mandatory = True, cfg = _macos_targets),
         "windows_packages": attr.label(mandatory = True, cfg = _windows_targets),
         "windows_runtime_tools": attr.label(mandatory = True, cfg = _windows_runtime_targets),
         "_bundle": attr.label(default = Label("//tools:bundle"), executable = True, cfg = "exec"),

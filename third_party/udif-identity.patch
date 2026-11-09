@@ -1,0 +1,24 @@
+--- a/dmg/dmglib.c
++++ b/dmg/dmglib.c
+@@ -95,16 +95,11 @@
+ 
+   koly.fUDIFSegmentNumber = 1;
+   koly.fUDIFSegmentCount = 1;
+-  // The output of rand() here is deterministic.
+-  // No calls to srand() are made, so rand() is
+-  // automatically seeded with a value of 1.
+-  // See: https://linux.die.net/man/3/rand
+-  // TODO: Just hardcode a "random" value. As this
+-  // needs to remain deterministic.
+-  koly.fUDIFSegmentID.data1 = rand();
+-  koly.fUDIFSegmentID.data2 = rand();
+-  koly.fUDIFSegmentID.data3 = rand();
+-  koly.fUDIFSegmentID.data4 = rand();
++  // Derive identity from image data, independent of libc's PRNG.
++  koly.fUDIFSegmentID.data1 = uncompressedToken.crc;
++  koly.fUDIFSegmentID.data2 = uncompressedToken.block;
++  koly.fUDIFSegmentID.data3 = (uint32_t)(((uint64_t)plistOffset) >> 32);
++  koly.fUDIFSegmentID.data4 = (uint32_t)plistOffset;
+   koly.fUDIFDataForkChecksum.type = CHECKSUM_CRC32;
+   koly.fUDIFDataForkChecksum.size = KOLY_CHECKSUM_SIZE;
+   koly.fUDIFDataForkChecksum.data[0] = dataForkChecksum;

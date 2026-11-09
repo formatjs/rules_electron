@@ -19,6 +19,24 @@ load(":npm_lock_test.bzl", "npm_lock_test")
 npm_lock_test(name = "npm_lock_test")
 
 py_test(
+    name = "dmg_test",
+    srcs = ["dmg_test.py"],
+    args = [
+        "$(rootpath //electron/tools:xorriso)",
+        "$(rootpath //electron/tools:dmg)",
+    ],
+    data = [
+        "//electron/tools:dmg",
+        "//electron/tools:xorriso",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        "//electron/private:assembly",
+        "//electron/private:dmg",
+    ],
+)
+
+py_test(
     name = "xorriso_test",
     srcs = ["xorriso_test.py"],
     args = ["$(rootpath //electron/tools:xorriso)"],

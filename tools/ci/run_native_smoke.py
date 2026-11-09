@@ -115,6 +115,21 @@ if __name__ == "__main__":
                 sys.executable, "examples/desktop/tools/smoke_test.py", str(app),
                 "--target-os", target_os, "--target-arch", target_arch,
             ], check=True)
+            if target_os == "macos":
+                image = directory / variant / "packages/release_dmg.dmg"
+                mount = directory / variant / "mounted-dmg"
+                mount.mkdir()
+                subprocess.run(["/usr/bin/hdiutil", "verify", str(image)], check=True, timeout=120)
+                subprocess.run(["/usr/bin/hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", str(mount), "-plist", str(image)],
+                               check=True, capture_output=True, timeout=120)
+                try:
+                    if (mount / "Applications").readlink().as_posix() != "/Applications":
+                        raise ValueError("Invalid DMG Applications link")
+                    subprocess.run([sys.executable, "examples/desktop/tools/smoke_test.py", str(mount / "Sample Desktop.app"),
+                                    "--target-os", "macos", "--target-arch", target_arch], check=True)
+                    print("DMG_NATIVE_SMOKE_OK", flush=True)
+                finally:
+                    subprocess.run(["/usr/bin/hdiutil", "detach", str(mount)], check=True, timeout=120)
             if variant == "linux_x86_64":
                 release = directory / variant / "packages/release_tar.tar.gz"
                 extracted = directory / variant / "tar-release"

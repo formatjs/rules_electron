@@ -454,11 +454,16 @@ if __name__ == "__main__":
             if host_os == "windows":
                 app = source.parent
         elif host_os == "macos":
-            subprocess.run(["/usr/bin/ditto", "-x", "-k", str(source), str(app)], check=True)
-            bundles = list(app.glob("*.app"))
-            if len(bundles) != 1:
-                raise RuntimeError("Expected one packaged .app")
-            app = bundles[0]
+            if source.is_dir():
+                app = app / source.name
+                app.parent.mkdir()
+                subprocess.run(["/usr/bin/ditto", str(source), str(app)], check=True)
+            else:
+                subprocess.run(["/usr/bin/ditto", "-x", "-k", str(source), str(app)], check=True)
+                bundles = list(app.glob("*.app"))
+                if len(bundles) != 1:
+                    raise RuntimeError("Expected one packaged .app")
+                app = bundles[0]
             subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
             check_macos_signing(app)
             executable = app / "Contents/MacOS/sample-desktop"

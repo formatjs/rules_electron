@@ -1,6 +1,8 @@
 load("@rules_python//python:defs.bzl", "py_binary")
 
 exports_files([
+    "udif.BUILD.bazel",
+    "udif-identity.patch",
     "xorriso.BUILD.bazel",
     "node_delay_import.BUILD.bazel",
     "osslsigncode.BUILD.bazel",

@@ -39,6 +39,16 @@ npm_runtime(
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
+    name = "udif_sources",
+    build_file = "//third_party:udif.BUILD.bazel",
+    patch_args = ["-p1"],
+    patches = ["//third_party:udif-identity.patch"],
+    sha256 = "06e0c8800e4a6f5d53ac32ab7e39ce92f5e73a3ae3556cf524b597512e5c8743",
+    strip_prefix = "libdmg-hfsplus-1cc791e4173da9cb0b0cc16c5a1aaa25d5eb5efa",
+    urls = ["https://github.com/fanquake/libdmg-hfsplus/archive/1cc791e4173da9cb0b0cc16c5a1aaa25d5eb5efa.tar.gz"],
+)
+
+http_archive(
     name = "xorriso_sources",
     build_file = "//third_party:xorriso.BUILD.bazel",
     sha256 = "b1455ecafbf0692ddafe1d71002a96f2ce2d77f4deae602678261ce033f97bc8",
