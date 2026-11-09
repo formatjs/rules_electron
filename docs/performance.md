@@ -18,6 +18,14 @@ Current changes:
 
 ## Recorded observations
 
+The [0b869ae matrix](https://formatjs.buildbuddy.io/invocation/aca4f1f5-ccaf-4d7e-bdb8-4fe543a52fa4)
+records one 160.846-second smoke archive action and a 285.545-second critical
+path. The slowest app assembly took 6.089 seconds. Smoke transport now has four
+independent archive actions behind a shared seven-app architecture gate. Each
+archive receives only its shard's payloads; build-only Linux ARM64 packages remain
+inputs to the validation gate. Archive compression, member ordering and bytes
+stay unchanged. Timing impact still needs BB measurement.
+
 Before the split graph, [a7ffa3c](https://formatjs.buildbuddy.io/invocation/14a307f5-04ba-4de6-bf8e-212d2e8d4dac)
 spent 31.858 seconds across seven fixture builds, then 44.309 seconds building
 the desktop matrix. The matrix trace had a 15.970-second critical path.

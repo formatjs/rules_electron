@@ -49,9 +49,11 @@ wrong-ABI rejection in [the native run](https://github.com/formatjs/rules_electr
 The bootstrap SDK now builds Chromium's exact libc++ sources with native Bazel
 rules, Electron's ABI version 1/`std::__Cr` configuration and declared toolchain
 runtime inputs. The new main/worker probes pass shared backing-store ownership
-across V8's STL boundary and check the returned bytes. These probes still need
-BB cross-build and native validation; the results above cover the earlier
-non-STL probes. See the [source inputs](../examples/desktop/native/libcxx/README.md).
+across V8's STL boundary and check the returned bytes. All seven variants
+[cross-build on BB](https://formatjs.buildbuddy.io/invocation/aca4f1f5-ccaf-4d7e-bdb8-4fe543a52fa4).
+Linux x64, macOS ARM64 and Windows x64/ARM64 pass these probes and the existing
+installer/update checks in [the native run](https://github.com/formatjs/rules_electron/actions/runs/42661122523).
+See the [source inputs](../examples/desktop/native/libcxx/README.md).
 The source overlay now exposes `@electron//sdk:node_v8_addon_sdk`: patched
 Node/libuv/V8 headers and captured public ABI settings, with zero Node/V8 link
 inputs. Use the producer's LLVM C++ runtime, leaving `sdk_cxxstdlib` false.

@@ -8,7 +8,7 @@ import unittest
 from zipfile import ZipFile
 
 from tools.ci.run_native_smoke import extract_variant
-from tools.ci.smoke_bundle import build_bundles
+from tools.ci.smoke_bundle import build_bundles, build_shard, validate_apps
 from tools.ci.smoke_shards import ALL_VARIANTS, SHARDS, archive_name
 
 
@@ -74,9 +74,16 @@ class SmokeBundleTest(unittest.TestCase):
         directory.mkdir()
         return {shard: str(directory / archive_name(shard)) for shard in SHARDS}
 
+    def build_independently(self, entries, outputs):
+        validation = Path(next(iter(outputs.values()))).parent / "matrix.validated"
+        validate_apps(entries, validation)
+        for shard, variants in SHARDS.items():
+            build_shard([entry for entry in entries if entry["variant"] in variants],
+                        outputs[shard], shard, validation)
+
     def test_shards_keep_exact_bytes_and_modes_without_foreign_variants(self):
         outputs = self.outputs(self.root / "outputs")
-        build_bundles(self.entries, outputs)
+        self.build_independently(self.entries, outputs)
         unpacked = self.root / "unpacked"
         unpacked.mkdir()
         seen = set()
@@ -120,7 +127,7 @@ class SmokeBundleTest(unittest.TestCase):
                 changed["directory_manifest"] = str(relocated / Path(entry["directory_manifest"]).relative_to(self.inputs))
             entries.append(changed)
         second = self.outputs(self.root / "second")
-        build_bundles(entries, second)
+        self.build_independently(entries, second)
         for shard in SHARDS:
             self.assertEqual(Path(first[shard]).read_bytes(), Path(second[shard]).read_bytes())
 
@@ -134,7 +141,7 @@ class SmokeBundleTest(unittest.TestCase):
             struct.pack_into("<H", data, 18, 62)
             source.write_bytes(data)
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, "wrong binary architecture"):
-                build_bundles(self.entries, outputs)
+                self.build_independently(self.entries, outputs)
             self.assertFalse(any(Path(path).exists() for path in outputs.values()))
             source.write_bytes(original)
 
@@ -142,7 +149,30 @@ class SmokeBundleTest(unittest.TestCase):
         outputs = self.outputs(self.root / "outputs")
         for entries in (self.entries[1:], self.entries + [self.entries[0]]):
             with self.assertRaisesRegex(ValueError, "exactly seven"):
-                build_bundles(entries, outputs)
+                self.build_independently(entries, outputs)
+
+    def test_shard_rejects_missing_app_foreign_package_and_unknown_shard(self):
+        validation = self.root / "matrix.validated"
+        validate_apps(self.entries, validation)
+        selected = [entry for entry in self.entries if entry["variant"] == "linux_x86_64"]
+        foreign = next(entry for entry in self.entries if entry.get("package") and entry["variant"].startswith("windows"))
+        output = self.root / "shard.zip"
+        for entries, shard in [(selected[1:], "linux-x64"), (selected + [foreign], "linux-x64"),
+                               (selected, "unknown")]:
+            with self.subTest(shard=shard), self.assertRaisesRegex(ValueError, "complete shard"):
+                build_shard(entries, output, shard, validation)
+            self.assertFalse(output.exists())
+
+    def test_missing_or_failed_matrix_validation_prevents_output(self):
+        selected = [entry for entry in self.entries if entry["variant"] == "linux_x86_64"]
+        validation = self.root / "matrix.validated"
+        output = self.root / "shard.zip"
+        with self.assertRaises(FileNotFoundError):
+            build_shard(selected, output, "linux-x64", validation)
+        validation.write_bytes(b"failed\n")
+        with self.assertRaisesRegex(ValueError, "architecture validation"):
+            build_shard(selected, output, "linux-x64", validation)
+        self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":

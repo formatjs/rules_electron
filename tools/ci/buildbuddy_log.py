@@ -10,9 +10,11 @@ from collections import Counter
 try:
     from .buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id
     from .profile_summary import decode_profile, summarize
+    from .smoke_shards import SHARDS, archive_name
 except ImportError:
     from buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id
     from profile_summary import decode_profile, summarize
+    from smoke_shards import SHARDS, archive_name
 
 
 def read_log(selector, key):
@@ -66,8 +68,10 @@ def profile_diagnostics(invocation, key, sha):
         print("Verified BB profile " + name + ":", json.dumps(summarize(decode_profile(data)), sort_keys=True))
     for artifact in invocation.get("artifacts", []):
         name = artifact.get("name", "").rsplit("/", 1)[-1]
-        if name == "electron-cross-smoke.zip" or (name.startswith("electron-smoke-") and name.endswith(".zip")):
-            print("Smoke archive bytes:", name, artifact["uri"].rsplit("/", 1)[-1])
+        if (name in ["electron-cross-smoke.zip"] + [archive_name(shard) for shard in SHARDS]
+                and invocation.get("success") and invocation.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS"):
+            _, digest, size = artifact_uri({"invocation": [invocation]}, sha, artifact_name=name)
+            print("Smoke archive digest:", json.dumps({"name": name, "sha256": digest, "size": size}, sort_keys=True))
     builds = []
     for child in invocation.get("childInvocations", []):
         with api_request("GetInvocation", {"selector": {"invocation_id": child["invocationId"]}}, key) as response:

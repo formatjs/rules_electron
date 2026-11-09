@@ -12,6 +12,15 @@ _VARIANTS = [
     "windows_aarch64_msvc",
 ]
 
+_SHARDS = {
+    "linux-x64": ["linux_x86_64"],
+    "macos-arm64": ["macos_aarch64"],
+    "windows-x64": ["windows_x86_64_gnullvm", "windows_x86_64_msvc"],
+    "windows-arm64": ["windows_aarch64_gnullvm", "windows_aarch64_msvc"],
+}
+
+_SHARDED_VARIANTS = {variant: True for variants in _SHARDS.values() for variant in variants}
+
 def _split(settings, attr):
     _ = attr
     features = [f for f in settings["//command_line_option:features"] if f not in ["static_link_msvcrt", "dynamic_link_msvcrt", "-dynamic_link_msvcrt"]]
@@ -61,41 +70,66 @@ _windows_runtime_targets = transition(
 )
 
 def _impl(ctx):
-    inputs = []
+    inputs = {variant: [] for variant in _VARIANTS}
+    validation_inputs = []
     entries = []
     for variant, target in ctx.split_attr.app.items():
         files = target[DefaultInfo].files.to_list()
         if len(files) != 1:
             fail("Expected one app output")
         file = files[0]
-        inputs.append(file)
+        inputs[variant].append(file)
+        validation_inputs.append(file)
         entry = {"variant": variant, "source": file.path, "directory": file.is_directory}
         directories = getattr(target[ElectronAppInfo], "directory_manifest", None) if ElectronAppInfo in target else None
         if directories:
-            inputs.append(directories)
+            inputs[variant].append(directories)
             entry["directory_manifest"] = directories.path
         entries.append(entry)
     for targets in [ctx.split_attr.linux_packages, ctx.split_attr.windows_packages, ctx.split_attr.windows_runtime_tools]:
         for variant, target in targets.items():
             for file in target[DefaultInfo].files.to_list():
-                inputs.append(file)
+                inputs[variant].append(file)
+
+                # Keep build-only package generation in the matrix.
+                if variant not in _SHARDED_VARIANTS:
+                    validation_inputs.append(file)
                 entries.append({"variant": variant, "source": file.path, "directory": file.is_directory, "package": True})
-    manifest = ctx.actions.declare_file(ctx.label.name + ".json")
+    manifest = ctx.actions.declare_file(ctx.label.name + ".validation.json")
+    validation = ctx.actions.declare_file(ctx.label.name + ".validated")
     outputs = {
         shard: ctx.actions.declare_file("electron-smoke-" + shard + ".zip")
-        for shard in ["linux-x64", "macos-arm64", "windows-x64", "windows-arm64"]
+        for shard in _SHARDS
     }
     ctx.actions.write(manifest, json.encode({
+        "mode": "validate",
         "entries": entries,
-        "outputs": {shard: file.path for shard, file in outputs.items()},
+        "output": validation.path,
     }))
     ctx.actions.run(
         executable = ctx.executable._bundle,
         arguments = [manifest.path],
-        inputs = inputs + [manifest],
-        outputs = outputs.values(),
-        mnemonic = "ElectronCrossSmokeBundle",
+        inputs = validation_inputs + [manifest],
+        outputs = [validation],
+        mnemonic = "ElectronCrossSmokeValidate",
     )
+    for shard, variants in _SHARDS.items():
+        shard_manifest = ctx.actions.declare_file(ctx.label.name + "." + shard + ".json")
+        ctx.actions.write(shard_manifest, json.encode({
+            "mode": "shard",
+            "entries": [entry for entry in entries if entry["variant"] in variants],
+            "output": outputs[shard].path,
+            "shard": shard,
+            "validation": validation.path,
+        }))
+        ctx.actions.run(
+            executable = ctx.executable._bundle,
+            arguments = [shard_manifest.path],
+            inputs = [shard_manifest, validation] + [file for variant in variants for file in inputs[variant]],
+            outputs = [outputs[shard]],
+            mnemonic = "ElectronCrossSmokeBundle",
+            progress_message = "Packing native smoke " + shard,
+        )
     return [DefaultInfo(files = depset(outputs.values()))]
 
 cross_smoke_bundle = rule(

@@ -8,6 +8,8 @@ from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED, ZIP_STORED
 
 from tools.ci.smoke_shards import ALL_VARIANTS, SHARDS
 
+VALIDATED = b"SMOKE_APPS_VALIDATED\n"
+
 
 def check_binary(source, target_os, arm64):
     header = source.read(64)
@@ -48,20 +50,48 @@ def check_app(entry):
                     check_binary(source, target_os, arm64)
 
 
-def build_bundles(entries, outputs):
+def validate_entries(entries):
     apps = [entry for entry in entries if not entry.get("package")]
     if len(apps) != len(ALL_VARIANTS) or {entry["variant"] for entry in apps} != ALL_VARIANTS:
         raise ValueError("Expected exactly seven cross-built app variants")
-    if set(outputs) != set(SHARDS) or any(entry["variant"] not in ALL_VARIANTS for entry in entries):
+    if any(entry["variant"] not in ALL_VARIANTS for entry in entries):
         raise ValueError("Unexpected smoke output or variant")
     for entry in apps:
         check_app(entry)
+
+
+def validate_apps(entries, output):
+    validate_entries(entries)
+    Path(output).write_bytes(VALIDATED)
+
+
+def build_bundles(entries, outputs):
+    validate_entries(entries)
+    if set(outputs) != set(SHARDS):
+        raise ValueError("Unexpected smoke output or variant")
     for shard, variants in SHARDS.items():
-        with ZipFile(outputs[shard], "w", compression=ZIP_DEFLATED, compresslevel=1) as archive:
-            names = set()
-            for entry in sorted(entries, key=lambda e: (e["variant"], e["source"])):
-                if entry["variant"] in variants:
-                    add_entry(archive, entry, names)
+        write_shard([entry for entry in entries if entry["variant"] in variants], outputs[shard])
+
+
+def build_shard(entries, output, shard, validation):
+    variants = SHARDS.get(shard)
+    apps = [entry for entry in entries if not entry.get("package")]
+    if (variants is None or len(apps) != len(variants)
+            or {entry["variant"] for entry in apps} != set(variants)
+            or any(entry["variant"] not in variants for entry in entries)):
+        raise ValueError("Smoke entries must match the complete shard")
+    if Path(validation).read_bytes() != VALIDATED:
+        raise ValueError("Expected successful architecture validation")
+    for entry in apps:
+        check_app(entry)
+    write_shard(entries, output)
+
+
+def write_shard(entries, output):
+    with ZipFile(output, "w", compression=ZIP_DEFLATED, compresslevel=1) as archive:
+        names = set()
+        for entry in sorted(entries, key=lambda e: (e["variant"], e["source"])):
+            add_entry(archive, entry, names)
 
 
 def add_entry(archive, entry, names):
@@ -108,4 +138,13 @@ def add_entry(archive, entry, names):
 
 
 if __name__ == "__main__":
-    build_bundles(**json.loads(Path(sys.argv[1]).read_text()))
+    options = json.loads(Path(sys.argv[1]).read_text())
+    mode = options.pop("mode", None)
+    if mode == "validate":
+        validate_apps(**options)
+    elif mode == "shard":
+        build_shard(**options)
+    elif mode is None:
+        build_bundles(**options)
+    else:
+        raise ValueError("Unknown smoke bundle mode")
