@@ -17,6 +17,7 @@ from network_diagnostics import network_diagnostics
 from source_headers_diagnostics import missing_headers
 from execution_diagnostics import failed_execution_lookups
 from source_link_diagnostics import duplicate_definitions
+from source_runtime_diagnostics import runtime_failures
 
 
 def source_profile_diagnostics(invocation, key):
@@ -396,9 +397,7 @@ def source_test_diagnostics(identifier, key, selected=None):
                     prefix = "patched libnode" if probe == "libnode" else "PartitionAlloc" if probe == "partition_alloc" else probe
                     details["failed_checks"] = [message for message in public_checks.get(probe, []) if "check failed: " + prefix + " " + message + "\n" in log]
                     details["stages"] = [stage for stage in ["entry", "versions", "invalid", "decode", "png", "pixels", "rgb_freed", "image_freed", "conversion", "atomic", "icu", "i18n", "snapshot", "node", "gin", "platform", "isolate", "modules", "integrity", "callback", "gc", "loop", "shutdown", "done"] if probe + " probe stage: " + stage + "\n" in log]
-                    details["public_check_sites"] = [{"file": name, "line": int(line)} for name, line in re.findall(r"([A-Za-z_0-9.-]+\.(?:h|c|cc|cpp))[:(]([0-9]{1,5})", log) if name in public_basenames and 0 < int(line) < 10000][:8]
-                    fatal = [line for line in log.splitlines() if re.search(r"FATAL|ERROR|Check failed|Assertion|assertion|\b(?:ReferenceError|TypeError|SyntaxError|RangeError|Error):", line)]
-                    details["public_fatal_identifiers"] = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", line) if word in public_identifiers))[:20] for line in fatal[:6]]
+                    details.update(runtime_failures(log, public_basenames, public_identifiers))
                     details["public_assertion_identifiers"] = [list(dict.fromkeys(word for word in re.findall(r"[A-Za-z_][A-Za-z_0-9]*", expression) if word in public_identifiers))[:8] for expression in re.findall(r"assertion failed: ([^\r\n]{1,300})", log)[:4]]
                 print("Source probe test diagnostics:", json.dumps(details, sort_keys=True))
         token = page.get("nextPageToken", "")
