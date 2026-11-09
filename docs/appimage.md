@@ -26,7 +26,9 @@ with native C/C++ rules. Runtime alone selects LLVM's musl platform for its CPU
 and PIC compilation; application settings remain independent. Linux target
 configuration is checked in; no configure,
 Meson or Make step runs. The libfuse mount patch comes from the pinned runtime
-source. Runtime allocator uses BCR's native mimalloc 3.5.3 target.
+source. Runtime allocator uses BCR's native mimalloc 3.5.3 target. A declared linker-script
+patch places metadata before `.text`, since static PIE has no `.interp`; its
+static marker uses four-byte alignment after the AppImage marker.
 
 The native test checks static PIE has no interpreter or shared-library imports,
 then appends real gzip/zstd SquashFS payloads and exercises extraction and

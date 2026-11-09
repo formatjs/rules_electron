@@ -73,6 +73,8 @@ http_archive(
 http_archive(
     name = "appimage_runtime_sources",
     build_file = "//third_party:appimage_runtime.BUILD.bazel",
+    patch_args = ["-p1"],
+    patches = ["//third_party:appimage_runtime.patch"],
     sha256 = "e27ea3c837e9c660e1a9a2993b673ae93bbb53077330efba8654031e302d4e8e",
     strip_prefix = "type2-runtime-fedfad51acc2860b2916a1eef32ba4a500ff31ef",
     urls = ["https://github.com/AppImage/type2-runtime/archive/fedfad51acc2860b2916a1eef32ba4a500ff31ef.tar.gz"],

@@ -7,6 +7,7 @@ exports_files([
     "squashfuse.BUILD.bazel",
     "squashfuse.patch",
     "appimage_runtime.BUILD.bazel",
+    "appimage_runtime.patch",
 ])
 
 py_binary(
