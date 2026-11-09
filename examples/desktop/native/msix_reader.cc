@@ -40,9 +40,9 @@ static void validate_signature(const wchar_t* path, const wchar_t* expected) {
   trust.dwStateAction = WTD_STATEACTION_VERIFY;
   trust.dwProvFlags = WTD_REVOCATION_CHECK_NONE | WTD_CACHE_ONLY_URL_RETRIEVAL;
   GUID action = WINTRUST_ACTION_GENERIC_VERIFY_V2;
-  const LONG result = WinVerifyTrust(INVALID_HANDLE_VALUE, &action, &trust);
+  const LONG result = WinVerifyTrust(nullptr, &action, &trust);
   trust.dwStateAction = WTD_STATEACTION_CLOSE;
-  WinVerifyTrust(INVALID_HANDLE_VALUE, &action, &trust);
+  WinVerifyTrust(nullptr, &action, &trust);
   std::printf("MSIX_TRUST_RESULT 0x%08lx\n", static_cast<unsigned long>(result));
   bool matches = false;
   if (std::wcscmp(expected, L"unsigned") == 0)
