@@ -96,8 +96,9 @@ and SHA-512 through a local fixture host. The [adc00c8 native matrix](https://gi
 passed on Linux x64, macOS ARM64 and Windows x64/ARM64. A separate generated private config
 contains no token. Its native fixture creates an ephemeral token, verifies
 authenticated release/asset requests and payload hashes, then checks that an
-unauthenticated request receives HTTP 401. Private-provider checks await hosted
-validation; installed-update smoke continues to use generic feeds. Live GitHub
+unauthenticated request receives HTTP 401. The [7895a23 native matrix](https://github.com/formatjs/rules_electron/actions/runs/42709477525)
+passed these checks on all four hosts. Installed-update smoke continues to use
+generic feeds. Live GitHub
 publication remains unverified. API contract:
 [releases](https://docs.github.com/en/rest/releases/releases),
 [assets](https://docs.github.com/en/rest/releases/assets).

@@ -16,6 +16,12 @@ def _impl(ctx):
     output = ctx.actions.declare_file(ctx.label.name + ".msix")
     manifest = ctx.actions.declare_file(ctx.label.name + ".msix.json")
     logos = {name: getattr(ctx.file, name) for name in ["logo_44", "logo_150", "store_logo"]}
+    association_icons = []
+    for target, extension in ctx.attr.file_association_icons.items():
+        files = target.files.to_list()
+        if len(files) != 1 or not files[0].basename.endswith(".png"):
+            fail("Each MSIX document icon requires one PNG file")
+        association_icons.append({"source": files[0].path, "extension": extension})
     ctx.actions.write(manifest, json.encode(dict({
         "app": app.artifact.path,
         "package_json": app.package_json.path,
@@ -28,6 +34,7 @@ def _impl(ctx):
         "description": ctx.attr.description,
         "protocols": ctx.attr.protocols,
         "file_associations": ctx.attr.file_associations,
+        "file_association_icons": association_icons,
         "build_version": getattr(app, "build_version", ""),
         "build_number": getattr(app, "build_number", ""),
         "directory_manifest": directories.path if directories else "",
@@ -35,7 +42,7 @@ def _impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._packager,
         arguments = [manifest.path, output.path],
-        inputs = [manifest, app.artifact, app.package_json] + logos.values() + ([directories] if directories else []),
+        inputs = [manifest, app.artifact, app.package_json] + logos.values() + ([directories] if directories else []) + [file for target in ctx.attr.file_association_icons for file in target.files.to_list()],
         outputs = [output],
         mnemonic = "ElectronMsix",
         progress_message = "Packaging unsigned Electron MSIX %{label}",
@@ -55,6 +62,7 @@ electron_msix = rule(
         "description": attr.string(default = "Electron desktop application"),
         "protocols": attr.string_list(doc = "Lowercase URI schemes registered by Windows package deployment."),
         "file_associations": attr.string_dict(doc = "Lowercase file extension to display name. Advertise handlers without changing user defaults."),
+        "file_association_icons": attr.label_keyed_string_dict(allow_files = [".png"], doc = "Declared PNG icons mapped to registered file extensions. Packaged as uap:Logo assets."),
         "_packager": attr.label(default = Label("//electron/private:msix_packager"), executable = True, cfg = "exec"),
         "_x64": attr.label(default = Label("@platforms//cpu:x86_64")),
         "_arm64": attr.label(default = Label("@platforms//cpu:aarch64")),

@@ -92,6 +92,10 @@ class MsixTest(unittest.TestCase):
                              executable_name="sample", architecture="arm64", build_version="2.3.4.7",
                              protocols=["sample-z", "sample-a"], file_associations={".sample": 'Document <Text> & "Notes"', ".other": "Other document"}, **logos)
             output = root / "first.msix"
+            arguments["file_association_icons"] = [
+                {"extension": ".sample", "source": logos["logo_44"]},
+                {"extension": ".other", "source": logos["logo_150"]},
+            ]
             create_msix(output=output, **arguments)
             first = output.read_bytes()
             with ZipFile(output) as archive:
@@ -108,12 +112,28 @@ class MsixTest(unittest.TestCase):
                                   node.find("{" + UAP + "}DisplayName").text for node in handlers}, arguments["file_associations"])
                 self.assertEqual(len({node.attrib["Name"] for node in handlers}), 2)
                 self.assertTrue(all(node.attrib["Parameters"] == '"%1"' and node.attrib["MultiSelectModel"] == "Single" for node in handlers))
+                for node in handlers:
+                    extension = node.find("{" + UAP + "}SupportedFileTypes/{" + UAP + "}FileType").text
+                    icon = node.find("{" + UAP + "}Logo").text
+                    source = next(item["source"] for item in arguments["file_association_icons"] if item["extension"] == extension)
+                    self.assertEqual(archive.read(icon), Path(source).read_bytes())
                 expected = {info.filename: archive.read(info) for info in archive.infolist() if info.filename not in ("AppxBlockMap.xml", "[Content_Types].xml")}
             self.assert_blockmap(first, expected)
             os.utime(app / "sample.exe", (12345, 12345))
             create_msix(output=root / "second.msix", **dict(arguments, protocols=list(reversed(arguments["protocols"])),
+                                                          file_association_icons=list(reversed(arguments["file_association_icons"])),
                                                           file_associations=dict(reversed(list(arguments["file_associations"].items())))))
             self.assertEqual(first, (root / "second.msix").read_bytes())
+            invalid_png = root / "invalid.png"
+            invalid_png.write_bytes(b"not a PNG")
+            for icons in [
+                [{"extension": ".unregistered", "source": logos["logo_44"]}],
+                [arguments["file_association_icons"][0]] * 2,
+                [{"extension": ".sample", "source": str(invalid_png)}],
+            ]:
+                with self.subTest(icons=icons), self.assertRaises(ValueError):
+                    create_msix(output=output, **dict(arguments, file_association_icons=icons))
+                self.assertEqual(output.read_bytes(), first)
             with self.assertRaisesRegex(ValueError, "CPU"):
                 create_msix(output=output, **dict(arguments, architecture="x64"))
             with self.assertRaisesRegex(ValueError, "prerelease"):

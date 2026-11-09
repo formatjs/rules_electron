@@ -119,7 +119,7 @@ class PackageZip:
 
 
 def manifest(identity_name, publisher, publisher_display_name, product_name, executable,
-             architecture, version, description, protocols=(), file_associations=None):
+             architecture, version, description, protocols=(), file_associations=None, file_association_icons=()):
     if not re.fullmatch(r"[A-Za-z0-9.-]{3,50}", identity_name):
         raise ValueError("MSIX identity name requires 3..50 ASCII letters, digits, dots or hyphens")
     if architecture not in ("x64", "arm64"):
@@ -129,6 +129,8 @@ def manifest(identity_name, publisher, publisher_display_name, product_name, exe
     associations = file_associations or {}
     if any(not re.fullmatch(r"\.[a-z0-9][a-z0-9_-]{0,31}", extension) for extension in associations):
         raise ValueError("MSIX file associations require lowercase file extensions")
+    if not set(file_association_icons).issubset(associations):
+        raise ValueError("MSIX document icons require registered file extensions")
     namespaces = {"xmlns:uap": UAP, "xmlns:rescap": RESCAP, "IgnorableNamespaces": "uap rescap"}
     if protocols or associations:
         namespaces.update({"xmlns:uap3": UAP3, "IgnorableNamespaces": "uap uap3 rescap"})
@@ -154,6 +156,8 @@ def manifest(identity_name, publisher, publisher_display_name, product_name, exe
             name = "file" + hashlib.sha256(suffix.encode()).hexdigest()[:16]
             association = ET.SubElement(extension, "uap3:FileTypeAssociation", Name=name, Parameters='"%1"', MultiSelectModel="Single")
             ET.SubElement(association, "uap:DisplayName").text = text(description)
+            if suffix in file_association_icons:
+                ET.SubElement(association, "uap:Logo").text = "Assets/FileType" + hashlib.sha256(suffix.encode()).hexdigest()[:16] + ".png"
             ET.SubElement(ET.SubElement(association, "uap:SupportedFileTypes"), "uap:FileType").text = suffix
     ET.SubElement(ET.SubElement(root, "Capabilities"), "rescap:Capability", Name="runFullTrust")
     return xml(root)
@@ -162,7 +166,7 @@ def manifest(identity_name, publisher, publisher_display_name, product_name, exe
 def create_msix(app, package_json, output, identity_name, publisher, publisher_display_name,
                 product_name, executable_name, architecture, logo_44, logo_150, store_logo,
                 description="Electron desktop application", build_version="", build_number="", directory_manifest="",
-                protocols=(), file_associations=None):
+                protocols=(), file_associations=None, file_association_icons=()):
     package = json.loads(Path(package_json).read_text(encoding="utf-8"))
     native_version = build_identity(package["version"], build_version, build_number, "windows")
     if not re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,3}", native_version):
@@ -171,11 +175,20 @@ def create_msix(app, package_json, output, identity_name, publisher, publisher_d
     version = ".".join(components + ["0"] * (4 - len(components)))
     executable = executable_name if executable_name.endswith(".exe") else executable_name + ".exe"
     payload_name(executable)
+    icons = {}
+    for icon in file_association_icons:
+        extension = icon["extension"]
+        if extension in icons:
+            raise ValueError("Duplicate MSIX document icon extension")
+        icons[extension] = icon["source"]
     manifest_data = manifest(identity_name, publisher, publisher_display_name, product_name, executable, architecture, version, description,
-                             protocols, file_associations)
+                             protocols, file_associations, icons)
     assets = {"Assets/Square44x44Logo.png": (logo_44, 44), "Assets/Square150x150Logo.png": (logo_150, 150), "Assets/StoreLogo.png": (store_logo, 50)}
+    for extension, source in icons.items():
+        assets["Assets/FileType" + hashlib.sha256(extension.encode()).hexdigest()[:16] + ".png"] = (source, None)
     for path, dimension in assets.values():
-        if png_dimensions(path) != (dimension, dimension):
+        dimensions = png_dimensions(path)
+        if dimension is not None and dimensions != (dimension, dimension):
             raise ValueError("MSIX logo dimensions must match declared asset slot")
     with inventory(Path(app), "windows") as (entries, open_file), ExitStack() as stack:
         if directory_manifest:

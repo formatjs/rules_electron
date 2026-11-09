@@ -2,6 +2,7 @@
 #include <appxpackaging.h>
 #include <shlwapi.h>
 #include <shobjidl.h>
+#include <shlguid.h>
 #include <wrl/client.h>
 #include <wintrust.h>
 #include <softpub.h>
@@ -59,7 +60,7 @@ static void validate_signature(const wchar_t* path, const wchar_t* expected) {
 }
 
 static bool has_handler(const wchar_t* name, bool protocol,
-                        const std::wstring& application) {
+                        const std::wstring& application, IAssocHandler** selected = nullptr) {
   ComPtr<IEnumAssocHandlers> handlers;
   HRESULT result = protocol
       ? SHAssocEnumHandlersForProtocolByApplication(name, IID_PPV_ARGS(&handlers))
@@ -83,8 +84,10 @@ static bool has_handler(const wchar_t* name, bool protocol,
     result = identity->GetAppID(&identifier);
     const bool matches = SUCCEEDED(result) && identifier && application == identifier;
     CoTaskMemFree(identifier);
-    if (matches)
+    if (matches) {
+      if (selected) check(handler.CopyTo(selected), "selected_handler");
       return true;
+    }
   }
   require(false, "handler_enumeration_limit");
   return false;
@@ -114,27 +117,16 @@ static void activate(const wchar_t* family, const wchar_t* kind,
   ComPtr<IShellItemArray> items;
   check(SHCreateShellItemArrayFromShellItem(item.Get(), IID_PPV_ARGS(&items)),
         "activation_shell_array");
-  ComPtr<IApplicationActivationManager> manager;
-  check(CoCreateInstance(__uuidof(ApplicationActivationManager), nullptr,
-                         CLSCTX_LOCAL_SERVER, IID_PPV_ARGS(&manager)), "activation_manager");
   const std::wstring application = std::wstring(family) + L"!App";
-  DWORD pid = 0;
-  check(protocol ? manager->ActivateForProtocol(application.c_str(), items.Get(), &pid)
-                 : manager->ActivateForFile(application.c_str(), items.Get(), L"open", &pid),
-        "activation_delivery");
-  require(pid != 0, "activation_process_id");
-  HANDLE process = OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, FALSE, pid);
-  if (!process) {
-    require(GetLastError() == ERROR_INVALID_PARAMETER, "activation_process_handle");
-    std::puts("MSIX_ACTIVATION_PROCESS_EXITED");
-    return;
-  }
-  const DWORD result = WaitForSingleObject(process, 30000);
-  if (result != WAIT_OBJECT_0)
-    TerminateProcess(process, 1);
-  CloseHandle(process);
-  require(result == WAIT_OBJECT_0, "activation_process_exit");
-  std::puts("MSIX_ACTIVATION_PROCESS_EXITED");
+  const std::wstring name = protocol ? std::wstring(value).substr(0, std::wstring(value).find(L':'))
+                                    : PathFindExtensionW(value);
+  ComPtr<IAssocHandler> handler;
+  require(has_handler(name.c_str(), protocol, application, &handler), "activation_registered_handler");
+  ComPtr<IDataObject> data;
+  check(items->BindToHandler(nullptr, BHID_DataObject, IID_PPV_ARGS(&data)),
+        "activation_data_object");
+  check(handler->Invoke(data.Get()), "activation_handler_invoke");
+  std::puts("MSIX_REGISTERED_HANDLER_INVOKED");
 }
 
 static void validate(IAppxFile* file, IAppxBlockMapReader* blockmap,

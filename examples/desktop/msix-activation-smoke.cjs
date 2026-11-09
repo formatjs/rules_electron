@@ -21,11 +21,13 @@ module.exports = function checkActivation() {
   assert.equal(process.windowsStore, true);
   assert.equal(app.isPackaged, true);
   if (file) assert.equal(path.dirname(file), directory);
-  fs.writeFileSync(path.join(directory, 'report.json'), JSON.stringify({
+  const report = path.join(directory, 'report.json');
+  fs.writeFileSync(report + '.tmp', JSON.stringify({
     kind: request.kind, value: uri || file, nonce,
     content: file ? fs.readFileSync(file, 'utf8') : null,
-    architecture: process.arch, version: app.getVersion(),
+    architecture: process.arch, version: app.getVersion(), pid: process.pid,
     windows_store: Boolean(process.windowsStore), packaged: app.isPackaged,
   }), { flag: 'wx' });
+  fs.renameSync(report + '.tmp', report);
   return true;
 };

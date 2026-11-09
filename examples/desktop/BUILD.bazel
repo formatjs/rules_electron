@@ -775,6 +775,7 @@ cc_binary(
     name = "msix_reader",
     srcs = ["native/msix_reader.cc"],
     linkopts = [
+        "uuid.lib",
         "ole32.lib",
         "shell32.lib",
         "shlwapi.lib",
@@ -806,6 +807,10 @@ signed_msix_fixture(
     electron_msix(
         name = "msix_desktop_" + suffix,
         app = ":msix_app_" + suffix,
+        file_association_icons = {
+            ":msix_logo_44": ".samplemsix",
+            ":msix_logo_150": ".samplemsix_alt",
+        },
         file_associations = {
             ".samplemsix": "Sample MSIX document",
             ".samplemsix_alt": "Sample MSIX alternate document",

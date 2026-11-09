@@ -15,7 +15,7 @@ function Assert-Trust([string]$Path, [string]$Expected) {
   & $reader --signature $Path $Expected
   if ($LASTEXITCODE -ne 0) { throw 'MSIX native trust check failed' }
 }
-function Assert-Activation([string]$Family, [string]$Version) {
+function Assert-Activation([string]$Family, [string]$Version, [string]$Executable) {
   foreach ($handler in @(
       @{Kind='protocol'; Name='sample-msix'},
       @{Kind='protocol'; Name='sample-msix-alt'},
@@ -36,7 +36,13 @@ function Assert-Activation([string]$Family, [string]$Version) {
       [System.IO.File]::WriteAllText((Join-Path $directory 'request.json'), $request, [System.Text.UTF8Encoding]::new($false))
       & $reader --activate $Family $handler.Kind $value
       if ($LASTEXITCODE -ne 0) { throw 'MSIX activation API failed' }
-      $report = Get-Content -LiteralPath (Join-Path $directory 'report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+      $reportPath = Join-Path $directory 'report.json'
+      $deadline = [DateTime]::UtcNow.AddSeconds(30)
+      while (-not (Test-Path -LiteralPath $reportPath)) {
+        if ([DateTime]::UtcNow -ge $deadline) { throw 'MSIX activation report timeout' }
+        Start-Sleep -Milliseconds 100
+      }
+      $report = Get-Content -LiteralPath $reportPath -Raw -Encoding UTF8 | ConvertFrom-Json
       if ($report.kind -cne $handler.Kind -or $report.value -cne $value -or $report.nonce -cne $nonce -or
           $report.architecture -cne $Architecture -or $report.version -cne $Version -or
           $report.windows_store -ne $true -or $report.packaged -ne $true) {
@@ -44,11 +50,42 @@ function Assert-Activation([string]$Family, [string]$Version) {
       }
       if ($handler.Kind -eq 'file' -and $report.content -cne $content) { throw 'MSIX file activation changed document bytes' }
       if ($handler.Kind -eq 'protocol' -and $null -ne $report.content) { throw 'MSIX protocol activation returned document content' }
+      $activated = Get-Process -Id $report.pid -ErrorAction SilentlyContinue
+      if ($activated -and -not $activated.HasExited) {
+        if ($activated.Path -ine $Executable) { throw 'MSIX activation process path mismatch' }
+        if (-not $activated.WaitForExit(30000)) { throw 'MSIX activated Electron did not exit' }
+      }
       Write-Output ('MSIX_ACTIVATION_DELIVERY_OK ' + $handler.Kind + ' ' + $handler.Name + ' ' + $Version)
     } finally {
+      Get-Process -Name 'sample-desktop' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -ieq $Executable } | Stop-Process -Force
       Remove-Item -LiteralPath $directory -Recurse -Force
     }
   }
+}
+function Assert-DocumentIcons($Package) {
+  $manifest = Get-AppxPackageManifest -Package $Package.PackageFullName
+  $namespaces = [System.Xml.XmlNamespaceManager]::new($manifest.NameTable)
+  $namespaces.AddNamespace('uap', 'http://schemas.microsoft.com/appx/manifest/uap/windows10')
+  $namespaces.AddNamespace('uap3', 'http://schemas.microsoft.com/appx/manifest/uap/windows10/3')
+  $associations = $manifest.SelectNodes('//uap3:FileTypeAssociation', $namespaces)
+  if ($associations.Count -ne 2) { throw 'MSIX deployed document associations mismatch' }
+  foreach ($association in $associations) {
+    $extension = $association.SelectSingleNode('uap:SupportedFileTypes/uap:FileType', $namespaces).InnerText
+    $logo = $association.SelectSingleNode('uap:Logo', $namespaces).InnerText
+    if ($logo -cnotmatch '^Assets/FileType[a-f0-9]{16}\.png$') { throw 'MSIX deployed document logo path mismatch' }
+    $slot = switch ($extension) {
+      '.samplemsix' { 'Assets/Square44x44Logo.png' }
+      '.samplemsix_alt' { 'Assets/Square150x150Logo.png' }
+      default { throw 'MSIX unexpected document extension' }
+    }
+    $actual = [System.IO.File]::ReadAllBytes((Join-Path $Package.InstallLocation $logo))
+    $expected = [System.IO.File]::ReadAllBytes((Join-Path $Package.InstallLocation $slot))
+    if ([Convert]::ToBase64String($actual) -cne [Convert]::ToBase64String($expected)) {
+      throw 'MSIX deployed document logo bytes mismatch'
+    }
+  }
+  Write-Output 'MSIX_DOCUMENT_ICONS_OK'
 }
 $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($certificateFile)
 $certificatePath = 'Cert:\LocalMachine\TrustedPeople\' + $certificate.Thumbprint
@@ -97,12 +134,13 @@ try {
     }
     if ($family -and $family -ne $package.PackageFamilyName) { throw 'MSIX upgrade changed package family' }
     $family = $package.PackageFamilyName
+    Assert-DocumentIcons $package
     & $reader --handlers $family present
     if ($LASTEXITCODE -ne 0) { throw 'MSIX installed handlers missing' }
     $executable = Join-Path $package.InstallLocation 'sample-desktop.exe'
     & $Python 'examples/desktop/tools/smoke_test.py' $executable --installed --msix --target-os windows --target-arch $Architecture --expected-version $release.Version
     if ($LASTEXITCODE -ne 0) { throw 'MSIX installed Electron smoke failed' }
-    Assert-Activation $family $release.Version
+    Assert-Activation $family $release.Version $executable
     Write-Output ('MSIX_DESKTOP_VERSION_OK ' + $release.Version)
   }
   Remove-AppxPackage -Package $package.PackageFullName

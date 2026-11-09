@@ -94,10 +94,19 @@ removal, plus the real Electron lifecycle. Activation delivery and custom
 document icons remain separate work. The earlier ARM64 run passed these MSIX
 checks before an unrelated NSIS update timeout; see [installer diagnostics](windows-installers.md).
 
-Cold activation checks now invoke the installed app through
-[`IApplicationActivationManager`](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-iapplicationactivationmanager),
+Cold activation checks now invoke the installed app through its registered
+[`IAssocHandler`](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-iassochandler-invoke),
 using both protocol schemes and file extensions after install and upgrade.
 Electron must report the exact URI or file path, Unicode document content,
 package identity, CPU and version, then exit. Reports require a pre-created
 nonce directory in the user's temporary directory. The activation helper is
 compiled on BB; native hosts only execute it. Hosted validation remains pending.
+
+`electron_msix.file_association_icons` maps declared PNG labels to registered
+extensions, for example `{"//assets:document.png": ".example"}`. Each mapping
+requires one PNG file and a distinct registered extension. The package adds a
+stable asset path and a `uap:Logo` declaration; the source file need not already
+be inside the app. PNG validation, asset collision checks and block hashes apply
+to these inputs too. Native smoke checks the deployed manifest and exact image
+bytes after install and upgrade. Hosted validation remains pending. See
+[`uap:Logo`](https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-uap-logo).
