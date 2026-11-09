@@ -685,6 +685,15 @@ electron_update_config(
     repo = "sample-desktop",
 )
 
+electron_update_config(
+    name = "github_private_update_smoke_config",
+    cache_name = "sample-desktop-updater",
+    owner = "example-org",
+    private_repository = True,
+    provider = "github",
+    repo = "sample-desktop",
+)
+
 # Metadata fixture only. No installer execution or installability claim.
 electron_update_feed(
     name = "update_smoke_feed",

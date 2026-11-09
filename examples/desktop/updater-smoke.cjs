@@ -21,12 +21,19 @@ module.exports = async function checkUpdater() {
   assert.deepEqual([githubConfig.owner, githubConfig.repo], ['example-org', 'sample-desktop']);
   assert.equal(githubConfig.updaterCacheDirName, config.updaterCacheDirName);
   assert.equal(githubConfig.private ?? false, false);
+  const privateConfig = yaml.load(fs.readFileSync(path.join(process.resourcesPath, 'github-private-update-smoke.yml'), 'utf8'));
+  assert.equal(privateConfig.provider, 'github');
+  assert.equal(privateConfig.private, true);
+  assert.equal(Object.hasOwn(privateConfig, 'token'), false);
+  const privateToken = crypto.randomBytes(24).toString('hex');
   const githubPath = `/${githubConfig.owner}/${githubConfig.repo}/releases`;
   const githubApi = `/api/v3/repos/${githubConfig.owner}/${githubConfig.repo}/releases/latest`;
+  const privateAssets = `/api/v3/repos/${githubConfig.owner}/${githubConfig.repo}/releases/assets/`;
   const download = `${githubPath}/download/v2.0.0/`;
   const directory = path.join(process.resourcesPath, 'update-smoke-feed');
   const requests = [];
   const githubRequests = [];
+  const privateRequests = [];
   const server = http.createServer((request, response) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
     if (pathname === `${githubPath}.atom`) {
@@ -39,9 +46,37 @@ module.exports = async function checkUpdater() {
       return;
     }
     if (pathname === githubApi) {
+      response.setHeader('Cache-Control', 'no-store');
+      if (request.headers.authorization) {
+        if (request.headers.authorization !== `token ${privateToken}`) {
+          response.writeHead(401).end();
+          return;
+        }
+        privateRequests.push(pathname);
+        response.setHeader('Content-Type', 'application/json');
+        response.end(JSON.stringify({ tag_name: 'v2.0.0', draft: false, prerelease: false,
+          assets: fs.readdirSync(directory).sort().map((name, index) => ({ name,
+            url: `http://127.0.0.1:${server.address().port}${privateAssets}${index + 1}` })) }));
+        return;
+      }
       githubRequests.push(pathname);
       response.setHeader('Content-Type', 'application/json');
       response.end(JSON.stringify({ tag_name: 'v2.0.0' }));
+      return;
+    }
+    if (pathname.startsWith(privateAssets)) {
+      response.setHeader('Cache-Control', 'no-store');
+      if (request.headers.authorization !== `token ${privateToken}`) {
+        response.writeHead(401).end();
+        return;
+      }
+      const name = fs.readdirSync(directory).sort()[Number(pathname.slice(privateAssets.length)) - 1];
+      if (!name) {
+        response.writeHead(404).end();
+        return;
+      }
+      privateRequests.push(pathname);
+      response.end(fs.readFileSync(path.join(directory, name)));
       return;
     }
     if (pathname.startsWith(download)) githubRequests.push(pathname);
@@ -102,6 +137,27 @@ module.exports = async function checkUpdater() {
     assert.ok(githubRequests.includes(githubApi));
     assert.ok(githubRequests.includes(download + channel));
     console.log('GITHUB_UPDATER_DISCOVERY_OK');
+    // Use fixture token; never read host credentials.
+    const privateUpdater = new Updater({ ...privateConfig, private: false, token: privateToken, host: base.host, protocol: 'http' });
+    privateUpdater.logger = null;
+    privateUpdater.autoDownload = false;
+    privateUpdater.autoInstallOnAppQuit = false;
+    const privateResult = await privateUpdater.checkForUpdates();
+    assert.equal(privateResult.updateInfo.version, '2.0.0');
+    assert.equal(privateResult.isUpdateAvailable, semver.gt('2.0.0', app.getVersion()));
+    assert.equal(privateResult.downloadPromise ?? null, null);
+    const privateProvider = await privateUpdater.clientPromise;
+    assert.equal(privateProvider.constructor.name, 'PrivateGitHubProvider');
+    const [privateFile] = privateProvider.resolveFiles(privateResult.updateInfo);
+    assert.ok(privateFile.url.pathname.startsWith(privateAssets));
+    const privateBytes = Buffer.from(await (await net.fetch(privateFile.url.href, { headers: privateProvider.fileExtraDownloadHeaders })).arrayBuffer());
+    assert.deepEqual(privateBytes, bytes);
+    assert.equal(crypto.createHash('sha512').update(privateBytes).digest('base64'), privateFile.info.sha512);
+    const unauthorized = await net.fetch(privateFile.url.href, { cache: 'no-store' });
+    assert.equal(unauthorized.status, 401);
+    assert.equal(privateRequests.length, 3);
+    assert.equal(privateRequests[0], githubApi);
+    console.log('GITHUB_PRIVATE_UPDATER_DISCOVERY_OK');
     return result.updateInfo.version;
   } finally {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

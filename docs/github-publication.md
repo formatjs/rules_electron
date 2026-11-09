@@ -79,18 +79,24 @@ records private-repository intent without embedding a token. Application
 credentials for private updates belong to runtime authentication, separately from
 publication credentials. Generic configurations retain their existing `url` API.
 
-Windows x64/ARM64 feeds need distinct stable channels such as `latest-x64` and
-`latest-arm64`, set in both the app config and feed rule. The pinned 6.8.11
-`NsisUpdater` selects the first EXE. Its GitHub prerelease provider derives the
-channel from the release tag, so per-CPU Windows prereleases require separate
-repositories. Asset filenames must remain unique across every feed in a release.
+Public stable Windows x64/ARM64 feeds need distinct channels such as
+`latest-x64` and `latest-arm64`, set in both the app config and feed rule. The
+pinned 6.8.11 `NsisUpdater` selects the first EXE. Its public GitHub prerelease
+provider derives the channel from the release tag; its private GitHub provider
+always uses the default channel. Per-CPU Windows installers require separate
+repositories in those modes. Asset filenames must remain unique across every
+feed in a release.
 
 The [cd8bd1f BB suite](https://formatjs.buildbuddy.io/invocation/3b61744c-8055-46a9-a49a-9e5e4f454585)
 passed socket-based protocol tests covering publication ordering, actual downloaded bytes,
 public-release immutability, staging/resume, interrupted uploads, redirects,
 tag changes, pagination and input conflicts. Native examples also exercise the
 real GitHub provider's Atom/API discovery, channel routing, tagged download URLs
-and SHA-512 through a local fixture host. Those native checks await hosted
+and SHA-512 through a local fixture host. The [adc00c8 native matrix](https://github.com/formatjs/rules_electron/actions/runs/42707014756)
+passed on Linux x64, macOS ARM64 and Windows x64/ARM64. A separate generated private config
+contains no token. Its native fixture creates an ephemeral token, verifies
+authenticated release/asset requests and payload hashes, then checks that an
+unauthenticated request receives HTTP 401. Private-provider checks await hosted
 validation; installed-update smoke continues to use generic feeds. Live GitHub
 publication remains unverified. API contract:
 [releases](https://docs.github.com/en/rest/releases/releases),
