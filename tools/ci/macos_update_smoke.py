@@ -74,6 +74,8 @@ def security(*arguments, check=True):
 
 
 def admin_trust(path):
+    path.write_bytes(b"")
+    path.chmod(0o600)
     result = security("trust-settings-export", "-d", path, check=False)
     if result.returncode == 1 and b"No Trust Settings were found." in result.stderr:
         return {"trustVersion": 1, "trustList": {}}

@@ -34,6 +34,8 @@ class MacosUpdateSmokeTest(unittest.TestCase):
                         self.assertEqual(domain, "-d")
                         commands.append(command)
                         if command == "trust-settings-export":
+                            self.assertTrue(path.is_file())
+                            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
                             path.write_bytes(plistlib.dumps(state))
                         elif command == "trust-settings-import":
                             if not ignore_import:
@@ -52,12 +54,14 @@ class MacosUpdateSmokeTest(unittest.TestCase):
                     self.assertEqual(commands, ["trust-settings-export", "trust-settings-import", "trust-settings-export"])
 
     def test_missing_admin_domain_is_distinct_from_export_failure(self):
-        with mock.patch("tools.ci.macos_update_smoke.security") as security:
-            security.return_value = subprocess.CompletedProcess([], 1, b"", b"SecTrustSettingsCreateExternalRepresentation: No Trust Settings were found.")
-            self.assertEqual(admin_trust(Path("unused.plist")), {"trustVersion": 1, "trustList": {}})
-            security.return_value = subprocess.CompletedProcess([], 1, b"", b"authorization denied")
-            with self.assertRaises(subprocess.CalledProcessError):
-                admin_trust(Path("unused.plist"))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.plist"
+            with mock.patch("tools.ci.macos_update_smoke.security") as security:
+                security.return_value = subprocess.CompletedProcess([], 1, b"", b"SecTrustSettingsCreateExternalRepresentation: No Trust Settings were found.")
+                self.assertEqual(admin_trust(path), {"trustVersion": 1, "trustList": {}})
+                security.return_value = subprocess.CompletedProcess([], 1, b"", b"authorization denied")
+                with self.assertRaises(subprocess.CalledProcessError):
+                    admin_trust(path)
 
     def test_cleanup_uses_executable_identity_and_excludes_sibling_apps(self):
         with tempfile.TemporaryDirectory() as directory:
