@@ -153,7 +153,7 @@ class NotarizationTest(unittest.TestCase):
 
     def test_real_declared_cli_rejects_invalid_api_credentials_without_output(self):
         output = self.root / "real-rejected.zip"
-        result = subprocess.run([CLI, "--input", str(self.source), "--output", str(output),
+        result = subprocess.run([CLI, "--backend", BACKEND_KEY, "--input", str(self.source), "--output", str(output),
                                  "--api-key-env", "NOTARY_API"],
                                 env={**os.environ, **self.environment}, capture_output=True, timeout=30)
         self.assertEqual(result.returncode, 1)
