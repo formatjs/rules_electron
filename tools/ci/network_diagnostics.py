@@ -14,7 +14,8 @@ def network_diagnostics(log):
     }
     repositories = ["bazel-contrib/rules_python", "bazel-contrib/bazel-lib",
                     "bazelbuild/rules_cc", "bazelbuild/bazel-skylib",
-                    "bazelbuild/rules_java", "bazel-contrib/rules_perl"]
+                    "bazelbuild/rules_java", "bazel-contrib/rules_perl",
+                    "NixOS/patchelf", "hermeticbuild/hermetic-llvm"]
     codes = re.findall(r"(?:GET returned|returned error|(?:HTTP(?: response)?|response|status)(?: code)?)\s*:?\s*([45][0-9]{2})", log, re.I)
     return {
         "categories": sorted(name for name, pattern in patterns.items() if re.search(pattern, log, re.I)),
