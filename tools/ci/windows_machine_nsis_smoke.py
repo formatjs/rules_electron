@@ -106,7 +106,7 @@ def main():
             write = ctypes.windll.kernel32.WritePrivateProfileStringW
             write.argtypes, write.restype = [ctypes.c_wchar_p] * 4, ctypes.c_int
             assert write("app", "scope", "user", str(marker))
-            command(str(helper), "--wait", str(install / "Uninstall.exe"), "/S", success=False)
+            command(str(install / "Uninstall.exe"), "/S", nsis_uninstall_directory=install, success=False)
             assert executable.is_file() and value(REGISTRY, "DisplayVersion") == "2.0.0"
             assert write("app", "scope", "machine", str(marker))
             command(str(helper), "--wait", str(install / "Uninstall.exe"), "/S")

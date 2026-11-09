@@ -86,9 +86,16 @@ def known_folder(identifier):
     return Path(buffer.value)
 
 
-def command(*args, env=None, success=True, nsis_directory=None):
-    # NSIS requires /D last and unquoted, including paths containing spaces.
-    arguments = subprocess.list2cmdline(args) + " /D=" + str(nsis_directory) if nsis_directory else args
+def command(*args, env=None, success=True, nsis_directory=None, nsis_uninstall_directory=None):
+    if nsis_directory is not None and nsis_uninstall_directory is not None:
+        raise ValueError("Choose one NSIS directory tail")
+    # NSIS directory tails must remain last and unquoted.
+    if nsis_directory is not None:
+        arguments = subprocess.list2cmdline(args) + " /D=" + str(nsis_directory)
+    elif nsis_uninstall_directory is not None:
+        arguments = subprocess.list2cmdline(args) + " _?=" + str(nsis_uninstall_directory)
+    else:
+        arguments = args
     result = subprocess.run(arguments, env=env, capture_output=True, encoding="utf-8", errors="replace", timeout=180)
     if (result.returncode == 0) != success:
         raise RuntimeError(f"Unexpected exit {result.returncode}: {args}\n{result.stdout[-3000:]}\n{result.stderr[-3000:]}")

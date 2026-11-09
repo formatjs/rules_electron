@@ -50,6 +50,13 @@ the installer lifecycle runs. Hosted validation of this fix is pending. NSIS's
 also requires `/D` last, without quotes; the generated installer retains its
 explicit directory-option parser for updater calls.
 
+The switch fix reached real elevated machine updates and the v2 installed-app
+checks. The next failure was the scope-rejection harness: a normal NSIS
+uninstaller launcher returns before its temporary worker, so its exit code did
+not describe the rejected operation. That probe now uses the documented `_?=`
+directory tail to execute the actual uninstaller in place and observe its result.
+Complete machine removal/ownership validation remains pending.
+
 `installer_icon` and `uninstaller_icon` accept declared ICO labels, including
 generated icons. NSIS embeds them independently using its
 [`Icon` and `UninstallIcon` attributes](https://nsis.sourceforge.io/Docs/Chapter4.html#instattribs).
