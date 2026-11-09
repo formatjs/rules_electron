@@ -1,0 +1,102 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+_COMMON = [
+    "compressor.c",
+    "date.c",
+    "gzip_wrapper.c",
+    "limit.c",
+    "memory.c",
+    "nprocessors_compat.c",
+    "print_pager.c",
+    "swap.c",
+    "zstd_wrapper.c",
+]
+
+_DEFINES = [
+    "_FILE_OFFSET_BITS=64",
+    "_LARGEFILE_SOURCE",
+    "_GNU_SOURCE",
+    'COMP_DEFAULT="gzip"',
+    'VERSION="4.7.5"',
+    'DATE="2026/03/01"',
+    'YEAR="2026"',
+    "GZIP_SUPPORT",
+    "ZSTD_SUPPORT",
+    "XATTR_SUPPORT",
+    "XATTR_OS_SUPPORT",
+    "MAX_READER_THREADS=1024",
+    "SINGLE_READER_THREAD",
+]
+
+cc_binary(
+    name = "mksquashfs",
+    srcs = ["squashfs-tools/" + source for source in _COMMON + [
+        "mksquashfs.c",
+        "read_fs.c",
+        "action.c",
+        "pseudo.c",
+        "sort.c",
+        "progressbar.c",
+        "info.c",
+        "restore.c",
+        "process_fragments.c",
+        "caches-queues-lists.c",
+        "reader.c",
+        "tar.c",
+        "mksquashfs_help.c",
+        "symbolic_mode.c",
+        "thread.c",
+        "virt_disk_pos.c",
+        "xattr.c",
+        "read_xattrs.c",
+        "tar_xattr.c",
+        "pseudo_xattr.c",
+        "xattr_system.c",
+    ]] + glob(["squashfs-tools/*.h"]),
+    copts = ["-std=gnu11"],
+    linkopts = [
+        "-pthread",
+        "-lm",
+    ],
+    local_defines = _DEFINES,
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        "@zlib",
+        "@zstd",
+    ],
+)
+
+cc_binary(
+    name = "unsquashfs",
+    srcs = ["squashfs-tools/" + source for source in _COMMON + [
+        "unsquashfs.c",
+        "unsquash-1.c",
+        "unsquash-2.c",
+        "unsquash-3.c",
+        "unsquash-4.c",
+        "unsquash-123.c",
+        "unsquash-34.c",
+        "unsquash-1234.c",
+        "unsquash-12.c",
+        "unsquashfs_info.c",
+        "unsquashfs_help.c",
+        "read_xattrs.c",
+        "unsquashfs_xattr.c",
+        "unsquashfs_xattr_system.c",
+    ]] + glob(["squashfs-tools/*.h"]),
+    copts = ["-std=gnu11"],
+    linkopts = [
+        "-pthread",
+        "-lm",
+    ],
+    local_defines = _DEFINES,
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        "@zlib",
+        "@zstd",
+    ],
+)
+
+exports_files(["COPYING"])

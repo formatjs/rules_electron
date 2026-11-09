@@ -7,8 +7,10 @@ module(
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_python", version = "1.9.0")
 bazel_dep(name = "rules_pkg", version = "1.1.0")
+bazel_dep(name = "zlib", version = "1.3.1.bcr.9")
+bazel_dep(name = "zstd", version = "1.5.7.bcr.3")
+bazel_dep(name = "rules_cc", version = "0.2.26")
 
-bazel_dep(name = "rules_cc", version = "0.2.26", dev_dependency = True)
 bazel_dep(name = "llvm", version = "0.8.26", dev_dependency = True)
 bazel_dep(name = "buildifier_prebuilt", version = "10.1.0", dev_dependency = True)
 
@@ -37,4 +39,12 @@ http_archive(
     sha256 = "98ac470cf076f19241b5ee259e135de0adc3c3b8076c41682d6468c2a9990845",
     strip_prefix = "7zip",
     urls = ["https://github.com/electron-userland/electron-builder-binaries/releases/download/7zip%401.1.0/7zip-linux-x64.tar.gz"],
+)
+
+http_archive(
+    name = "appimage_squashfs_sources",
+    build_file = "//third_party:squashfs.BUILD.bazel",
+    sha256 = "cf0541e42ab1d115bbdde1ea85e2b1f9ccede93133cbd2f64dfe5b8ed5d0666c",
+    strip_prefix = "squashfs-tools-708c59ae80853b0845017c33b42e56061cc546cd",
+    urls = ["https://github.com/plougher/squashfs-tools/archive/708c59ae80853b0845017c33b42e56061cc546cd.tar.gz"],
 )

@@ -508,3 +508,21 @@ py_test(
     ],
     deps = ["//electron/private:archives"],
 )
+
+py_test(
+    name = "squashfs_tools_test",
+    size = "small",
+    srcs = ["squashfs_tools_test.py"],
+    args = [
+        "$(rootpath //electron/tools:mksquashfs)",
+        "$(rootpath //electron/tools:unsquashfs)",
+    ],
+    data = [
+        "//electron/tools:mksquashfs",
+        "//electron/tools:unsquashfs",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)

@@ -1,0 +1,11 @@
+package(default_visibility = ["//visibility:public"])
+
+alias(
+    name = "mksquashfs",
+    actual = "@appimage_squashfs_sources//:mksquashfs",
+)
+
+alias(
+    name = "unsquashfs",
+    actual = "@appimage_squashfs_sources//:unsquashfs",
+)
