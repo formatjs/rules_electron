@@ -94,14 +94,18 @@ RFC 3161 timestamps require HTTPS, explicit transport/TSA roots and successful
 timestamp verification. `--no-timestamp` is an explicit alternative for test or
 deliberately untimestamped releases; it is never selected implicitly. Hosted
 interface tests cover real PE/MSIX signing, encrypted keys, repeatability,
-identity/trust rejection, output preservation and final updater hashes. Validation
-is pending for the added local HTTPS RFC 3161 exchange and rejection tests.
+identity/trust rejection, output preservation and final updater hashes.
 The [5d18260 BB suite](https://formatjs.buildbuddy.io/invocation/788bc1e4-d72b-43ae-b3a7-e696ec1b1aec)
 passed the public PE/MSIX interface, encrypted keys, identity/trust rejection,
 repeat signing and final feed hashes; its
 [cross-build](https://formatjs.buildbuddy.io/invocation/5f1f18a2-ca08-419e-bd3e-ad6755d67d6e)
 also passed. A narrow native signer patch adds TLS hostname checks and makes
 invalid explicit transport roots fail instead of skipping verification.
+The [f8749a6 BB suite](https://formatjs.buildbuddy.io/invocation/ed0b04c2-3a52-426a-a65c-2261ec0456d5)
+passed a real local HTTPS RFC 3161 TSA exchange, wrong-host rejection, invalid
+transport roots, untrusted TSA chains and failed timestamp responses. The
+[cross-build](https://formatjs.buildbuddy.io/invocation/2bef04dd-0656-4808-ad9e-6e56cdae8551)
+also passed. No external TSA or production certificate was used.
 Live TSA interoperability, production trust, credential services,
 certificate rotation/revocation policy and native Windows release acceptance
 remain open; this command does not establish those claims.

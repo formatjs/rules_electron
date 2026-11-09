@@ -86,3 +86,10 @@ socket-based integration tests: verified immutable payloads/blockmaps upload
 before ETag-guarded channel promotion. The [BB suite](https://formatjs.buildbuddy.io/invocation/dcd45a49-c63b-4107-a8fb-be76a3bcb6b0)
 passed the public executable's socket-based publication tests. Provider
 APIs and production publication remain open. See [updates](updates.md).
+
+Windows release signing now has an explicit PE/MSIX command with private runtime
+credentials, encrypted-key support, certificate SHA-256 pinning and verified
+output commit. The [BB suite](https://formatjs.buildbuddy.io/invocation/ed0b04c2-3a52-426a-a65c-2261ec0456d5)
+passed real local HTTPS RFC 3161 timestamps and TLS/trust/failure rejection.
+Production trust, remote credential services and native acceptance of release
+identities remain open. See [signing](signing.md).
