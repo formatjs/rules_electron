@@ -30,6 +30,11 @@ Files install in `mimetypes/` using the
 the MIME type with `/` replaced by `-`. Unknown MIME mappings, duplicate sizes,
 non-square PNGs, malformed PNG headers/chunks and non-SVG roots fail packaging. Native icon resolution,
 pixel decoding and purge validation are pending.
+GTK can choose a current theme's generic MIME icon before inherited hicolor
+icons; see [theme lookup order](https://docs.gtk.org/gtk3/method.IconTheme.choose_icon.html).
+The smoke checks named lookup through normal theme inheritance and GIO MIME
+resolution in hicolor, then decodes the installed PNG. A user's selected theme
+can override its presentation.
 Desktop/MIME registration advertises handlers; choosing user defaults remains an
 OS/user operation.
 

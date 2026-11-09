@@ -139,4 +139,7 @@ valid ICO container. Unspecified associations use the app executable icon.
 Payload ownership covers icon upgrade/removal. User defaults remain unchanged.
 Native shell resolution through
 [`ASSOCSTR_DEFAULTICON`](https://learn.microsoft.com/en-us/windows/win32/api/shlwapi/ne-shlwapi-assocstr)
-and Win32 image decoding before/after update are pending validation.
+and Win32 image decoding passed before/after installed updates on
+[Windows x64](https://github.com/formatjs/rules_electron/actions/runs/42538722589/job/128908849414)
+and [Windows ARM64](https://github.com/formatjs/rules_electron/actions/runs/42538722589/job/128908849402)
+for a3f7142. Both hosts also passed uninstall ownership checks.
