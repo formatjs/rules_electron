@@ -27,7 +27,7 @@ proof.
 
 This tool is groundwork, not production signing policy. Release interfaces still
 need credential/service isolation, certificate identity checks, production trust
-and timestamp policy, final-artifact ordering and full Electron MSIX deployment
+and timestamp policy, final-artifact ordering and source-built Electron MSIX deployment
 proof. Production credentials must stay outside ordinary cacheable build actions.
 macOS Developer ID/notarization/stapling and publication remain separate gaps.
 
@@ -61,5 +61,6 @@ passed exact WinVerifyTrust results: unsigned `0x800b0100`, untrusted root
 `0x800b0109`, trusted success `0x00000000`, changed payload `0x80096010`.
 Both installed the signed package, executed its native helper, removed the
 package and removed the temporary certificate. No runtime compilation or signing
-occurs on those hosts. Fixture remains a minimal PE package; full Electron
-installation and production credential/service interfaces remain open.
+occurs on those hosts. The subsequent [full-app MSIX gate](msix.md) also passed
+bootstrap Electron installation and upgrades on both Windows CPUs. Production
+credential/service interfaces and the complete source-built runtime remain open.

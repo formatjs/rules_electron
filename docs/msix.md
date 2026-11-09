@@ -20,7 +20,7 @@ electron_msix(
 ```
 
 Output is unsigned. `identity_name` defaults to app `app_id`; publisher is an
-explicit certificate subject. Future signing must preserve both. App native
+explicit certificate subject. Signing must preserve both. App native
 `build_version`/`build_number` supplies four numeric version components, padded
 with zeroes. Prerelease SemVer requires an explicit numeric build version or
 build number. Payload PE must match target x64/ARM64. Logos require exact 44x44,
@@ -43,8 +43,8 @@ of a modified second block. Native fixture contains a target-built PE, not a
 complete Electron installation.
 
 Current limits: empty directory leaves and symlinks fail explicitly; no placeholder
-files replace them. Production signing, actual Electron install/launch,
-update/remove, file/protocol registration, language/scale assets and App Installer
+files replace them. Production signing, file/protocol registration,
+language/scale assets and App Installer
 publishing remain open. The source-built signer now passes a
 [BB MSIX signing/verification round trip](https://formatjs.buildbuddy.io/invocation/feb26e4f-2453-4ff3-ab50-81f58c7dd10e),
 including preserved payload hashes and reproducible signed bytes. Signed minimal
@@ -61,5 +61,15 @@ ASAR directories remain. Installed smoke requires Electron's
 package identity, keeps Chromium's sandbox enabled and checks both versions
 across a native MSIX upgrade/removal. It reads integrity metadata without
 modifying the installed WindowsApps tree. Portable-app tamper tests remain
-separate. NSIS updater discovery is not run inside MSIX. Hosted validation of
-this full-app gate remains pending.
+separate. NSIS updater discovery is not run inside MSIX.
+
+The [5ded5f6 BB suite](https://formatjs.buildbuddy.io/invocation/46b6948e-0d57-4c5b-b64c-640d9216984e)
+and [seven-variant cross-build](https://formatjs.buildbuddy.io/invocation/00631cb7-3597-494c-b303-de0dd1db95aa)
+passed. Native [Windows x64](https://github.com/formatjs/rules_electron/actions/runs/42572824736/job/129014064007)
+and [ARM64](https://github.com/formatjs/rules_electron/actions/runs/42572824736/job/129014064054)
+installed v1, launched actual Electron, upgraded to v2, launched again and removed
+the package and temporary certificate. Both versions reported MSIX identity and
+native CPU, exercised the sandboxed renderer/preload, loaded the target-built
+addon/helper and checked packaged resources and multi-ASAR integrity metadata.
+This proves bootstrap-runtime deployment; the full source-built runtime remains
+unverified.

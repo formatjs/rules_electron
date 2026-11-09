@@ -20,7 +20,7 @@ electron-builder replacement.
 | Windows app | Renamed executable, current-process Node-API exports, four compiler/CPU variants; PE version/product strings, ICO icons and ASAR integrity through declared source Node/resedit tooling | General addon delay-load/import-library tooling, Authenticode |
 | App version/build number | Public SemVer manifest override/validation; explicit build number/version; macOS app/helper, Windows PE/NSIS and DEB iteration | — |
 | OS registration | Linux desktop/MIME declarations and declared file-type PNG/SVG icons (native PNG install/update/purge checks pass); macOS URL/document types, document icons and native LaunchServices delivery; per-user Windows URI schemes, Open With/Default Apps file handlers, declared document ICO paths (native x64/ARM64 install/update checks pass) and shortcut AppUserModelID | Richer document metadata and Windows verbs |
-| Installers | Linux DEB for amd64/arm64; native RPM v4 writer and native Fedora install/update/remove checks; source-built AppImages and embedded updater feeds for both Linux CPUs; per-user Windows NSIS with declared tools, independent installer/uninstaller icons and owned-file uninstall | macOS disk images, Windows per-machine NSIS/MSIX and other packaging |
+| Installers | Linux DEB for amd64/arm64; native RPM v4 writer and native Fedora install/update/remove checks; source-built AppImages and embedded updater feeds for both Linux CPUs; per-user Windows NSIS with declared tools, independent installer/uninstaller icons and owned-file uninstall; native MSIX writer with signed bootstrap Electron install/upgrade/remove on both Windows CPUs | macOS disk images, Windows per-machine NSIS, production MSIX signing/OS integration and other packaging |
 | Prepackaged release stages | Public immutable app import for archives/installers; layout, CPU, packaged manifest and macOS identity validation; seven cross-build variants and four native hosts pass | Release signing APIs and signature trust policy |
 | Distribution archives | Public ZIP/tar/tar.gz/tar.xz/tar.bz2/7z rule, explicit compression, executable modes and relative symlinks; native macOS ZIP and Linux x64 tar.gz/7z launch | Other archive formats |
 | electron-updater | Generic config/manifests, SHA-512/size, content-defined external blockmaps, real client discovery/planning; Linux DEB/RPM/AppImage and Windows NSIS lifecycle smoke; over 99% sample NSIS reuse on both CPUs and 99.7% AppImage reuse on Linux x64 | Other update targets and provider/publishing adapters |
@@ -70,6 +70,9 @@ and [all four native hosts](https://github.com/formatjs/rules_electron/actions/r
 including both Windows Packaging API gates. Fixture remains a minimal PE app.
 Signed minimal fixtures also passed native trust/tamper rejection and
 install/helper launch/removal on both Windows CPUs; see [signing proof](signing.md).
-Full Electron deployment, production signing, install/update/remove, OS
-associations and updater behavior remain unverified. Empty directory leaves and symlinks fail
+The [full-app MSIX gate](msix.md) subsequently passed bootstrap Electron
+install/launch/upgrade/removal on both Windows CPUs, with package identity,
+sandboxed renderer, native addon/helper and integrity metadata checks. The full
+source runtime, production signing, MSIX OS associations and updater behavior
+remain unverified. Empty directory leaves and symlinks fail
 explicitly. See [MSIX](msix.md).
