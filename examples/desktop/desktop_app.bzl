@@ -54,6 +54,7 @@ def desktop_app(name, package_json, empty_resources = True, **kwargs):
             ":windows": dict({
                 ":example_document_icon": "document.ico",
                 ":helper": "native/helper.exe",
+                "@rules_electron//electron/tools:windows_elevate": "elevate.exe",
                 ":update_config": "app-update.yml",
                 ":update_smoke_feed": "update-smoke-feed",
                 "resources/settings.json": "config/settings.json",

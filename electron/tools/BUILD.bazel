@@ -1,8 +1,22 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("//electron/private:release_backend.bzl", "release_backend")
 load("//third_party:appimage_runtime.bzl", "static_pie_runtime")
 
 package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "windows_elevate",
+    srcs = ["windows_elevate.cc"],
+    copts = ["-std=c++17"],
+    linkopts = [
+        "shell32.lib",
+        "ole32.lib",
+        "-Wl,/subsystem:windows",
+        "-Wl,/entry:mainCRTStartup",
+    ],
+    target_compatible_with = ["@platforms//os:windows"],
+)
 
 release_backend(
     name = "windows_signing_backend",

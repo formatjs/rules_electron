@@ -1,5 +1,20 @@
 # Windows installers
 
+`@rules_electron//electron/tools:windows_elevate` builds a native elevation bridge
+for the selected Windows CPU/compiler. Map it to `resources/elevate.exe` for the
+pinned electron-updater NSIS elevation contract. It accepts an absolute executable
+path followed by arguments, invokes the Windows `runas` verb, waits and returns
+the child exit code. Unicode, empty arguments, quotes and trailing backslashes
+are preserved without a shell interpreter. The helper uses the Windows GUI
+subsystem, so updater launch does not open a console window.
+
+Compilation runs on BB Linux. Matching Windows smoke checks the native PE CPU,
+elevated child token, exact arguments, exit status and invalid-input failures for
+both compiler variants. Validation is pending. Already elevated disposable runners
+exercise the bridge without an interactive UAC prompt. Consent/cancellation and
+per-machine installer/update lifecycle remain open; adding this helper alone does
+not establish per-machine NSIS support.
+
 `installer_icon` and `uninstaller_icon` accept declared ICO labels, including
 generated icons. NSIS embeds them independently using its
 [`Icon` and `UninstallIcon` attributes](https://nsis.sourceforge.io/Docs/Chapter4.html#instattribs).

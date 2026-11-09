@@ -209,6 +209,16 @@ cc_binary(
     srcs = ["native/helper.cc"],
 )
 
+cc_binary(
+    name = "elevation_probe",
+    srcs = ["native/elevation_probe.cc"],
+    linkopts = [
+        "shell32.lib",
+        "advapi32.lib",
+    ],
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
 copy_to_directory(
     name = "renderer_bundle",
     srcs = [
@@ -334,6 +344,7 @@ electron_nsis_tool(
 filegroup(
     name = "windows_release_files",
     srcs = [
+        ":elevation_probe",
         ":msix_probe",
         ":msix_reader",
         ":msix_signed_desktop_v1",
@@ -341,6 +352,7 @@ filegroup(
         ":msix_signed_probe",
         ":nsis_v1_feed",
         ":nsis_v2_feed",
+        "@rules_electron//electron/tools:windows_elevate",
     ],
     target_compatible_with = ["@platforms//os:windows"],
 )
