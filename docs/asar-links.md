@@ -24,8 +24,10 @@ symlinks remain a separate mapping concern.
 
 The source overlay's [canonical resolver patch](https://github.com/formatjs/electron/commit/0a54b87346be709f43bb70a8b80209def644ce2c)
 addresses direct unpacked aliases, chained directory/file links, root aliases and
-canonical extraction cache keys. Its focused BB resolver test and full reader
-integration remain unverified. The bootstrap runtime used by native examples
+canonical extraction cache keys. Its focused resolver test passed in the
+[BB consumer preflight](https://formatjs.buildbuddy.io/invocation/0133feee-c4e4-4e99-8560-c5cca00d3180).
+Real reader integration and full-runtime filesystem smoke remain unverified.
+The bootstrap runtime used by native examples
 does not contain this patch; direct unpacked alias support remains a migration
 gate until source-runtime smoke passes.
 
