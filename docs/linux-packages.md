@@ -76,7 +76,7 @@ and mode, clears host sandbox overrides, and launches with
 `--disable-namespace-sandbox` to exercise Chromium's setuid fallback. Both versions,
 installed updater and purge passed on the native Linux x64 host for
 [255731d](https://github.com/formatjs/rules_electron/actions/runs/42520835627/job/128853879770).
-Distribution-specific confinement, RPM and AppImage remain open.
+Distribution-specific confinement and AppImage remain open.
 
 ## RPM
 
@@ -122,8 +122,11 @@ only under the destination package manager. The installed `package-type` marker
 selects real `RpmUpdater`; generate its feed from the final RPM with
 `electron_update_feed`.
 
-RPM lifecycle validation is pending; the example pins electron-updater 6.8.11
-for its corrected dnf detection. CI cross-builds both CPUs on BB. Native Linux x64
+[BB tests](https://formatjs.buildbuddy.io/invocation/276cf1f2-461e-4ee6-a306-c0b28eb38d92),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/d2da0d6a-fcdb-4484-a424-c062871ba902)
+and [native Fedora lifecycle](https://github.com/formatjs/rules_electron/actions/runs/42544004368/job/128925130857)
+passed with electron-updater 6.8.11 and its corrected dnf detection.
+CI cross-builds both CPUs on BB. Native Linux x64
 smoke provisions an immutable official Fedora 43 container, installs the BB
 artifact through dnf, checks real RPM digests/file verification, launches v1,
 rejects a corrupted update, installs v2 through `RpmUpdater`, launches v2 and

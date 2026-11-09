@@ -60,8 +60,8 @@ separate packaging stage.
 The desktop example pins electron-updater 6.8.11 and its script-free npm closure
 through an integrity-checked lockfile. Native smoke exercises discovery, channel
 routing, artifact hashes and actual updater blockmap planning over local HTTP.
-Its metadata fixture is not an installer. A separate [Linux DEB test](linux-packages.md)
-uses real v1/v2 packages, hash rejection and installed-app upgrades.
+Its metadata fixture is not an installer. Separate [Linux DEB and RPM tests](linux-packages.md) use real v1/v2 packages,
+hash rejection and installed-app upgrades.
 [Windows NSIS smoke](windows-installers.md) adds real installer lifecycle and
 differential range downloads. Other targets,
 signature rejection and release-identity verification remain pending.
@@ -75,3 +75,8 @@ The example uses the published 6.8.11 Linux package-manager detector. Version
 client probes available managers independently. CI supplies only a headless
 elevation adapter; dnf/dpkg perform real installation. Dependency tarballs remain
 integrity-pinned, with no npm lifecycle scripts executed during builds.
+
+[6.8.11 lifecycle validation](https://github.com/formatjs/rules_electron/actions/runs/42544004368)
+passed all four native hosts: DEB and Fedora RPM install/update/removal, NSIS
+differential installation on both Windows CPUs, plus macOS discovery. Compilation
+and packaging ran on BB; the Fedora container only installed and executed outputs.
