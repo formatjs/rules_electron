@@ -50,6 +50,12 @@ At runtime, `process.resourcesPath` locates extra resources. Its parent locates
 extra files on all three platforms. The desktop example reads a packaged notice
 there during native smoke.
 
+The Linux/macOS example also mounts the generated renderer provider at
+`extra_resources[":renderer_files"] = "generated"` and
+`extra_files[":renderer_files"] = "generated-files"`. Native smoke checks real
+file/directory symlinks after relocation, canonical paths, filtered files and
+empty directories through both mounts. These new checks await hosted validation.
+
 [BB assembly tests](https://formatjs.buildbuddy.io/invocation/f79a67e5-511b-4ef9-99c7-a4f235c02e35)
 and [seven cross-build variants](https://formatjs.buildbuddy.io/invocation/2c48cc35-4af3-4a3f-a72d-3334074ca928)
 passed. [Native smoke](https://github.com/formatjs/rules_electron/actions/runs/42453918813)

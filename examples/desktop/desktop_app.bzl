@@ -47,7 +47,10 @@ def desktop_app(name, package_json, empty_resources = True, **kwargs):
         executable_name = "sample-desktop",
         extra_files = select({
             ":windows": {"resources/NOTICE.txt": "licenses/NOTICE.txt"},
-            "//conditions:default": {":license_files": "licenses"},
+            "//conditions:default": {
+                ":license_files": "licenses",
+                ":renderer_files": "generated-files",
+            },
         }),
         extra_asars = {":shared_archive": "plugins/shared.asar"},
         resource_symlinks = select({
@@ -65,6 +68,7 @@ def desktop_app(name, package_json, empty_resources = True, **kwargs):
             }, **({":empty_resources": "directories"} if empty_resources else {})),
             "//conditions:default": dict({
                 ":helper": "native/helper",
+                ":renderer_files": "generated",
                 ":update_config": "app-update.yml",
                 ":update_smoke_feed": "update-smoke-feed",
                 "resources/settings.json": "config/settings.json",

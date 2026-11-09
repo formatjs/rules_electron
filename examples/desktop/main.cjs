@@ -160,6 +160,19 @@ app.whenReady().then(async () => {
         assert.ok(fs.lstatSync(path.join(licenses, 'current')).isSymbolicLink());
         assert.equal(fs.readFileSync(path.join(licenses, 'current/notice-alias.txt'), 'utf8'),
           'Generic desktop example notice.\n');
+        for (const root of [path.join(process.resourcesPath, 'generated'),
+          path.join(path.dirname(process.resourcesPath), 'generated-files')]) {
+          const renderer = path.join(root, 'renderer');
+          assert.ok(fs.lstatSync(path.join(renderer, 'page.html')).isSymbolicLink());
+          assert.ok(fs.lstatSync(path.join(renderer, 'current')).isSymbolicLink());
+          assert.equal(fs.realpathSync(path.join(renderer, 'current/page.html')),
+            fs.realpathSync(path.join(renderer, 'index.html')));
+          assert.equal(fs.readFileSync(path.join(renderer, 'current/page.html'), 'utf8'),
+            fs.readFileSync(path.join(__dirname, 'renderer/index.html'), 'utf8'));
+          assert.deepEqual(fs.readdirSync(path.join(renderer, 'current/empty')), []);
+          assert.equal(fs.existsSync(path.join(renderer, 'development.map')), false);
+          assert.equal(fs.existsSync(path.join(renderer, 'development.txt')), false);
+        }
       }
       assert.equal(path.basename(__filename), 'main.cjs');
       assert.equal(fs.existsSync(path.join(__dirname, 'renderer/development.map')), false);
