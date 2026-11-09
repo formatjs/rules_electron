@@ -39,6 +39,14 @@ npm_runtime(
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
+    name = "xorriso_sources",
+    build_file = "//third_party:xorriso.BUILD.bazel",
+    sha256 = "b1455ecafbf0692ddafe1d71002a96f2ce2d77f4deae602678261ce033f97bc8",
+    strip_prefix = "xorriso-1.5.8",
+    urls = ["https://ftp.gnu.org/gnu/xorriso/xorriso-1.5.8.pl02.tar.gz"],
+)
+
+http_archive(
     name = "rcodesign_linux_x64",
     build_file_content = "exports_files([\"rcodesign\"])\n",
     dev_dependency = True,

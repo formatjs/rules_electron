@@ -1,6 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary")
 
 exports_files([
+    "xorriso.BUILD.bazel",
     "node_delay_import.BUILD.bazel",
     "osslsigncode.BUILD.bazel",
     "osslsigncode-config.patch",

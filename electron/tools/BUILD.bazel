@@ -5,6 +5,11 @@ load("//third_party:appimage_runtime.bzl", "static_pie_runtime")
 
 package(default_visibility = ["//visibility:public"])
 
+alias(
+    name = "xorriso",
+    actual = "@xorriso_sources//:xorriso",
+)
+
 exports_files([
     "notarize_macos.py",
     "sign_macos.py",
