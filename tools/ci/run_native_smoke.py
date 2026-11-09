@@ -128,6 +128,7 @@ if __name__ == "__main__":
                 try:
                     if (mount / "Applications").readlink().as_posix() != "/Applications":
                         raise ValueError("Invalid DMG Applications link")
+                    subprocess.run([sys.executable, "tools/ci/dmg_finder_smoke.py", str(mount)], check=True)
                     subprocess.run([sys.executable, "examples/desktop/tools/smoke_test.py", str(mount / "Sample Desktop.app"),
                                     "--target-os", "macos", "--target-arch", target_arch], check=True)
                     print("DMG_NATIVE_SMOKE_OK", flush=True)

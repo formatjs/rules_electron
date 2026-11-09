@@ -676,3 +676,20 @@ also passed after input pruning.
 The [Mac ZIP differential gate](updates.md) separately measured 486,177 payload
 bytes downloaded from a 285,561,263-byte ZIP: 99.83% reuse. This assumes an
 existing v1 ZIP cache and excludes blockmap metadata transfer.
+
+
+## Source runtime dependency audit
+
+The [36047d3 source workflow](https://formatjs.buildbuddy.io/invocation/19e5a281-f4fc-4dc9-a9bb-7afd63f9b036)
+spent 79.542 and 82.871 seconds on separate bootstrap/source runtime dependency
+queries: 162.413 seconds total. It reached the hosted one-hour deadline with
+74,197 action-cache hits, 1,185 misses and 1,166 uploads. Compilation cache work
+survived the deadline; this was not a compiler failure.
+
+`da21d47` shares one dependency graph traversal, still rejecting the Linux
+bootstrap runtime and requiring the source runtime. Its
+[combined cquery](https://formatjs.buildbuddy.io/invocation/0af9c31f-eb3b-44af-823c-521c96c18016)
+passed in 75.772 seconds before the full source build continued. These are
+mixed-cache phase observations with different example inputs. They establish
+one fewer query and an observed shorter audit phase, not a cold-build or
+end-to-end speedup. Full source desktop execution remains unverified.

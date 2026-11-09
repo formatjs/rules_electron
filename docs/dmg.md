@@ -8,6 +8,12 @@ electron_dmg(
     app = ":app",
     volume_name = "Sample Desktop",
     source_date_epoch = 1577836800,
+    finder_window = [120, 140, 600, 360],
+    app_position = [140, 160],
+    applications_position = [460, 160],
+    icon_size = 112,
+    text_size = 12,
+    background_color = "#ddeeff",
 )
 ```
 
@@ -23,8 +29,22 @@ configuration, host tools, filesystem times and libc PRNG state do not supply
 image inputs. Existing app file bytes, modes and relative links survive staging.
 
 Sign and notarize the app before immutable import when preparing a production
-release. The example's app carries ad hoc signatures. Finder
-backgrounds/icons/layout and license dialogs remain separate gaps.
+release. The example's app carries ad hoc signatures.
+
+`finder_window` enables a deterministic `.DS_Store` and HFS+ auto-open folder.
+It declares x, y, width and height. App/Applications icon positions use centers
+inside that window; `icon_size` allows 16..512 pixels and `text_size` 10..16.
+`background_color` accepts `#RRGGBB`. Omitting `finder_window` retains the plain
+volume layout. Background images, custom volume icons and license dialogs
+remain separate gaps.
+
+Metadata uses checksum-pinned MIT-licensed `ds_store` 1.3.3 and `mac_alias` 2.2.2
+Python sources. No alias filesystem discovery, Finder, mounting or AppleScript
+runs in artifact actions. Geometry/color inputs and metadata bytes participate
+in deterministic image identity. BB tests decode the packaged settings and
+auto-open catalog ID, preserve app seals and compare relocated input bytes.
+Native smoke reads settings through Finder without changing them. Hosted
+validation remains pending. See the [codec contract](https://ds-store.readthedocs.io/en/latest/index.html).
 
 BB tests independently decode UDIF block maps, check compressed/uncompressed
 CRC32 values, compare relocated ZIP/tree inputs, and read the image payload with

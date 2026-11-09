@@ -94,8 +94,25 @@ cross_smoke_bundle(
 electron_dmg(
     name = "release_dmg",
     app = ":app",
+    app_position = [
+        140,
+        160,
+    ],
+    applications_position = [
+        460,
+        160,
+    ],
+    background_color = "#ddeeff",
+    finder_window = [
+        120,
+        140,
+        600,
+        360,
+    ],
+    icon_size = 112,
     source_date_epoch = 1577836800,
     target_compatible_with = ["@platforms//os:osx"],
+    text_size = 12,
 )
 
 filegroup(

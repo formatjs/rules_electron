@@ -12,9 +12,12 @@ import tempfile
 
 from electron.private.archive import inventory, relative
 from electron.private.files import normalize
+from electron.private.finder import write_layout
 
 
-def create_dmg(source, app_name, volume_name, source_date_epoch, applications_link, xorriso, converter, output):
+def create_dmg(source, app_name, volume_name, source_date_epoch, applications_link, xorriso, converter, output,
+               finder_window=(), app_position=(160, 180), applications_position=(480, 180),
+               icon_size=128, text_size=14, background_color="#ffffff"):
     relative(app_name)
     if "/" in app_name or not app_name.endswith(".app"):
         raise ValueError("Expected single app bundle name")
@@ -66,6 +69,11 @@ def create_dmg(source, app_name, volume_name, source_date_epoch, applications_li
             raise ValueError("Invalid macOS app bundle")
         if applications_link:
             (staging / "Applications").symlink_to("/Applications")
+        if finder_window:
+            layout = staging / ".DS_Store"
+            write_layout(layout, app_name, applications_link, finder_window, app_position,
+                         applications_position, icon_size, text_size, background_color)
+            digest.update(layout.read_bytes())
         normalize(staging)
         environment = {"PATH": "", "HOME": str(root), "TMPDIR": str(root), "TZ": "UTC", "LC_ALL": "C",
                        "SOURCE_DATE_EPOCH": str(source_date_epoch)}
@@ -73,7 +81,9 @@ def create_dmg(source, app_name, volume_name, source_date_epoch, applications_li
         subprocess.run([xorriso, "-no_rc", "-local_charset", "UTF-8", "-as", "mkisofs", "-hfsplus", "-R",
                         "-uid", "0", "-gid", "0", "-apm-block-size", "512", "-input-charset", "UTF-8", "-output-charset", "UTF-8",
                         "-hfsplus-serial-no", digest.hexdigest()[:16], "--set_all_file_dates", date,
-                        "--modification-date=" + date, "-V", volume_name, "-o", str(iso), str(staging)],
+                        "--modification-date=" + date, "-V", volume_name,
+                        *(["-hfs-bless-by", "show_folder", "/"] if finder_window else []),
+                        "-o", str(iso), str(staging)],
                        env=environment, check=True, capture_output=True, timeout=1800)
         image = root / "release.dmg"
         subprocess.run([converter, str(iso), str(image)], env=environment, check=True, capture_output=True, timeout=1800)

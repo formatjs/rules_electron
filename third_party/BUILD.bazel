@@ -1,6 +1,8 @@
 load("@rules_python//python:defs.bzl", "py_binary")
 
 exports_files([
+    "ds_store.BUILD.bazel",
+    "mac_alias.BUILD.bazel",
     "udif.BUILD.bazel",
     "udif-identity.patch",
     "xorriso.BUILD.bazel",

@@ -12,6 +12,8 @@ import tempfile
 import unittest
 import zlib
 
+from ds_store import DSStore
+
 from electron.private.dmg import create_dmg
 from electron.private.mac_sign import archive_bundle
 
@@ -128,6 +130,57 @@ class DmgTest(unittest.TestCase):
         with self.assertRaises(plistlib.InvalidFileException):
             self.build(self.bundle, self.root / "invalid.dmg")
         self.assertFalse((self.root / "invalid.dmg").exists())
+
+    def test_finder_layout_survives_image_conversion_and_relocation(self):
+        options = dict(finder_window=[120, 140, 600, 360], app_position=[140, 160],
+                       applications_position=[460, 160], icon_size=112, text_size=12,
+                       background_color="#ddeeff")
+        first, second = self.root / "layout.dmg", self.root / "relocated-layout.dmg"
+        self.build(self.source, first, **options)
+        image = decode_dmg(first.read_bytes())
+        iso = self.root / "layout.iso"
+        iso.write_bytes(image)
+        extracted = self.root / "finder-volume"
+        subprocess.run([XORRISO, "-no_rc", "-osirrox", "on", "-indev", str(iso), "-extract", "/", str(extracted)],
+                       env={"PATH": "", "HOME": str(self.root), "LC_ALL": "C", "TZ": "UTC"},
+                       check=True, capture_output=True, timeout=60)
+        with DSStore.open(str(extracted / ".DS_Store"), "r") as store:
+            self.assertEqual(store["Sample.app"]["Iloc"], (140, 160))
+            self.assertEqual(store["Applications"]["Iloc"], (460, 160))
+            self.assertEqual(store["."]["bwsp"]["WindowBounds"], "{{120, 140}, {600, 360}}")
+            self.assertEqual(store["."]["icvl"], (b"type", b"icnv"))
+            settings = store["."]["icvp"]
+            self.assertEqual((settings["iconSize"], settings["textSize"], settings["arrangeBy"]), (112.0, 12.0, "none"))
+            self.assertEqual(settings["backgroundType"], 1)
+            self.assertEqual([settings[key] for key in ["backgroundColorRed", "backgroundColorGreen", "backgroundColorBlue"]],
+                             [221 / 255, 238 / 255, 1.0])
+        partitions = struct.unpack_from(">I", image, 512 + 4)[0]
+        hfs_offsets = [struct.unpack_from(">I", image, block * 512 + 8)[0] * 512
+                       for block in range(1, partitions + 1)
+                       if image[block * 512 + 48:block * 512 + 80].rstrip(b"\0") == b"Apple_HFS"]
+        self.assertEqual(len(hfs_offsets), 1)
+        volume = hfs_offsets[0]
+        self.assertEqual(image[volume + 1024:volume + 1026], b"H+")
+        self.assertEqual(struct.unpack_from(">I", image, volume + 1024 + 88)[0], 2)
+        moved = self.root / "moved.app"
+        shutil.copytree(self.bundle, moved, symlinks=True)
+        for item in [moved, *moved.rglob("*")]:
+            os.utime(item, (1234567890, 1234567890), follow_symlinks=False)
+        self.build(moved, second, **options)
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        self.assertEqual((extracted / "Sample.app/Contents/_CodeSignature/CodeResources").read_bytes(), self.seal)
+        self.assertEqual(self.source.read_bytes(), self.original)
+
+    def test_invalid_finder_layout_never_creates_an_image(self):
+        for index, options in enumerate([
+            {"finder_window": [1, 2, 3]}, {"finder_window": [0, 0, 0, 400]},
+            {"app_position": [-1, 100]}, {"applications_position": [640, 100]},
+            {"icon_size": 15}, {"text_size": 17}, {"background_color": "white"},
+        ]):
+            output = self.root / ("bad-layout-" + str(index) + ".dmg")
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                self.build(self.source, output, **dict({"finder_window": [100, 100, 640, 400]}, **options))
+            self.assertFalse(output.exists())
 
     def test_output_cannot_replace_input_or_stage_inside_input_tree(self):
         for source, output in [(self.source, self.source), (self.bundle, self.bundle / "image.dmg")]:

@@ -1,0 +1,11 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+exports_files(["LICENSE"])
+
+py_library(
+    name = "mac_alias",
+    srcs = glob(["src/mac_alias/*.py"]),
+    data = ["LICENSE"],
+    imports = ["src"],
+    visibility = ["//visibility:public"],
+)

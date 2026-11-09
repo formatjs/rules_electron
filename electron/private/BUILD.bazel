@@ -10,12 +10,20 @@ py_library(
 )
 
 py_library(
+    name = "finder",
+    srcs = ["finder.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = ["@ds_store_sources//:ds_store"],
+)
+
+py_library(
     name = "dmg",
     srcs = ["dmg.py"],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":archives",
         ":file_mappings",
+        ":finder",
     ],
 )
 
