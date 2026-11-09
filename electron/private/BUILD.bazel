@@ -20,6 +20,7 @@ exports_files(
         "linux-maintainer.sh",
         "windows_resources.cjs",
         "file_matcher.cjs",
+        "release_backend.bzl",
     ],
     visibility = ["//visibility:public"],
 )

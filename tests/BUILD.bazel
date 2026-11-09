@@ -625,6 +625,27 @@ py_binary(
 )
 
 py_test(
+    name = "sign_windows_test",
+    size = "medium",
+    srcs = ["sign_windows_test.py"],
+    args = [
+        "$(rootpath //electron/tools:sign_windows)",
+        "$(rootpath @openssl//:openssl)",
+        "$(rootpath @osslsigncode_sources//:tests/files/unsigned.exe)",
+    ],
+    data = [
+        "//electron/tools:sign_windows",
+        "@openssl",
+        "@osslsigncode_sources//:tests/files/unsigned.exe",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        "//electron/private:msix",
+        "//electron/private:updates",
+    ],
+)
+
+py_test(
     name = "signing_tool_test",
     size = "medium",
     srcs = ["signing_tool_test.py"],

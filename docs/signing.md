@@ -64,3 +64,37 @@ package and removed the temporary certificate. No runtime compilation or signing
 occurs on those hosts. The subsequent [full-app MSIX gate](msix.md) also passed
 bootstrap Electron installation and upgrades on both Windows CPUs. Production
 credential/service interfaces and the complete source-built runtime remain open.
+
+`@rules_electron//electron/tools:sign_windows` provides an explicit Linux release
+command for PE and MSIX artifacts. It carries the source-built signer in its
+runfiles; it never discovers a host signer. Run it on the BB release client,
+outside ordinary cacheable artifact actions:
+
+```sh
+bazel run --config=bb-workflow @rules_electron//electron/tools:sign_windows -- \
+  --input "$unsigned_artifact" --output "$signed_artifact" \
+  --certificate-env RELEASE_CERT_FILE --key-env RELEASE_KEY_FILE \
+  --password-env RELEASE_KEY_PASSWORD --ca-file release-roots.pem \
+  --expected-leaf-sha256 "$release_certificate_sha256" \
+  --signing-time "$release_signing_time" \
+  --timestamp-url https://timestamp.example.com/ \
+  --https-ca-file https-roots.pem --tsa-ca-file timestamp-roots.pem
+```
+
+Certificate/key environment variables contain private file paths. The optional
+password variable contains the key password, passed to the signer through stdin.
+Credentials never enter rule attributes, build action environments or outputs.
+The child environment contains no inherited credentials or OpenSSL configuration;
+backend messages are suppressed. Trust roots and expected leaf identity are
+explicit. Signing snapshots the input, verifies final bytes and certificate
+identity, then atomically creates a new output without overwriting existing files.
+Generate update metadata and blockmaps from that final output.
+
+RFC 3161 timestamps require HTTPS, explicit transport/TSA roots and successful
+timestamp verification. `--no-timestamp` is an explicit alternative for test or
+deliberately untimestamped releases; it is never selected implicitly. Hosted
+interface tests cover real PE/MSIX signing, encrypted keys, repeatability,
+identity/trust rejection, output preservation and final updater hashes. Validation
+is pending. Live TSA interoperability, production trust, credential services,
+certificate rotation/revocation policy and native Windows release acceptance
+remain open; this command does not establish those claims.

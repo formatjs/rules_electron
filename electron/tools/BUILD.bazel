@@ -1,7 +1,21 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("//electron/private:release_backend.bzl", "release_backend")
 load("//third_party:appimage_runtime.bzl", "static_pie_runtime")
 
 package(default_visibility = ["//visibility:public"])
+
+release_backend(
+    name = "windows_signing_backend",
+    tool = ":osslsigncode",
+)
+
+py_binary(
+    name = "sign_windows",
+    srcs = ["sign_windows.py"],
+    data = [":windows_signing_backend"],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = ["@rules_python//python/runfiles"],
+)
 
 py_library(
     name = "publication",
