@@ -18,7 +18,7 @@ on run argv
             set targetWindow to container window of targetFolder
             delay 1
             set viewSettings to icon view options of targetWindow
-            set snapshot to {(current view of targetWindow is icon view), bounds of targetWindow, toolbar visible of targetWindow, statusbar visible of targetWindow, icon size of viewSettings, text size of viewSettings, background color of viewSettings, position of item "Sample Desktop.app" of targetFolder, position of item "Applications" of targetFolder}
+            set snapshot to {(current view of targetWindow is icon view), bounds of targetWindow, toolbar visible of targetWindow, statusbar visible of targetWindow, icon size of viewSettings, text size of viewSettings, background color of viewSettings, position of item "Sample Desktop.app" of targetFolder, position of item "Applications" of targetFolder, bounds of window of desktop}
             close targetWindow
             return snapshot
         on error messageText number messageNumber
@@ -48,15 +48,21 @@ def check_layout(mount):
     except ValueError:
         raise RuntimeError("FINDER_LAYOUT_RESPONSE_INVALID") from None
     expected = {
-        "icon_view": True, "bounds": [120, 140, 720, 500], "toolbar": False,
+        "icon_view": True, "bounds": None, "toolbar": False,
         "statusbar": False, "icon_size": 112, "text_size": 12,
         "background": [56797, 61166, 65535], "app_position": [140, 160],
         "applications_position": [460, 160],
     }
-    if (not isinstance(values, list) or len(values) != len(expected)
+    if (not isinstance(values, list) or len(values) != len(expected) + 1
             or any(type(value) not in (int, float, bool) for item in values for value in (item if isinstance(item, list) else [item]))):
         raise RuntimeError("FINDER_LAYOUT_RESPONSE_INVALID")
-    observed = dict(zip(expected, values))
+    display = values[-1]
+    if not isinstance(display, list) or len(display) != 4 or display[3] <= display[1]:
+        raise RuntimeError("FINDER_LAYOUT_DISPLAY_INVALID")
+    # Finder stores Cocoa coordinates; AppleScript reports top-left bounds.
+    expected["bounds"] = [120, display[3] - 140 - 360, 720, display[3] - 140]
+    observed = dict(zip(expected, values[:-1]))
+    observed["display_bounds"] = display
     print("DMG_FINDER_OBSERVED " + json.dumps(observed, sort_keys=True), flush=True)
     failures = [name for name, value in expected.items() if observed[name] != value]
     if failures:

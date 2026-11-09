@@ -32,7 +32,8 @@ Sign and notarize the app before immutable import when preparing a production
 release. The example's app carries ad hoc signatures.
 
 `finder_window` enables a deterministic `.DS_Store` and HFS+ auto-open folder.
-It declares x, y, width and height. App/Applications icon positions use centers
+It declares Cocoa x, y, width and height, with a bottom-left screen origin.
+App/Applications icon positions use centers
 inside that window; `icon_size` allows 16..512 pixels and `text_size` 10..16.
 `background_color` accepts `#RRGGBB`. Omitting `finder_window` retains the plain
 volume layout. Background images, custom volume icons and license dialogs

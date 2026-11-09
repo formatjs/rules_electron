@@ -41,7 +41,7 @@ electron_dmg = rule(
         "volume_name": attr.string(doc = "Volume label, up to 32 UTF-8 bytes; defaults to product_name."),
         "source_date_epoch": attr.int(default = 0, doc = "Explicit Unix timestamp for all image dates; defaults to epoch."),
         "applications_link": attr.bool(default = True, doc = "Add the standard /Applications link beside the app."),
-        "finder_window": attr.int_list(doc = "Optional Finder x, y, width, height. Enables icon view and auto-open metadata."),
+        "finder_window": attr.int_list(doc = "Optional Cocoa x, y, width, height (bottom-left screen origin). Enables icon view and auto-open metadata."),
         "app_position": attr.int_list(default = [160, 180], doc = "App icon center within Finder window."),
         "applications_position": attr.int_list(default = [480, 180], doc = "Applications link icon center within Finder window."),
         "icon_size": attr.int(default = 128, doc = "Finder icon size, 16..512, when finder_window is set."),

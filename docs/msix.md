@@ -103,7 +103,9 @@ compiled on BB; native hosts only execute it. The [da21d47 matrix](https://githu
 delivered all four handlers after install and upgrade on Windows x64 and ARM64,
 then removed handlers, package and fixture certificate. The x64 job later failed
 its separate machine NSIS process-observer gate. The fixture now reports its
-canonical executable path before exit; that adjustment awaits validation.
+canonical executable path before exit. The [24ca713 matrix](https://github.com/formatjs/rules_electron/actions/runs/42718669450)
+passed that check and all eight activation cases on both Windows CPUs. Its x64
+job still failed the separate machine NSIS observer gate.
 
 `electron_msix.file_association_icons` maps declared PNG labels to registered
 extensions, for example `{"//assets:document.png": ".example"}`. Each mapping
