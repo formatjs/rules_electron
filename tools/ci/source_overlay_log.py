@@ -16,6 +16,7 @@ from profile_summary import decode_profile, summarize_source
 from network_diagnostics import network_diagnostics
 from source_headers_diagnostics import missing_headers
 from execution_diagnostics import failed_execution_lookups
+from source_link_diagnostics import duplicate_definitions
 
 
 def source_profile_diagnostics(invocation, key):
@@ -41,7 +42,7 @@ def source_profile_diagnostics(invocation, key):
 
 def public_action_targets(log):
     targets = json.loads(Path(__file__).with_name("public_source_targets.json").read_text())
-    return sorted({targets[name] for name in re.findall(r"\btarget_[0-9a-f]{16}", log) if name in targets})[:8]
+    return sorted({targets[name] for name in re.findall(r"target_[0-9a-f]{16}", log) if name in targets})[:8]
 
 
 def distribution_failure_context(log):
@@ -527,7 +528,7 @@ def failed_action_diagnostics(identifier, key):
             known = next((name for name in candidates if name in public_files), None)
             if known and 0 < int(line) < 10000 and 0 < int(column) < 10000:
                 ts_sites.append({"file": known, "line": int(line), "column": int(column), "code": code})
-        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_action_targets": public_action_targets(log), "public_error_sites": sites[:8], "public_python_sites": stack[:8], "public_cpp_constraint_identifiers": cpp_constraints, "public_cpp_instantiation_identifiers": instantiations, "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_missing_input_basenames": sorted(missing_basenames)[:8], "python_exceptions": python_exceptions, "public_python_error_identifiers": python_error_identifiers, "public_missing_modules": sorted(missing_modules)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers, "public_missing_shared_libraries": missing_shared_libraries, "distribution_failure_context": distribution_failure_context(log)}, sort_keys=True))
+        print("Failed action diagnostics:", json.dumps({"exit_code": exit_code, "status_code": status.get("code", 0), "inline_result": bool(result), "log_bytes": len(log.encode()), "diagnostics": classify(log), "public_missing_headers": sorted(missing)[:8], "public_action_targets": public_action_targets(log), "public_error_sites": sites[:8], "public_duplicate_definitions": duplicate_definitions(log, public_files, json.loads(Path(__file__).with_name("public_source_targets.json").read_text()), public_identifiers), "public_python_sites": stack[:8], "public_cpp_constraint_identifiers": cpp_constraints, "public_cpp_instantiation_identifiers": instantiations, "public_cpp_error_identifiers": cpp_errors, "public_undefined_identifiers": undefined, "public_missing_inputs": sorted(missing_inputs)[:8], "public_missing_input_basenames": sorted(missing_basenames)[:8], "python_exceptions": python_exceptions, "public_python_error_identifiers": python_error_identifiers, "public_missing_modules": sorted(missing_modules)[:8], "public_nonreproducible_outputs": nonreproducible[:8], "typescript_error_codes": ts_codes, "public_typescript_sites": ts_sites[:8], "public_check_sites": check_sites, "public_fatal_identifiers": fatal_identifiers, "public_missing_shared_libraries": missing_shared_libraries, "distribution_failure_context": distribution_failure_context(log)}, sort_keys=True))
 
 
 if __name__ == "__main__":

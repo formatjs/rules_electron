@@ -499,6 +499,13 @@ py_test(
 )
 
 py_test(
+    name = "source_link_diagnostics_test",
+    size = "small",
+    srcs = ["source_link_diagnostics_test.py"],
+    deps = ["//tools/ci:source_link_diagnostics"],
+)
+
+py_test(
     name = "execution_diagnostics_test",
     size = "small",
     srcs = ["execution_diagnostics_test.py"],

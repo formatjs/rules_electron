@@ -1,6 +1,12 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 py_library(
+    name = "source_link_diagnostics",
+    srcs = ["source_link_diagnostics.py"],
+    visibility = ["//tests:__pkg__"],
+)
+
+py_library(
     name = "network_diagnostics",
     srcs = ["network_diagnostics.py"],
     visibility = ["//tests:__pkg__"],
