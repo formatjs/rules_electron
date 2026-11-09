@@ -40,6 +40,8 @@ class SmokeBundleTest(unittest.TestCase):
             prefix = "Contents/Resources/" if target_os == "macos" else "resources/"
             main = "Contents/MacOS/sample-desktop" if target_os == "macos" else "sample-desktop" + (".exe" if target_os == "windows" else "")
             paths = [main, prefix + "native/helper" + (".exe" if target_os == "windows" else ""), prefix + "app.asar.unpacked/node_modules/example-native/addon.node"]
+            if target_os == "windows":
+                paths.append(prefix + "elevate.exe")
             if target_os == "macos":
                 source = base / "release.zip"
                 with ZipFile(source, "w") as archive:

@@ -33,6 +33,8 @@ def check_app(entry):
     prefix = "Contents/Resources/" if target_os == "macos" else "resources/"
     binary = "Contents/MacOS/sample-desktop" if target_os == "macos" else "sample-desktop" + (".exe" if target_os == "windows" else "")
     paths = [binary, prefix + "native/helper" + (".exe" if target_os == "windows" else ""), prefix + "app.asar.unpacked/node_modules/example-native/addon.node"]
+    if target_os == "windows":
+        paths.append(prefix + "elevate.exe")
     if entry["directory"]:
         for name in paths:
             with (Path(entry["source"]) / name).open("rb") as source:

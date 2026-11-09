@@ -51,6 +51,15 @@ _windows_targets = transition(
     outputs = ["//command_line_option:platforms", "//command_line_option:features"],
 )
 
+def _windows_runtime_split(settings, attr):
+    return {name: value for name, value in _split(settings, attr).items() if name.startswith("windows_")}
+
+_windows_runtime_targets = transition(
+    implementation = _windows_runtime_split,
+    inputs = ["//command_line_option:features"],
+    outputs = ["//command_line_option:platforms", "//command_line_option:features"],
+)
+
 def _impl(ctx):
     inputs = []
     entries = []
@@ -66,10 +75,11 @@ def _impl(ctx):
             inputs.append(directories)
             entry["directory_manifest"] = directories.path
         entries.append(entry)
-    for variant, target in dict(ctx.split_attr.linux_packages, **ctx.split_attr.windows_packages).items():
-        for file in target[DefaultInfo].files.to_list():
-            inputs.append(file)
-            entries.append({"variant": variant, "source": file.path, "directory": file.is_directory, "package": True})
+    for targets in [ctx.split_attr.linux_packages, ctx.split_attr.windows_packages, ctx.split_attr.windows_runtime_tools]:
+        for variant, target in targets.items():
+            for file in target[DefaultInfo].files.to_list():
+                inputs.append(file)
+                entries.append({"variant": variant, "source": file.path, "directory": file.is_directory, "package": True})
     manifest = ctx.actions.declare_file(ctx.label.name + ".json")
     outputs = {
         shard: ctx.actions.declare_file("electron-smoke-" + shard + ".zip")
@@ -94,6 +104,7 @@ cross_smoke_bundle = rule(
         "app": attr.label(mandatory = True, cfg = _targets),
         "linux_packages": attr.label(mandatory = True, cfg = _linux_targets),
         "windows_packages": attr.label(mandatory = True, cfg = _windows_targets),
+        "windows_runtime_tools": attr.label(mandatory = True, cfg = _windows_runtime_targets),
         "_bundle": attr.label(default = Label("//tools:bundle"), executable = True, cfg = "exec"),
         "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },

@@ -73,6 +73,7 @@ cross_smoke_bundle(
     app = ":smoke_app",
     linux_packages = ":linux_release_files",
     windows_packages = ":windows_release_files",
+    windows_runtime_tools = ":windows_elevation_tools",
 )
 
 electron_asar(
@@ -212,10 +213,16 @@ cc_binary(
 cc_binary(
     name = "elevation_probe",
     srcs = ["native/elevation_probe.cc"],
-    linkopts = [
-        "shell32.lib",
-        "advapi32.lib",
-    ],
+    linkopts = select({
+        "@rules_electron//electron/tools:windows_msvc": [
+            "shell32.lib",
+            "advapi32.lib",
+        ],
+        "//conditions:default": [
+            "-lshell32",
+            "-ladvapi32",
+        ],
+    }),
     target_compatible_with = ["@platforms//os:windows"],
 )
 
@@ -342,9 +349,17 @@ electron_nsis_tool(
 ]
 
 filegroup(
-    name = "windows_release_files",
+    name = "windows_elevation_tools",
     srcs = [
         ":elevation_probe",
+        "@rules_electron//electron/tools:windows_elevate",
+    ],
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+filegroup(
+    name = "windows_release_files",
+    srcs = [
         ":msix_probe",
         ":msix_reader",
         ":msix_signed_desktop_v1",
@@ -352,7 +367,6 @@ filegroup(
         ":msix_signed_probe",
         ":nsis_v1_feed",
         ":nsis_v2_feed",
-        "@rules_electron//electron/tools:windows_elevate",
     ],
     target_compatible_with = ["@platforms//os:windows"],
 )
