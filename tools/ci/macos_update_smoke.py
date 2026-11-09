@@ -68,40 +68,10 @@ def stop_app(app):
         time.sleep(0.5)
 
 
-def security(*arguments, check=True):
-    return subprocess.run(["/usr/bin/sudo", "-n", "/usr/bin/security", *map(str, arguments)],
-                          check=check, capture_output=True, timeout=30)
-
-
-def admin_trust(path):
-    path.write_bytes(b"")
-    path.chmod(0o600)
-    result = security("trust-settings-export", "-d", path, check=False)
-    if result.returncode == 1 and b"No Trust Settings were found." in result.stderr:
-        return {"trustVersion": 1, "trustList": {}}
-    result.check_returncode()
-    settings = plistlib.loads(path.read_bytes())
-    if settings.get("trustVersion") != 1 or not isinstance(settings.get("trustList"), dict):
-        raise RuntimeError("Unexpected admin trust settings format")
-    return settings
-
-
-def certificate_fingerprint(certificate):
-    return hashlib.sha1(certificate.read_bytes()).hexdigest().upper()
-
-
-def remove_fixture_trust(certificate, root):
-    # remove-trusted-cert hangs on current runners; import only our record's removal.
-    settings = admin_trust(root / "trust-before-cleanup.plist")
-    fingerprint = certificate_fingerprint(certificate)
-    if fingerprint not in settings["trustList"]:
-        return
-    del settings["trustList"][fingerprint]
-    replacement = root / "trust-without-fixture.plist"
-    replacement.write_bytes(plistlib.dumps(settings))
-    security("trust-settings-import", "-d", replacement)
-    if admin_trust(root / "trust-after-cleanup.plist") != settings:
-        raise RuntimeError("Admin trust cleanup did not preserve other records")
+def verify_fixture_identity(app, certificate):
+    fingerprint = hashlib.sha1(certificate.read_bytes()).hexdigest().upper()
+    requirement = f'=identifier "org.example.sample-desktop" and anchor = H"{fingerprint}"'
+    subprocess.run(["/usr/bin/codesign", "--verify", "--strict", "-R", requirement, str(app)], check=True)
 
 
 def launch_update(app, feed, mode, home):
@@ -146,20 +116,13 @@ def main(packages):
     with tempfile.TemporaryDirectory(prefix="electron-mac-update-") as temporary:
         root = Path(temporary).resolve()
         certificate = packages / "macos_update_v1.cer"
-        if certificate_fingerprint(certificate) in admin_trust(root / "trust-initial.plist")["trustList"]:
-            raise RuntimeError("Public fixture already has admin trust")
-        keychain = root / "public-test.keychain-db"
-        security("create-keychain", "-p", "public-fixture-only", keychain)
-        trusted = False
         install = root / "installed"
         install.mkdir()
         app = install / "Sample Desktop.app"
         try:
-            security("unlock-keychain", "-p", "public-fixture-only", keychain)
-            trusted = True
-            security("add-trusted-cert", "-d", "-r", "trustRoot", "-p", "codeSign", "-k", keychain, certificate)
             subprocess.run(["/usr/bin/ditto", "-x", "-k", str(packages / "macos_update_v1.zip"), str(install)], check=True)
             subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
+            verify_fixture_identity(app, certificate)
             if version(app) != "1.0.0":
                 raise RuntimeError("Expected initial app version 1.0.0")
             for mode, feed in [("hash", "macos_update_v2_feed"), ("signature", "macos_bad_identity_feed"), ("install", "macos_update_v2_feed")]:
@@ -167,19 +130,12 @@ def main(packages):
                 home.mkdir()
                 launch_update(app, packages / feed, mode, home)
             subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
+            verify_fixture_identity(app, certificate)
             subprocess.run([sys.executable, "examples/desktop/tools/smoke_test.py", str(app), "--target-os", "macos",
                             "--target-arch", "arm64", "--expected-version", "2.0.0"], check=True)
             print("MAC_UPDATER_LIFECYCLE_OK", flush=True)
         finally:
-            try:
-                stop_app(app)
-            finally:
-                try:
-                    if trusted:
-                        remove_fixture_trust(certificate, root)
-                finally:
-                    security("delete-keychain", keychain)
-            print("MAC_UPDATE_TRUST_CLEANUP_OK", flush=True)
+            stop_app(app)
 
 
 if __name__ == "__main__":

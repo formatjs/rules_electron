@@ -76,20 +76,19 @@ signature rejection and release-identity verification remain pending.
 The macOS ARM64 lifecycle gate adds BB-signed v1/v2 ZIPs and a candidate signed
 by a different public test key. Signing uses fixed certificate dates, a fixed
 signing time and no timestamp service; the action checks repeated output bytes.
-No release credentials enter those fixture actions. The native host temporarily
-trusts only the declared public fixture for code signing, then tests corrupt ZIP
-rejection, wrong-identity rejection, real Squirrel replacement/relaunch and full
-v2 app behavior. It removes that trust and its temporary keychain afterward.
-These lifecycle results remain unverified until the hosted job passes; fixture
-trust does not prove production Developer ID/notarization acceptance.
+No release credentials enter those fixture actions. Native smoke tests corrupt
+ZIP rejection, wrong-identity rejection, real Squirrel replacement/relaunch and
+full v2 app behavior. It checks both installed versions with strict `codesign`
+validation and an explicit requirement pinning the app identifier and public
+fixture certificate. It does not modify keychains or system trust.
 
-The [b7c85bc native run](https://github.com/formatjs/rules_electron/actions/runs/42688849581)
-passed all macOS lifecycle checks and full v2 app smoke, then failed while
-removing fixture trust. Current runners can hang in
-[`remove-trusted-cert`](https://github.com/actions/runner-images/issues/12116).
-Cleanup now exports admin trust, removes only the fixture's SHA-1 record, imports
-the remaining records, then verifies an identical export before deleting the
-temporary keychain. The complete gate still needs a clean hosted result.
+Electron 39's [pinned Squirrel verifier](https://github.com/Squirrel/Squirrel.Mac/blob/0e5d146ba13101a1302d59ea6e6e0b3cace4ae38/Squirrel/SQRLCodeSignature.m#L127)
+checks candidates against the installed app's designated requirement. The
+fixture pins a certificate hash; it does not use `anchor trusted`.
+[Apple documents](https://developer.apple.com/library/archive/documentation/Security/Conceptual/CodeSigningGuide/Procedures/Procedures.html)
+that these requirements need no system trust grant. This gate still awaits a
+clean hosted result without trust setup. It does not prove production Developer
+ID/notarization acceptance.
 
 Protocol references: [auto update](https://www.electron.build/v26/docs/features/auto-update/),
 [channel routing](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/providers/Provider.ts),
