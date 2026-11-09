@@ -1,6 +1,28 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 py_library(
+    name = "source_registry",
+    srcs = ["stage_source_registry.py"],
+    data = [
+        "electron_source_pin.json",
+        "@electron_source_overlay//:registry_sources",
+    ],
+    visibility = ["//tests:__pkg__"],
+    deps = ["@rules_python//python/runfiles"],
+)
+
+py_binary(
+    name = "stage_source_registry",
+    srcs = ["stage_source_registry.py"],
+    data = [
+        "electron_source_pin.json",
+        "@electron_source_overlay//:registry_sources",
+    ],
+    tags = ["manual"],
+    deps = ["@rules_python//python/runfiles"],
+)
+
+py_library(
     name = "source_runtime_diagnostics",
     srcs = ["source_runtime_diagnostics.py"],
     visibility = ["//tests:__pkg__"],

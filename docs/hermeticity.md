@@ -614,3 +614,18 @@ compiled the complete captured source graph. Its
 and the consumer passed 71 distinct public probes. Relocated run-as-Node and
 browser `--version` now pass; packaged browser startup fails Chromium's storage
 absolute-path check. Renderer/IPC and full ASAR alias smoke remain unverified.
+
+The [804d5ac consumer](https://formatjs.buildbuddy.io/invocation/6749caca-9b09-486b-92ea-294a92b378ba)
+passed the complete Linux x64 source-runtime smoke. Both ASCII paths under `C`
+and Unicode/spaces paths under `C.UTF-8` run relocated Electron, packed main
+code, sandboxed preload, isolated renderer, IPC and pixel checks. ASAR aliases,
+CommonJS identity and unpacked writes pass. Path checks run after navigation.
+The earlier storage failure came from Unicode paths under the ASCII locale;
+production storage checks remain enabled. NSS probes now stage declared module
+and checksum bytes together before loading, matching NSS's adjacent-file lookup.
+Native compilation and zero forbidden wrapper actions passed the action audit.
+
+This validates the standalone Linux source distribution. The desktop packaging
+example still uses bootstrap runtimes; its source integration and complete
+source profiles for other platforms remain open. `tools/ci/electron_source_pin.json`
+pins the registry staging inputs by commit and archive SHA256.
