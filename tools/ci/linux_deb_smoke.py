@@ -63,10 +63,9 @@ def launch_smoke(expected):
 
 def mime_icon_smoke():
     with display_server() as display:
-        result = subprocess.run([sys.executable, "tools/ci/linux_mime_icon_smoke.py", "application/x-sample-desktop",
+        subprocess.run([sys.executable, "tools/ci/linux_mime_icon_smoke.py", "application/x-sample-desktop",
                                  str(DOCUMENT_ICON), "32", "83"],
-                                env=dict(os.environ, DISPLAY=display), capture_output=True, text=True, check=True, timeout=30)
-        print(result.stdout.strip())
+                       env=dict(os.environ, DISPLAY=display), check=True, timeout=30)
 
 
 def main(directory):
