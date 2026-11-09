@@ -626,4 +626,5 @@ py_test(
         "@osslsigncode_sources//:tests/files/unsigned.exe",
     ],
     target_compatible_with = ["@platforms//os:linux"],
+    deps = ["//electron/private:msix"],
 )
