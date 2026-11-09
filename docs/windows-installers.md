@@ -153,5 +153,10 @@ subscribes to Windows process start/stop events around the real updater launch;
 it records only fixed fixture names and numeric exit codes. Success requires
 observed installer start and zero exit status in addition to installed v2. This
 observer uses existing Windows APIs; no code is compiled on the smoke host.
-Hosted validation is pending. Successful repeat validation does not close the
-intermittent failure.
+The first observer run installed v2 on both CPUs but missed installer exit
+events when filtering stop notifications by image name. It now correlates stop
+events with observed fixture starts by PID; IDs and timestamps stay inside the
+observer. Native [Windows x64](https://github.com/formatjs/rules_electron/actions/runs/42577870565/job/129029773672)
+and [ARM64](https://github.com/formatjs/rules_electron/actions/runs/42577870565/job/129029773580)
+passed actual installer start, exit code zero and the complete lifecycle.
+Successful repeat validation does not close the original intermittent failure.
