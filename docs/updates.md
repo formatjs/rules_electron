@@ -157,8 +157,9 @@ serialize intended promotions. Redirects and asynchronous HTTP 202 responses fai
 HTTPS is required; `--allow-http-loopback` exists for socket-based CI tests only.
 Object-store-specific APIs and credential-provider adapters remain separate
 migration work. The [GitHub publication interface](github-publication.md) stages
-multiple feeds through a verified draft release; its protocol validation is in
-progress.
+multiple feeds through a verified draft release; its BB socket protocol tests
+passed. `electron_update_config(provider = "github", owner = ..., repo = ...)`
+generates client configuration without embedding credentials.
 
 The [db220dc BB suite](https://formatjs.buildbuddy.io/invocation/dcd45a49-c63b-4107-a8fb-be76a3bcb6b0)
 passed the public publisher executable against a local HTTP server: exact bytes

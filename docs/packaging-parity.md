@@ -87,6 +87,11 @@ before ETag-guarded channel promotion. The [BB suite](https://formatjs.buildbudd
 passed the public executable's socket-based publication tests. Provider
 APIs and production publication remain open. See [updates](updates.md).
 
+The [GitHub release adapter](github-publication.md) adds multi-feed snapshots,
+commit-pinned tags, verified draft uploads, recovery and immutable public-release
+retries. Its BB socket protocol tests passed. Native GitHub provider discovery
+and live publication are tracked separately in that contract.
+
 Windows release signing now has an explicit PE/MSIX command with private runtime
 credentials, encrypted-key support, certificate SHA-256 pinning and verified
 output commit. The [BB suite](https://formatjs.buildbuddy.io/invocation/ed0b04c2-3a52-426a-a65c-2261ec0456d5)

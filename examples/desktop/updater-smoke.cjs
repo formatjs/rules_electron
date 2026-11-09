@@ -16,10 +16,36 @@ module.exports = async function checkUpdater() {
   const config = yaml.load(fs.readFileSync(path.join(process.resourcesPath, 'app-update.yml'), 'utf8'));
   assert.equal(config.provider, 'generic');
   assert.equal(config.updaterCacheDirName, 'sample-desktop-updater');
+  const githubConfig = yaml.load(fs.readFileSync(path.join(process.resourcesPath, 'github-update-smoke.yml'), 'utf8'));
+  assert.equal(githubConfig.provider, 'github');
+  assert.deepEqual([githubConfig.owner, githubConfig.repo], ['example-org', 'sample-desktop']);
+  assert.equal(githubConfig.updaterCacheDirName, config.updaterCacheDirName);
+  assert.equal(githubConfig.private ?? false, false);
+  const githubPath = `/${githubConfig.owner}/${githubConfig.repo}/releases`;
+  const githubApi = `/api/v3/repos/${githubConfig.owner}/${githubConfig.repo}/releases/latest`;
   const directory = path.join(process.resourcesPath, 'update-smoke-feed');
   const requests = [];
+  const githubRequests = [];
   const server = http.createServer((request, response) => {
-    const name = decodeURIComponent(new URL(request.url, 'http://localhost').pathname.slice(1));
+    const pathname = new URL(request.url, 'http://localhost').pathname;
+    if (pathname === `${githubPath}.atom`) {
+      githubRequests.push(pathname);
+      response.setHeader('Content-Type', 'application/atom+xml');
+      response.end(`<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom">
+        <id>urn:rules-electron:releases</id><title>Fixture releases</title><updated>2026-01-02T03:04:05Z</updated>
+        <entry><id>urn:rules-electron:v2.0.0</id><title>v2.0.0</title><updated>2026-01-02T03:04:05Z</updated>
+        <link href="${githubPath}/tag/v2.0.0"/><content type="text">Public fixture release</content></entry></feed>`);
+      return;
+    }
+    if (pathname === githubApi) {
+      githubRequests.push(pathname);
+      response.setHeader('Content-Type', 'application/json');
+      response.end(JSON.stringify({ tag_name: 'v2.0.0' }));
+      return;
+    }
+    const download = `${githubPath}/download/v2.0.0/`;
+    if (pathname.startsWith(download)) githubRequests.push(pathname);
+    const name = decodeURIComponent(pathname.startsWith(download) ? pathname.slice(download.length) : pathname.slice(1));
     if (!fs.readdirSync(directory).includes(name)) {
       response.writeHead(404).end();
       return;
@@ -56,6 +82,26 @@ module.exports = async function checkUpdater() {
     const changed = structuredClone(blockmap);
     changed.files[0].checksums[0] = 'changed';
     assert.deepEqual(computeOperations(blockmap, changed, logger), [{ kind: OperationKind.DOWNLOAD, start: 0, end: bytes.length }]);
+    const githubUpdater = new Updater({ ...githubConfig, host: base.host, protocol: 'http' });
+    githubUpdater.logger = null;
+    githubUpdater.autoDownload = false;
+    githubUpdater.autoInstallOnAppQuit = false;
+    const githubResult = await githubUpdater.checkForUpdates();
+    assert.equal(githubResult.updateInfo.tag, 'v2.0.0');
+    assert.equal(githubResult.updateInfo.version, '2.0.0');
+    assert.equal(githubResult.isUpdateAvailable, semver.gt('2.0.0', app.getVersion()));
+    assert.equal(githubResult.downloadPromise ?? null, null);
+    const githubProvider = await githubUpdater.clientPromise;
+    assert.equal(githubProvider.constructor.name, 'GitHubProvider');
+    const [githubFile] = githubProvider.resolveFiles(githubResult.updateInfo);
+    assert.ok(githubFile.url.pathname.startsWith(download));
+    const githubBytes = Buffer.from(await (await net.fetch(githubFile.url.href)).arrayBuffer());
+    assert.deepEqual(githubBytes, bytes);
+    assert.equal(crypto.createHash('sha512').update(githubBytes).digest('base64'), githubFile.info.sha512);
+    assert.ok(githubRequests.includes(`${githubPath}.atom`));
+    assert.ok(githubRequests.includes(githubApi));
+    assert.ok(githubRequests.includes(download + channel));
+    console.log('GITHUB_UPDATER_DISCOVERY_OK');
     return result.updateInfo.version;
   } finally {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

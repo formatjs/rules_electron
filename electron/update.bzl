@@ -1,19 +1,37 @@
 """electron-updater configuration and release feeds from final artifacts."""
 
 def _config_impl(ctx):
-    if not ctx.attr.url.startswith("https://") and not ctx.attr.url.startswith("http://"):
-        fail("Generic feed url must use HTTP(S)")
+    if ctx.attr.provider == "generic":
+        if not ctx.attr.url.startswith("https://") and not ctx.attr.url.startswith("http://"):
+            fail("Generic feed url must use HTTP(S)")
+        if ctx.attr.owner or ctx.attr.repo or ctx.attr.host or ctx.attr.private_repository:
+            fail("GitHub options require provider=github")
+        config = {"provider": "generic", "url": ctx.attr.url}
+    else:
+        if ctx.attr.url:
+            fail("GitHub provider uses owner/repo instead of url")
+        for name, value, characters in [
+            ("owner", ctx.attr.owner, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-"),
+            ("repo", ctx.attr.repo, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_."),
+        ]:
+            if not value or value in [".", ".."] or any([c not in characters for c in value.elems()]):
+                fail("Invalid GitHub " + name)
+        config = {"provider": "github", "owner": ctx.attr.owner, "repo": ctx.attr.repo}
+        if ctx.attr.host:
+            if any([c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-.[]:" for c in ctx.attr.host.elems()]):
+                fail("GitHub host must be a hostname with optional port")
+            config["host"] = ctx.attr.host
+        if ctx.attr.private_repository:
+            config["private"] = True
     if not ctx.attr.cache_name or ctx.attr.cache_name in [".", ".."] or any([c in ctx.attr.cache_name for c in ["/", "\\", ":"]]):
         fail("cache_name must be one nonempty directory name")
     if not ctx.attr.channel or any([c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-" for c in ctx.attr.channel.elems()]):
         fail("Invalid update channel")
     output = ctx.actions.declare_file(ctx.label.name + "/app-update.yml")
-    config = {
-        "provider": "generic",
-        "url": ctx.attr.url,
+    config.update({
         "channel": ctx.attr.channel,
         "updaterCacheDirName": ctx.attr.cache_name,
-    }
+    })
     if ctx.attr.publisher_names:
         config["publisherName"] = ctx.attr.publisher_names
     ctx.actions.write(output, json.encode_indent(config) + "\n")
@@ -22,7 +40,12 @@ def _config_impl(ctx):
 electron_update_config = rule(
     implementation = _config_impl,
     attrs = {
-        "url": attr.string(mandatory = True, doc = "Generic HTTP(S) feed base URL. Separate Windows/macOS CPU feeds by URL."),
+        "provider": attr.string(default = "generic", values = ["generic", "github"]),
+        "url": attr.string(doc = "Required generic HTTP(S) feed base URL. Separate Windows/macOS CPU feeds by URL."),
+        "owner": attr.string(doc = "GitHub repository owner; required for provider=github."),
+        "repo": attr.string(doc = "GitHub repository name; required for provider=github."),
+        "host": attr.string(doc = "Optional GitHub Enterprise hostname; HTTPS only."),
+        "private_repository": attr.bool(doc = "GitHub private repository; runtime application supplies credentials, never rule attributes."),
         "channel": attr.string(default = "latest"),
         "cache_name": attr.string(mandatory = True, doc = "Stable updater cache directory name across releases."),
         "publisher_names": attr.string_list(doc = "Windows certificate publisher names used by electron-updater verification."),

@@ -677,6 +677,14 @@ electron_update_config(
     url = "https://updates.example.invalid/sample-desktop/",
 )
 
+electron_update_config(
+    name = "github_update_smoke_config",
+    cache_name = "sample-desktop-updater",
+    owner = "example-org",
+    provider = "github",
+    repo = "sample-desktop",
+)
+
 # Metadata fixture only. No installer execution or installability claim.
 electron_update_feed(
     name = "update_smoke_feed",

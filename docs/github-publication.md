@@ -60,12 +60,24 @@ publishes that verified draft. Serialize release jobs per repository/tag; GitHub
 does not provide the generic publisher's conditional channel PUT transaction.
 Stable releases use `make_latest=legacy`; prereleases are never marked latest.
 
-Configure the application's existing `electron-updater` GitHub provider through a
-declared `app-update.yml` file, mapped to `electron_app.extra_resources` before
-signing. The typed `electron_update_config` rule currently emits generic feeds.
-GitHub client configuration contains `provider: github`, `owner`, `repo`, a stable
-`updaterCacheDirName` and the chosen channel. Application credentials for private
-updates belong to runtime authentication, separately from publication credentials.
+Generate the application's GitHub provider configuration before signing:
+
+```starlark
+electron_update_config(
+    name = "github_config",
+    provider = "github",
+    owner = "example-org",
+    repo = "sample-desktop",
+    cache_name = "sample-desktop-updater",
+    channel = "latest-x64",
+)
+```
+
+Map its output to `app-update.yml` in `electron_app.extra_resources`. Optional
+`host` selects a GitHub Enterprise hostname over HTTPS. `private_repository`
+records private-repository intent without embedding a token. Application
+credentials for private updates belong to runtime authentication, separately from
+publication credentials. Generic configurations retain their existing `url` API.
 
 Windows x64/ARM64 feeds need distinct stable channels such as `latest-x64` and
 `latest-arm64`, set in both the app config and feed rule. The pinned 6.8.11
@@ -73,9 +85,13 @@ Windows x64/ARM64 feeds need distinct stable channels such as `latest-x64` and
 channel from the release tag, so per-CPU Windows prereleases require separate
 repositories. Asset filenames must remain unique across every feed in a release.
 
-Socket-based protocol tests cover publication ordering, actual downloaded bytes,
+The [cd8bd1f BB suite](https://formatjs.buildbuddy.io/invocation/3b61744c-8055-46a9-a49a-9e5e4f454585)
+passed socket-based protocol tests covering publication ordering, actual downloaded bytes,
 public-release immutability, staging/resume, interrupted uploads, redirects,
-tag changes, pagination and input conflicts. Hosted results and live GitHub
-publication remain unverified until recorded here. API contract:
+tag changes, pagination and input conflicts. Native examples also exercise the
+real GitHub provider's Atom/API discovery, channel routing, tagged download URLs
+and SHA-512 through a local fixture host. Those native checks await hosted
+validation; installed-update smoke continues to use generic feeds. Live GitHub
+publication remains unverified. API contract:
 [releases](https://docs.github.com/en/rest/releases/releases),
 [assets](https://docs.github.com/en/rest/releases/assets).

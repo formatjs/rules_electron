@@ -668,6 +668,11 @@ assembly manifests with [the input audit](../tools/ci/platform_inputs_audit.py).
 The Mac script must be packaged and declared only for macOS; an empty query or
 missing OS family fails the gate.
 
+The [36047d3 BB cross-build](https://formatjs.buildbuddy.io/invocation/6e4b1d4b-8b35-48d5-9545-f508a9eea137)
+passed the real audit for four Linux, two macOS and ten Windows app actions.
+[All four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42699997515)
+also passed after input pruning.
+
 The [Mac ZIP differential gate](updates.md) separately measured 486,177 payload
 bytes downloaded from a 285,561,263-byte ZIP: 99.83% reuse. This assumes an
 existing v1 ZIP cache and excludes blockmap metadata transfer.
