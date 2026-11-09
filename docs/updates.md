@@ -83,5 +83,6 @@ and packaging ran on BB; the Fedora container only installed and executed output
 
 AppImages use `embedded_blockmaps` on `electron_update_feed`; the final artifact
 already contains its raw-deflate v2 map and big-endian size trailer. The feed
-validates coverage and emits `blockMapSize`. The example's installed AppImage
-client and FUSE launch gate is pending; see [AppImage](appimage.md).
+validates coverage and emits `blockMapSize`. The [installed AppImage gate](https://github.com/formatjs/rules_electron/actions/runs/42556985004)
+passed real client replacement on Linux x64, with FUSE launch, hash rejection,
+versioned/custom filenames and 99.7% differential reuse. See [AppImage](appimage.md).

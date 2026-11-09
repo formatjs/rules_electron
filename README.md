@@ -144,4 +144,5 @@ packaging, validating target CPU and packaged identity. See
 Source-built Linux AppImage packaging and embedded updater maps are documented in
 [AppImage](docs/appimage.md). Runtime extraction/launch and both Linux cross-builds
 pass on BB. Public AppImage packaging, feeds and native payload checks pass too;
-installed Electron updater lifecycle validation continues.
+Linux x64 FUSE launch and real AppImage updater replacement pass too.
+Full source-built Electron and other release gaps remain tracked in the parity checklist.

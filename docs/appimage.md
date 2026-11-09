@@ -71,15 +71,18 @@ then verify metadata, resource links, tracked empty directories, chunk checksums
 and exit-after-install behavior with a real executable payload. Cross-actions
 produce final AppImages and feeds without executing ARM64 binaries.
 
-FUSE-mounted launch and an installed Electron app's real electron-updater
-replacement/differential-download lifecycle remain open. No emulation substitutes
-for native smoke.
+The desktop example assembles real Electron v1/v2 AppImages and a v2 feed for
+both Linux CPUs on BB. [Native validation](https://github.com/formatjs/rules_electron/actions/runs/42556985004)
+passed at `4b7867b`, along with the other three native host jobs.
 
-The desktop example now builds real Electron v1/v2 AppImages and a v2 feed for
-both Linux CPUs on BB. Its pending Linux x64 native gate uses FUSE-mounted
-launches, then the pinned client's `autoUpdater` / `AppImageUpdater` for corrupt
-SHA-512 rejection and differential replacement. It requires ranged transfers
-below full file size, checks exact installed bytes, preserves a custom filename,
-renames a versioned filename and relaunches v2 in extraction and mounted modes.
-Chromium sandbox stays enabled. Native hosts install FUSE/GUI dependencies only;
-no compilation or packaging runs there.
+Linux x64 mounted v1 through FUSE, rejected a corrupt SHA-512 download and used
+the pinned client's `autoUpdater` / `AppImageUpdater` for differential replacement.
+Both versioned and custom filenames passed exact installed-byte checks and v2
+relaunch in extraction and mounted modes. Each update transferred 306,279 of
+101,094,432 bytes: 99.7% reuse. The gate rejects a full-download fallback.
+Chromium sandbox stayed enabled. Native hosts installed FUSE/GUI dependencies
+and executed BB outputs; compilation and packaging stayed on BB.
+
+ARM64 AppImages are cross-built without native execution. Full source-built
+Electron integration remains unfinished; it is tracked separately from the
+source-built AppImage runtime and launcher.
