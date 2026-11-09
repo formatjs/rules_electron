@@ -20,12 +20,14 @@ DOCUMENT_ICON = Path("/usr/share/icons/hicolor/32x32/mimetypes/application-x-sam
 
 
 class FeedHandler(http.server.SimpleHTTPRequestHandler):
+    extension = ".deb"
+
     def log_message(self, *args):
         pass
 
     def do_GET(self):
-        if self.server.corrupt and self.path.split("?", 1)[0].endswith(".deb"):
-            file = Path(self.directory) / "Sample-2.0.0.deb"
+        if self.server.corrupt and self.path.split("?", 1)[0].endswith(self.extension):
+            file = Path(self.directory) / ("Sample-2.0.0" + self.extension)
             self.send_response(200)
             self.send_header("Content-Length", str(file.stat().st_size))
             self.end_headers()

@@ -77,3 +77,55 @@ and mode, clears host sandbox overrides, and launches with
 installed updater and purge passed on the native Linux x64 host for
 [255731d](https://github.com/formatjs/rules_electron/actions/runs/42520835627/job/128853879770).
 Distribution-specific confinement, RPM and AppImage remain open.
+
+## RPM
+
+`electron_rpm` emits unsigned RPM v4 packages for Linux `x86_64`/`aarch64`:
+
+```starlark
+load("@rules_electron//electron:linux.bzl", "electron_rpm")
+
+electron_rpm(
+    name = "rpm",
+    app = ":app",
+    package_name = "example-desktop",
+    summary = "Example Desktop",
+    description = "Example desktop app",
+    license = "MIT",
+    requires = ["gtk3", "nss", "alsa-lib", "mesa-libgbm"],
+    file_associations = {"application/x-example": ["*.example"]},
+    file_association_icons = {"document.png": "application/x-example"},
+)
+```
+
+Payload layout, desktop/MIME/icons, internal links and optional setuid helper
+follow the DEB contract. `release` defaults to the app build number, then `1`.
+RPM versions map SemVer prereleases to `~`; SemVer build metadata does not affect
+RPM version ordering. App and updater versions retain the full manifest version.
+`requires` accepts capability names and simple comparisons such as
+`"glibc >= 2.31"`. No host dependency discovery or automatic ELF scanning runs.
+Consumers supply complete dependencies for their target distribution.
+
+The declared Python toolchain writes the
+[RPM v4 container](https://rpm.org/docs/4.20.x/manual/format_v4.html), immutable
+header regions, SHA-256 header/payload/file digests and a streamed CPIO/gzip
+payload. Paths, ownership, modes, order and timestamps are fixed. No `rpmbuild`,
+host macros, target execution, CMake or foreign_cc action participates. Individual
+files and total installed payload must fit below 4 GiB. Signature metadata also
+includes legacy format digests for compatibility; packages remain unsigned.
+Release signing and trust policy remain separate work.
+
+`prein`, `postin`, `preun`, `postun` take declared shell scripts. Defaults refresh
+available desktop/MIME/icon caches after installation and removal. Scripts run
+only under the destination package manager. The installed `package-type` marker
+selects real `RpmUpdater`; generate its feed from the final RPM with
+`electron_update_feed`.
+
+RPM validation is pending. CI cross-builds both CPUs on BB. Native Linux x64
+smoke provisions an immutable official Fedora 43 container, installs the BB
+artifact through dnf, checks real RPM digests/file verification, launches v1,
+rejects a corrupted update, installs v2 through `RpmUpdater`, launches v2 and
+removes the package. The container executes natively; no ARM64 smoke claim is
+made. OS provisioning installs test libraries; it performs no app compilation
+or packaging. Container launches use `--no-sandbox`; RPM helper ownership/mode
+are checked separately from the DEB setuid sandbox execution gate.

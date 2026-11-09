@@ -488,3 +488,10 @@ py_test(
     srcs = ["execution_diagnostics_test.py"],
     deps = ["//tools/ci:execution_diagnostics"],
 )
+
+py_test(
+    name = "rpm_test",
+    size = "small",
+    srcs = ["rpm_test.py"],
+    deps = ["//electron/private:rpm_packaging"],
+)

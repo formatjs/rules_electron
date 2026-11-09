@@ -30,22 +30,24 @@ def _desktop_string(value):
 def create_payload(app, package_json, app_id, product_name, executable_name,
                    architecture, revision, description, categories, protocols,
                    file_associations, icons, output, version_output, directory_manifest="", setuid_sandbox=False,
-                   file_association_icons=()):
+                   file_association_icons=(), package_type="deb"):
     with inventory(Path(app), "linux") as (app_entries, open_app):
         _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
                         architecture, revision, description, categories, protocols, file_associations,
-                        icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons)
+                        icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons, package_type)
 
 
 def _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
                     architecture, revision, description, categories, protocols,
-                    file_associations, icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons):
+                    file_associations, icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons, package_type):
+    if package_type not in ("deb", "rpm"):
+        raise ValueError("Unsupported Linux package type")
     _identifier(app_id, "app_id")
     _identifier(executable_name, "executable_name")
     if architecture not in ("amd64", "arm64"):
-        raise ValueError("Unsupported DEB architecture")
+        raise ValueError("Unsupported Linux package architecture")
     if not re.fullmatch(r"[A-Za-z0-9.+~]+", revision):
-        raise ValueError("Invalid Debian revision")
+        raise ValueError("Invalid Linux package revision")
     package = json.loads(Path(package_json).read_text(encoding="utf-8"))
     version = _version(package.get("version"))
     upstream, separator, prerelease = version.partition("-")
@@ -62,7 +64,7 @@ def _create_payload(app_entries, open_app, package_json, app_id, product_name, e
         if (len(header) != 20 or header[:6] != b"\x7fELF\x02\x01"
                 or struct.unpack_from("<H", header, 16)[0] not in (2, 3)
                 or struct.unpack_from("<H", header, 18)[0] != {"amd64": 62, "arm64": 183}[architecture]):
-            raise ValueError("Setuid sandbox must be an ELF64 executable matching the DEB architecture")
+            raise ValueError("Setuid sandbox must be an ELF64 executable matching the Linux package architecture")
     for scheme in protocols:
         if not re.fullmatch(r"[a-z][a-z0-9+.-]*", scheme):
             raise ValueError("Invalid URI protocol")
@@ -90,7 +92,7 @@ def _create_payload(app_entries, open_app, package_json, app_id, product_name, e
         "StartupWMClass": package.get("name", executable_name),
     }
     generated = {
-        prefix + "/resources/package-type": (b"deb\n", 0o644),
+        prefix + "/resources/package-type": ((package_type + "\n").encode(), 0o644),
         "usr/bin/" + executable_name: (("#!/bin/sh\nexec " + shlex.quote(launch) + ' "$@"\n').encode(), 0o755),
         "usr/share/applications/" + app_id + ".desktop": (("[Desktop Entry]\n" + "\n".join(k + "=" + _desktop_string(v) for k, v in desktop.items()) + "\n").encode(), 0o644),
     }
@@ -108,7 +110,7 @@ def _create_payload(app_entries, open_app, package_json, app_id, product_name, e
             if entry.kind != "file":
                 raise ValueError("App has conflicting package-type resource")
             with open_app(entry) as source:
-                if source.read().strip() != b"deb":
+                if source.read().strip() != package_type.encode():
                     raise ValueError("App has conflicting package-type resource")
             continue
         entries[destination] = (entry, open_app)

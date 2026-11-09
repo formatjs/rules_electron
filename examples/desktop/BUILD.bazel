@@ -4,7 +4,7 @@ load("@rules_electron//electron:archive.bzl", "electron_archive")
 load("@rules_electron//electron:asar.bzl", "electron_asar")
 load("@rules_electron//electron:defs.bzl", "electron_runtime")
 load("@rules_electron//electron:files.bzl", "electron_files")
-load("@rules_electron//electron:linux.bzl", "electron_deb")
+load("@rules_electron//electron:linux.bzl", "electron_deb", "electron_rpm")
 load("@rules_electron//electron:matching.bzl", "electron_file_matcher")
 load("@rules_electron//electron:npm.bzl", "electron_npm_package", "electron_npm_tree")
 load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool")
@@ -371,12 +371,57 @@ electron_update_feed(
     target_compatible_with = ["@platforms//os:linux"],
 )
 
+[
+    electron_rpm(
+        name = name,
+        package_name = "rules-electron-sample-desktop",
+        app = app,
+        description = "Generic Bazel Electron packaging example",
+        file_association_icons = {":document_icon": "application/x-sample-desktop"},
+        file_associations = {"application/x-sample-desktop": ["*.sample-desktop"]},
+        icons = {"assets/sample.svg": "scalable"},
+        license = "MIT",
+        maintainer = "Example Maintainers <maintainers@example.invalid>",
+        protocols = ["sample-desktop"],
+        requires = [
+            "gtk3",
+            "nss",
+            "alsa-lib",
+            "mesa-libgbm",
+            "desktop-file-utils",
+            "shared-mime-info",
+            "hicolor-icon-theme",
+        ],
+        setuid_sandbox = True,
+        summary = "Sample Desktop",
+    )
+    for name, app in [
+        ("rpm_v1", ":app"),
+        ("rpm_v2", ":app_v2"),
+    ]
+]
+
+electron_update_feed(
+    name = "rpm_v2_feed",
+    architecture = select({
+        ":linux_arm64": "arm64",
+        "//conditions:default": "x64",
+    }),
+    artifacts = {":rpm_v2": "Sample-2.0.0.rpm"},
+    package_json = "package-v2.json",
+    platform = "linux",
+    release_date = "2026-01-02T03:04:05Z",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
 filegroup(
     name = "linux_release_files",
     srcs = [
         ":deb_v1",
         ":deb_v2_feed",
         ":release_tar",
+        ":rpm_v1",
+        ":rpm_v2_feed",
     ],
     target_compatible_with = ["@platforms//os:linux"],
 )

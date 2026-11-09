@@ -221,3 +221,20 @@ py_binary(
     visibility = ["//electron:__pkg__"],
     deps = [":prepackaged"],
 )
+
+py_library(
+    name = "rpm_packaging",
+    srcs = ["rpm.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [":updates"],
+)
+
+py_binary(
+    name = "rpm_packager",
+    srcs = ["rpm.py"],
+    main = "rpm.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":rpm_packaging"],
+)
+
+exports_files(["rpm-maintainer.sh"])
