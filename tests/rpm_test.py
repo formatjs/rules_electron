@@ -76,7 +76,7 @@ class RpmTest(unittest.TestCase):
         start = (end + 7) & ~7
         tags, payload_start = read_header(data, start)
         metadata, payload = data[start:payload_start], data[payload_start:]
-        self.assertEqual(signature[272], [hashlib.sha256(metadata).hexdigest()])
+        self.assertEqual(signature[273], [hashlib.sha256(metadata).hexdigest()])
         self.assertEqual(signature[1004], hashlib.md5(data[start:], usedforsecurity=False).digest())
         self.assertEqual(tags[5092], [hashlib.sha256(payload).hexdigest()])
         plain = gzip.decompress(payload)

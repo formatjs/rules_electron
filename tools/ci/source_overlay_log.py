@@ -46,13 +46,14 @@ def public_action_targets(log):
 
 def distribution_failure_context(log):
     log = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", log)
-    sites = [{"file": prefix + "BUILD.bazel", "line": int(line), "column": int(column)}
-             for prefix, line, column in re.findall(r"external/electron[^/\s]*/((?:[A-Za-z0-9_.+-]+/)*)BUILD\.bazel:(\d+):(\d+)", log)]
+    sites = [{"repository": repository, "file": prefix + "BUILD.bazel", "line": int(line), "column": int(column)}
+             for repository, prefix, line, column in re.findall(r"external/(electron[^/\s]*)/((?:[A-Za-z0-9_.+-]+/)*)BUILD\.bazel:(\d+):(\d+)", log)]
     identifiers = set(json.loads(Path(__file__).with_name("public_source_identifiers.json").read_text()))
     targets = json.loads(Path(__file__).with_name("public_source_targets.json").read_text())
     loaders = []
     for executable, library in re.findall(r"(?:^|[/\s])([A-Za-z0-9_.+-]+): error while loading shared libraries: (lib[A-Za-z0-9_.+-]+)", log):
-        name = executable if executable in identifiers or executable.split(".")[0] in identifiers else targets.get(executable)
+        target = re.search(r"target_[0-9a-f]{16}", executable)
+        name = executable if executable in identifiers or executable.split(".")[0] in identifiers else targets.get(target[0]) if target else None
         loaders.append({"executable": name, "library": library})
     return {"sites": sites[:8], "loaders": loaders[:8]}
 

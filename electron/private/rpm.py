@@ -187,7 +187,7 @@ def build_rpm(payload, package_json, package_name, architecture, release, summar
                 md5.update(data)
         signature = header({
             269: (_STRING, hashlib.sha1(metadata, usedforsecurity=False).hexdigest()),
-            272: (_STRING, hashlib.sha256(metadata).hexdigest()),
+            273: (_STRING, hashlib.sha256(metadata).hexdigest()),
             1000: (_INT32, [len(metadata) + compressed.stat().st_size]),
             1004: (_BIN, md5.digest()),
         }, 62)
