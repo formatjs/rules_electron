@@ -19,6 +19,26 @@ load(":npm_lock_test.bzl", "npm_lock_test")
 npm_lock_test(name = "npm_lock_test")
 
 py_test(
+    name = "udif_test",
+    srcs = ["udif_test.py"],
+    args = [
+        "$(rootpath //electron/tools:xorriso)",
+        "$(rootpath //electron/tools:dmg)",
+        "$(rootpath @rcodesign_linux_x64//:rcodesign)",
+    ],
+    data = [
+        "//electron/tools:dmg",
+        "//electron/tools:xorriso",
+        "@rcodesign_linux_x64//:rcodesign",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        "//electron/private:dmg",
+        "//electron/private:udif",
+    ],
+)
+
+py_test(
     name = "dmg_test",
     srcs = ["dmg_test.py"],
     args = [

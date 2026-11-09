@@ -63,7 +63,10 @@ the tree; copying only `DefaultInfo.files` drops logical link metadata.
 The initial generated-link [BB tests](https://formatjs.buildbuddy.io/invocation/59ed27a9-34ff-45c9-af55-3e401e25a01b)
 and [seven cross-builds](https://formatjs.buildbuddy.io/invocation/9d7f8d48-1b38-4b5f-afba-34c30a596dda)
 passed, including ASAR and resource ZIP/import/TAR/DEB action boundaries.
-Native generated-link smoke remains unverified.
+The [four-host native run](https://github.com/formatjs/rules_electron/actions/runs/42680079490)
+passed generated ASAR aliases on every platform and generated extra-file aliases
+on Linux/macOS. Plain-app and generated-resource links have BB action-boundary
+coverage; dedicated native examples for those paths remain open.
 
 The generic renderer bundle contains development fixtures; its filtered view
 excludes them. It also declares an empty renderer directory and an empty extra

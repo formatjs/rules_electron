@@ -30,4 +30,9 @@ BB tests independently decode UDIF block maps, check compressed/uncompressed
 CRC32 values, compare relocated ZIP/tree inputs, and read the image payload with
 xorriso. The native macOS smoke verifies/mounts the BB image read-only, copies
 the app, checks code signatures, then launches Electron with renderer/addon
-checks. Native DMG results remain unverified until that hosted job passes.
+checks. [BB tests](https://formatjs.buildbuddy.io/invocation/85851da1-bece-4be0-b8b7-853614f83011),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/576b1a73-ee26-4463-8fa6-f0b1c7dad45b)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42680079490)
+passed. The macOS ARM64 host verified/mounted the image, checked strict app
+signatures and launched the copied app. The writer leaves regular-file Finder
+metadata empty; adding default type/creator codes invalidates strict signatures.

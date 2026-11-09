@@ -1,6 +1,15 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 py_library(
+    name = "udif",
+    srcs = ["udif.py"],
+    visibility = [
+        "//electron/tools:__pkg__",
+        "//tests:__pkg__",
+    ],
+)
+
+py_library(
     name = "dmg",
     srcs = ["dmg.py"],
     visibility = ["//tests:__pkg__"],
