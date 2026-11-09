@@ -137,6 +137,39 @@ class NsisTest(unittest.TestCase):
         second = self.render(file_associations={".first": "First", ".second": "Second"})
         self.assertEqual(first, second)
 
+    def test_extra_file_verbs_keep_open_default_and_replace_owned_commands(self):
+        options = {"file_associations": {".sample": "Sample"},
+                   "file_association_verbs": {".sample": ["print", "edit"]},
+                   "file_association_verb_labels": {"edit": 'Edit $5 "document"'}}
+        first = self.render(**options)
+        second = self.render(**dict(options, file_association_verbs={".sample": ["edit", "print"]}))
+        self.assertEqual(first, second)
+        for scope, hive in (("user", "HKCU"), ("machine", "HKLM")):
+            script = self.render(**options, installation_scope=scope)
+            commands = [line for line in script.splitlines() if line.startswith("WriteRegStr " + hive)
+                        and "\\shell\\" in line and "\\command" in line]
+            self.assertTrue(any(line.endswith('\'"$INSTDIR\\sample.exe" "%1"\'') for line in commands))
+            for verb in ("edit", "print"):
+                self.assertTrue(any("\\shell\\" + verb + "\\command" in line
+                                    and line.endswith('\'"$INSTDIR\\sample.exe" --file-association-verb=' + verb + ' "%1"\'')
+                                    for line in commands))
+            self.assertIn('\\shell" "" "open"', script)
+            self.assertIn(literal('Edit $5 "document"'), script)
+            cleanup = next(line for line in script.splitlines() if line.startswith("DeleteRegKey " + hive) and line.endswith('\\shell"'))
+            self.assertLess(script.index('file_type_ok_0:'), script.index(cleanup))
+            self.assertLess(script.index(cleanup), script.index('\\shell\\edit\\command'))
+
+    def test_extra_file_verbs_reject_unregistered_names_and_script_injection(self):
+        for verbs in ({".other": ["edit"]}, {".sample": ["open"]}, {".sample": ["Edit"]},
+                      {".sample": ["edit", "edit"]}, {".sample": ["edit\\command"]},
+                      {".sample": ["${NSISDIR}"]}, {".sample": ["edit\nprint"]}):
+            with self.subTest(verbs=verbs), self.assertRaises(ValueError):
+                self.render(file_associations={".sample": "Sample"}, file_association_verbs=verbs)
+        for labels in ({"other": "Other"}, {"edit": ""}, {"edit": "${NSISDIR}"}, {"edit": "line\nbreak"}):
+            with self.subTest(labels=labels), self.assertRaises(ValueError):
+                self.render(file_associations={".sample": "Sample"},
+                            file_association_verbs={".sample": ["edit"]}, file_association_verb_labels=labels)
+
     def test_app_user_model_id_constraints(self):
         for value in ["contains space", "tabs\there", "a" * 129, "😀" * 65, "${NSISDIR}"]:
             with self.subTest(value=value), self.assertRaises(ValueError):

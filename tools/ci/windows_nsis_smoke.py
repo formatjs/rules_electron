@@ -74,9 +74,34 @@ def file_handlers(executable, architecture, root=winreg.HKEY_CURRENT_USER):
         # ASSOCF_INIT_FIXED_PROGID | ASSOCF_INIT_FOR_FILE, ASSOCSTR_COMMAND.
         assert query(0x2800, 1, progid, "open", command, ctypes.byref(size)) == 0
         assert command.value == f'"{executable}" "%1"'
+        assert value(key + r"\shell", "") == "open"
+        if extension == EXTENSIONS[0]:
+            assert not registry_exists(key + r"\shell\stale", root=root)
+            for verb in ("edit", "print"):
+                assert value(key + "\\shell\\" + verb, "") == verb.title() + " Sample Document"
+                verb_command = ctypes.create_unicode_buffer(32768)
+                verb_size = ctypes.c_uint(len(verb_command))
+                assert query(0x2800, 1, progid, verb, verb_command, ctypes.byref(verb_size)) == 0
+                assert verb_command.value == f'"{executable}" --file-association-verb={verb} "%1"'
+                with tempfile.TemporaryDirectory(prefix="file-verb-") as directory:
+                    document = Path(directory) / "資料 & sample.rules-electron-sample"
+                    report = Path(directory) / "report.json"
+                    document.write_text("file verb document", encoding="utf-8")
+                    subprocess.run(verb_command.value.replace('"%1"', subprocess.list2cmdline([str(document)])),
+                                   env=dict(os.environ, RULES_ELECTRON_FILE_VERB_REPORT=str(report)),
+                                   check=True, capture_output=True, timeout=60)
+                    assert json.loads(report.read_text(encoding="utf-8")) == {
+                        "verb": verb, "file": str(document), "content": "file verb document", "architecture": architecture,
+                    }
         handlers.append(progid)
     assert value("Software\\Classes\\" + EXTENSIONS[0], "") == "Foreign.Document"
+    print("WINDOWS_FILE_VERBS_OK architecture=" + architecture, flush=True)
     return handlers
+
+
+def seed_stale_file_verb(progid, root=winreg.HKEY_CURRENT_USER):
+    with winreg.CreateKey(root, "Software\\Classes\\" + progid + r"\shell\stale\command") as key:
+        winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "stale owned command")
 
 
 def known_folder(identifier):
@@ -261,6 +286,7 @@ if __name__ == "__main__":
             assert registry_value(PROTOCOL + r"\shell\open\command", "") == f'"{executable}" "%1"'
             assert all(p.is_file() for p in shortcuts)
             handlers = file_handlers(executable, architecture)
+            seed_stale_file_verb(handlers[0])
             icon(install / "Uninstall.exe", architecture, 113)
             assert digest(cache / "installer.exe") == digest(first)
             smoke(executable, architecture, "1.0.0")

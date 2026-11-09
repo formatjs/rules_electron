@@ -44,6 +44,17 @@ function ownFrame(event) {
 }
 
 app.whenReady().then(async () => {
+  if (process.env.RULES_ELECTRON_FILE_VERB_REPORT) {
+    const argument = process.argv.find((value) => value.startsWith('--file-association-verb='));
+    assert.ok(argument);
+    const file = process.argv[process.argv.indexOf(argument) + 1];
+    assert.ok(path.isAbsolute(file));
+    fs.writeFileSync(process.env.RULES_ELECTRON_FILE_VERB_REPORT, JSON.stringify({
+      verb: argument.split('=')[1], file, content: fs.readFileSync(file, 'utf8'), architecture: process.arch,
+    }));
+    app.quit();
+    return;
+  }
   if (protocolReport || documentReport) {
     fs.writeFileSync((protocolReport || documentReport) + '.ready', 'ready');
     watchdog = setTimeout(() => app.exit(1), 20000);

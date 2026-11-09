@@ -38,7 +38,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
                      updater_cache_name="", architecture="x64", payload_archive="",
                      build_version="", build_number="", file_associations=None, app_user_model_id="",
                      installer_icon="", uninstaller_icon="", directory_manifest="", file_association_icons=None,
-                     installation_scope="user"):
+                     installation_scope="user", file_association_verbs=None, file_association_verb_labels=None):
     if installation_scope not in ("user", "machine"):
         raise ValueError("NSIS installation_scope must be user or machine")
     machine = installation_scope == "machine"
@@ -72,6 +72,20 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
             raise ValueError("File associations require lowercase extensions and nonempty descriptions")
         literal(description)
         associations[extension] = ("RulesElectron." + hashlib.sha256((app_id + extension).encode()).hexdigest()[:24], description)
+    verbs = {}
+    for extension, names in sorted((file_association_verbs or {}).items()):
+        if extension not in associations:
+            raise ValueError("File verbs require a registered extension")
+        if (len(names) != len(set(names)) or any(
+                not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", name) or name == "open" for name in names)):
+            raise ValueError("File verbs require unique lowercase names other than open")
+        verbs[extension] = sorted(names)
+    verb_labels = dict(file_association_verb_labels or {})
+    declared_verbs = {name for names in verbs.values() for name in names}
+    for name, label in verb_labels.items():
+        if name not in declared_verbs or not label:
+            raise ValueError("File verb labels require a declared verb and nonempty text")
+        literal(label)
     app = Path(app)
     if compression not in ("7z", "zlib", "bzip2", "lzma", "off"):
         raise ValueError("Unsupported NSIS compressor")
@@ -284,15 +298,25 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         lines += ['WriteRegStr ' + hive + ' ' + q(capabilities) + ' "ApplicationName" ' + q(product_name),
                   'WriteRegStr ' + hive + ' ' + q(capabilities) + ' "ApplicationDescription" ' + q(product_name),
                   'WriteRegStr ' + hive + ' ' + q(registered_apps) + ' ' + q(app_id) + ' ' + q(capabilities)]
-    for extension, (progid, description) in associations.items():
+    for index, (extension, (progid, description)) in enumerate(associations.items()):
         key = 'Software\\Classes\\' + progid
         document_icon = association_icons.get(extension, command_executable)
-        lines += ['WriteRegStr ' + hive + ' ' + q(key) + ' "" ' + q(description),
+        # Replace owned commands on upgrades, including removed verbs.
+        lines += ['IfErrors failed_install', 'ClearErrors', 'EnumRegKey $0 ' + hive + ' ' + q(key + '\\shell') + ' 0',
+                  'IfErrors file_verbs_clear_' + str(index),
+                  'DeleteRegKey ' + hive + ' ' + q(key + '\\shell'), 'IfErrors failed_install',
+                  'file_verbs_clear_' + str(index) + ':', 'ClearErrors',
+                  'WriteRegStr ' + hive + ' ' + q(key) + ' "" ' + q(description),
                   'WriteRegStr ' + hive + ' ' + q(key) + ' "RulesElectronOwner" ' + q(app_id),
                   'WriteRegStr ' + hive + ' ' + q(key + '\\DefaultIcon') + ' "" \'"$INSTDIR\\' + document_icon + '",0\'',
+                  'WriteRegStr ' + hive + ' ' + q(key + '\\shell') + ' "" "open"',
                   'WriteRegStr ' + hive + ' ' + q(key + '\\shell\\open\\command') + ' "" \'"$INSTDIR\\' + command_executable + '" "%1"\'',
                   'WriteRegStr ' + hive + ' ' + q('Software\\Classes\\' + extension + '\\OpenWithProgids') + ' ' + q(progid) + ' ""',
                   'WriteRegStr ' + hive + ' ' + q(capabilities + '\\FileAssociations') + ' ' + q(extension) + ' ' + q(progid)]
+        for name in verbs.get(extension, []):
+            verb_key = key + '\\shell\\' + name
+            lines += ['WriteRegStr ' + hive + ' ' + q(verb_key) + ' "" ' + q(verb_labels.get(name, name)),
+                      'WriteRegStr ' + hive + ' ' + q(verb_key + '\\command') + ' "" \'"$INSTDIR\\' + command_executable + '" --file-association-verb=' + name + ' "%1"\'']
     if associations:
         lines += ["System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0) v'"]
     if updater_cache_name:

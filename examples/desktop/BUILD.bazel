@@ -310,6 +310,14 @@ electron_nsis_tool(
         app = app,
         desktop_shortcut = True,
         file_association_icons = {".rules-electron-sample": "resources/document.ico"},
+        file_association_verb_labels = {
+            "edit": "Edit Sample Document",
+            "print": "Print Sample Document",
+        },
+        file_association_verbs = {".rules-electron-sample": [
+            "edit",
+            "print",
+        ]},
         file_associations = {
             ".rules-electron-sample": "Sample Document",
             ".rules-electron-cleanup": "Sample Cleanup Document",

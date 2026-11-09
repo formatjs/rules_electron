@@ -15,7 +15,7 @@ import winreg
 from windows_installer_trace import installer_trace
 from windows_nsis_smoke import (
     APP_ID, CAPABILITIES, EXTENSIONS, FeedHandler, PROTOCOL, REGISTERED_APPS, REGISTRY,
-    command, digest, file_handlers, known_folder, registry_exists, registry_value, smoke, wait_for,
+    command, digest, file_handlers, known_folder, registry_exists, registry_value, seed_stale_file_verb, smoke, wait_for,
 )
 
 
@@ -79,6 +79,7 @@ def main():
             assert digest(install / "resources/elevate.exe") == digest(helper)
             assert not (cache / "installer.exe").exists()
             handlers = file_handlers(executable, architecture, root=winreg.HKEY_LOCAL_MACHINE)
+            seed_stale_file_verb(handlers[0], root=winreg.HKEY_LOCAL_MACHINE)
             smoke(executable, architecture, "1.0.0", shortcuts=shortcuts)
             (install / "keep-user-data.txt").write_text("keep")
             rejected = command(str(executable), "--reject-update-smoke", "--disable-gpu",

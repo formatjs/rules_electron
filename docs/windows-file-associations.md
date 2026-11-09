@@ -8,12 +8,15 @@ electron_nsis(
     app = ":app",
     tool = ":nsis_tool",
     file_associations = {".sample": "Sample Document"},
+    file_association_icons = {".sample": "resources/document.ico"},
+    file_association_verbs = {".sample": ["edit", "print"]},
+    file_association_verb_labels = {"edit": "Edit Sample Document"},
 )
 ```
 
 Each extension gets a stable app-specific ProgID, document description,
 executable icon and quoted open command (`"app.exe" "%1"`). Registration uses
-HKCU `Software\Classes`, `OpenWithProgids`, application `Capabilities` and
+the selected scope's HKCU/HKLM `Software\Classes`, `OpenWithProgids`, application `Capabilities` and
 `RegisteredApplications`. The installer notifies the Windows shell after changes.
 These handlers appear as Open With/Default Apps choices. Existing extension
 defaults and protected `UserChoice` keys remain intact; users select defaults
@@ -26,8 +29,22 @@ remain. The app handles opened paths through its Electron startup/second-instanc
 logic; packaging does not inject runtime handlers.
 
 Extensions include the leading dot, then 1–32 lowercase letters/digits,
-underscores or hyphens. Compound extensions, custom document icons, MIME types
-and extra verbs are not yet supported.
+underscores or hyphens. Declared document ICO files must already ship in the app.
+Compound extensions and MIME types remain unsupported.
+
+`file_association_verbs` adds app-owned shell actions such as `edit` and `print`.
+Names use 1–32 lowercase letters/digits, underscores or hyphens, starting with a
+letter; `open` is reserved. Commands pass `--file-association-verb=NAME` followed
+by the quoted document path. The app handles that switch; packaging adds no
+runtime handler. Optional labels are keyed by declared verb name. Open remains
+the default action. Upgrades replace owned commands, removing retired verbs;
+uninstall uses the existing ownership and open-command guards. See
+[Microsoft's shell verb contract](https://learn.microsoft.com/en-us/windows/win32/shell/fa-verbs).
+
+The expanded native fixture resolves each extra command through Windows shell
+APIs, launches it with a Unicode/spaces document path, and checks the app receives
+the verb and reads the document. User/machine upgrades also remove a seeded stale
+verb. Hosted validation for these extra actions is pending.
 
 The native Windows fixture checks shell command resolution, installed icons,
 foreign registration rejection, update stability and uninstall cleanup while
