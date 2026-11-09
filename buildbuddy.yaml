@@ -13,8 +13,10 @@ actions:
       - run: |
           set -euo pipefail
           public_downloader="$PWD/tools/ci/public-downloader.cfg"
-          bazel test --config=bb-workflow --downloader_config="$public_downloader" --test_output=errors //...
-          bazel run --config=bb-workflow --downloader_config="$public_downloader" @buildifier_prebuilt//:buildifier -- -mode=check -r .
+          public_distdir="$(mktemp -d /tmp/electron-signing-sources.XXXXXX)"
+          python3 tools/ci/prefetch_signing_sources.py "$public_distdir"
+          bazel test --config=bb-workflow --downloader_config="$public_downloader" --distdir="$public_distdir" --test_output=errors //...
+          bazel run --config=bb-workflow --downloader_config="$public_downloader" --distdir="$public_distdir" @buildifier_prebuilt//:buildifier -- -mode=check -r .
 
   - name: "Cross-build Electron Apps"
     container_image: "ubuntu-20.04"
@@ -30,12 +32,14 @@ actions:
       - run: |
           set -euo pipefail
           public_downloader="$PWD/tools/ci/public-downloader.cfg"
-          bazel build --config=bb-workflow --downloader_config="$public_downloader" \
+          public_distdir="$(mktemp -d /tmp/electron-signing-sources.XXXXXX)"
+          python3 tools/ci/prefetch_signing_sources.py "$public_distdir"
+          bazel build --config=bb-workflow --downloader_config="$public_downloader" --distdir="$public_distdir" \
             --profile="$BUILDBUDDY_ARTIFACTS_DIRECTORY/fixture-profile.json.gz" \
             //tests:cross_build_fixtures
           cd examples/desktop
-          bazel test --config=bb-workflow --downloader_config="$public_downloader" --lockfile_mode=error //tools:file_matcher_test
-          bazel build --config=bb-workflow --downloader_config="$public_downloader" --config=msvc-license --lockfile_mode=error --remote_download_toplevel \
+          bazel test --config=bb-workflow --downloader_config="$public_downloader" --distdir="$public_distdir" --lockfile_mode=error //tools:file_matcher_test
+          bazel build --config=bb-workflow --downloader_config="$public_downloader" --distdir="$public_distdir" --config=msvc-license --lockfile_mode=error --remote_download_toplevel \
             --profile="$BUILDBUDDY_ARTIFACTS_DIRECTORY/cross-build-profile.json.gz" \
             --experimental_profile_additional_tasks=remote_queue \
             --experimental_profile_additional_tasks=remote_process_time \

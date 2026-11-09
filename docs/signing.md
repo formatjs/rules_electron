@@ -47,5 +47,10 @@ The [1aae3c3 BB suite](https://formatjs.buildbuddy.io/invocation/e8530349-31bc-4
 passed certificate reproducibility, subject/issuer, validity, code-signing purpose
 and chain verification. Cross-build hit a GitHub `rules_perl` 2.0.0 download timeout
 before signing; CI now uses a digest-qualified release URL whose bytes were
-verified against the unchanged BCR integrity. Native validation remains pending. Fixture is a minimal PE package; full Electron
+verified against the unchanged BCR integrity. The next cold source fetch also
+hit a browser-download timeout for OpenSSL's pregenerated-source archive. BB
+prefetches the exact archive through its fixed official GitHub release-asset API
+ID, verifies the BCR SHA-256, then passes it to Bazel through `--distdir`.
+This only fetches immutable sources; compilers and package generators still run
+as declared Bazel actions. Native validation remains pending. Fixture is a minimal PE package; full Electron
 installation and production credential/service interfaces remain open.
