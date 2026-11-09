@@ -6,6 +6,18 @@ load("@rules_electron//electron:prepackaged.bzl", "electron_prepackaged_app")
 
 def desktop_app(name, package_json, empty_resources = True, **kwargs):
     """Assemble the generic sample with the requested app manifest."""
+    app_files = {
+        "main.cjs": "main.cjs",
+        "preload.cjs": "preload.cjs",
+        ":renderer_files": "",
+        "assets/message.json": "assets/message.json",
+        ":workspace_npm": "node_modules",
+        "@updater_npm//:runtime": "node_modules",
+        "updater-smoke.cjs": "updater-smoke.cjs",
+        "installed-update-smoke.cjs": "installed-update-smoke.cjs",
+    }
+    macos_files = dict(app_files)
+    macos_files["macos-update-smoke.cjs"] = "macos-update-smoke.cjs"
     electron_package_json(
         name = name + "_package",
         src = package_json,
@@ -16,17 +28,10 @@ def desktop_app(name, package_json, empty_resources = True, **kwargs):
     )
     electron_app(
         name = name + "_assembled",
-        srcs = {
-            "main.cjs": "main.cjs",
-            "preload.cjs": "preload.cjs",
-            ":renderer_files": "",
-            "assets/message.json": "assets/message.json",
-            ":workspace_npm": "node_modules",
-            "@updater_npm//:runtime": "node_modules",
-            "updater-smoke.cjs": "updater-smoke.cjs",
-            "installed-update-smoke.cjs": "installed-update-smoke.cjs",
-            "macos-update-smoke.cjs": "macos-update-smoke.cjs",
-        },
+        srcs = select({
+            ":macos": macos_files,
+            "//conditions:default": app_files,
+        }),
         app_id = "org.example.sample-desktop",
         macos_extra_plist = select({
             ":macos": "document-types.plist",

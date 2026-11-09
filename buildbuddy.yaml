@@ -31,6 +31,7 @@ actions:
     steps:
       - run: |
           set -euo pipefail
+          source_root="$PWD"
           public_downloader="$PWD/tools/ci/public-downloader.cfg"
           public_distdir="$(mktemp -d /tmp/electron-signing-sources.XXXXXX)"
           python3 tools/ci/prefetch_signing_sources.py "$public_distdir"
@@ -46,6 +47,11 @@ actions:
             --experimental_profile_additional_tasks=remote_download \
             --experimental_profile_additional_tasks=remote_cache_check \
             //:cross_build_smoke_bundle
+          app_inputs="$(mktemp /tmp/electron-app-inputs.XXXXXX.json)"
+          bazel aquery --config=bb-workflow --downloader_config="$public_downloader" --distdir="$public_distdir" --config=msvc-license --lockfile_mode=error \
+            --output=jsonproto 'mnemonic("ElectronApp", deps(//:cross_build_smoke_bundle))' > "$app_inputs"
+          python3 "$source_root/tools/ci/platform_inputs_audit.py" "$app_inputs"
+          rm "$app_inputs"
           cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"
 
   - name: "Source-built desktop example"

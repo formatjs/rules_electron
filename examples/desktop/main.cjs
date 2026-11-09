@@ -64,7 +64,7 @@ app.whenReady().then(async () => {
     watchdog = setTimeout(() => app.exit(1), 20000);
     return;
   }
-  if (process.argv.includes('--mac-update-smoke')) {
+  if (process.platform === 'darwin' && process.argv.includes('--mac-update-smoke')) {
     await require('./macos-update-smoke.cjs')();
     return;
   }

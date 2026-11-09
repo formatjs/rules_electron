@@ -1,6 +1,12 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 py_library(
+    name = "platform_inputs_audit",
+    srcs = ["platform_inputs_audit.py"],
+    visibility = ["//tests:__pkg__"],
+)
+
+py_library(
     name = "macos_update_smoke",
     srcs = ["macos_update_smoke.py"],
     visibility = ["//tests:__pkg__"],

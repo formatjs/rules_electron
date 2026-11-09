@@ -654,3 +654,20 @@ passed in 3.904 seconds with zero tracked remote actions. The independent BCR
 suite took 53.371 seconds with zero tracked remote actions. These runs reuse
 caches and build different generator sets; they do not establish a controlled
 speedup over the earlier observation.
+
+## Platform-specific example inputs
+
+The desktop example now includes `macos-update-smoke.cjs` only on macOS. A
+before/after `aquery` of the Linux assembly action confirmed that its declared
+inputs stop containing that file; both queries executed zero build actions.
+Future Mac-only smoke edits therefore avoid invalidating Linux/Windows app and
+installer actions. Elapsed-time savings remain unmeasured.
+
+BB checks the full cross-build's actual action dependency sets and generated
+assembly manifests with [the input audit](../tools/ci/platform_inputs_audit.py).
+The Mac script must be packaged and declared only for macOS; an empty query or
+missing OS family fails the gate.
+
+The [Mac ZIP differential gate](updates.md) separately measured 486,177 payload
+bytes downloaded from a 285,561,263-byte ZIP: 99.83% reuse. This assumes an
+existing v1 ZIP cache and excludes blockmap metadata transfer.

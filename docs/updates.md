@@ -99,8 +99,11 @@ must use HTTP ranges; transferred ZIP bytes must stay below half the full ZIP.
 The client still verifies final SHA-512, and Squirrel must replace/relaunch the
 app before strict signature and full v2 smoke checks pass. Ordinary full-download
 installation remains a separate case. This measures reuse with an existing ZIP
-cache; blockmap metadata bytes are excluded. Hosted differential results remain
-pending.
+cache; blockmap metadata bytes are excluded. The
+[ab9307d BB build](https://formatjs.buildbuddy.io/invocation/0102a46c-6809-451a-a867-e432766d1cce)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42697882602)
+passed. Mac ARM64 downloaded 486,177 of 285,561,263 ZIP bytes: 99.83% reuse, with
+both full and differential replacement/relaunch and full v2 behavior verified.
 
 Protocol references: [auto update](https://www.electron.build/v26/docs/features/auto-update/),
 [channel routing](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/providers/Provider.ts),

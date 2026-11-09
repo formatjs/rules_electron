@@ -19,6 +19,12 @@ load(":npm_lock_test.bzl", "npm_lock_test")
 npm_lock_test(name = "npm_lock_test")
 
 py_test(
+    name = "platform_inputs_audit_test",
+    srcs = ["platform_inputs_audit_test.py"],
+    deps = ["//tools/ci:platform_inputs_audit"],
+)
+
+py_test(
     name = "macos_update_smoke_test",
     srcs = ["macos_update_smoke_test.py"],
     deps = ["//tools/ci:macos_update_smoke"],
