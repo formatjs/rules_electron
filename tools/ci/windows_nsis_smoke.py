@@ -19,6 +19,8 @@ import time
 from urllib.parse import unquote, urlsplit
 import winreg
 
+from windows_installer_trace import installer_trace
+
 APP_ID = "org.example.sample-desktop"
 REGISTRY = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" + APP_ID
 PROTOCOL = r"Software\Classes\sample-desktop"
@@ -97,8 +99,8 @@ def digest(path):
         return hashlib.file_digest(source, "sha256").digest()
 
 
-def wait_for(predicate):
-    deadline = time.monotonic() + 120
+def wait_for(predicate, timeout=120):
+    deadline = time.monotonic() + timeout
     while not predicate():
         if time.monotonic() >= deadline:
             raise RuntimeError("Windows installer state did not converge")
@@ -261,14 +263,16 @@ if __name__ == "__main__":
             with server.lock:
                 server.corrupt = False
                 server.transfers.clear()
-            updated = command(str(executable), "--install-update-smoke", "--disable-gpu", "--user-data-dir=" + str(directory / "update-profile"), env=environment)
-            assert "INSTALLED_UPDATE_SMOKE_OK" in updated, updated
-            assert "Cannot download differentially" not in updated, updated
-            try:
-                wait_for(lambda: registry_value(REGISTRY, "DisplayVersion") == "2.0.0")
-            except RuntimeError:
-                update_failure_state(install, cache)
-                raise
+            with installer_trace(directory) as installer_completed:
+                updated = command(str(executable), "--install-update-smoke", "--disable-gpu", "--user-data-dir=" + str(directory / "update-profile"), env=environment)
+                assert "INSTALLED_UPDATE_SMOKE_OK" in updated, updated
+                assert "Cannot download differentially" not in updated, updated
+                try:
+                    wait_for(lambda: registry_value(REGISTRY, "DisplayVersion") == "2.0.0")
+                    wait_for(installer_completed, timeout=30)
+                except RuntimeError:
+                    update_failure_state(install, cache)
+                    raise
             assert registry_value(REGISTRY, "InstallLocation") == str(install)
             assert server.transfers and all(ranged for ranged, _ in server.transfers), server.transfers
             transferred = sum(size for _, size in server.transfers)

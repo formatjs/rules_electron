@@ -148,6 +148,10 @@ An [ARM64 run at a414167](https://github.com/formatjs/rules_electron/actions/run
 downloaded the update but stayed at v1 after 120 seconds. Its failure snapshot
 showed a pending installer and no remaining app/installer processes. The next
 [scheduled run](https://github.com/formatjs/rules_electron/actions/runs/42574732274/job/129019965955)
-passed the full lifecycle. The timeout remains unexplained; installer process
-exit tracing is the next diagnostic. Successful repeat validation does not close
-that intermittent failure.
+passed the full lifecycle. The timeout remains unexplained. Native smoke now
+subscribes to Windows process start/stop events around the real updater launch;
+it records only fixed fixture names and numeric exit codes. Success requires
+observed installer start and zero exit status in addition to installed v2. This
+observer uses existing Windows APIs; no code is compiled on the smoke host.
+Hosted validation is pending. Successful repeat validation does not close the
+intermittent failure.
