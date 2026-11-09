@@ -24,6 +24,8 @@ function Assert-Activation([string]$Family, [string]$Version, [string]$Executabl
     $nonce = [guid]::NewGuid().ToString('N')
     $directory = Join-Path ([System.IO.Path]::GetTempPath()) ('rules-electron-msix-' + $nonce)
     New-Item -ItemType Directory -Path $directory -ErrorAction Stop | Out-Null
+    $marker = Join-Path ([System.IO.Path]::GetTempPath()) 'rules-electron-msix-activation.json'
+    $markerCreated = $false
     try {
       $content = 'MSIX activation document ' + [char]0x4e16 + [char]0x754c
       if ($handler.Kind -eq 'protocol') {
@@ -34,6 +36,10 @@ function Assert-Activation([string]$Family, [string]$Version, [string]$Executabl
       }
       $request = @{nonce=$nonce; kind=$handler.Kind; value=$value} | ConvertTo-Json -Compress
       [System.IO.File]::WriteAllText((Join-Path $directory 'request.json'), $request, [System.Text.UTF8Encoding]::new($false))
+      $stream = [System.IO.File]::Open($marker, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write)
+      $markerCreated = $true
+      $writer = [System.IO.StreamWriter]::new($stream, [System.Text.UTF8Encoding]::new($false))
+      try { $writer.Write((@{nonce=$nonce} | ConvertTo-Json -Compress)) } finally { $writer.Dispose() }
       & $reader --activate $Family $handler.Kind $value
       if ($LASTEXITCODE -ne 0) { throw 'MSIX activation API failed' }
       $reportPath = Join-Path $directory 'report.json'
@@ -43,6 +49,7 @@ function Assert-Activation([string]$Family, [string]$Version, [string]$Executabl
         Start-Sleep -Milliseconds 100
       }
       $report = Get-Content -LiteralPath $reportPath -Raw -Encoding UTF8 | ConvertFrom-Json
+      if ($report.failure) { throw ('MSIX_ACTIVATION_ARGUMENT_DIAGNOSTICS ' + ($report | ConvertTo-Json -Compress -Depth 4)) }
       if ($report.kind -cne $handler.Kind -or $report.value -cne $value -or $report.nonce -cne $nonce -or
           $report.architecture -cne $Architecture -or $report.version -cne $Version -or
           $report.windows_store -ne $true -or $report.packaged -ne $true) {
@@ -57,8 +64,11 @@ function Assert-Activation([string]$Family, [string]$Version, [string]$Executabl
       }
       Write-Output ('MSIX_ACTIVATION_DELIVERY_OK ' + $handler.Kind + ' ' + $handler.Name + ' ' + $Version)
     } finally {
-      Get-Process -Name 'sample-desktop' -ErrorAction SilentlyContinue |
-        Where-Object { $_.Path -ieq $Executable } | Stop-Process -Force
+      if ($markerCreated) {
+        Get-Process -Name 'sample-desktop' -ErrorAction SilentlyContinue |
+          Where-Object { $_.Path -ieq $Executable } | Stop-Process -Force
+        Remove-Item -LiteralPath $marker
+      }
       Remove-Item -LiteralPath $directory -Recurse -Force
     }
   }
