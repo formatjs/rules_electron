@@ -10,12 +10,39 @@ load("//electron:linux.bzl", "electron_deb")
 load("//electron:metadata.bzl", "electron_package_json")
 load("//electron:npm.bzl", "electron_npm_package", "electron_npm_tree")
 load("//electron:prepackaged.bzl", "electron_prepackaged_app")
+load("//electron:release.bzl", "electron_macos_notarization_tool")
 load("//electron:update.bzl", "electron_update_feed")
 load(":cross_build.bzl", "cross_build")
 load(":empty_tree.bzl", "empty_tree")
 load(":npm_lock_test.bzl", "npm_lock_test")
 
 npm_lock_test(name = "npm_lock_test")
+
+electron_macos_notarization_tool(
+    name = "notarization_cli",
+    signer = "@rcodesign_linux_x64//:rcodesign",
+)
+
+py_test(
+    name = "notarize_macos_test",
+    srcs = ["notarize_macos_test.py"],
+    args = [
+        "$(rootpath :notarization_cli)",
+        "$(rlocationpath :notarization_cli_backend)",
+    ],
+    data = [
+        ":notarization_cli",
+        ":notarization_cli_backend",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    deps = [
+        "//electron/private:updates",
+        "//electron/tools:notarization",
+    ],
+)
 
 py_test(
     name = "npm_bundle_test",

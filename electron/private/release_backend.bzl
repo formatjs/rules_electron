@@ -10,5 +10,5 @@ def _impl(ctx):
 
 release_backend = rule(
     implementation = _impl,
-    attrs = {"tool": attr.label(executable = True, cfg = "exec", mandatory = True)},
+    attrs = {"tool": attr.label(executable = True, allow_single_file = True, cfg = "exec", mandatory = True)},
 )

@@ -3,7 +3,10 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 py_library(
     name = "archives",
     srcs = ["archive.py"],
-    visibility = ["//tests:__pkg__"],
+    visibility = [
+        "//electron/tools:__pkg__",
+        "//tests:__pkg__",
+    ],
     deps = [":file_mappings"],
 )
 
@@ -97,7 +100,10 @@ py_library(
         "mac_sign.py",
         "runtime.py",
     ],
-    visibility = ["//tests:__pkg__"],
+    visibility = [
+        "//electron/tools:__pkg__",
+        "//tests:__pkg__",
+    ],
     deps = [
         ":asar",
         ":file_mappings",

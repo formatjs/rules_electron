@@ -49,3 +49,44 @@ files. These checks do not replace final native trust verification. The pinned
 `verify` command only verifies Mach-O files and warns that verification is
 incomplete; it cannot serve as the sole bundle release gate. See the
 [pinned CLI source](https://github.com/indygreg/apple-platform-rs/blob/apple-codesign/0.29.0/apple-codesign/src/cli/mod.rs).
+
+## Notarization client
+
+Declare an execution-platform rcodesign 0.29 backend explicitly:
+
+```starlark
+load("@rules_electron//electron:release.bzl", "electron_macos_notarization_tool")
+
+electron_macos_notarization_tool(
+    name = "notarize",
+    signer = "@rcodesign_linux_x64//:rcodesign",
+)
+```
+
+Run on the BB release client, outside cacheable artifact actions:
+
+```sh
+bazel run --config=bb-workflow //:notarize -- \
+  --input signed-app.zip --output notarized-app.zip \
+  --api-key-env NOTARY_API_KEY_FILE --max-wait-seconds 600
+```
+
+The environment variable holds the path to rcodesign's App Store Connect API
+key JSON. Credentials stay outside rule attributes and action environments.
+Input must already have valid Developer ID signatures, hardened runtime and
+timestamps. Developer ID release signing remains open; assembly currently signs
+ad hoc.
+
+The client copies and validates the app ZIP, preserving executable modes, links
+and empty directories. It removes a prior ticket from the snapshot and invokes
+`notary-submit --wait --staple`. The pinned backend rejects non-accepted
+submissions before stapling. Backend logs and inherited credentials are
+suppressed. Failure, timeout, missing ticket or any other content/mode change
+prevents output. A successful result creates a new ZIP atomically, preserving
+existing or competing outputs. Generate updater metadata from this final ZIP.
+
+Tests cover this protocol with a simulated service result, payload preservation,
+failure isolation, final feed hashes and the real declared backend's invalid-
+credential rejection. They do not contact Apple. Live Apple interoperability,
+ticket trust and native Gatekeeper acceptance remain unverified. DMG/PKG
+notarization and the Developer ID signing adapter remain separate gaps.

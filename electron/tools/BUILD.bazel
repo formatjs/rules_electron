@@ -5,6 +5,18 @@ load("//third_party:appimage_runtime.bzl", "static_pie_runtime")
 
 package(default_visibility = ["//visibility:public"])
 
+exports_files(["notarize_macos.py"])
+
+py_library(
+    name = "notarization",
+    srcs = ["notarize_macos.py"],
+    deps = [
+        "//electron/private:archives",
+        "//electron/private:assembly",
+        "@rules_python//python/runfiles",
+    ],
+)
+
 config_setting(
     name = "windows_msvc",
     constraint_values = ["@llvm//constraints/windows/abi:msvc"],
