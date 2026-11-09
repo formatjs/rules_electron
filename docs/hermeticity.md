@@ -596,4 +596,7 @@ passed a relocated NSS/NSPR runtime fixture built with native Bazel rules. It
 regenerates module integrity metadata after ELF search-path repair, verifies all
 four modules with original NSS, initializes NSS, generates random bytes and
 rejects modified modules/checksums. Assembly repeats across paths and mtimes.
-Full source Electron archive and browser/ASAR runtime smoke remain unverified.
+The subsequent 32fefac [consumer test](https://formatjs.buildbuddy.io/invocation/7ac59bd3-49e6-4950-9f0e-09264bcb3b06)
+built the full source Electron archive with closed ELF dependencies and repeat
+assembly checks. Its relocated executable failed run-as-Node startup; browser,
+IPC, rendering and ASAR filesystem smoke remain unverified.
