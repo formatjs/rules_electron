@@ -19,6 +19,8 @@ _DEFINES = [
     "_LARGEFILE_SOURCE",
     "_GNU_SOURCE",
     'COMP_DEFAULT=\\"gzip\\"',
+    'COMPRESSORS=\\"gzip(default),zstd\\"',
+    'DECOMPRESSORS=\\"gzip,zstd\\"',
     'VERSION=\\"4.7.5\\"',
     'DATE=\\"2026/03/01\\"',
     'YEAR=\\"2026\\"',
