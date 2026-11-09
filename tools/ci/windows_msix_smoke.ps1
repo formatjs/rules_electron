@@ -15,6 +15,41 @@ function Assert-Trust([string]$Path, [string]$Expected) {
   & $reader --signature $Path $Expected
   if ($LASTEXITCODE -ne 0) { throw 'MSIX native trust check failed' }
 }
+function Assert-Activation([string]$Family, [string]$Version) {
+  foreach ($handler in @(
+      @{Kind='protocol'; Name='sample-msix'},
+      @{Kind='protocol'; Name='sample-msix-alt'},
+      @{Kind='file'; Name='.samplemsix'},
+      @{Kind='file'; Name='.samplemsix_alt'})) {
+    $nonce = [guid]::NewGuid().ToString('N')
+    $directory = Join-Path ([System.IO.Path]::GetTempPath()) ('rules-electron-msix-' + $nonce)
+    New-Item -ItemType Directory -Path $directory -ErrorAction Stop | Out-Null
+    try {
+      $content = 'MSIX activation document ' + [char]0x4e16 + [char]0x754c
+      if ($handler.Kind -eq 'protocol') {
+        $value = $handler.Name + '://activation-smoke/' + $nonce
+      } else {
+        $value = Join-Path $directory ('activation document ' + [char]0x4e16 + [char]0x754c + $handler.Name)
+        [System.IO.File]::WriteAllText($value, $content, [System.Text.UTF8Encoding]::new($false))
+      }
+      $request = @{nonce=$nonce; kind=$handler.Kind; value=$value} | ConvertTo-Json -Compress
+      [System.IO.File]::WriteAllText((Join-Path $directory 'request.json'), $request, [System.Text.UTF8Encoding]::new($false))
+      & $reader --activate $Family $handler.Kind $value
+      if ($LASTEXITCODE -ne 0) { throw 'MSIX activation API failed' }
+      $report = Get-Content -LiteralPath (Join-Path $directory 'report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+      if ($report.kind -cne $handler.Kind -or $report.value -cne $value -or $report.nonce -cne $nonce -or
+          $report.architecture -cne $Architecture -or $report.version -cne $Version -or
+          $report.windows_store -ne $true -or $report.packaged -ne $true) {
+        throw 'MSIX Electron activation report mismatch'
+      }
+      if ($handler.Kind -eq 'file' -and $report.content -cne $content) { throw 'MSIX file activation changed document bytes' }
+      if ($handler.Kind -eq 'protocol' -and $null -ne $report.content) { throw 'MSIX protocol activation returned document content' }
+      Write-Output ('MSIX_ACTIVATION_DELIVERY_OK ' + $handler.Kind + ' ' + $handler.Name + ' ' + $Version)
+    } finally {
+      Remove-Item -LiteralPath $directory -Recurse -Force
+    }
+  }
+}
 $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($certificateFile)
 $certificatePath = 'Cert:\LocalMachine\TrustedPeople\' + $certificate.Thumbprint
 if (Test-Path -LiteralPath $certificatePath) { throw 'MSIX fixture certificate already trusted' }
@@ -67,6 +102,7 @@ try {
     $executable = Join-Path $package.InstallLocation 'sample-desktop.exe'
     & $Python 'examples/desktop/tools/smoke_test.py' $executable --installed --msix --target-os windows --target-arch $Architecture --expected-version $release.Version
     if ($LASTEXITCODE -ne 0) { throw 'MSIX installed Electron smoke failed' }
+    Assert-Activation $family $release.Version
     Write-Output ('MSIX_DESKTOP_VERSION_OK ' + $release.Version)
   }
   Remove-AppxPackage -Package $package.PackageFullName

@@ -48,6 +48,10 @@ function ownFrame(event) {
 }
 
 app.whenReady().then(async () => {
+  if (process.windowsStore && require('./msix-activation-smoke.cjs')()) {
+    app.quit();
+    return;
+  }
   if (process.env.RULES_ELECTRON_FILE_VERB_REPORT) {
     const argument = process.argv.find((value) => value.startsWith('--file-association-verb='));
     assert.ok(argument);

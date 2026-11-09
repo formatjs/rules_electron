@@ -18,6 +18,8 @@ def desktop_app(name, package_json, empty_resources = True, **kwargs):
     }
     macos_files = dict(app_files)
     macos_files["macos-update-smoke.cjs"] = "macos-update-smoke.cjs"
+    windows_files = dict(app_files)
+    windows_files["msix-activation-smoke.cjs"] = "msix-activation-smoke.cjs"
     electron_package_json(
         name = name + "_package",
         src = package_json,
@@ -30,6 +32,7 @@ def desktop_app(name, package_json, empty_resources = True, **kwargs):
         name = name + "_assembled",
         srcs = select({
             ":macos": macos_files,
+            ":windows": windows_files,
             "//conditions:default": app_files,
         }),
         app_id = "org.example.sample-desktop",

@@ -103,6 +103,40 @@ static void validate_handlers(const wchar_t* family, const wchar_t* state) {
   std::puts(present ? "MSIX_HANDLERS_PRESENT" : "MSIX_HANDLERS_REMOVED");
 }
 
+static void activate(const wchar_t* family, const wchar_t* kind,
+                     const wchar_t* value) {
+  const bool protocol = std::wcscmp(kind, L"protocol") == 0;
+  require(protocol || std::wcscmp(kind, L"file") == 0, "activation_kind");
+  check(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED), "activation_com_initialize");
+  ComPtr<IShellItem> item;
+  check(SHCreateItemFromParsingName(value, nullptr, IID_PPV_ARGS(&item)),
+        "activation_shell_item");
+  ComPtr<IShellItemArray> items;
+  check(SHCreateShellItemArrayFromShellItem(item.Get(), IID_PPV_ARGS(&items)),
+        "activation_shell_array");
+  ComPtr<IApplicationActivationManager> manager;
+  check(CoCreateInstance(__uuidof(ApplicationActivationManager), nullptr,
+                         CLSCTX_LOCAL_SERVER, IID_PPV_ARGS(&manager)), "activation_manager");
+  const std::wstring application = std::wstring(family) + L"!App";
+  DWORD pid = 0;
+  check(protocol ? manager->ActivateForProtocol(application.c_str(), items.Get(), &pid)
+                 : manager->ActivateForFile(application.c_str(), items.Get(), L"open", &pid),
+        "activation_delivery");
+  require(pid != 0, "activation_process_id");
+  HANDLE process = OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, FALSE, pid);
+  if (!process) {
+    require(GetLastError() == ERROR_INVALID_PARAMETER, "activation_process_handle");
+    std::puts("MSIX_ACTIVATION_PROCESS_EXITED");
+    return;
+  }
+  const DWORD result = WaitForSingleObject(process, 30000);
+  if (result != WAIT_OBJECT_0)
+    TerminateProcess(process, 1);
+  CloseHandle(process);
+  require(result == WAIT_OBJECT_0, "activation_process_exit");
+  std::puts("MSIX_ACTIVATION_PROCESS_EXITED");
+}
+
 static void validate(IAppxFile* file, IAppxBlockMapReader* blockmap,
                      bool* tamper_checked, unsigned* count) {
   LPWSTR name = nullptr;
@@ -141,6 +175,10 @@ static void validate(IAppxFile* file, IAppxBlockMapReader* blockmap,
 }
 
 int wmain(int argc, wchar_t** argv) {
+  if (argc == 5 && std::wcscmp(argv[1], L"--activate") == 0) {
+    activate(argv[2], argv[3], argv[4]);
+    return 0;
+  }
   if (argc == 4 && std::wcscmp(argv[1], L"--signature") == 0) {
     validate_signature(argv[2], argv[3]);
     return 0;

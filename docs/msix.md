@@ -93,3 +93,11 @@ passed both schemes and file types after install/upgrade, then absence after
 removal, plus the real Electron lifecycle. Activation delivery and custom
 document icons remain separate work. The earlier ARM64 run passed these MSIX
 checks before an unrelated NSIS update timeout; see [installer diagnostics](windows-installers.md).
+
+Cold activation checks now invoke the installed app through
+[`IApplicationActivationManager`](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-iapplicationactivationmanager),
+using both protocol schemes and file extensions after install and upgrade.
+Electron must report the exact URI or file path, Unicode document content,
+package identity, CPU and version, then exit. Reports require a pre-created
+nonce directory in the user's temporary directory. The activation helper is
+compiled on BB; native hosts only execute it. Hosted validation remains pending.
