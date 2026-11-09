@@ -463,7 +463,7 @@ if __name__ == "__main__":
             check_macos_signing(app)
             executable = app / "Contents/MacOS/sample-desktop"
         else:
-            shutil.copytree(source, app)
+            shutil.copytree(source, app, symlinks=True)
             executable = app / ("sample-desktop.exe" if host_os == "windows" else "sample-desktop")
         environment = dict(os.environ)
         if args.setuid_sandbox:
