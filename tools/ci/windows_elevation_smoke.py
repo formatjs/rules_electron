@@ -20,6 +20,8 @@ def main():
         offset = struct.unpack_from("<I", data, 60)[0]
         machine = struct.unpack_from("<H", data, offset + 4)[0]
         assert machine == {"x64": 0x8664, "arm64": 0xaa64}[architecture]
+        if path == helper:
+            assert struct.unpack_from("<H", data, offset + 24 + 68)[0] == 2
     with tempfile.TemporaryDirectory(prefix="elevation-smoke-") as temporary:
         output = Path(temporary) / "result 世界.bin"
         arguments = ["", "two words", 'embedded"quote', "trailing\\", "space and slash\\", "世界", "\\\\server\\share\\"]

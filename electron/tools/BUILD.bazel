@@ -13,13 +13,16 @@ config_setting(
 cc_binary(
     name = "windows_elevate",
     srcs = ["windows_elevate.cc"],
-    copts = ["-std=c++17"],
+    copts = select({
+        ":windows_msvc": ["/std:c++17"],
+        "//conditions:default": ["-std=c++17"],
+    }),
     linkopts = select({
         ":windows_msvc": [
             "shell32.lib",
             "ole32.lib",
-            "-Wl,/subsystem:windows",
-            "-Wl,/entry:mainCRTStartup",
+            "/subsystem:windows",
+            "/entry:mainCRTStartup",
         ],
         "//conditions:default": [
             "-lshell32",
