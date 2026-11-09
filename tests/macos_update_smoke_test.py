@@ -3,15 +3,62 @@
 from functools import partial
 import http.server
 from pathlib import Path
+import plistlib
+import subprocess
 import tempfile
 import threading
 import unittest
+from unittest import mock
 import urllib.request
 
-from tools.ci.macos_update_smoke import FeedHandler, owned_processes
+from tools.ci.macos_update_smoke import FeedHandler, admin_trust, certificate_fingerprint, owned_processes, remove_fixture_trust
 
 
 class MacosUpdateSmokeTest(unittest.TestCase):
+    def test_trust_cleanup_removes_only_fixture_and_verifies_import(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            certificate = root / "public.cer"
+            certificate.write_bytes(b"public fixture DER")
+            fingerprint = certificate_fingerprint(certificate)
+            other = {"issuerName": b"unrelated certificate", "trustSettings": [{"result": 3}]}
+            original = {"trustVersion": 1, "trustList": {fingerprint: {"trustSettings": []}, "A" * 40: other}}
+            for ignore_import in (False, True):
+                with self.subTest(ignore_import=ignore_import):
+                    state = plistlib.loads(plistlib.dumps(original))
+                    commands = []
+
+                    def security(*arguments, check=True):
+                        nonlocal state
+                        command, domain, path = arguments
+                        self.assertEqual(domain, "-d")
+                        commands.append(command)
+                        if command == "trust-settings-export":
+                            path.write_bytes(plistlib.dumps(state))
+                        elif command == "trust-settings-import":
+                            if not ignore_import:
+                                state = plistlib.loads(path.read_bytes())
+                        else:
+                            self.fail("Unexpected security command")
+                        return subprocess.CompletedProcess(arguments, 0, b"", b"")
+
+                    with mock.patch("tools.ci.macos_update_smoke.security", side_effect=security):
+                        if ignore_import:
+                            with self.assertRaisesRegex(RuntimeError, "did not preserve"):
+                                remove_fixture_trust(certificate, root)
+                        else:
+                            remove_fixture_trust(certificate, root)
+                            self.assertEqual(state, {"trustVersion": 1, "trustList": {"A" * 40: other}})
+                    self.assertEqual(commands, ["trust-settings-export", "trust-settings-import", "trust-settings-export"])
+
+    def test_missing_admin_domain_is_distinct_from_export_failure(self):
+        with mock.patch("tools.ci.macos_update_smoke.security") as security:
+            security.return_value = subprocess.CompletedProcess([], 1, b"", b"SecTrustSettingsCreateExternalRepresentation: No Trust Settings were found.")
+            self.assertEqual(admin_trust(Path("unused.plist")), {"trustVersion": 1, "trustList": {}})
+            security.return_value = subprocess.CompletedProcess([], 1, b"", b"authorization denied")
+            with self.assertRaises(subprocess.CalledProcessError):
+                admin_trust(Path("unused.plist"))
+
     def test_cleanup_uses_executable_identity_and_excludes_sibling_apps(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

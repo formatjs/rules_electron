@@ -2,6 +2,7 @@
 
 from functools import partial
 import ctypes
+import hashlib
 import http.server
 import os
 from pathlib import Path
@@ -67,9 +68,38 @@ def stop_app(app):
         time.sleep(0.5)
 
 
-def security(*arguments):
-    subprocess.run(["/usr/bin/sudo", "-n", "/usr/bin/security", *map(str, arguments)],
-                   check=True, capture_output=True, timeout=30)
+def security(*arguments, check=True):
+    return subprocess.run(["/usr/bin/sudo", "-n", "/usr/bin/security", *map(str, arguments)],
+                          check=check, capture_output=True, timeout=30)
+
+
+def admin_trust(path):
+    result = security("trust-settings-export", "-d", path, check=False)
+    if result.returncode == 1 and b"No Trust Settings were found." in result.stderr:
+        return {"trustVersion": 1, "trustList": {}}
+    result.check_returncode()
+    settings = plistlib.loads(path.read_bytes())
+    if settings.get("trustVersion") != 1 or not isinstance(settings.get("trustList"), dict):
+        raise RuntimeError("Unexpected admin trust settings format")
+    return settings
+
+
+def certificate_fingerprint(certificate):
+    return hashlib.sha1(certificate.read_bytes()).hexdigest().upper()
+
+
+def remove_fixture_trust(certificate, root):
+    # remove-trusted-cert hangs on current runners; import only our record's removal.
+    settings = admin_trust(root / "trust-before-cleanup.plist")
+    fingerprint = certificate_fingerprint(certificate)
+    if fingerprint not in settings["trustList"]:
+        return
+    del settings["trustList"][fingerprint]
+    replacement = root / "trust-without-fixture.plist"
+    replacement.write_bytes(plistlib.dumps(settings))
+    security("trust-settings-import", "-d", replacement)
+    if admin_trust(root / "trust-after-cleanup.plist") != settings:
+        raise RuntimeError("Admin trust cleanup did not preserve other records")
 
 
 def launch_update(app, feed, mode, home):
@@ -114,6 +144,8 @@ def main(packages):
     with tempfile.TemporaryDirectory(prefix="electron-mac-update-") as temporary:
         root = Path(temporary).resolve()
         certificate = packages / "macos_update_v1.cer"
+        if certificate_fingerprint(certificate) in admin_trust(root / "trust-initial.plist")["trustList"]:
+            raise RuntimeError("Public fixture already has admin trust")
         keychain = root / "public-test.keychain-db"
         security("create-keychain", "-p", "public-fixture-only", keychain)
         trusted = False
@@ -122,8 +154,8 @@ def main(packages):
         app = install / "Sample Desktop.app"
         try:
             security("unlock-keychain", "-p", "public-fixture-only", keychain)
-            security("add-trusted-cert", "-d", "-r", "trustRoot", "-p", "codeSign", "-k", keychain, certificate)
             trusted = True
+            security("add-trusted-cert", "-d", "-r", "trustRoot", "-p", "codeSign", "-k", keychain, certificate)
             subprocess.run(["/usr/bin/ditto", "-x", "-k", str(packages / "macos_update_v1.zip"), str(install)], check=True)
             subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
             if version(app) != "1.0.0":
@@ -142,9 +174,10 @@ def main(packages):
             finally:
                 try:
                     if trusted:
-                        security("remove-trusted-cert", "-d", certificate)
+                        remove_fixture_trust(certificate, root)
                 finally:
                     security("delete-keychain", keychain)
+            print("MAC_UPDATE_TRUST_CLEANUP_OK", flush=True)
 
 
 if __name__ == "__main__":

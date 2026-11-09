@@ -83,6 +83,14 @@ v2 app behavior. It removes that trust and its temporary keychain afterward.
 These lifecycle results remain unverified until the hosted job passes; fixture
 trust does not prove production Developer ID/notarization acceptance.
 
+The [b7c85bc native run](https://github.com/formatjs/rules_electron/actions/runs/42688849581)
+passed all macOS lifecycle checks and full v2 app smoke, then failed while
+removing fixture trust. Current runners can hang in
+[`remove-trusted-cert`](https://github.com/actions/runner-images/issues/12116).
+Cleanup now exports admin trust, removes only the fixture's SHA-1 record, imports
+the remaining records, then verifies an identical export before deleting the
+temporary keychain. The complete gate still needs a clean hosted result.
+
 Protocol references: [auto update](https://www.electron.build/v26/docs/features/auto-update/),
 [channel routing](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/providers/Provider.ts),
 [external blockmap reader](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/AppUpdater.ts).
