@@ -51,6 +51,7 @@ def _feed_impl(ctx):
         "release_notes": ctx.attr.release_notes,
         "staging_percentage": ctx.attr.staging_percentage,
         "blockmaps": ctx.attr.blockmaps,
+        "embedded_blockmaps": ctx.attr.embedded_blockmaps,
     }))
     ctx.actions.run(
         executable = ctx.executable._feed,
@@ -73,7 +74,8 @@ electron_update_feed = rule(
         "release_date": attr.string(mandatory = True, doc = "Explicit RFC3339 UTC timestamp; never read the build clock."),
         "release_notes": attr.string(),
         "staging_percentage": attr.int(default = -1, doc = "0..100; -1 omits staged rollout metadata."),
-        "blockmaps": attr.string_list(doc = "Published filenames needing external v2 blockmaps (NSIS/macOS ZIP). AppImage embedded maps are separate."),
+        "embedded_blockmaps": attr.string_list(doc = "Linux AppImage filenames with embedded v2 maps; validate trailer and emit blockMapSize."),
+        "blockmaps": attr.string_list(doc = "Published filenames needing external v2 blockmaps (NSIS/macOS ZIP). AppImage maps use embedded_blockmaps."),
         "_feed": attr.label(default = Label("//electron/private:update_feed"), executable = True, cfg = "exec"),
     },
     doc = "Copy final artifacts, compute SHA-512/size, emit channel metadata and optional external blockmaps. Does not publish or install.",

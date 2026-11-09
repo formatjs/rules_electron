@@ -238,3 +238,24 @@ py_binary(
 )
 
 exports_files(["rpm-maintainer.sh"])
+
+py_library(
+    name = "appimage",
+    srcs = ["appimage.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        ":archives",
+        ":file_mappings",
+        ":icons",
+        ":linux_packaging",
+        ":updates",
+    ],
+)
+
+py_binary(
+    name = "appimage_packager",
+    srcs = ["appimage.py"],
+    main = "appimage.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":appimage"],
+)

@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 import re
 import sys
+import struct
+import zlib
 from urllib.parse import quote
 
 _CHUNK_MIN = 16 * 1024
@@ -61,9 +63,40 @@ def _version(value):
     return value
 
 
+def embedded_blockmap_size(path):
+    path = Path(path)
+    length = path.stat().st_size
+    if length < 5:
+        raise ValueError("AppImage embedded blockmap missing")
+    with path.open("rb") as source:
+        source.seek(-4, 2)
+        size = struct.unpack(">I", source.read(4))[0]
+        if not 0 < size <= min(length - 4, 64 * 1024**2):
+            raise ValueError("Invalid AppImage blockmap trailer")
+        source.seek(-4 - size, 2)
+        compressed = source.read(size)
+    decoder = zlib.decompressobj(wbits=-15)
+    data = decoder.decompress(compressed, 64 * 1024**2 + 1)
+    if len(data) > 64 * 1024**2 or not decoder.eof or decoder.unused_data or decoder.unconsumed_tail:
+        raise ValueError("Invalid AppImage embedded blockmap stream")
+    blockmap = json.loads(data)
+    files = blockmap.get("files", [])
+    if blockmap.get("version") != "2" or len(files) != 1 or files[0].get("offset") != 0:
+        raise ValueError("Unsupported AppImage blockmap layout")
+    sizes, checksums = files[0].get("sizes", []), files[0].get("checksums", [])
+    if (not sizes or len(sizes) != len(checksums)
+            or any(type(value) is not int or value <= 0 for value in sizes)
+            or sum(sizes) != length - size - 4):
+        raise ValueError("AppImage blockmap coverage mismatch")
+    for checksum in checksums:
+        if not isinstance(checksum, str) or not 0 < len(base64.b64decode(checksum, validate=True)) <= 64:
+            raise ValueError("Invalid AppImage block checksum")
+    return size
+
+
 def create_feed(artifacts, package_json, output, platform, architecture,
                 release_date, channel="latest", release_notes="",
-                staging_percentage=-1, blockmaps=()):
+                staging_percentage=-1, blockmaps=(), embedded_blockmaps=()):
     metadata_name = channel_filename(platform, architecture, channel)
     version = _version(json.loads(Path(package_json).read_text(encoding="utf-8")).get("version"))
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", release_date):
@@ -76,6 +109,10 @@ def create_feed(artifacts, package_json, output, platform, architecture,
     names = [_filename(entry["name"]) for entry in artifacts]
     if len(set(blockmaps)) != len(blockmaps) or not set(blockmaps).issubset(names):
         raise ValueError("Blockmaps must name distinct declared artifacts")
+    if (len(set(embedded_blockmaps)) != len(embedded_blockmaps)
+            or not set(embedded_blockmaps).issubset(names) or set(embedded_blockmaps) & set(blockmaps)
+            or embedded_blockmaps and platform != "linux"):
+        raise ValueError("Embedded blockmaps must name distinct Linux artifacts")
     destinations = [metadata_name] + names + [name + ".blockmap" for name in blockmaps]
     if len({name.casefold() for name in destinations}) != len(destinations):
         raise ValueError("Duplicate or colliding update output names")
@@ -96,6 +133,8 @@ def create_feed(artifacts, package_json, output, platform, architecture,
                     checksums.append(base64.b64encode(hashlib.sha256(chunk).digest()).decode("ascii"))
                     sizes.append(len(chunk))
         files.append({"url": quote(name, safe="-._~"), "sha512": base64.b64encode(digest.digest()).decode("ascii"), "size": (output / name).stat().st_size})
+        if name in embedded_blockmaps:
+            files[-1]["blockMapSize"] = embedded_blockmap_size(source)
         if name in blockmaps:
             data = {"version": "2", "files": [{"name": "file", "offset": 0, "checksums": checksums, "sizes": sizes}]}
             # External updater blockmaps use gzip; embedded AppImage maps use raw deflate.
@@ -103,6 +142,8 @@ def create_feed(artifacts, package_json, output, platform, architecture,
                 with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed:
                     compressed.write(json.dumps(data, separators=(",", ":")).encode("utf-8"))
     result = {"version": version, "files": files, "path": names[0], "sha512": files[0]["sha512"], "releaseDate": release_date}
+    if "blockMapSize" in files[0]:
+        result["blockMapSize"] = files[0]["blockMapSize"]
     if release_notes:
         result["releaseNotes"] = release_notes
     if staging_percentage != -1:

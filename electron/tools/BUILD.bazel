@@ -1,3 +1,5 @@
+load("//third_party:appimage_runtime.bzl", "static_pie_runtime")
+
 package(default_visibility = ["//visibility:public"])
 
 alias(
@@ -13,4 +15,16 @@ alias(
 alias(
     name = "appimage_runtime",
     actual = "@appimage_runtime_sources//:runtime",
+)
+
+static_pie_runtime(
+    name = "appimage_apprun",
+    srcs = ["appimage_apprun.c"],
+    copts = [
+        "-std=gnu11",
+        "-fPIE",
+    ],
+    features = ["fully_static_link"],
+    linkopts = ["-static-pie"],
+    target_compatible_with = ["@platforms//os:linux"],
 )

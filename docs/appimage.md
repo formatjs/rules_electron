@@ -1,37 +1,70 @@
 # AppImage
 
-Full AppImage packaging and updater lifecycle remain open.
+`electron_appimage` assembles a declared AppDir, source-built static type-2 runtime
+and deterministic SquashFS filesystem. Linux x64 and ARM64 targets use the same
+Linux BB execution platform; packaging never executes target binaries.
 
-`//electron/tools:mksquashfs` and `//electron/tools:unsquashfs` build pinned
-SquashFS 4.7.5 sources with native Bazel C/C++ rules. gzip and zstd use native
-BCR libraries. No Make, Meson, CMake, host package discovery or target execution
-participates in these builds.
+```starlark
+load("@rules_electron//electron:appimage.bzl", "electron_appimage")
+load("@rules_electron//electron:update.bzl", "electron_update_feed")
 
-The BB tool test packs and extracts real files with both codecs, including
-Unicode names, executable modes, empty directories and directory links. It
-compares filesystem bytes across changed input paths/mtimes, with fixed
-ownership and timestamps. [BB tests](https://formatjs.buildbuddy.io/invocation/3accdcef-56fa-44a3-8f42-cb16a65afa99)
-and [cross-builds](https://formatjs.buildbuddy.io/invocation/e8b9f780-b107-43f7-b7d4-2358e9e925fa)
-passed at `a0d5e62`. The tool test runs on Linux x64; AppImage target runtime
-cross-builds remain pending.
+electron_appimage(
+    name = "desktop_appimage",
+    app = ":desktop",
+    icon = "icon.svg",
+    protocols = ["example"],
+    file_associations = ["application/x-example"],
+)
 
-The remaining stages are a source-built type-2 runtime, declared AppDir assembly,
-embedded updater maps, cross-builds for both Linux CPUs and a native Linux x64
-launch/update lifecycle. No emulation substitutes for native smoke.
+electron_update_feed(
+    name = "appimage_feed",
+    artifacts = {":desktop_appimage": "desktop.AppImage"},
+    embedded_blockmaps = ["desktop.AppImage"],
+    package_json = ":release_package.json",
+    platform = "linux",
+    architecture = "x64",
+    release_date = "2026-01-01T00:00:00Z",
+)
+```
 
+The rule accepts a PNG/SVG icon, desktop description/categories, URI schemes and
+MIME types. Its native AppRun launcher reads the declared executable basename,
+passes application arguments and honors electron-updater's
+`APPIMAGE_EXIT_AFTER_INSTALL=true` before starting the app. AppRun,
+`.electron-executable`, `.DirIcon` and generated desktop/icon paths are reserved.
+Declared resource links and tracked empty directories survive assembly.
 
-The next BB gate builds type-2 runtime commit
-`fedfad51acc2860b2916a1eef32ba4a500ff31ef`, libfuse 3.15.0 and Squashfuse 0.5.2
-with native C/C++ rules. Runtime alone selects LLVM's musl platform for its CPU
-and PIC compilation; application settings remain independent. Linux target
-configuration is checked in; no configure,
-Meson or Make step runs. The libfuse mount patch comes from the pinned runtime
-source. Runtime allocator uses BCR's native mimalloc 3.5.3 target. A declared linker-script
-patch places metadata before `.text`, since static PIE has no `.interp`; its
-static marker uses four-byte alignment after the AppImage marker.
+Compression is explicit: `gzip` or `zstd`, default level 9. Ownership, timestamps,
+permissions, thread count, memory budget, locale and tool environment are fixed.
+The runtime, launcher and application executable must match target ELF CPU.
+Runtime validation rejects shared-library imports and an ELF interpreter.
 
-The native test checks static PIE has no interpreter or shared-library imports,
-then appends real gzip/zstd SquashFS payloads and exercises extraction and
-extract-and-run with an executable payload. The cross-build fixture links both
-Linux CPUs without executing their runtimes. These gates remain pending. This
-does not yet expose AppImage packaging or updater support to applications.
+Embedded updater maps are enabled by default. Maps cover runtime + filesystem,
+use content-defined chunks and SHA-256 checksums, then raw deflate and a four-byte
+big-endian compressed-size trailer. Feed generation validates map coverage and
+emits `blockMapSize` alongside final SHA-512/size. This matches the pinned
+6.8.11 client reader contract. External maps remain separate gzip files.
+
+All tools build from pinned sources with native Bazel C/C++ rules:
+
+- SquashFS 4.7.5, zlib and zstd.
+- Type-2 runtime `fedfad51acc2860b2916a1eef32ba4a500ff31ef`.
+- libfuse 3.15.0, Squashfuse 0.5.2 and native BCR mimalloc 3.5.3.
+
+Runtime/launcher alone select LLVM's musl platform and PIC settings. Target
+configuration is checked in. A declared Python action generates Squashfuse swap
+includes; no host `sed`, configure, Meson, Make, CMake or foreign-cc action runs.
+The libfuse mount patch comes from the pinned runtime source. A linker-script
+patch places metadata before `.text`, since static PIE has no `.interp`.
+
+Runtime foundation passed [BB tests](https://formatjs.buildbuddy.io/invocation/9f538ebc-efad-4e04-84f4-0e4d45eee3a9)
+and [cross-builds](https://formatjs.buildbuddy.io/invocation/990be492-1b3b-4026-9073-101ec8bc3d66)
+at `2534183`. The native Linux x64 test executed real gzip/zstd payloads through
+extraction and extract-and-run. ARM64 was linked without execution.
+
+The public packaging rule, launcher, embedded maps and feed additions are pending
+BB validation. The updated gate checks changed paths/mtimes, metadata, resource
+links, empty directories, chunk checksums and exit-after-install behavior.
+FUSE-mounted launch and an installed Electron app's real electron-updater
+replacement/differential-download lifecycle remain open. No emulation substitutes
+for native smoke.
