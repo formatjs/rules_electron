@@ -57,9 +57,9 @@ function Assert-Activation([string]$Family, [string]$Version, [string]$Executabl
       }
       if ($handler.Kind -eq 'file' -and $report.content -cne $content) { throw 'MSIX file activation changed document bytes' }
       if ($handler.Kind -eq 'protocol' -and $null -ne $report.content) { throw 'MSIX protocol activation returned document content' }
+      if ($report.executable -ine $Executable) { throw 'MSIX activation executable path mismatch' }
       $activated = Get-Process -Id $report.pid -ErrorAction SilentlyContinue
       if ($activated -and -not $activated.HasExited) {
-        if ($activated.Path -ine $Executable) { throw 'MSIX activation process path mismatch' }
         if (-not $activated.WaitForExit(30000)) { throw 'MSIX activated Electron did not exit' }
       }
       Write-Output ('MSIX_ACTIVATION_DELIVERY_OK ' + $handler.Kind + ' ' + $handler.Name + ' ' + $Version)

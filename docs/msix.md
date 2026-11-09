@@ -90,8 +90,7 @@ and [cross-build](https://formatjs.buildbuddy.io/invocation/9e8e3e21-1436-4f16-b
 passed. Native [Windows x64](https://github.com/formatjs/rules_electron/actions/runs/42574732274/job/129019965855)
 and [ARM64](https://github.com/formatjs/rules_electron/actions/runs/42574732274/job/129019965955)
 passed both schemes and file types after install/upgrade, then absence after
-removal, plus the real Electron lifecycle. Activation delivery and custom
-document icons remain separate work. The earlier ARM64 run passed these MSIX
+removal, plus the real Electron lifecycle. The earlier ARM64 run passed these MSIX
 checks before an unrelated NSIS update timeout; see [installer diagnostics](windows-installers.md).
 
 Cold activation checks now invoke the installed app through its registered
@@ -100,7 +99,11 @@ using both protocol schemes and file extensions after install and upgrade.
 Electron must report the exact URI or file path, Unicode document content,
 package identity, CPU and version, then exit. Reports require a pre-created
 nonce directory in the user's temporary directory. The activation helper is
-compiled on BB; native hosts only execute it. Hosted validation remains pending.
+compiled on BB; native hosts only execute it. The [da21d47 matrix](https://github.com/formatjs/rules_electron/actions/runs/42715968227)
+delivered all four handlers after install and upgrade on Windows x64 and ARM64,
+then removed handlers, package and fixture certificate. The x64 job later failed
+its separate machine NSIS process-observer gate. The fixture now reports its
+canonical executable path before exit; that adjustment awaits validation.
 
 `electron_msix.file_association_icons` maps declared PNG labels to registered
 extensions, for example `{"//assets:document.png": ".example"}`. Each mapping
@@ -108,5 +111,6 @@ requires one PNG file and a distinct registered extension. The package adds a
 stable asset path and a `uap:Logo` declaration; the source file need not already
 be inside the app. PNG validation, asset collision checks and block hashes apply
 to these inputs too. Native smoke checks the deployed manifest and exact image
-bytes after install and upgrade. Hosted validation remains pending. See
+bytes after install and upgrade; those checks passed on both Windows CPUs in
+the same matrix. Explorer visual rendering remains outside these checks. See
 [`uap:Logo`](https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-uap-logo).

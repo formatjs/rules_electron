@@ -38,6 +38,7 @@ module.exports = function checkActivation() {
     write({
       kind: request.kind, value: uri || file, nonce, content,
       architecture: process.arch, version: app.getVersion(), pid: process.pid,
+      executable: fs.realpathSync.native(process.execPath),
       windows_store: Boolean(process.windowsStore), packaged: app.isPackaged,
     });
   } catch {
