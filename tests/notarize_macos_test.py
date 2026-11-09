@@ -15,7 +15,7 @@ from unittest.mock import patch
 from zipfile import ZipFile
 
 from electron.private.mac_sign import archive_bundle
-from electron.private.updates import create_feed
+from electron.private.update import create_feed
 from electron.tools import notarize_macos
 
 CLI = str(Path(sys.argv.pop(1)).resolve())
