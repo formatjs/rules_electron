@@ -103,7 +103,7 @@ filegroup(
     srcs = [
         ":macos_bad_identity_feed",
         ":macos_update_certificate",
-        ":macos_update_v1",
+        ":macos_update_v1_feed",
         ":macos_update_v2_feed",
         ":plain_links",
         ":release_dmg",
@@ -144,15 +144,17 @@ filegroup(
     electron_update_feed(
         name = name,
         architecture = "arm64",
-        artifacts = {artifact: "Sample-2.0.0-arm64-mac.zip"},
-        package_json = "package-v2.json",
+        artifacts = {artifact: "Sample-" + version + "-arm64-mac.zip"},
+        blockmaps = ["Sample-" + version + "-arm64-mac.zip"],
+        package_json = manifest,
         platform = "macos",
         release_date = "2026-01-02T03:04:05Z",
         target_compatible_with = ["@platforms//os:osx"],
     )
-    for name, artifact in [
-        ("macos_update_v2_feed", ":macos_update_v2"),
-        ("macos_bad_identity_feed", ":macos_bad_identity"),
+    for name, artifact, version, manifest in [
+        ("macos_update_v1_feed", ":macos_update_v1", "1.0.0", "package.json"),
+        ("macos_update_v2_feed", ":macos_update_v2", "2.0.0", "package-v2.json"),
+        ("macos_bad_identity_feed", ":macos_bad_identity", "2.0.0", "package-v2.json"),
     ]
 ]
 

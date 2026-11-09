@@ -63,8 +63,10 @@ macOS signing/DMG relocation.
 `:plain_link_app` uses `asar = False` with the same generated provider. Its
 `:plain_links` release ZIP goes through validated extraction and native Electron
 filesystem checks on Linux x64/macOS ARM64, including a strict macOS signature
-check. Linux ARM64 is cross-built only. This separate gate also awaits hosted
-validation.
+check. Linux ARM64 is cross-built only. The
+[75416bc BB cross-build](https://formatjs.buildbuddy.io/invocation/44e207c2-03dd-43c5-9c34-642841ad1e8b)
+and [native matrix](https://github.com/formatjs/rules_electron/actions/runs/42695157093)
+passed both plain-app gates alongside the ASAR, installer and updater checks.
 
 [BB assembly tests](https://formatjs.buildbuddy.io/invocation/f79a67e5-511b-4ef9-99c7-a4f235c02e35)
 and [seven cross-build variants](https://formatjs.buildbuddy.io/invocation/2c48cc35-4af3-4a3f-a72d-3334074ca928)

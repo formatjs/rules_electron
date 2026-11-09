@@ -10,7 +10,7 @@ electron-builder replacement.
 | Main/preload/renderer inputs | Explicit files and generated directories | Rich package-provider adapters |
 | Runtime dependencies | Integrity-pinned npm v3 imports, workspace/generated providers and nested layouts; Node-API and Node/V8 addons with explicit ABI SDKs; Linux x64 source SDK | Provider-specific adapters; source SDKs for other targets |
 | ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity; complete standalone Linux source-runtime alias/sidecar/cache smoke | Source-runtime desktop packaging integration |
-| Extra resources/files | Declared file/tree mappings outside ASAR; Linux/macOS resource links; separate generated-tree link metadata through filtering, ASAR, plain apps, extra resources/files; native generated ASAR/resource/extra-file aliases pass | Windows filesystem links; native plain-app link checks |
+| Extra resources/files | Declared file/tree mappings outside ASAR; Linux/macOS resource links; separate generated-tree link metadata through filtering, ASAR, plain apps, extra resources/files; native generated ASAR/plain-app/resource/extra-file aliases pass | Windows filesystem links |
 | File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories, including prepackaged imports | — |
 | Manifest metadata | Deep-merge overlays, source/generated dependency-manifest version rewrites, top-level field/script removal; shared app/update identity | Provider-specific metadata adapters |
 | Runtime locales | Explicit file mappings or non-macOS ZIP locale selection | Broader runtime-provider integration |

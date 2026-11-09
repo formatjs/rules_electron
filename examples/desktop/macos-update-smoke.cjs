@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
-const { statSync } = require('node:fs');
+const { copyFileSync, mkdirSync, rmSync, statSync } = require('node:fs');
+const path = require('node:path');
 const { app, autoUpdater: nativeUpdater } = require('electron');
 const { autoUpdater, MacUpdater } = require('electron-updater');
 
@@ -13,7 +14,7 @@ module.exports = async function macosUpdateSmoke() {
   assert.equal(app.getVersion(), '1.0.0');
   assert.ok(autoUpdater instanceof MacUpdater);
   const mode = process.env.RULES_ELECTRON_MAC_UPDATE_MODE;
-  assert.ok(['hash', 'signature', 'install'].includes(mode));
+  assert.ok(['hash', 'signature', 'install', 'differential'].includes(mode));
   const feed = new URL(process.env.RULES_ELECTRON_UPDATE_FEED);
   assert.equal(feed.protocol, 'http:');
   assert.equal(feed.hostname, '127.0.0.1');
@@ -22,7 +23,15 @@ module.exports = async function macosUpdateSmoke() {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.autoRunAppAfterInstall = true;
-  autoUpdater.disableDifferentialDownload = true;
+  autoUpdater.disableDifferentialDownload = mode !== 'differential';
+  if (mode === 'differential') {
+    const previous = process.env.RULES_ELECTRON_MAC_PREVIOUS_ZIP;
+    assert.ok(previous && path.isAbsolute(previous) && statSync(previous).size > 0);
+    const helper = await autoUpdater.getOrCreateDownloadHelper();
+    mkdirSync(helper.cacheDir, { recursive: true });
+    copyFileSync(previous, path.join(helper.cacheDir, 'update.zip'));
+    rmSync(path.join(helper.cacheDir, 'current.blockmap'), { force: true });
+  }
   const timer = setTimeout(() => app.exit(1), 120000);
   autoUpdater.on('error', error => {
     if (mode === 'hash') return;
@@ -54,7 +63,7 @@ module.exports = async function macosUpdateSmoke() {
   } else {
     app.once('before-quit', () => {
       clearTimeout(timer);
-      console.log('MAC_INSTALLED_UPDATE_SMOKE_OK');
+      console.log(mode === 'differential' ? 'MAC_DIFFERENTIAL_INSTALL_SMOKE_OK' : 'MAC_INSTALLED_UPDATE_SMOKE_OK');
     });
   }
   autoUpdater.quitAndInstall();

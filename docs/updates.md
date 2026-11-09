@@ -92,6 +92,16 @@ and [all four native hosts](https://github.com/formatjs/rules_electron/actions/r
 passed, including every macOS lifecycle check without trust setup. Production
 Developer ID/notarization acceptance remains unverified.
 
+The Mac differential gate adds external v1/v2 ZIP blockmaps. A separate v1
+installation seeds the declared v1 release ZIP into the pinned client's fixture
+cache, then fetches both maps from the local feed. Every candidate ZIP request
+must use HTTP ranges; transferred ZIP bytes must stay below half the full ZIP.
+The client still verifies final SHA-512, and Squirrel must replace/relaunch the
+app before strict signature and full v2 smoke checks pass. Ordinary full-download
+installation remains a separate case. This measures reuse with an existing ZIP
+cache; blockmap metadata bytes are excluded. Hosted differential results remain
+pending.
+
 Protocol references: [auto update](https://www.electron.build/v26/docs/features/auto-update/),
 [channel routing](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/providers/Provider.ts),
 [external blockmap reader](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/AppUpdater.ts).
