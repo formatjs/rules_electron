@@ -18,3 +18,16 @@ cross-builds remain pending.
 The remaining stages are a source-built type-2 runtime, declared AppDir assembly,
 embedded updater maps, cross-builds for both Linux CPUs and a native Linux x64
 launch/update lifecycle. No emulation substitutes for native smoke.
+
+
+The next BB gate builds type-2 runtime commit
+`fedfad51acc2860b2916a1eef32ba4a500ff31ef`, libfuse 3.15.0 and Squashfuse 0.5.2
+with native C/C++ rules. Linux target configuration is checked in; no configure,
+Meson or Make step runs. The libfuse mount patch comes from the pinned runtime
+source. Runtime allocator uses BCR's native mimalloc 3.5.3 target.
+
+The native test checks static PIE has no interpreter or shared-library imports,
+then appends real gzip/zstd SquashFS payloads and exercises extraction and
+extract-and-run with an executable payload. The cross-build fixture links both
+Linux CPUs without executing their runtimes. These gates remain pending. This
+does not yet expose AppImage packaging or updater support to applications.

@@ -1,0 +1,46 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "squashfuse",
+    srcs = [source + ".c" for source in [
+        "swap",
+        "cache",
+        "table",
+        "dir",
+        "file",
+        "fs",
+        "decompress",
+        "xattr",
+        "hash",
+        "stack",
+        "traverse",
+        "util",
+        "nonstd-pread",
+        "nonstd-stat",
+        "cache_mt",
+        "fuseprivate",
+        "nonstd-makedev",
+        "nonstd-enoattr",
+        "stat",
+        "ll",
+        "ll_inode",
+        "nonstd-daemon",
+    ]],
+    hdrs = glob(["*.h"]),
+    copts = ["-std=gnu11"],
+    include_prefix = "squashfuse",
+    local_defines = [
+        "_GNU_SOURCE",
+        "_FILE_OFFSET_BITS=64",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        "@appimage_fuse3_sources//:fuse3",
+        "@zlib",
+        "@zstd",
+    ],
+)
+
+exports_files(["LICENSE"])

@@ -1,1 +1,8 @@
-exports_files(["squashfs.BUILD.bazel"])
+exports_files([
+    "squashfs.BUILD.bazel",
+    "fuse3.BUILD.bazel",
+    "fuse3.patch",
+    "squashfuse.BUILD.bazel",
+    "squashfuse.patch",
+    "appimage_runtime.BUILD.bazel",
+])

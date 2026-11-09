@@ -1,0 +1,21 @@
+diff --git a/config.h b/config.h
+new file mode 100644
+--- /dev/null
++++ b/config.h
+@@ -0,0 +1,16 @@
++#ifndef SQFS_CONFIG_H
++#define SQFS_CONFIG_H
++#define _FILE_OFFSET_BITS 64
++#define FUSE_USE_VERSION 32
++#define HAVE_ZLIB_H 1
++#define HAVE_ZSTD_H 1
++#define HAVE_LINUX_TYPES_LE16 1
++#define HAVE_ASM_BYTEORDER_H 1
++#define HAVE_ENDIAN_H 1
++#define HAVE_SYS_SYSMACROS_H 1
++#define HAVE_DECL_FUSE_ADD_DIRENTRY 1
++#define HAVE_DECL_FUSE_DAEMONIZE 1
++#define HAVE_DECL_FUSE_CMDLINE_HELP 1
++#define HAVE_FUSE_LL_FORGET_OP_64T 1
++#define SQFS_MULTITHREADED 1
++#endif

@@ -1,0 +1,31 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "runtime",
+    srcs = ["src/runtime/runtime.c"],
+    additional_linker_inputs = ["src/runtime/data_sections.ld"],
+    copts = [
+        "-std=gnu99",
+        "-Os",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fPIE",
+    ],
+    features = ["fully_static_link"],
+    linkopts = [
+        "-static-pie",
+        "-Wl,--gc-sections",
+        "-Wl,-T,$(location src/runtime/data_sections.ld)",
+    ],
+    local_defines = [
+        "_FILE_OFFSET_BITS=64",
+        'GIT_COMMIT=\\"fedfad51acc2860b2916a1eef32ba4a500ff31ef\\"',
+    ],
+    malloc = "@mimalloc",
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = ["@appimage_squashfuse_sources//:squashfuse"],
+)
+
+exports_files(["LICENSE"])

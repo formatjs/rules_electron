@@ -14,7 +14,7 @@ _all_platforms = transition(implementation = _all, inputs = [], outputs = ["//co
 _linux_platforms = transition(implementation = _linux, inputs = [], outputs = ["//command_line_option:platforms"])
 
 def _impl(ctx):
-    targets = list(ctx.split_attr.probe.values()) + list(ctx.split_attr.app.values())
+    targets = list(ctx.split_attr.probe.values()) + list(ctx.split_attr.app.values()) + list(ctx.split_attr.appimage_runtime.values())
     return [DefaultInfo(files = depset(transitive = [target[DefaultInfo].files for target in targets]))]
 
 cross_build = rule(
@@ -22,6 +22,7 @@ cross_build = rule(
     attrs = {
         "probe": attr.label(mandatory = True, cfg = _all_platforms),
         "app": attr.label(mandatory = True, cfg = _linux_platforms),
+        "appimage_runtime": attr.label(mandatory = True, cfg = _linux_platforms),
         "_allowlist_function_transition": attr.label(default = "@bazel_tools//tools/allowlists/function_transition_allowlist"),
     },
 )

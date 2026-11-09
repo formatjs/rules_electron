@@ -9,3 +9,8 @@ alias(
     name = "unsquashfs",
     actual = "@appimage_squashfs_sources//:unsquashfs",
 )
+
+alias(
+    name = "appimage_runtime",
+    actual = "@appimage_runtime_sources//:runtime",
+)

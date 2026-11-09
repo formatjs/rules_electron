@@ -272,6 +272,7 @@ py_test(
 cross_build(
     name = "cross_build_fixtures",
     app = ":app",
+    appimage_runtime = "//electron/tools:appimage_runtime",
     probe = ":runtime_probe",
     tags = ["manual"],
 )
@@ -520,6 +521,32 @@ py_test(
     data = [
         "//electron/tools:mksquashfs",
         "//electron/tools:unsquashfs",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+cc_binary(
+    name = "appimage_payload_probe",
+    srcs = ["appimage_payload_probe.c"],
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+py_test(
+    name = "appimage_runtime_test",
+    size = "small",
+    srcs = ["appimage_runtime_test.py"],
+    args = [
+        "$(rootpath //electron/tools:appimage_runtime)",
+        "$(rootpath //electron/tools:mksquashfs)",
+        "$(rootpath :appimage_payload_probe)",
+    ],
+    data = [
+        ":appimage_payload_probe",
+        "//electron/tools:appimage_runtime",
+        "//electron/tools:mksquashfs",
     ],
     target_compatible_with = [
         "@platforms//os:linux",
