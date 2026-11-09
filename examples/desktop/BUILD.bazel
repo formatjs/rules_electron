@@ -536,12 +536,20 @@ py_test(
     ]
 ]
 
-msix_fixture(
-    name = "msix_probe",
+msix_fixture_app(
+    name = "msix_probe_app",
     binary = ":helper",
+    package_json = "package.json",
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+electron_msix(
+    name = "msix_probe",
+    app = ":msix_probe_app",
     logo_150 = ":msix_logo_150",
     logo_44 = ":msix_logo_44",
-    package_json = "package.json",
+    publisher = "CN=Example",
+    publisher_display_name = "Example",
     store_logo = ":msix_logo_50",
     target_compatible_with = ["@platforms//os:windows"],
 )
