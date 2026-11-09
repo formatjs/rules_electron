@@ -45,7 +45,7 @@ LocalMachine TrustedPeople certificate is removed in `finally`, following
 [Microsoft's test-certificate guidance](https://learn.microsoft.com/en-us/windows/msix/package/create-certificate-package-signing).
 The [1aae3c3 BB suite](https://formatjs.buildbuddy.io/invocation/e8530349-31bc-47c7-8356-c6e0766507d7)
 passed certificate reproducibility, subject/issuer, validity, code-signing purpose
-and chain verification. Cross-build hit a GitHub `rules_shell` download timeout
-before signing; CI now uses the byte-verified official Bazel mirror for that
-exact release. Native validation remains pending. Fixture is a minimal PE package; full Electron
+and chain verification. Cross-build hit a GitHub `rules_perl` 2.0.0 download timeout
+before signing; CI now uses a digest-qualified release URL whose bytes were
+verified against the unchanged BCR integrity. Native validation remains pending. Fixture is a minimal PE package; full Electron
 installation and production credential/service interfaces remain open.
