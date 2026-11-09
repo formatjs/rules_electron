@@ -62,6 +62,8 @@ try {
     }
     if ($family -and $family -ne $package.PackageFamilyName) { throw 'MSIX upgrade changed package family' }
     $family = $package.PackageFamilyName
+    & $reader --handlers $family present
+    if ($LASTEXITCODE -ne 0) { throw 'MSIX installed handlers missing' }
     $executable = Join-Path $package.InstallLocation 'sample-desktop.exe'
     & $Python 'examples/desktop/tools/smoke_test.py' $executable --installed --msix --target-os windows --target-arch $Architecture --expected-version $release.Version
     if ($LASTEXITCODE -ne 0) { throw 'MSIX installed Electron smoke failed' }
@@ -69,6 +71,8 @@ try {
   }
   Remove-AppxPackage -Package $package.PackageFullName
   if (Get-AppxPackage -Name $desktopIdentity) { throw 'MSIX desktop uninstall left package registration' }
+  & $reader --handlers $family absent
+  if ($LASTEXITCODE -ne 0) { throw 'MSIX uninstall left handlers registered' }
   Write-Output 'MSIX_DESKTOP_INSTALL_UPDATE_REMOVE_OK'
 } finally {
   try {

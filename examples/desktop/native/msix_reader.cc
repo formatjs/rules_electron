@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <appxpackaging.h>
 #include <shlwapi.h>
+#include <shobjidl.h>
 #include <wrl/client.h>
 #include <wintrust.h>
 #include <softpub.h>
@@ -8,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cwchar>
+#include <string>
 #include <vector>
 
 using Microsoft::WRL::ComPtr;
@@ -56,6 +58,51 @@ static void validate_signature(const wchar_t* path, const wchar_t* expected) {
   require(matches, "signature_trust_result");
 }
 
+static bool has_handler(const wchar_t* name, bool protocol,
+                        const std::wstring& application) {
+  ComPtr<IEnumAssocHandlers> handlers;
+  HRESULT result = protocol
+      ? SHAssocEnumHandlersForProtocolByApplication(name, IID_PPV_ARGS(&handlers))
+      : SHAssocEnumHandlers(name, ASSOC_FILTER_NONE, &handlers);
+  if (result == S_FALSE || result == HRESULT_FROM_WIN32(ERROR_NO_ASSOCIATION))
+    return false;
+  check(result, "handler_enumeration");
+  require(handlers.Get() != nullptr, "handler_enumeration_result");
+  for (unsigned index = 0; index < 4096; ++index) {
+    ComPtr<IAssocHandler> handler;
+    ULONG fetched = 0;
+    result = handlers->Next(1, &handler, &fetched);
+    if (result == S_FALSE)
+      return false;
+    check(result, "next_handler");
+    require(fetched == 1 && handler.Get() != nullptr, "next_handler_result");
+    ComPtr<IObjectWithAppUserModelID> identity;
+    if (FAILED(handler.As(&identity)))
+      continue;
+    LPWSTR identifier = nullptr;
+    result = identity->GetAppID(&identifier);
+    const bool matches = SUCCEEDED(result) && identifier && application == identifier;
+    CoTaskMemFree(identifier);
+    if (matches)
+      return true;
+  }
+  require(false, "handler_enumeration_limit");
+  return false;
+}
+
+static void validate_handlers(const wchar_t* family, const wchar_t* state) {
+  const bool present = std::wcscmp(state, L"present") == 0;
+  require(present || std::wcscmp(state, L"absent") == 0, "handler_state");
+  check(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED), "handler_com_initialize");
+  const std::wstring application = std::wstring(family) + L"!App";
+  for (const wchar_t* scheme : {L"sample-msix", L"sample-msix-alt"})
+    require(has_handler(scheme, true, application) == present, "protocol_handler_state");
+  for (const wchar_t* extension : {L".samplemsix", L".samplemsix_alt"})
+    require(has_handler(extension, false, application) == present, "file_handler_state");
+  CoUninitialize();
+  std::puts(present ? "MSIX_HANDLERS_PRESENT" : "MSIX_HANDLERS_REMOVED");
+}
+
 static void validate(IAppxFile* file, IAppxBlockMapReader* blockmap,
                      bool* tamper_checked, unsigned* count) {
   LPWSTR name = nullptr;
@@ -96,6 +143,10 @@ static void validate(IAppxFile* file, IAppxBlockMapReader* blockmap,
 int wmain(int argc, wchar_t** argv) {
   if (argc == 4 && std::wcscmp(argv[1], L"--signature") == 0) {
     validate_signature(argv[2], argv[3]);
+    return 0;
+  }
+  if (argc == 4 && std::wcscmp(argv[1], L"--handlers") == 0) {
+    validate_handlers(argv[2], argv[3]);
     return 0;
   }
   require(argc == 2, "arguments");

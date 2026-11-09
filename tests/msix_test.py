@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from zipfile import ZipFile
 import zlib
 
-from electron.private.msix import BLOCK, FOUNDATION, PackageZip, create_msix, payload_name
+from electron.private.msix import BLOCK, FOUNDATION, UAP, UAP3, PackageZip, create_msix, manifest, payload_name
 
 
 def png(size):
@@ -89,7 +89,8 @@ class MsixTest(unittest.TestCase):
                 logos[name] = str(path)
             arguments = dict(app=str(app), package_json=str(package), identity_name="org.example.Sample",
                              publisher="CN=Example", publisher_display_name="Example & Co", product_name="Sample <Desktop>",
-                             executable_name="sample", architecture="arm64", build_version="2.3.4.7", **logos)
+                             executable_name="sample", architecture="arm64", build_version="2.3.4.7",
+                             protocols=["sample-z", "sample-a"], file_associations={".sample": 'Document <Text> & "Notes"', ".other": "Other document"}, **logos)
             output = root / "first.msix"
             create_msix(output=output, **arguments)
             first = output.read_bytes()
@@ -98,10 +99,20 @@ class MsixTest(unittest.TestCase):
                 identity = manifest.find("{" + FOUNDATION + "}Identity")
                 self.assertEqual(identity.attrib, dict(Name="org.example.Sample", Publisher="CN=Example", Version="2.3.4.7", ProcessorArchitecture="arm64"))
                 self.assertEqual(manifest.find("{" + FOUNDATION + "}Properties/{" + FOUNDATION + "}DisplayName").text, "Sample <Desktop>")
+                protocols = manifest.findall(".//{" + UAP3 + "}Protocol")
+                self.assertEqual([node.attrib for node in protocols], [
+                    {"Name": "sample-a", "Parameters": '"%1"'}, {"Name": "sample-z", "Parameters": '"%1"'},
+                ])
+                handlers = manifest.findall(".//{" + UAP3 + "}FileTypeAssociation")
+                self.assertEqual({node.find("{" + UAP + "}SupportedFileTypes/{" + UAP + "}FileType").text:
+                                  node.find("{" + UAP + "}DisplayName").text for node in handlers}, arguments["file_associations"])
+                self.assertEqual(len({node.attrib["Name"] for node in handlers}), 2)
+                self.assertTrue(all(node.attrib["Parameters"] == '"%1"' and node.attrib["MultiSelectModel"] == "Single" for node in handlers))
                 expected = {info.filename: archive.read(info) for info in archive.infolist() if info.filename not in ("AppxBlockMap.xml", "[Content_Types].xml")}
             self.assert_blockmap(first, expected)
             os.utime(app / "sample.exe", (12345, 12345))
-            create_msix(output=root / "second.msix", **arguments)
+            create_msix(output=root / "second.msix", **dict(arguments, protocols=list(reversed(arguments["protocols"])),
+                                                          file_associations=dict(reversed(list(arguments["file_associations"].items())))))
             self.assertEqual(first, (root / "second.msix").read_bytes())
             with self.assertRaisesRegex(ValueError, "CPU"):
                 create_msix(output=output, **dict(arguments, architecture="x64"))
@@ -115,6 +126,27 @@ class MsixTest(unittest.TestCase):
         for name in ["AppxManifest.xml", "APPXMETADATA/file", "AppxSignature.p7x", "NUL.txt", "dir/COM1", "a./file", "a /file", "a\\b", "a:b", "../file", "/file", "a/", "x" * 261]:
             with self.subTest(name=name), self.assertRaises(ValueError):
                 payload_name(name)
+
+    def test_handler_identity_survives_package_version_changes(self):
+        names = []
+        for version in ("1.0.0.7", "2.0.0.7"):
+            data = manifest("org.example.Sample", "CN=Example", "Example", "Sample", "sample.exe", "x64", version, "Sample",
+                            file_associations={".sample": "Sample document", ".other": "Other document"})
+            root = ET.fromstring(data)
+            names.append({node.find("{" + UAP + "}SupportedFileTypes/{" + UAP + "}FileType").text: node.attrib["Name"]
+                          for node in root.findall(".//{" + UAP3 + "}FileTypeAssociation")})
+        self.assertEqual(names[0], names[1])
+        self.assertEqual(len(set(names[0].values())), 2)
+
+    def test_rejects_invalid_handler_declarations(self):
+        arguments = dict(identity_name="org.example.Sample", publisher="CN=Example", publisher_display_name="Example",
+                         product_name="Sample", executable="sample.exe", architecture="x64", version="1.0.0.7", description="Sample")
+        for protocols in [["sample", "sample"], ["SAMPLE"], ["x"], ["scheme/path"], ['sample" injected="true']]:
+            with self.subTest(protocols=protocols), self.assertRaisesRegex(ValueError, "protocols"):
+                manifest(**arguments, protocols=protocols)
+        for associations in [{"sample": "Missing dot"}, {".UPPER": "Uppercase"}, {".a/b": "Path"}, {".sample": ""}, {".sample": "Bad\x00text"}]:
+            with self.subTest(associations=associations), self.assertRaises(ValueError):
+                manifest(**arguments, file_associations=associations)
 
 
 if __name__ == "__main__":

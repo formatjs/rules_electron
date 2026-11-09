@@ -24,6 +24,7 @@ BLOCK = "http://schemas.microsoft.com/appx/2010/blockmap"
 CONTENT = "http://schemas.openxmlformats.org/package/2006/content-types"
 FOUNDATION = "http://schemas.microsoft.com/appx/manifest/foundation/windows10"
 UAP = "http://schemas.microsoft.com/appx/manifest/uap/windows10"
+UAP3 = "http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
 RESCAP = "http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
 FOOTPRINTS = {"appxmanifest.xml", "appxblockmap.xml", "[content_types].xml", "appxsignature.p7x", "appxmetadata"}
 
@@ -118,12 +119,20 @@ class PackageZip:
 
 
 def manifest(identity_name, publisher, publisher_display_name, product_name, executable,
-             architecture, version, description):
+             architecture, version, description, protocols=(), file_associations=None):
     if not re.fullmatch(r"[A-Za-z0-9.-]{3,50}", identity_name):
         raise ValueError("MSIX identity name requires 3..50 ASCII letters, digits, dots or hyphens")
     if architecture not in ("x64", "arm64"):
         raise ValueError("MSIX supports x64/arm64")
-    root = ET.Element("Package", xmlns=FOUNDATION, **{"xmlns:uap": UAP, "xmlns:rescap": RESCAP, "IgnorableNamespaces": "uap rescap"})
+    if len(set(protocols)) != len(protocols) or any(not re.fullmatch(r"[a-z][a-z0-9+.-]{1,2047}", scheme) for scheme in protocols):
+        raise ValueError("MSIX protocols require distinct lowercase URI schemes of 2..2048 characters")
+    associations = file_associations or {}
+    if any(not re.fullmatch(r"\.[a-z0-9][a-z0-9_-]{0,31}", extension) for extension in associations):
+        raise ValueError("MSIX file associations require lowercase file extensions")
+    namespaces = {"xmlns:uap": UAP, "xmlns:rescap": RESCAP, "IgnorableNamespaces": "uap rescap"}
+    if protocols or associations:
+        namespaces.update({"xmlns:uap3": UAP3, "IgnorableNamespaces": "uap uap3 rescap"})
+    root = ET.Element("Package", xmlns=FOUNDATION, **namespaces)
     ET.SubElement(root, "Identity", Name=identity_name, Publisher=text(publisher), Version=version, ProcessorArchitecture=architecture)
     properties = ET.SubElement(root, "Properties")
     for name, value in [("DisplayName", product_name), ("PublisherDisplayName", publisher_display_name), ("Description", description), ("Logo", "Assets/StoreLogo.png")]:
@@ -134,13 +143,26 @@ def manifest(identity_name, publisher, publisher_display_name, product_name, exe
     application = ET.SubElement(ET.SubElement(root, "Applications"), "Application", Id="App", Executable=executable, EntryPoint="Windows.FullTrustApplication")
     visual = ET.SubElement(application, "uap:VisualElements", DisplayName=text(product_name), Description=text(description), BackgroundColor="transparent", Square150x150Logo="Assets/Square150x150Logo.png", Square44x44Logo="Assets/Square44x44Logo.png")
     ET.SubElement(visual, "uap:DefaultTile")
+    if protocols or associations:
+        extensions = ET.SubElement(application, "Extensions")
+        for scheme in sorted(protocols):
+            extension = ET.SubElement(extensions, "uap3:Extension", Category="windows.protocol")
+            protocol = ET.SubElement(extension, "uap3:Protocol", Name=scheme, Parameters='"%1"')
+            ET.SubElement(protocol, "uap:DisplayName").text = text(product_name)
+        for suffix, description in sorted(associations.items()):
+            extension = ET.SubElement(extensions, "uap:Extension", Category="windows.fileTypeAssociation")
+            name = "file" + hashlib.sha256(suffix.encode()).hexdigest()[:16]
+            association = ET.SubElement(extension, "uap3:FileTypeAssociation", Name=name, Parameters='"%1"', MultiSelectModel="Single")
+            ET.SubElement(association, "uap:DisplayName").text = text(description)
+            ET.SubElement(ET.SubElement(association, "uap:SupportedFileTypes"), "uap:FileType").text = suffix
     ET.SubElement(ET.SubElement(root, "Capabilities"), "rescap:Capability", Name="runFullTrust")
     return xml(root)
 
 
 def create_msix(app, package_json, output, identity_name, publisher, publisher_display_name,
                 product_name, executable_name, architecture, logo_44, logo_150, store_logo,
-                description="Electron desktop application", build_version="", build_number="", directory_manifest=""):
+                description="Electron desktop application", build_version="", build_number="", directory_manifest="",
+                protocols=(), file_associations=None):
     package = json.loads(Path(package_json).read_text(encoding="utf-8"))
     native_version = build_identity(package["version"], build_version, build_number, "windows")
     if not re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,3}", native_version):
@@ -149,7 +171,8 @@ def create_msix(app, package_json, output, identity_name, publisher, publisher_d
     version = ".".join(components + ["0"] * (4 - len(components)))
     executable = executable_name if executable_name.endswith(".exe") else executable_name + ".exe"
     payload_name(executable)
-    manifest_data = manifest(identity_name, publisher, publisher_display_name, product_name, executable, architecture, version, description)
+    manifest_data = manifest(identity_name, publisher, publisher_display_name, product_name, executable, architecture, version, description,
+                             protocols, file_associations)
     assets = {"Assets/Square44x44Logo.png": (logo_44, 44), "Assets/Square150x150Logo.png": (logo_150, 150), "Assets/StoreLogo.png": (store_logo, 50)}
     for path, dimension in assets.values():
         if png_dimensions(path) != (dimension, dimension):

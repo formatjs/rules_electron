@@ -16,6 +16,8 @@ electron_msix(
     logo_44 = "assets/logo-44.png",
     logo_150 = "assets/logo-150.png",
     store_logo = "assets/store-logo-50.png",
+    protocols = ["example-desktop"],
+    file_associations = {".example": "Example Document"},
 )
 ```
 
@@ -73,3 +75,14 @@ native CPU, exercised the sandboxed renderer/preload, loaded the target-built
 addon/helper and checked packaged resources and multi-ASAR integrity metadata.
 This proves bootstrap-runtime deployment; the full source-built runtime remains
 unverified.
+
+`protocols` and `file_associations` declare packaged desktop handlers using
+Microsoft's [protocol](https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-uap3-protocol)
+and [file association](https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-uap3-filetypeassociation)
+schemas. Windows passes the URI or file path as one quoted argument; app code
+owns argument handling. File-handler identities stay stable across package
+versions. Package deployment advertises candidates without setting user defaults.
+The native gate enumerates protocol/file handlers through public Shell APIs,
+matches the package AppUserModelID after install and upgrade, then requires its
+handlers absent after removal. This new registration gate awaits hosted
+validation. Activation delivery and custom document icons remain separate work.
