@@ -600,3 +600,10 @@ The subsequent 32fefac [consumer test](https://formatjs.buildbuddy.io/invocation
 built the full source Electron archive with closed ELF dependencies and repeat
 assembly checks. Its relocated executable failed run-as-Node startup; browser,
 IPC, rendering and ASAR filesystem smoke remain unverified.
+
+The 96a72d6 [source consumer test](https://formatjs.buildbuddy.io/invocation/422fe33e-dc25-4a22-8415-d18547036779)
+isolated the startup failure to Node's builtin-loader ownership assertion.
+The [737a6f7 overlay](https://github.com/formatjs/electron/commit/737a6f7eaf645db9712e91ebe8e6376d0ed1db71)
+uses the environment loader for Node realms and preserves the standalone loader
+for contexts without Node. Assertions stay enabled. Full runtime smoke remains
+the validation gate; this patch has not yet passed it.
