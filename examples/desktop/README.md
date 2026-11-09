@@ -56,6 +56,10 @@ git push origin main:codex/source-example-ci
 All builds stay on BB; successful source-example status uses the same verified
 artifact handoff and matching native smoke hosts. Its generated module lock is
 retained as a BB artifact while the combined dependency graph stabilizes.
+The `Source example module lock` GH workflow retrieves that lock from a successful
+source build after checking repository, exact commit, artifact digest and size.
+It rejects bootstrap-only matrix invocations. Check in the resolved source lock
+before enabling `--lockfile_mode=error` for this separate workspace.
 
 Linux and Windows produce directory artifacts, with executable `sample-desktop`
 or `sample-desktop.exe`. macOS produces `app.zip` containing `Sample Desktop.app`.

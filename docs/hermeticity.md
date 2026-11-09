@@ -629,3 +629,9 @@ This validates the standalone Linux source distribution. The desktop packaging
 example still uses bootstrap runtimes; its source integration and complete
 source profiles for other platforms remain open. `tools/ci/electron_source_pin.json`
 pins the registry staging inputs by commit and archive SHA256.
+The source example's combined module lock is retained by BB for verified download
+and subsequent check-in. Local registry bytes rely on that archive pin and the
+staging integrity tests: Bazel's file-registry path uses
+[`KnownFileHashesMode.IGNORE`](https://github.com/bazelbuild/bazel/blob/9.3.1/src/main/java/com/google/devtools/build/lib/bazel/bzlmod/RegistryFactoryImpl.java).
+Remote registry/extension locking and local registry source integrity are separate
+checks; both must remain enforced.

@@ -41,3 +41,11 @@ passed. The macOS ARM64 host checked eight signed entities and launched the app
 with its real renderer and native addon.
 
 The scope contract follows [rcodesign's settings model](https://docs.rs/apple-codesign/0.29.0/apple_codesign/enum.SettingsScope.html).
+
+The release adapter must override rcodesign 0.29's wall-clock signing time and
+default HTTP timestamp URL. Its `--for-notarization` mode requires a Developer ID
+certificate and timestamp, and enables hardened runtime across signed Mach-O
+files. These checks do not replace final native trust verification. The pinned
+`verify` command only verifies Mach-O files and warns that verification is
+incomplete; it cannot serve as the sole bundle release gate. See the
+[pinned CLI source](https://github.com/indygreg/apple-platform-rs/blob/apple-codesign/0.29.0/apple-codesign/src/cli/mod.rs).

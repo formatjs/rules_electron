@@ -44,7 +44,13 @@ uninstall uses the existing ownership and open-command guards. See
 The expanded native fixture resolves each extra command through Windows shell
 APIs, launches it with a Unicode/spaces document path, and checks the app receives
 the verb and reads the document. User/machine upgrades also remove a seeded stale
-verb. Hosted validation for these extra actions is pending.
+verb. [BB tests](https://formatjs.buildbuddy.io/invocation/c09d00f6-8dc7-488d-b1c4-8bc696c09ef3)
+and [all seven cross-builds](https://formatjs.buildbuddy.io/invocation/26b5756f-b9fe-4288-990f-efeeb38edbdb)
+passed. Native [Windows x64](https://github.com/formatjs/rules_electron/actions/runs/42635829460/job/129223941911)
+and [ARM64](https://github.com/formatjs/rules_electron/actions/runs/42635829460/job/129223942031)
+passed all four user/machine, before/after-update verb checks per CPU, including
+document execution and stale-command removal. Installer checks use MSVC packages;
+both GNU LLVM and MSVC app variants also pass native launch.
 
 The native Windows fixture checks shell command resolution, installed icons,
 foreign registration rejection, update stability and uninstall cleanup while
@@ -52,5 +58,5 @@ preserving another app's extension default/Open With entry.
 [BB unit tests](https://formatjs.buildbuddy.io/invocation/6a3e0c79-fe1a-4000-bfd5-e4c3e17c9b61),
 [seven cross-builds](https://formatjs.buildbuddy.io/invocation/89538d73-818d-4d76-8dcd-897327668de0)
 and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42467990963)
-passed. Both Windows CPUs/compiler variants passed installed handler checks.
+passed. Both Windows CPUs passed installed handler checks with MSVC packages.
 All packaging runs on BB Linux; Windows hosts only install and exercise outputs.

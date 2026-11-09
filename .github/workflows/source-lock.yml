@@ -1,0 +1,36 @@
+name: Source example module lock
+
+on:
+  workflow_dispatch:
+    inputs:
+      invocation_url:
+        description: Successful source-example BB invocation
+        required: true
+        type: string
+      commit_sha:
+        description: Exact BB build commit
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Download verified source module lock
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_RO_PUBLIC_KEY }}
+          INVOCATION_URL: ${{ inputs.invocation_url }}
+          BUILD_SHA: ${{ inputs.commit_sha }}
+        run: python3 tools/ci/source_example_lock.py
+      - uses: actions/upload-artifact@v7
+        with:
+          name: source-example-module-lock
+          path: artifacts/source-example-MODULE.bazel.lock
+          if-no-files-found: error
+          retention-days: 7
