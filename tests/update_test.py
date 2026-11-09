@@ -11,6 +11,17 @@ from electron.private.update import channel_filename, create_feed
 
 
 class UpdateTest(unittest.TestCase):
+    def test_admin_rights_are_explicit_per_windows_artifact(self):
+        name = "Sample Setup 世界.exe"
+        result = self.feed(admin_rights_required=[name])
+        self.assertIs(result["files"][0]["isAdminRightsRequired"], True)
+        self.assertNotIn("isAdminRightsRequired", self.feed(output="user")["files"][0])
+        for options in ({"admin_rights_required": [name], "platform": "linux"},
+                        {"admin_rights_required": ["missing.exe"]},
+                        {"admin_rights_required": [name, name]}):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                self.feed(output="invalid", **options)
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

@@ -22,6 +22,11 @@ module.exports = async function installUpdate(expectFailure) {
   const result = await autoUpdater.checkForUpdates();
   assert.equal(result.updateInfo.version, '2.0.0');
   assert.equal(result.isUpdateAvailable, true);
+  if (process.env.RULES_ELECTRON_EXPECT_ADMIN_UPDATE === '1') {
+    assert.equal(process.platform, 'win32');
+    assert.equal(result.updateInfo.files.length, 1);
+    assert.equal(result.updateInfo.files[0].isAdminRightsRequired, true);
+  }
   if (expectFailure) {
     await assert.rejects(autoUpdater.downloadUpdate(), error => /sha512|checksum/i.test(error.message));
     clearTimeout(timer);

@@ -96,7 +96,7 @@ def embedded_blockmap_size(path):
 
 def create_feed(artifacts, package_json, output, platform, architecture,
                 release_date, channel="latest", release_notes="",
-                staging_percentage=-1, blockmaps=(), embedded_blockmaps=()):
+                staging_percentage=-1, blockmaps=(), embedded_blockmaps=(), admin_rights_required=()):
     metadata_name = channel_filename(platform, architecture, channel)
     version = _version(json.loads(Path(package_json).read_text(encoding="utf-8")).get("version"))
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", release_date):
@@ -107,6 +107,11 @@ def create_feed(artifacts, package_json, output, platform, architecture,
     if not artifacts:
         raise ValueError("Update feed needs at least one artifact")
     names = [_filename(entry["name"]) for entry in artifacts]
+    if (not isinstance(admin_rights_required, (list, tuple))
+            or len(set(admin_rights_required)) != len(admin_rights_required)
+            or not set(admin_rights_required).issubset(names)
+            or admin_rights_required and platform != "windows"):
+        raise ValueError("Admin rights must name distinct Windows artifacts")
     if len(set(blockmaps)) != len(blockmaps) or not set(blockmaps).issubset(names):
         raise ValueError("Blockmaps must name distinct declared artifacts")
     if (len(set(embedded_blockmaps)) != len(embedded_blockmaps)
@@ -133,6 +138,8 @@ def create_feed(artifacts, package_json, output, platform, architecture,
                     checksums.append(base64.b64encode(hashlib.sha256(chunk).digest()).decode("ascii"))
                     sizes.append(len(chunk))
         files.append({"url": quote(name, safe="-._~"), "sha512": base64.b64encode(digest.digest()).decode("ascii"), "size": (output / name).stat().st_size})
+        if name in admin_rights_required:
+            files[-1]["isAdminRightsRequired"] = True
         if name in embedded_blockmaps:
             files[-1]["blockMapSize"] = embedded_blockmap_size(source)
         if name in blockmaps:

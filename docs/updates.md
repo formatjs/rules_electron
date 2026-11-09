@@ -50,6 +50,13 @@ merges compatible artifacts. Keep the same updater cache name across versions.
 `publisher_names` records the expected Windows signing certificate publisher names;
 it does not sign artifacts. `staging_percentage` emits optional rollout metadata.
 
+`admin_rights_required` lists Windows installer filenames requiring elevation.
+The feed writes `isAdminRightsRequired: true` on those file entries, which the
+pinned client's download helper preserves for `NsisUpdater`. Use it with machine-
+scope NSIS packages and the declared native `resources/elevate.exe` bridge.
+Other platforms and undeclared/duplicate filenames fail validation. This metadata
+does not elevate the application itself.
+
 External maps use gzip-compressed v2 JSON with content-defined gear chunks,
 16–64 KiB except the final tail, and SHA-256 checksums. Boundaries depend on
 content so unchanged data can be reused after byte insertions/deletions. The

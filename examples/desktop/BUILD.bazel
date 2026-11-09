@@ -314,23 +314,30 @@ electron_nsis_tool(
             ".rules-electron-sample": "Sample Document",
             ".rules-electron-cleanup": "Sample Cleanup Document",
         },
+        installation_scope = scope,
         installer_icon = ":example_installer_icon",
         protocols = ["sample-desktop"],
         target_compatible_with = ["@platforms//os:windows"],
         tool = ":nsis_tool",
         uninstaller_icon = ":example_uninstaller_icon",
-        updater_cache_name = "sample-desktop-updater",
-        verify_reproducible = name == "nsis_v1",
+        updater_cache_name = "sample-desktop-updater" if scope == "user" else "",
+        verify_reproducible = name in [
+            "nsis_v1",
+            "nsis_machine_v1",
+        ],
     )
-    for name, app in [
-        ("nsis_v1", ":app"),
-        ("nsis_v2", ":app_v2"),
+    for name, app, scope in [
+        ("nsis_v1", ":app", "user"),
+        ("nsis_v2", ":app_v2", "user"),
+        ("nsis_machine_v1", ":app", "machine"),
+        ("nsis_machine_v2", ":app_v2", "machine"),
     ]
 ]
 
 [
     electron_update_feed(
         name = name,
+        admin_rights_required = [filename] if machine else [],
         architecture = select({
             ":windows_arm64": "arm64",
             "//conditions:default": "x64",
@@ -342,9 +349,11 @@ electron_nsis_tool(
         release_date = "2026-01-02T03:04:05Z",
         target_compatible_with = ["@platforms//os:windows"],
     )
-    for name, installer, filename, manifest in [
-        ("nsis_v1_feed", ":nsis_v1", "Sample-1.0.0.exe", "package.json"),
-        ("nsis_v2_feed", ":nsis_v2", "Sample-2.0.0.exe", "package-v2.json"),
+    for name, installer, filename, manifest, machine in [
+        ("nsis_v1_feed", ":nsis_v1", "Sample-1.0.0.exe", "package.json", False),
+        ("nsis_v2_feed", ":nsis_v2", "Sample-2.0.0.exe", "package-v2.json", False),
+        ("nsis_machine_v1_feed", ":nsis_machine_v1", "Sample-1.0.0.exe", "package.json", True),
+        ("nsis_machine_v2_feed", ":nsis_machine_v2", "Sample-2.0.0.exe", "package-v2.json", True),
     ]
 ]
 
@@ -365,6 +374,8 @@ filegroup(
         ":msix_signed_desktop_v1",
         ":msix_signed_desktop_v2",
         ":msix_signed_probe",
+        ":nsis_machine_v1_feed",
+        ":nsis_machine_v2_feed",
         ":nsis_v1_feed",
         ":nsis_v2_feed",
     ],

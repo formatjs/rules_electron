@@ -1,4 +1,4 @@
-"""Per-user Windows installers from declared apps and execution tools."""
+"""Windows installers from declared apps and execution tools."""
 
 load(":defs.bzl", "ElectronAppInfo")
 
@@ -72,6 +72,7 @@ def _installer_impl(ctx):
         "compression": ctx.attr.compression,
         "updater_cache_name": ctx.attr.updater_cache_name,
         "architecture": architecture,
+        "installation_scope": ctx.attr.installation_scope,
         "archive_compiler": tool.archive_compiler.path if tool.archive_compiler else "",
     }))
     ctx.actions.run(
@@ -90,8 +91,9 @@ electron_nsis = rule(
     attrs = {
         "app": attr.label(mandatory = True, providers = [ElectronAppInfo]),
         "tool": attr.label(mandatory = True, providers = [ElectronNsisToolInfo], cfg = "exec"),
-        "protocols": attr.string_list(doc = "Per-user URI schemes; existing foreign registrations cause installation to fail."),
-        "file_associations": attr.string_dict(doc = "Lowercase extensions (including dot) mapped to descriptions. Registers per-user Open With and Default Apps handlers; preserves user defaults."),
+        "installation_scope": attr.string(default = "user", values = ["user", "machine"], doc = "Machine scope requires elevation, uses Program Files and HKLM; user scope uses LocalAppData and HKCU."),
+        "protocols": attr.string_list(doc = "URI schemes in the selected installation scope; existing foreign registrations cause installation to fail."),
+        "file_associations": attr.string_dict(doc = "Lowercase extensions (including dot) mapped to descriptions. Registers Open With and Default Apps handlers in the selected scope; preserves user defaults."),
         "file_association_icons": attr.string_dict(doc = "Registered extensions mapped to app-relative ICO files already included in the app payload."),
         "desktop_shortcut": attr.bool(default = False),
         "app_user_model_id": attr.string(doc = "Shortcut AppUserModelID; defaults to the app ID. Match app.setAppUserModelId at runtime."),
@@ -104,5 +106,5 @@ electron_nsis = rule(
         "_x64": attr.label(default = Label("@platforms//cpu:x86_64")),
         "_arm64": attr.label(default = Label("@platforms//cpu:aarch64")),
     },
-    doc = "Build an unsigned per-user NSIS installer/uninstaller. Release signing follows packaging.",
+    doc = "Build an unsigned NSIS installer/uninstaller. Release signing follows packaging.",
 )

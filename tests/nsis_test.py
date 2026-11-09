@@ -8,6 +8,29 @@ from electron.private.nsis import build_installer, installer_script, literal
 
 
 class NsisTest(unittest.TestCase):
+    def test_installation_scope_separates_registry_and_ownership(self):
+        user = self.render(protocols=["sample"], file_associations={".sample": "Sample"})
+        machine = self.render(installation_scope="machine", protocols=["sample"], file_associations={".sample": "Sample"})
+        self.assertIn('RequestExecutionLevel admin', machine)
+        self.assertIn('SetShellVarContext all', machine)
+        self.assertIn('InstallDir "$PROGRAMFILES64\\org.example.sample"', machine)
+        self.assertIn('WriteRegStr HKLM ', machine)
+        self.assertNotIn(' HKCU ', machine)
+        self.assertIn('RequestExecutionLevel user', user)
+        self.assertIn('SetShellVarContext current', user)
+        self.assertIn('WriteRegStr HKCU ', user)
+        self.assertNotIn(' HKLM ', user)
+        for script, scope in [(user, "user"), (machine, "machine")]:
+            self.assertIn('"app" "scope" "' + scope + '"', script)
+            self.assertLess(script.index('Abort "Installation scope mismatch."', script.index('owned:')),
+                            script.index('ExecWait'))
+        self.assertIn('StrCmp $0 "" install_scope_ok', user)
+        self.assertNotIn('StrCmp $0 "" install_scope_ok', machine)
+        for options in ({"installation_scope": "other"},
+                        {"installation_scope": "machine", "updater_cache_name": "sample-updater"}):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                self.render(**options)
+
     def test_tracked_empty_directories_install_and_uninstall_without_recursive_removal(self):
         manifest = self.root / "directories.json"
         manifest.write_text(json.dumps(["cache/empty", ".hidden"]))

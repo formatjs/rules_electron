@@ -29,37 +29,38 @@ CAPABILITIES = "Software\\" + APP_ID + "\\Capabilities"
 REGISTERED_APPS = r"Software\RegisteredApplications"
 
 
-def registry_value(key, name):
+def registry_value(key, name, root=winreg.HKEY_CURRENT_USER):
     try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as handle:
+        with winreg.OpenKey(root, key, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as handle:
             return winreg.QueryValueEx(handle, name)[0]
     except FileNotFoundError:
         return None
 
 
-def registry_exists(key):
+def registry_exists(key, root=winreg.HKEY_CURRENT_USER):
     try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY):
+        with winreg.OpenKey(root, key, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY):
             return True
     except FileNotFoundError:
         return False
 
 
-def file_handlers(executable, architecture):
-    assert registry_value(REGISTERED_APPS, APP_ID) == CAPABILITIES
+def file_handlers(executable, architecture, root=winreg.HKEY_CURRENT_USER):
+    value = partial(registry_value, root=root)
+    assert value(REGISTERED_APPS, APP_ID) == CAPABILITIES
     query = ctypes.windll.shlwapi.AssocQueryStringW
     query.argtypes = [ctypes.c_uint, ctypes.c_uint, ctypes.c_wchar_p, ctypes.c_wchar_p,
                       ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_uint)]
     query.restype = ctypes.c_long
     handlers = []
     for extension in EXTENSIONS:
-        progid = registry_value(CAPABILITIES + r"\FileAssociations", extension)
+        progid = value(CAPABILITIES + r"\FileAssociations", extension)
         assert isinstance(progid, str) and progid.startswith("RulesElectron.")
         key = "Software\\Classes\\" + progid
-        assert registry_value(key, "RulesElectronOwner") == APP_ID
+        assert value(key, "RulesElectronOwner") == APP_ID
         document_icon = executable.parent / "resources/document.ico" if extension == EXTENSIONS[0] else executable
         expected_icon = f'"{document_icon}",0'
-        assert registry_value(key + r"\DefaultIcon", "") == expected_icon
+        assert value(key + r"\DefaultIcon", "") == expected_icon
         resolved_icon = ctypes.create_unicode_buffer(32768)
         icon_size = ctypes.c_uint(len(resolved_icon))
         # ASSOCSTR_DEFAULTICON; same fixed ProgID flags as command lookup.
@@ -67,14 +68,14 @@ def file_handlers(executable, architecture):
         assert resolved_icon.value == expected_icon
         if extension == EXTENSIONS[0]:
             icon(document_icon, architecture, 83)
-        assert registry_value("Software\\Classes\\" + extension + r"\OpenWithProgids", progid) == ""
+        assert value("Software\\Classes\\" + extension + r"\OpenWithProgids", progid) == ""
         command = ctypes.create_unicode_buffer(32768)
         size = ctypes.c_uint(len(command))
         # ASSOCF_INIT_FIXED_PROGID | ASSOCF_INIT_FOR_FILE, ASSOCSTR_COMMAND.
         assert query(0x2800, 1, progid, "open", command, ctypes.byref(size)) == 0
         assert command.value == f'"{executable}" "%1"'
         handlers.append(progid)
-    assert registry_value("Software\\Classes\\" + EXTENSIONS[0], "") == "Foreign.Document"
+    assert value("Software\\Classes\\" + EXTENSIONS[0], "") == "Foreign.Document"
     return handlers
 
 
@@ -170,7 +171,8 @@ class FeedHandler(http.server.SimpleHTTPRequestHandler):
                 remaining -= len(data)
 
 
-def smoke(executable, architecture, expected):
+def smoke(executable, architecture, expected, shortcuts=None):
+    shortcuts = shortcuts if shortcuts is not None else [known_folder(2) / "Sample Desktop.lnk", known_folder(16) / "Sample Desktop.lnk"]
     print(command(sys.executable, "examples/desktop/tools/smoke_test.py", str(executable),
                   "--installed", "--expected-version", expected,
                   "--target-os", "windows", "--target-arch", architecture,

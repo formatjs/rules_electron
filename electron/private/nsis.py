@@ -23,11 +23,29 @@ def literal(value):
     return '"' + value.replace("$", "$$").replace('"', '$\\"') + '"'
 
 
+def scope_guard(scope, label):
+    return [
+        'ReadINIStr $0 "$INSTDIR\\.rules-electron.ini" "app" "scope"',
+        *(['StrCmp $0 "" ' + label] if scope == 'user' else []),
+        'StrCmp $0 ' + literal(scope) + ' ' + label,
+        'SetErrorLevel 1', 'Abort "Installation scope mismatch."',
+        label + ':', 'ClearErrors',
+    ]
+
+
 def installer_script(app, package_json, app_id, product_name, executable_name,
                      output, protocols=(), desktop_shortcut=False, compression="zlib",
                      updater_cache_name="", architecture="x64", payload_archive="",
                      build_version="", build_number="", file_associations=None, app_user_model_id="",
-                     installer_icon="", uninstaller_icon="", directory_manifest="", file_association_icons=None):
+                     installer_icon="", uninstaller_icon="", directory_manifest="", file_association_icons=None,
+                     installation_scope="user"):
+    if installation_scope not in ("user", "machine"):
+        raise ValueError("NSIS installation_scope must be user or machine")
+    machine = installation_scope == "machine"
+    if machine and updater_cache_name:
+        raise ValueError("Per-machine installers cannot seed a per-user updater cache")
+    hive = "HKLM" if machine else "HKCU"
+    shell_context = "all" if machine else "current"
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", app_id):
         raise ValueError("NSIS app_id must be an ASCII application identifier")
     _filename(app_id)
@@ -125,14 +143,14 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     registered_apps = "Software\\RegisteredApplications"
     q = literal
     lines = [
-        '# -*- coding: utf-8 -*-', 'Unicode true', 'RequestExecutionLevel user',
+        '# -*- coding: utf-8 -*-', 'Unicode true', 'RequestExecutionLevel ' + ('admin' if machine else 'user'),
         *(['SetCompress off'] if compression in ('7z', 'off') else ['SetCompressor /SOLID ' + compression]),
         *(['SetCompressorDictSize 8'] if compression == 'lzma' else []), 'SetDateSave off',
         '!include "FileFunc.nsh"', '!include "LogicLib.nsh"', '!include "x64.nsh"',
         'Name ' + q(product_name), 'OutFile ' + q(str(Path(output).resolve())),
         *(['Icon ' + q(str(Path(installer_icon).resolve()))] if installer_icon else []),
         *(['UninstallIcon ' + q(str(Path(uninstaller_icon).resolve()))] if uninstaller_icon else []),
-        'InstallDir "$LOCALAPPDATA\\Programs\\' + app_id + '"',
+        'InstallDir "' + ('$PROGRAMFILES64\\' if machine else '$LOCALAPPDATA\\Programs\\') + app_id + '"',
         'VIProductVersion ' + '.'.join(numeric),
         'VIAddVersionKey "ProductName" ' + q(product_name),
         'VIAddVersionKey "FileDescription" ' + q(product_name + ' Installer'),
@@ -151,34 +169,35 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
             'done:', 'FunctionEnd',
         ]
     lines += [
-        'Function .onInit', 'SetShellVarContext current', 'SetRegView 64',
+        'Function .onInit', 'SetShellVarContext ' + shell_context, 'SetRegView 64',
         '${Unless} ${' + ('IsNativeARM64' if architecture == 'arm64' else 'IsNativeAMD64') + '}',
         'SetErrorLevel 1', 'Abort "Installer requires matching native Windows architecture."', '${EndUnless}',
         '${GetParameters} $0', 'ClearErrors', '${GetOptions} $0 "/D=" $1',
         'IfErrors registered_directory', 'StrCpy $INSTDIR $1', 'Goto initialized',
-        'registered_directory:', 'ReadRegStr $0 HKCU ' + q(registry) + ' "InstallLocation"',
+        'registered_directory:', 'ReadRegStr $0 ' + hive + ' ' + q(registry) + ' "InstallLocation"',
         'StrCmp $0 "" initialized', 'StrCpy $INSTDIR $0', 'initialized:', 'ClearErrors',
-        'FunctionEnd', 'Function un.onInit', 'SetShellVarContext current', 'SetRegView 64',
+        'FunctionEnd', 'Function un.onInit', 'SetShellVarContext ' + shell_context, 'SetRegView 64',
         'ReadINIStr $0 "$INSTDIR\\.rules-electron.ini" "app" "id"',
         'StrCmp $0 ' + q(app_id) + ' +3', 'SetErrorLevel 1', 'Abort "Installation ownership mismatch."',
+        *scope_guard(installation_scope, 'un_scope_ok'),
         'Call un.WaitForApp', 'FunctionEnd', 'Section "Install"', 'Call WaitForApp',
     ]
     for index, scheme in enumerate(protocols):
         key = 'Software\\Classes\\' + scheme
         lines += [
-            'ReadRegStr $0 HKCU ' + q(key) + ' "RulesElectronOwner"',
+            'ReadRegStr $0 ' + hive + ' ' + q(key) + ' "RulesElectronOwner"',
             'StrCmp $0 ' + q(app_id) + ' protocol_ok_' + str(index),
-            'ClearErrors', 'EnumRegValue $1 HKCU ' + q(key) + ' 0',
+            'ClearErrors', 'EnumRegValue $1 ' + hive + ' ' + q(key) + ' 0',
             'IfErrors protocol_subkey_' + str(index),
             'SetErrorLevel 1', 'Abort "Protocol already registered by another application."',
             'protocol_subkey_' + str(index) + ':',
-            'ClearErrors', 'EnumRegKey $1 HKCU ' + q(key) + ' 0',
+            'ClearErrors', 'EnumRegKey $1 ' + hive + ' ' + q(key) + ' 0',
             'IfErrors protocol_ok_' + str(index),
             'SetErrorLevel 1', 'Abort "Protocol already registered by another application."',
             'protocol_ok_' + str(index) + ':',
         ]
     if associations:
-        lines += ['ReadRegStr $0 HKCU ' + q(registered_apps) + ' ' + q(app_id),
+        lines += ['ReadRegStr $0 ' + hive + ' ' + q(registered_apps) + ' ' + q(app_id),
                   'StrCmp $0 "" file_registration_ok',
                   'StrCmp $0 ' + q(capabilities) + ' file_registration_ok',
                   'SetErrorLevel 1', 'Abort "Application capabilities already registered by another application."',
@@ -186,13 +205,13 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     for index, (progid, _) in enumerate(associations.values()):
         key = 'Software\\Classes\\' + progid
         suffix = str(index)
-        lines += ['ReadRegStr $0 HKCU ' + q(key) + ' "RulesElectronOwner"',
+        lines += ['ReadRegStr $0 ' + hive + ' ' + q(key) + ' "RulesElectronOwner"',
                   'StrCmp $0 ' + q(app_id) + ' file_type_ok_' + suffix,
-                  'ClearErrors', 'EnumRegValue $1 HKCU ' + q(key) + ' 0',
+                  'ClearErrors', 'EnumRegValue $1 ' + hive + ' ' + q(key) + ' 0',
                   'IfErrors file_type_subkey_' + suffix,
                   'SetErrorLevel 1', 'Abort "File type already registered by another application."',
                   'file_type_subkey_' + suffix + ':', 'ClearErrors',
-                  'EnumRegKey $1 HKCU ' + q(key) + ' 0', 'IfErrors file_type_ok_' + suffix,
+                  'EnumRegKey $1 ' + hive + ' ' + q(key) + ' 0', 'IfErrors file_type_ok_' + suffix,
                   'SetErrorLevel 1', 'Abort "File type already registered by another application."',
                   'file_type_ok_' + suffix + ':']
     if updater_cache_name:
@@ -206,7 +225,8 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         'IfFileExists "$INSTDIR\\.rules-electron.ini" existing fresh',
         'existing:', 'ReadINIStr $0 "$INSTDIR\\.rules-electron.ini" "app" "id"',
         'StrCmp $0 ' + q(app_id) + ' owned', 'SetErrorLevel 1', 'Abort "Installation ownership mismatch."',
-        'owned:', 'IfFileExists "$INSTDIR\\Uninstall.exe" 0 failed_install',
+        'owned:', *scope_guard(installation_scope, 'install_scope_ok'),
+        'IfFileExists "$INSTDIR\\Uninstall.exe" 0 failed_install',
         'ClearErrors', 'ExecWait \'"$INSTDIR\\Uninstall.exe" /S _?=$INSTDIR\' $0',
         'IfErrors failed_install', 'StrCmp $0 0 unpack failed_install',
         'fresh:', 'FindFirst $0 $1 "$INSTDIR\\*.*"', 'check_empty:',
@@ -238,13 +258,14 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     lines += [
         'SetOutPath "$INSTDIR"', 'WriteUninstaller "$INSTDIR\\Uninstall.exe"',
         'WriteINIStr "$INSTDIR\\.rules-electron.ini" "app" "id" ' + q(app_id),
-        'WriteRegStr HKCU ' + q(registry) + ' "InstallLocation" "$INSTDIR"',
-        'WriteRegStr HKCU ' + q(uninstall_registry) + ' "InstallLocation" "$INSTDIR"',
-        'WriteRegStr HKCU ' + q(uninstall_registry) + ' "DisplayName" ' + q(product_name),
-        'WriteRegStr HKCU ' + q(uninstall_registry) + ' "UninstallString" \'"$INSTDIR\\Uninstall.exe"\'',
-        'WriteRegStr HKCU ' + q(uninstall_registry) + ' "QuietUninstallString" \'"$INSTDIR\\Uninstall.exe" /S\'',
-        'WriteRegDWORD HKCU ' + q(uninstall_registry) + ' "NoModify" 1',
-        'WriteRegDWORD HKCU ' + q(uninstall_registry) + ' "NoRepair" 1',
+        'WriteINIStr "$INSTDIR\\.rules-electron.ini" "app" "scope" ' + q(installation_scope),
+        'WriteRegStr ' + hive + ' ' + q(registry) + ' "InstallLocation" "$INSTDIR"',
+        'WriteRegStr ' + hive + ' ' + q(uninstall_registry) + ' "InstallLocation" "$INSTDIR"',
+        'WriteRegStr ' + hive + ' ' + q(uninstall_registry) + ' "DisplayName" ' + q(product_name),
+        'WriteRegStr ' + hive + ' ' + q(uninstall_registry) + ' "UninstallString" \'"$INSTDIR\\Uninstall.exe"\'',
+        'WriteRegStr ' + hive + ' ' + q(uninstall_registry) + ' "QuietUninstallString" \'"$INSTDIR\\Uninstall.exe" /S\'',
+        'WriteRegDWORD ' + hive + ' ' + q(uninstall_registry) + ' "NoModify" 1',
+        'WriteRegDWORD ' + hive + ' ' + q(uninstall_registry) + ' "NoRepair" 1',
         'CreateShortcut "$SMPROGRAMS\\' + product_name.replace('$', '$$') + '.lnk" "$INSTDIR\\' + executable.replace('$', '$$') + '"',
         'IfErrors failed_install',
         'WinShell::SetLnkAUMI "$SMPROGRAMS\\' + product_name.replace('$', '$$') + '.lnk" ' + q(app_user_model_id),
@@ -255,23 +276,23 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
                   'WinShell::SetLnkAUMI "$DESKTOP\\' + product_name.replace('$', '$$') + '.lnk" ' + q(app_user_model_id)]
     for scheme in protocols:
         key = 'Software\\Classes\\' + scheme
-        lines += ['WriteRegStr HKCU ' + q(key) + ' "" ' + q('URL:' + product_name),
-                  'WriteRegStr HKCU ' + q(key) + ' "URL Protocol" ""',
-                  'WriteRegStr HKCU ' + q(key) + ' "RulesElectronOwner" ' + q(app_id),
-                  'WriteRegStr HKCU ' + q(key + '\\shell\\open\\command') + ' "" \'"$INSTDIR\\' + command_executable + '" "%1"\'']
+        lines += ['WriteRegStr ' + hive + ' ' + q(key) + ' "" ' + q('URL:' + product_name),
+                  'WriteRegStr ' + hive + ' ' + q(key) + ' "URL Protocol" ""',
+                  'WriteRegStr ' + hive + ' ' + q(key) + ' "RulesElectronOwner" ' + q(app_id),
+                  'WriteRegStr ' + hive + ' ' + q(key + '\\shell\\open\\command') + ' "" \'"$INSTDIR\\' + command_executable + '" "%1"\'']
     if associations:
-        lines += ['WriteRegStr HKCU ' + q(capabilities) + ' "ApplicationName" ' + q(product_name),
-                  'WriteRegStr HKCU ' + q(capabilities) + ' "ApplicationDescription" ' + q(product_name),
-                  'WriteRegStr HKCU ' + q(registered_apps) + ' ' + q(app_id) + ' ' + q(capabilities)]
+        lines += ['WriteRegStr ' + hive + ' ' + q(capabilities) + ' "ApplicationName" ' + q(product_name),
+                  'WriteRegStr ' + hive + ' ' + q(capabilities) + ' "ApplicationDescription" ' + q(product_name),
+                  'WriteRegStr ' + hive + ' ' + q(registered_apps) + ' ' + q(app_id) + ' ' + q(capabilities)]
     for extension, (progid, description) in associations.items():
         key = 'Software\\Classes\\' + progid
         document_icon = association_icons.get(extension, command_executable)
-        lines += ['WriteRegStr HKCU ' + q(key) + ' "" ' + q(description),
-                  'WriteRegStr HKCU ' + q(key) + ' "RulesElectronOwner" ' + q(app_id),
-                  'WriteRegStr HKCU ' + q(key + '\\DefaultIcon') + ' "" \'"$INSTDIR\\' + document_icon + '",0\'',
-                  'WriteRegStr HKCU ' + q(key + '\\shell\\open\\command') + ' "" \'"$INSTDIR\\' + command_executable + '" "%1"\'',
-                  'WriteRegStr HKCU ' + q('Software\\Classes\\' + extension + '\\OpenWithProgids') + ' ' + q(progid) + ' ""',
-                  'WriteRegStr HKCU ' + q(capabilities + '\\FileAssociations') + ' ' + q(extension) + ' ' + q(progid)]
+        lines += ['WriteRegStr ' + hive + ' ' + q(key) + ' "" ' + q(description),
+                  'WriteRegStr ' + hive + ' ' + q(key) + ' "RulesElectronOwner" ' + q(app_id),
+                  'WriteRegStr ' + hive + ' ' + q(key + '\\DefaultIcon') + ' "" \'"$INSTDIR\\' + document_icon + '",0\'',
+                  'WriteRegStr ' + hive + ' ' + q(key + '\\shell\\open\\command') + ' "" \'"$INSTDIR\\' + command_executable + '" "%1"\'',
+                  'WriteRegStr ' + hive + ' ' + q('Software\\Classes\\' + extension + '\\OpenWithProgids') + ' ' + q(progid) + ' ""',
+                  'WriteRegStr ' + hive + ' ' + q(capabilities + '\\FileAssociations') + ' ' + q(extension) + ' ' + q(progid)]
     if associations:
         lines += ["System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0) v'"]
     if updater_cache_name:
@@ -281,7 +302,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
                   'seeded:',
                   'WriteINIStr "' + cache + '\\.rules-electron.ini" "app" "id" ' + q(app_id)]
     lines += ['IfErrors failed_install',
-              'WriteRegStr HKCU ' + q(uninstall_registry) + ' "DisplayVersion" ' + q(version),
+              'WriteRegStr ' + hive + ' ' + q(uninstall_registry) + ' "DisplayVersion" ' + q(version),
               'IfErrors failed_install', 'SetErrorLevel 0', 'Goto installed',
               'failed_install:', 'SetErrorLevel 1', 'Abort "Installation failed."', 'installed:',
               '${GetParameters} $0', 'ClearErrors', '${GetOptions} $0 "--force-run" $1',
@@ -290,33 +311,33 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     for name, _ in files:
         lines += ['Delete "$INSTDIR\\' + name.replace('/', '\\').replace('$', '$$') + '"']
     lines += ['IfErrors uninstall_failed', 'Delete "$INSTDIR\\Uninstall.exe"', 'Delete "$INSTDIR\\.rules-electron.ini"',
-              'DeleteRegKey HKCU ' + q(registry), 'DeleteRegKey HKCU ' + q(uninstall_registry),
+              'DeleteRegKey ' + hive + ' ' + q(registry), 'DeleteRegKey ' + hive + ' ' + q(uninstall_registry),
               'Delete "$SMPROGRAMS\\' + product_name.replace('$', '$$') + '.lnk"']
     if desktop_shortcut:
         lines += ['Delete "$DESKTOP\\' + product_name.replace('$', '$$') + '.lnk"']
     for index, scheme in enumerate(protocols):
         key = 'Software\\Classes\\' + scheme
-        lines += ['ReadRegStr $0 HKCU ' + q(key) + ' "RulesElectronOwner"',
+        lines += ['ReadRegStr $0 ' + hive + ' ' + q(key) + ' "RulesElectronOwner"',
                   'StrCmp $0 ' + q(app_id) + ' 0 un_protocol_' + str(index),
-                  'ReadRegStr $0 HKCU ' + q(key + '\\shell\\open\\command') + ' ""',
+                  'ReadRegStr $0 ' + hive + ' ' + q(key + '\\shell\\open\\command') + ' ""',
                   'StrCmp $0 \'"$INSTDIR\\' + command_executable + '" "%1"\' 0 un_protocol_' + str(index),
-                  'DeleteRegKey HKCU ' + q(key), 'un_protocol_' + str(index) + ':']
+                  'DeleteRegKey ' + hive + ' ' + q(key), 'un_protocol_' + str(index) + ':']
     for index, (extension, (progid, _)) in enumerate(associations.items()):
         key = 'Software\\Classes\\' + progid
         extension_key = 'Software\\Classes\\' + extension
         suffix = str(index)
-        lines += ['ReadRegStr $0 HKCU ' + q(key) + ' "RulesElectronOwner"',
+        lines += ['ReadRegStr $0 ' + hive + ' ' + q(key) + ' "RulesElectronOwner"',
                   'StrCmp $0 ' + q(app_id) + ' 0 un_file_type_' + suffix,
-                  'ReadRegStr $0 HKCU ' + q(key + '\\shell\\open\\command') + ' ""',
+                  'ReadRegStr $0 ' + hive + ' ' + q(key + '\\shell\\open\\command') + ' ""',
                   'StrCmp $0 \'"$INSTDIR\\' + command_executable + '" "%1"\' 0 un_file_type_' + suffix,
-                  'DeleteRegValue HKCU ' + q(extension_key + '\\OpenWithProgids') + ' ' + q(progid),
-                  'DeleteRegKey /ifempty HKCU ' + q(extension_key + '\\OpenWithProgids'),
-                  'DeleteRegKey /ifempty HKCU ' + q(extension_key),
-                  'DeleteRegKey HKCU ' + q(key), 'un_file_type_' + suffix + ':']
+                  'DeleteRegValue ' + hive + ' ' + q(extension_key + '\\OpenWithProgids') + ' ' + q(progid),
+                  'DeleteRegKey /ifempty ' + hive + ' ' + q(extension_key + '\\OpenWithProgids'),
+                  'DeleteRegKey /ifempty ' + hive + ' ' + q(extension_key),
+                  'DeleteRegKey ' + hive + ' ' + q(key), 'un_file_type_' + suffix + ':']
     if associations:
-        lines += ['ReadRegStr $0 HKCU ' + q(registered_apps) + ' ' + q(app_id),
+        lines += ['ReadRegStr $0 ' + hive + ' ' + q(registered_apps) + ' ' + q(app_id),
                   'StrCmp $0 ' + q(capabilities) + ' 0 un_file_registration',
-                  'DeleteRegValue HKCU ' + q(registered_apps) + ' ' + q(app_id),
+                  'DeleteRegValue ' + hive + ' ' + q(registered_apps) + ' ' + q(app_id),
                   'un_file_registration:', "System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0) v'"]
     for name in sorted(directories, key=lambda n: (-n.count('/'), n)):
         lines += ['RMDir "$INSTDIR\\' + name.replace('/', '\\').replace('$', '$$') + '"']

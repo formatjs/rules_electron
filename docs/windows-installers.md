@@ -6,17 +6,40 @@ pinned electron-updater NSIS elevation contract. It accepts an absolute executab
 path followed by arguments and invokes the Windows `runas` verb. Default launch
 exits after process creation, releasing the helper image before an updater
 replaces the installed app. An initial `--wait` waits and returns the child exit
-code for explicit release/test commands. Unicode, empty arguments, quotes and trailing backslashes
+code for explicit release/test commands. Unicode, empty arguments, quotes and
+trailing backslashes
 are preserved without a shell interpreter. The helper uses the Windows GUI
 subsystem, so updater launch does not open a console window.
 
 Compilation runs on BB Linux. Matching Windows smoke checks the native PE CPU,
 elevated child token, exact arguments, exit status, detached launch without an
-installer-file lock, and invalid-input failures for
-both compiler variants. Validation is pending. Already elevated disposable runners
-exercise the bridge without an interactive UAC prompt. Consent/cancellation and
-per-machine installer/update lifecycle remain open; adding this helper alone does
-not establish per-machine NSIS support.
+installer-file lock, and invalid-input failures for both compiler variants.
+The prior wait-mode bridge passed [all native hosts](https://github.com/formatjs/rules_electron/actions/runs/42585450796);
+detached launch validation is pending. Already elevated disposable runners
+exercise the bridge without an interactive UAC prompt. Interactive
+consent/cancellation remains unverified. The machine-scope lifecycle
+gate below validates installer/update behavior separately.
+
+Set `electron_nsis.installation_scope = "machine"` for an elevated all-users
+installer. It defaults to `$PROGRAMFILES64/<app_id>`, uses 64-bit HKLM registration
+and common Start Menu/desktop shortcuts. User scope remains the default, using
+HKCU and LocalAppData. Both scopes write an ownership scope marker; installers
+and uninstallers reject a mismatched scope. Existing user installs without that
+new marker retain their user-scope upgrade path.
+
+Machine installers require empty `updater_cache_name`: an elevated account can
+differ from the app user, so installation does not seed that account's private
+cache. Publish their filenames in `electron_update_feed.admin_rights_required`
+and package the bridge as `resources/elevate.exe`. The real client then uses its
+elevation branch. An uncached first machine update downloads the complete
+installer; differential cache seeding across users remains open.
+
+The new native gate installs the bootstrap Electron app in Program Files,
+checks HKLM handlers/common shortcuts and unchanged HKCU state, rejects a corrupt
+update, runs a real elevated v1-to-v2 update, checks scope rejection and removes
+owned files while preserving foreign handlers/data. BB/native validation is
+pending. Interactive UAC, production signatures and full source-runtime machine
+installation remain separate gates.
 
 `installer_icon` and `uninstaller_icon` accept declared ICO labels, including
 generated icons. NSIS embeds them independently using its

@@ -121,3 +121,4 @@ if __name__ == "__main__":
                                 "-Python", sys.executable],
                                check=True, env=powershell_environment)
                 subprocess.run([sys.executable, "tools/ci/windows_nsis_smoke.py", str(directory / variant / "packages"), target_arch], check=True)
+                subprocess.run([sys.executable, "tools/ci/windows_machine_nsis_smoke.py", str(packages), target_arch], check=True)
