@@ -15,7 +15,9 @@ class SourceWorkflowLookupTest(unittest.TestCase):
                "user": "private-user", "structuredCommandLine": "private-command"}
         unrelated = [dict(row, repoUrl="https://github.com/private/repository"),
                      dict(row, commitSha="b" * 40), dict(row, pattern="private-target")]
-        selected = public_workflows([*unrelated, row, row], sha)
+        rpc_row = dict(row, pattern=["Electron BCR consumer"])
+        unrelated += [dict(row, pattern=[]), dict(row, pattern=["Electron BCR consumer", "private-target"])]
+        selected = public_workflows([*unrelated, row, rpc_row], sha)
         self.assertEqual(selected, [{"id": row["invocationId"], "workflow": "Electron BCR consumer",
                                      "state": "running", "success": False}])
         self.assertNotIn("private", json.dumps(selected))

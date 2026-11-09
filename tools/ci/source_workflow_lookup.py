@@ -26,13 +26,16 @@ def public_workflows(records, sha):
         raise ValueError("Exact commit required")
     result = {}
     for record in records:
+        pattern = record.get("pattern")
+        if isinstance(pattern, list):
+            pattern = pattern[0] if len(pattern) == 1 else None
         if (record.get("repoUrl", "").removesuffix(".git") != REPOSITORY or
-                record.get("commitSha") != sha or record.get("pattern") not in WORKFLOWS):
+                record.get("commitSha") != sha or not isinstance(pattern, str) or pattern not in WORKFLOWS):
             continue
         identifier = record.get("invocationId", "")
         if not re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", identifier):
             raise ValueError("Invalid workflow identifier")
-        result[identifier] = {"id": identifier, "workflow": record["pattern"],
+        result[identifier] = {"id": identifier, "workflow": pattern,
                               "state": STATES.get(record.get("invocationStatus"), "unknown"),
                               "success": record.get("success") is True}
     return sorted(result.values(), key=lambda row: row["id"])
