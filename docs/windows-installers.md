@@ -209,3 +209,12 @@ observer. Native [Windows x64](https://github.com/formatjs/rules_electron/action
 and [ARM64](https://github.com/formatjs/rules_electron/actions/runs/42577870565/job/129029773580)
 passed actual installer start, exit code zero and the complete lifecycle.
 Successful repeat validation does not close the original intermittent failure.
+
+The [da21d47 x64 job](https://github.com/formatjs/rules_electron/actions/runs/42715968227/job/129497888706)
+and [24ca713 x64 job](https://github.com/formatjs/rules_electron/actions/runs/42718669450/job/129507108451)
+installed machine v2 but missed its installer start/exit events. The observer
+now receives unfiltered start notifications, whitelists names locally and
+resolves a live process's module basename when its provider name differs.
+Only fixture names and numeric exit codes leave the observer; PID/time/path
+values stay internal. Success still requires start plus zero exit status.
+This adjustment awaits hosted validation.

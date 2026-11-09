@@ -78,4 +78,15 @@ def installer_trace(directory):
             report = {"ready": ready.is_file(), "events": events(output)}
         except RuntimeError:
             report = {"ready": ready.is_file(), "invalid_trace": True}
+        resolved = Path(str(output) + ".resolved")
+        if resolved.is_file():
+            try:
+                with resolved.open(encoding="ascii") as source:
+                    value = source.read(16).strip()
+            except (OSError, UnicodeError):
+                value = ""
+            if value.isascii() and value.isdigit() and 0 <= int(value) <= 128:
+                report["resolved_starts"] = int(value)
+            else:
+                report["invalid_start_summary"] = True
         print("NSIS_PROCESS_TRACE " + json.dumps(report, sort_keys=True), flush=True)

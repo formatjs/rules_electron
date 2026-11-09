@@ -4,8 +4,26 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $names = @('sample-desktop.exe', 'Sample-2.0.0.exe', 'installer.exe', 'Uninstall.exe')
-$filter = ($names | ForEach-Object { "ProcessName = '$_'" }) -join ' OR '
 $script:nsisTraceCount = 0
+$script:resolvedStarts = 0
+function Resolve-NsisName([uint32]$Identifier, [string]$EventName) {
+  if ($names -contains $EventName) { return ($names | Where-Object { $_ -ieq $EventName } | Select-Object -First 1) }
+  if ($EventName -inotmatch '^(sample|instal|uninstal)') { return $null }
+  $process = $null
+  try {
+    $process = [System.Diagnostics.Process]::GetProcessById($Identifier)
+    $name = [System.IO.Path]::GetFileName($process.MainModule.FileName)
+    if ($names -contains $name) {
+      $script:resolvedStarts += 1
+      [System.IO.File]::WriteAllText(($Output + '.resolved'), [string]$script:resolvedStarts)
+      return ($names | Where-Object { $_ -ieq $name } | Select-Object -First 1)
+    }
+  } catch {
+  } finally {
+    if ($process) { $process.Dispose() }
+  }
+  return $null
+}
 function Write-NsisEvent([string]$Name, [string]$Stage, $ExitCode) {
   if ($script:nsisTraceCount -ge 128) { return }
   $record = @{name=$Name; stage=$Stage; exit_code=$ExitCode}
@@ -13,7 +31,7 @@ function Write-NsisEvent([string]$Name, [string]$Stage, $ExitCode) {
   $script:nsisTraceCount += 1
 }
 try {
-  Register-WmiEvent -Query ("SELECT * FROM Win32_ProcessStartTrace WHERE " + $filter) -SourceIdentifier 'nsis-start' | Out-Null
+  Register-WmiEvent -Query 'SELECT * FROM Win32_ProcessStartTrace' -SourceIdentifier 'nsis-start' | Out-Null
   Register-WmiEvent -Query 'SELECT * FROM Win32_ProcessStopTrace' -SourceIdentifier 'nsis-stop' | Out-Null
   [System.IO.File]::WriteAllText($Ready, 'ready')
   $timer = [System.Diagnostics.Stopwatch]::StartNew()
@@ -24,8 +42,13 @@ try {
       $trace = $notice.SourceEventArgs.NewEvent
       $traceProcessId = [uint32]$trace.ProcessID
       $traceTime = [uint64]$trace.TIME_CREATED
-      if ($notice.SourceIdentifier -eq 'nsis-start' -and $names -contains $trace.ProcessName) {
-        $owned[$traceProcessId] = @{Name=[string]$trace.ProcessName; Started=$traceTime}
+      if ($notice.SourceIdentifier -eq 'nsis-start') {
+        $name = Resolve-NsisName $traceProcessId ([string]$trace.ProcessName)
+        if (-not $name) {
+          Remove-Event -EventIdentifier $notice.EventIdentifier
+          continue
+        }
+        $owned[$traceProcessId] = @{Name=$name; Started=$traceTime}
         Write-NsisEvent $owned[$traceProcessId].Name 'start' $null
         if ($pending.ContainsKey($traceProcessId)) {
           if ($pending[$traceProcessId].Stopped -ge $traceTime) {
