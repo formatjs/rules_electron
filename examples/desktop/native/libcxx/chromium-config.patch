@@ -1,9 +1,9 @@
-# Chromium 142.0.7444.52 original configuration; see native/libcxx/README.md.
+# Electron 39 release SDK configuration; see native/libcxx/README.md.
 diff --git a/include/__config_site b/include/__config_site
 new file mode 100644
 --- /dev/null
 +++ b/include/__config_site
-@@ -0,0 +1,92 @@
+@@ -0,0 +1,94 @@
 +#ifndef _LIBCPP_CONFIG_SITE
 +#define _LIBCPP_CONFIG_SITE
 +
@@ -24,7 +24,9 @@ new file mode 100644
 +//    _LIBCPP_ABI_NAMESPACE to a shorter value.
 +#define _LIBCPP_ABI_NAMESPACE __Cr
 +
-+#define _LIBCPP_ABI_VERSION 2
++#define _LIBCPP_ABI_VERSION 1
++#define _LIBCPP_ABI_USE_WRAP_ITER_IN_STD_ARRAY
++#define _LIBCPP_ABI_USE_WRAP_ITER_IN_STD_STRING_VIEW
 +
 +#define _LIBCPP_ABI_FORCE_ITANIUM 0
 +#define _LIBCPP_ABI_FORCE_MICROSOFT 0

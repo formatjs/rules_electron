@@ -1,6 +1,17 @@
 #include <node.h>
 #include <memory>
 
+static_assert(_LIBCPP_ABI_VERSION == 1, "Electron 39 requires libc++ ABI 1");
+#if defined(_LIBCPP_ABI_ENABLE_UNIQUE_PTR_TRIVIAL_ABI) || \
+    defined(_LIBCPP_ABI_ENABLE_SHARED_PTR_TRIVIAL_ABI)
+#error "Electron 39 does not use trivial smart-pointer calling conventions"
+#endif
+
+#ifdef TEST_NODE_MODULE_VERSION
+#undef NODE_MODULE_VERSION
+#define NODE_MODULE_VERSION TEST_NODE_MODULE_VERSION
+#endif
+
 static void BackingStore(const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto* isolate = args.GetIsolate();
   std::shared_ptr<v8::BackingStore> shared =

@@ -10,10 +10,16 @@ Inputs come from Chromium 142.0.7444.52:
   `1ab4113d0e0d30ba923ea070530a0e65910b26cb`.
 - [libc++ BUILD.gn](https://chromium.googlesource.com/chromium/src/+/142.0.7444.52/buildtools/third_party/libc%2B%2B/BUILD.gn)
   supplies the source list and platform additions.
-- `chromium-config.patch` adds the original
+- `chromium-config.patch` adds Electron's released
   [__config_site](https://chromium.googlesource.com/chromium/src/+/142.0.7444.52/buildtools/third_party/libc%2B%2B/__config_site)
   and [__assertion_handler](https://chromium.googlesource.com/chromium/src/+/142.0.7444.52/buildtools/third_party/libc%2B%2B/__assertion_handler).
-  They select ABI version 2 and namespace `std::__Cr`.
+  Electron changes Chromium's ABI version to 1 and enables iterator wrappers
+  for arrays/string views; namespace stays `std::__Cr`. Config bytes match
+  Electron 39's `libcxx_headers.zip` (SHA-256
+  `35a424a27fac622993c612b33daf7ab316cf250796eeb57f6d3eba5a311be248`).
+  All 1,680 released headers match the pinned libc++ source bytes.
+  These changes come from Electron's
+  [original ABI patch](https://github.com/electron/electron/blob/v39.0.0/patches/chromium/build_make_libcxx_abi_unstable_false_for_electron.patch).
 - [C++ runtime settings](https://chromium.googlesource.com/chromium/src/+/142.0.7444.52/build/config/c%2B%2B/BUILD.gn)
   supply visibility, sanitizer and Windows VCRuntime policy. Compiler, C runtime
   and exception ABI runtime remain declared hermetic LLVM toolchain inputs.

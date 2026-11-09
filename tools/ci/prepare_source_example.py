@@ -36,8 +36,25 @@ use_repo(rules_rust, "rules_rust")
     build = (source / "BUILD.bazel").read_text()
     build = replace_once(build, '":linux_x64": "@bootstrap_electron_linux_x64//:runtime",',
                          '":linux_x64": ":source_runtime",')
+    sdk = '''    headers = "@electron_addon_headers//:headers",
+    sdk_cxxstdlib = True,'''
+    if build.count(sdk) != 2:
+        raise ValueError("Desktop addon SDK configuration changed; review source adaptation")
+    build = build.replace(sdk, '''    headers = ":selected_addon_sdk",
+    sdk_cxxstdlib = select({
+        ":linux_x64": False,
+        "//conditions:default": True,
+    }),''')
     build = 'load("@rules_electron//tools/ci:source_runtime_archive.bzl", "source_runtime_archive")\n' + build
     build += '''
+alias(
+    name = "selected_addon_sdk",
+    actual = select({
+        ":linux_x64": "@electron//sdk:node_v8_addon_sdk",
+        "//conditions:default": "@electron_addon_headers//:headers",
+    }),
+)
+
 source_runtime_archive(
     name = "source_sdk_archive",
     srcs = ["@electron//source/distribution:electron-linux-x64.zip"],

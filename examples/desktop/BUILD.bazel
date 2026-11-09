@@ -283,7 +283,7 @@ electron_cc_addon(
 electron_cc_addon(
     name = "incompatible_classic_addon",
     srcs = ["native/classic_addon.cc"],
-    defines = ["NODE_EMBEDDER_MODULE_VERSION=139"],
+    defines = ["TEST_NODE_MODULE_VERSION=139"],
     headers = "@electron_addon_headers//:headers",
     sdk_cxxstdlib = True,
 )

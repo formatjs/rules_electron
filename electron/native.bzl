@@ -3,6 +3,7 @@
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 
 _RUNTIME_STAGE = str(Label("@llvm//toolchain:runtime_stage"))
+_SDK_RUNTIME = str(Label("@llvm//toolchain:runtimes_stage1_hosted"))
 
 def _abi(settings, attr):
     platforms = settings["//command_line_option:platforms"]
@@ -57,9 +58,9 @@ def electron_cc_addon(name, srcs, headers, deps = [], copts = [], defines = [], 
         name = name + "_unix.node",
         srcs = srcs,
         deps = [headers] + deps,
-        copts = ["-std=c++20"] + (["-nostdinc++"] if sdk_cxxstdlib else []) + copts,
+        copts = ["-std=c++20"] + select({_SDK_RUNTIME: ["-nostdinc++"], "//conditions:default": []}) + copts,
         defines = defines,
-        linkopts = select({":" + macos: ["-Wl,-undefined,dynamic_lookup"], "//conditions:default": []}) + (["-nostdlib++"] if sdk_cxxstdlib else []) + linkopts,
+        linkopts = select({":" + macos: ["-Wl,-undefined,dynamic_lookup"], "//conditions:default": []}) + select({_SDK_RUNTIME: ["-nostdlib++"], "//conditions:default": []}) + linkopts,
         linkshared = True,
         target_compatible_with = select({":" + windows: ["@platforms//:incompatible"], "//conditions:default": []}),
         visibility = ["//visibility:private"],
