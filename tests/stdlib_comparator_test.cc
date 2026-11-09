@@ -16,11 +16,15 @@ struct less<Identity> {
 }  // namespace std
 
 int main() {
-  std::set<Identity> items;
+  const auto compare = [](const Identity& left, const Identity& right) {
+    return std::less<Identity>()(left, right);
+  };
+  std::set<Identity, decltype(compare)> items(compare);
   items.insert({2, 20});
   items.insert({1, 10});
   items.insert({2, 30});
-  if (items.size() != 2 || items.find({2, 99})->payload != 20) {
+  const auto found = items.find({2, 99});
+  if (items.size() != 2 || found == items.end() || found->payload != 20) {
     std::fputs("Specialized comparator lost identity semantics\n", stderr);
     return 1;
   }
