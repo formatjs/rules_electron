@@ -24,7 +24,15 @@ path. The slowest app assembly took 6.089 seconds. Smoke transport now has four
 independent archive actions behind a shared seven-app architecture gate. Each
 archive receives only its shard's payloads; build-only Linux ARM64 packages remain
 inputs to the validation gate. Archive compression, member ordering and bytes
-stay unchanged. Timing impact still needs BB measurement.
+stay unchanged.
+
+The [5869ebd matrix](https://formatjs.buildbuddy.io/invocation/31076533-be8e-4087-a160-96ae8d2d61ca)
+passes with four archive actions: maximum 46.033 seconds, cumulative 127.078
+seconds. The shared validation gate takes 3.401 seconds. All four archive
+SHA-256 hashes and sizes match `0b869ae` exactly, totaling 2,855,094,961 bytes.
+The new trace's critical path is 52.038 seconds; different compiler/package cache
+populations prevent a controlled whole-build comparison. Overlapping archive
+action times are not wall time and must not be summed as workflow duration.
 
 Before the split graph, [a7ffa3c](https://formatjs.buildbuddy.io/invocation/14a307f5-04ba-4de6-bf8e-212d2e8d4dac)
 spent 31.858 seconds across seven fixture builds, then 44.309 seconds building

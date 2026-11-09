@@ -8,7 +8,7 @@ electron-builder replacement.
 | --- | --- | --- |
 | Target selection | Seven example OS/CPU/compiler variants | Full source-built Electron runtime |
 | Main/preload/renderer inputs | Explicit files and generated directories | Rich package-provider adapters |
-| Runtime dependencies | Integrity-pinned npm v3 imports and bundled-owner validation; explicit workspace/generated package providers and nested layouts; target-built Node-API addon/helper | Provider-specific adapters; Electron Node/V8 ABI toolchains |
+| Runtime dependencies | Integrity-pinned npm v3 imports, workspace/generated providers and nested layouts; Node-API and Node/V8 addons with explicit ABI SDKs; Linux x64 source SDK | Provider-specific adapters; source SDKs for other targets |
 | ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity; complete standalone Linux source-runtime alias/sidecar/cache smoke | Source-runtime desktop packaging integration |
 | Extra resources/files | Declared file/tree mappings outside ASAR; Linux/macOS resource link declarations; BB ZIP/import/TAR/DEB boundaries and native macOS signed-link checks pass | Windows links and generated-tree link metadata |
 | File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories, including prepackaged imports | — |
@@ -17,7 +17,7 @@ electron-builder replacement.
 | Fuses | Named v1 settings, including macOS framework mutation before ad hoc signing | Universal macOS binaries; availability depends on runtime wire |
 | Linux app | Relocatable directory, DEB desktop/MIME/protocol/icon metadata, explicit dependencies/hooks, opt-in root-owned setuid sandbox helper verified on Linux x64 | Distribution-specific confinement |
 | macOS app | Branded bundle/helper metadata and ICNS icons, declared main Info.plist extensions, framework links, scoped main/inherited entitlements, hardened runtime, ad hoc signing, deterministic ZIP | Developer ID, production entitlement policy, notarization/stapling |
-| Windows app | Renamed executable, current-process Node-API exports, four compiler/CPU variants; PE version/product strings, ICO icons and ASAR integrity through declared source Node/resedit tooling | General addon delay-load/import-library tooling, Authenticode |
+| Windows app | Renamed executable, current-process Node-API/Node/V8 exports and source-built delay loading; four compiler/CPU variants; PE branding/icons/ASAR integrity; explicit Authenticode release command | Production signing trust and release identity validation |
 | App version/build number | Public SemVer manifest override/validation; explicit build number/version; macOS app/helper, Windows PE/NSIS and DEB iteration | — |
 | OS registration | Linux desktop/MIME declarations and declared file-type PNG/SVG icons (native PNG install/update/purge checks pass); macOS URL/document types, document icons and native LaunchServices delivery; user/machine Windows URI schemes, Open With/Default Apps file handlers, document ICO paths, extra file verbs and shortcut AppUserModelID (native x64/ARM64 MSVC installer lifecycle passes) | Richer document metadata |
 | Installers | Linux DEB for amd64/arm64; native RPM v4 writer and native Fedora install/update/remove checks; source-built AppImages and embedded updater feeds for both Linux CPUs; user/machine Windows NSIS with declared tools, independent installer/uninstaller icons and owned-file uninstall; native MSIX writer with signed bootstrap Electron install/upgrade/remove on both Windows CPUs | macOS disk images, production MSIX signing/OS integration and other packaging |
@@ -100,3 +100,10 @@ removal on Windows x64/ARM64. Both elevation helper compiler variants passed
 argument/token/exit checks and detached launch. Interactive consent and first-
 update differential cache seeding across users remain open. See
 [Windows installers](windows-installers.md).
+
+The [Node/V8 addon SDK](native-addons.md) now passes actual shared backing-store
+ownership and byte checks in the main thread and a worker on all four native
+hosts. All seven variants cross-build with Electron's matching source-built
+libc++ ABI. The Linux source SDK also passes those checks in the standalone
+source runtime after relocation and renaming. Full source desktop integration
+and source runtimes/SDKs for other platforms remain open.
