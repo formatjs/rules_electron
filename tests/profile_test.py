@@ -55,6 +55,16 @@ class ProfileTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             decode_profile(gzip.compress(b" " * 100), limit=10)
 
+    def test_source_summary_distinguishes_remote_preparation_queue_and_execution(self):
+        categories = ['Local parse to prepare for remote execution', 'Remote execution queuing time',
+                      'Remote execution process wall time', 'action dependency checking']
+        summary = summarize_source({'traceEvents': [
+            {'ph': 'X', 'ts': 0, 'dur': 1000000, 'cat': category, 'name': 'private-command'}
+            for category in categories
+        ]})
+        self.assertEqual(set(summary['categories']), set(categories))
+        self.assertNotIn('private-', json.dumps(summary))
+
     def test_source_summary_keeps_metrics_without_trace_labels(self):
         result = summarize_source({"traceEvents": [
             {"ph": "X", "cat": "general information", "name": "runAnalysisPhase", "ts": 0, "dur": 2000000},

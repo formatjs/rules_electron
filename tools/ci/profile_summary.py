@@ -14,6 +14,13 @@ def summarize_source(profile):
         "action processing", "remote action cache check", "remote output download",
         "general information", "skyframe evaluator", "critical path component",
         "thread wait", "VFS read", "Fetching repository",
+        "action dependency checking", "action resource lock", "update action information",
+        "complete action execution", "discover inputs", "remote action execution",
+        "Local parse to prepare for remote execution", "Remote execution upload time",
+        "Remote execution process wall time", "Remote execution queuing time",
+        "Remote execution setup", "Remote execution file fetching", "remote network",
+        "VFS stat", "VFS readdir", "VFS readlink", "VFS md5", "VFS xattr", "VFS open",
+        "filesystem traversal", "Staging per-action file system", "gc notification",
     }
     mnemonics = {
         "CppCompile", "CppLink", "CppArchive", "Rustc", "RustBindgen",
