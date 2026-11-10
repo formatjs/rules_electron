@@ -89,8 +89,17 @@ def profile_diagnostics(invocation, key, sha):
                 reason = 'TRUNCATED_GZIP'
                 try:
                     summary = summarize_source(recover_source_profile(data))
-                except (ValueError, zlib.error):
-                    pass
+                except (ValueError, zlib.error) as recovery_error:
+                    recovery_reason = {
+                        'Profile exceeds expanded size limit': 'EXPANDED_SIZE_LIMIT',
+                        'Invalid source profile timing': 'INVALID_TIMING',
+                        'Source profile timing exceeds limits': 'TIMING_LIMIT',
+                        'Source profile contains no recoverable events': 'NO_EVENTS',
+                        'Invalid source profile prefix': 'INVALID_PREFIX',
+                    }.get(str(recovery_error), 'INVALID_PROFILE')
+                    if isinstance(recovery_error, zlib.error):
+                        recovery_reason = 'INVALID_DEFLATE'
+                    print('Source profile recovery unavailable:', json.dumps({'name': name, 'reason': recovery_reason}))
                 else:
                     print('Recovered incomplete BB source profile ' + name + ':', json.dumps(summary, sort_keys=True))
             elif isinstance(error, gzip.BadGzipFile):

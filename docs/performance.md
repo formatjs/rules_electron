@@ -136,6 +136,16 @@ frontend CPU/memory hypothesis; no speedup or completed source desktop is claime
 Failed-run profile recovery is bounded to 128 MiB expanded data, retains only
 complete JSON events, and reports fixed public operation names without paths.
 
+The [16-CPU trial](https://formatjs.buildbuddy.io/invocation/8a01b8d6-6c78-4df9-9b63-2f3bc4f413fc)
+also hit the free-tier deadline (3600.252 seconds), reaching a reported
+119,830/132,406 actions. More requested CPUs did not complete the graph.
+The next trial retains 16 CPUs/32 GB and the 24 GB heap, adding
+`--discard_analysis_cache` only to the final build. Bazel documents this flag as
+freeing analysis memory during execution while retaining the on-disk action cache
+([memory guide](https://bazel.build/advanced/performance/memory)). This tests
+memory pressure rather than changing compiler inputs. CPU visibility is logged
+before setup; no completion or speedup is claimed.
+
 The Electron overlay's [4cdf425 BCR consumer build](https://formatjs.buildbuddy.io/invocation/70b2e6ab-afea-43f1-9eeb-4b68b00000b5)
 validated eight newly declared Node dependencies (133 C/C++ units) and their
 linked behavior probe. BB recorded 135 completed remote executions, 35.390

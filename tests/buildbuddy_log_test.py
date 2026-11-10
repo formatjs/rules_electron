@@ -47,6 +47,7 @@ class BuildBuddyLogTest(unittest.TestCase):
     def test_failed_source_truncated_profile_reports_fixed_reason(self):
         data = gzip.compress(b'{"traceEvents": []}')[:-4]
         self.assertIn('"reason": "TRUNCATED_GZIP"', self.source_profile(data))
+        self.assertIn('"reason": "NO_EVENTS"', self.source_profile(data))
 
     def test_recovered_source_profile_is_redacted_and_marked_incomplete(self):
         event = {'ph': 'X', 'ts': 0, 'dur': 1000000, 'cat': 'private-category',
