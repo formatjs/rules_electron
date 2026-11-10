@@ -370,7 +370,7 @@ class DmgTest(unittest.TestCase):
         self.assertEqual(data[:xml_offset], original[:xml_offset])
         self.assertEqual(decode_dmg(data), decode_dmg(original))
         self.assertEqual(base.read_bytes(), original)
-        self.assertEqual(metadata['LPic'][0]['Data'], struct.pack('>hHhhhhhh', 14, 2, 0, 0, 0, 14, 1, 1))
+        self.assertEqual(metadata['LPic'][0]['Data'], struct.pack('>hHhhhhhh', 1, 2, 0, 0, 0, 14, 1, 1))
         bodies = {entry['ID']: entry['Data'] for entry in metadata['RTF ']}
         self.assertEqual(bodies['5001'], rich_bytes)
         self.assertIn(b'License \\{fixture\\} \\\\ text\\par', bodies['5000'])

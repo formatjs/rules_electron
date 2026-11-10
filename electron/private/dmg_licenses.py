@@ -108,7 +108,7 @@ def license_resources(licenses, default_language='en_US', labels=''):
         resources[kind].append({'Attributes': '0x0000', 'ID': identity, 'Name': locale + ' SLA', 'Data': body})
         mappings.append(struct.pack('>hhh', language, index, int(encoding in ('shift_jis', 'euc_kr', 'gb2312', 'big5'))))
     resources['LPic'].append({'Attributes': '0x0000', 'ID': '5000', 'Name': '',
-                              'Data': struct.pack('>hH', LANGUAGES[default_language][0], len(mappings)) + b''.join(mappings)})
+                              'Data': struct.pack('>hH', sorted(locales).index(default_language), len(mappings)) + b''.join(mappings)})
     return {kind: entries for kind, entries in resources.items() if entries}
 
 
