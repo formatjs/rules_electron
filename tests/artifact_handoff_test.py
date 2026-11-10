@@ -1,16 +1,50 @@
 import copy
 import io
+import json
 from pathlib import Path
 import tempfile
 import unittest
+from contextlib import redirect_stdout, redirect_stderr
+from unittest.mock import patch
 from zipfile import ZipFile, ZipInfo
 
-from tools.ci.buildbuddy_artifacts import artifact_uri, invocation_id, source_profile_uri, source_frontend_metrics_uri
+from tools.ci.buildbuddy_artifacts import artifact_uri, invocation_id, source_profile_uri, source_frontend_metrics_uri, smoke_status_context
 from tools.ci.run_native_smoke import extract_variant
 from tools.ci.smoke_shards import SHARDS, archive_name
+from tools.ci.smoke_status_context import main as resolve_status
 
 
 class ArtifactHandoffTest(unittest.TestCase):
+    def test_status_command_keeps_credentials_and_unverified_metadata_private(self):
+        environment = {'BUILDBUDDY_API_KEY': 'private-read-key', 'BUILD_SHA': 'a' * 40,
+                       'INVOCATION_URL': 'https://formatjs.buildbuddy.io/invocation/12345678-1234-1234-1234-123456789abc'}
+        for trusted in (True, False):
+            response = self.response()
+            response['invocation'][0]['pattern'] = 'Source-built desktop example'
+            if not trusted:
+                response['invocation'][0]['repoUrl'] = 'https://private.example/secret'
+            output, errors = io.StringIO(), io.StringIO()
+            with patch.dict('os.environ', environment, clear=True), patch(
+                    'tools.ci.smoke_status_context.api_request', return_value=io.BytesIO(json.dumps(response).encode())) as request:
+                with redirect_stdout(output), redirect_stderr(errors):
+                    self.assertEqual(resolve_status(), 0 if trusted else 1)
+            request.assert_called_once_with('GetInvocation', {'selector': {
+                'invocation_id': '12345678-1234-1234-1234-123456789abc'}}, 'private-read-key')
+            self.assertEqual(output.getvalue(), 'Native Electron Smoke (source Linux x64)\n' if trusted else '')
+            self.assertEqual(errors.getvalue(), '' if trusted else 'SMOKE_STATUS_CONTEXT_FAILED\n')
+
+    def test_status_context_uses_verified_workflow_not_dispatch_event(self):
+        response = self.response()
+        self.assertEqual(smoke_status_context(response, 'a' * 40), 'Native Electron Smoke')
+        response['invocation'][0]['pattern'] = 'Source-built desktop example'
+        self.assertEqual(smoke_status_context(response, 'a' * 40), 'Native Electron Smoke (source Linux x64)')
+        for field, value in [('success', False), ('commitSha', 'c' * 40), ('repoUrl', 'https://example.invalid/private'),
+                             ('invocationStatus', 'PARTIAL_INVOCATION_STATUS'), ('pattern', 'Private workflow')]:
+            invalid = copy.deepcopy(response)
+            invalid['invocation'][0][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                smoke_status_context(invalid, 'a' * 40)
+
     def response(self):
         return {"invocation": [{
             "commitSha": "a" * 40,

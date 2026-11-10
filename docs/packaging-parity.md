@@ -6,10 +6,10 @@ electron-builder replacement.
 
 | Contract | Current support | Remaining work |
 | --- | --- | --- |
-| Target selection | Seven example OS/CPU/compiler variants | Full source-built Electron runtime |
+| Target selection | Seven example OS/CPU/compiler variants; Linux x64 source desktop/package/update smoke | Source runtimes for other triples |
 | Main/preload/renderer inputs | Explicit files and generated directories | Rich package-provider adapters |
 | Runtime dependencies | Integrity-pinned npm v3 imports, workspace/generated providers and nested layouts; Node-API and Node/V8 addons with explicit ABI SDKs; Linux x64 source SDK | Provider-specific adapters; source SDKs for other targets |
-| ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity; complete standalone Linux source-runtime alias/sidecar/cache smoke | Source-runtime desktop packaging integration |
+| ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity; complete standalone Linux source-runtime alias/sidecar/cache smoke | Complete source profiles for other triples |
 | Extra resources/files | Declared file/tree mappings outside ASAR; Linux/macOS resource links; separate generated-tree link metadata through filtering, ASAR, plain apps, extra resources/files; native generated ASAR/plain-app/resource/extra-file aliases pass | Windows filesystem links |
 | File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories, including prepackaged imports | — |
 | Manifest metadata | Deep-merge overlays, source/generated dependency-manifest version rewrites, top-level field/script removal; shared app/update identity | Provider-specific metadata adapters |
@@ -113,5 +113,6 @@ The [Node/V8 addon SDK](native-addons.md) now passes actual shared backing-store
 ownership and byte checks in the main thread and a worker on all four native
 hosts. All seven variants cross-build with Electron's matching source-built
 libc++ ABI. The Linux source SDK also passes those checks in the standalone
-source runtime after relocation and renaming. Full source desktop integration
-and source runtimes/SDKs for other platforms remain open.
+source runtime after relocation and renaming. The [source desktop handoff](https://github.com/formatjs/rules_electron/actions/runs/42790155958)
+also passes Linux x64 desktop, packages and updater launch with that SDK. Source
+runtimes/SDKs for other platforms remain open.

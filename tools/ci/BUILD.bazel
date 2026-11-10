@@ -117,6 +117,7 @@ py_library(
     srcs = [
         "buildbuddy_artifacts.py",
         "run_native_smoke.py",
+        "smoke_status_context.py",
     ],
     visibility = ["//tests:__pkg__"],
     deps = [

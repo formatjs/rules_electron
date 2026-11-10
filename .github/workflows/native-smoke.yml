@@ -181,17 +181,25 @@ jobs:
     needs: [download, native]
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       statuses: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
       - name: Record native smoke result
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_RO_PUBLIC_KEY }}
+          INVOCATION_URL: ${{ inputs.invocation_url || github.event.target_url }}
           BUILD_SHA: ${{ inputs.commit_sha || github.event.sha }}
           RESULTS: ${{ toJSON(needs) }}
-          SMOKE_STATUS_CONTEXT: ${{ github.event.context == 'Source-built desktop example' && 'Native Electron Smoke (source Linux x64)' || 'Native Electron Smoke' }}
         run: |
+          set -euo pipefail
+          smoke_context=$(python3 tools/ci/smoke_status_context.py)
           state=$(jq -r 'if all(.[]; .result == "success") then "success" else "failure" end' <<< "$RESULTS")
           gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$BUILD_SHA" \
-            -f state="$state" -f context="$SMOKE_STATUS_CONTEXT" \
+            -f state="$state" -f context="$smoke_context" \
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             -f description="Native smoke: $state"

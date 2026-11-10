@@ -8,12 +8,15 @@ and Linux/Windows fuse settings. No electron-builder, package installation, netw
 GN or Ninja runs inside assembly actions. Python runs through a pinned Bazel
 execution toolchain; the target runtime is never executed during assembly.
 
-**Source integration in progress:** [formatjs/electron](https://github.com/formatjs/electron)
+**Linux x64 source integration verified:** [formatjs/electron](https://github.com/formatjs/electron)
 builds a complete Linux x64 runtime. Its [standalone source test](https://formatjs.buildbuddy.io/invocation/6749caca-9b09-486b-92ea-294a92b378ba)
 passed relocation, packed browser/preload/renderer, IPC, pixels and ASAR checks.
 The [desktop example](examples/desktop/README.md) still uses labeled, pinned
-bootstrap runtimes by default. Full source desktop packaging and source runtimes
-for other platforms remain open. The source module is not published to BCR.
+bootstrap runtimes by default. Its Linux x64 source adaptation
+[builds on BB](https://formatjs.buildbuddy.io/invocation/b6c026bb-e5be-469c-a797-1c190931e9df)
+and [passes native desktop, installer and updater smoke](https://github.com/formatjs/rules_electron/actions/runs/42790155958).
+Other variants in that run remain bootstrap. Source runtimes for other platforms
+remain open. The source module is not published to BCR.
 
 ## Usage
 

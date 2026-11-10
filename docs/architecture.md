@@ -1,6 +1,7 @@
 # RFC: native Electron app rules
 
-Status: seven cross-built variants and four native host types verified. Full source-built Electron remains pending.
+Status: seven cross-built variants and four native host types verified. Linux x64
+source desktop/installer/updater smoke passes; other source profiles remain open.
 
 Build Electron apps as Bazel targets. Cache compiler, generator, app and packaging
 actions independently. Build inputs come from declared files and pinned repositories.

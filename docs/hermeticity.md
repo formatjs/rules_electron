@@ -646,8 +646,12 @@ Linux native handoff rejected the 2,333,020,147-byte source smoke shard at its
 2 GiB transport limit. Source-Linux transport now permits up to 3 GiB; other
 shards keep 2 GiB, all extraction limits stay unchanged. Transport uses the
 workflow's code revision while native smoke checks out the exact artifact commit.
-Repository, successful commit, digest and size checks remain required. Native
-validation is pending; the build alone does not establish source desktop execution.
+Repository, successful commit, digest and size checks remain required.
+The [handoff retry](https://github.com/formatjs/rules_electron/actions/runs/42790155958)
+passed all four hosts. Linux x64 uses the source runtime and SDK, including
+desktop, archive, DEB/RPM/AppImage and updater checks. Nine successful app reports
+include Node/V8 ABI 140. Other platforms in this run still use bootstrap runtimes.
+Frozen-lock validation and complete source profiles for those platforms remain open.
 
 The packaging cross-build action query now includes forbidden build-wrapper
 mnemonics alongside its required app/DMG actions. The platform-input audit rejects

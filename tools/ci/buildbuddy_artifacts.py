@@ -62,7 +62,7 @@ def source_frontend_metrics_uri(response, expected_sha):
     return _artifact_uri(response, expected_sha, 'source-frontend-metrics.jsonl', 1024**2, require_success=False)
 
 
-def _artifact_uri(response, expected_sha, artifact_name, max_bytes, require_success):
+def _verified_invocation(response, expected_sha, require_success):
     invocations = response.get("invocation", [])
     if len(invocations) != 1:
         raise ValueError("Expected one BuildBuddy invocation")
@@ -73,6 +73,17 @@ def _artifact_uri(response, expected_sha, artifact_name, max_bytes, require_succ
             or (require_success and not invocation.get("success"))
             or invocation.get("invocationStatus") != "COMPLETE_INVOCATION_STATUS"):
         raise ValueError("Expected successful matrix invocation for this repository and commit")
+    return invocation
+
+
+def smoke_status_context(response, expected_sha):
+    invocation = _verified_invocation(response, expected_sha, require_success=True)
+    return ('Native Electron Smoke (source Linux x64)' if invocation['pattern'] == 'Source-built desktop example'
+            else 'Native Electron Smoke')
+
+
+def _artifact_uri(response, expected_sha, artifact_name, max_bytes, require_success):
+    invocation = _verified_invocation(response, expected_sha, require_success)
     artifacts = [a for a in invocation.get("artifacts", []) if PurePosixPath(a.get("name", "")).name == artifact_name]
     if len(artifacts) != 1:
         raise ValueError("Expected one matching BuildBuddy artifact")

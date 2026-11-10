@@ -61,4 +61,8 @@ The standalone Linux source runtime [passes](https://formatjs.buildbuddy.io/invo
 backing-store ownership/bytes in the main thread and a worker after relocation
 and executable renaming, under both C/ASCII and C.UTF-8/Unicode paths.
 The source desktop adapter selects this SDK for Linux x64; other triples keep
-their explicit bootstrap SDK. Full desktop integration still needs validation.
+their explicit bootstrap SDK. The [1361 source desktop build](https://formatjs.buildbuddy.io/invocation/b6c026bb-e5be-469c-a797-1c190931e9df)
+and [native smoke](https://github.com/formatjs/rules_electron/actions/runs/42790155958)
+now pass Linux x64 desktop/package/updater launch with this SDK. Nine app reports
+passed, including Node/V8 ABI 140 and the main/worker backing-store checks.
+Source runtimes and SDKs for other triples remain open.
