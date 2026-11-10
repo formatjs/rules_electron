@@ -55,6 +55,59 @@ function run(argv) {
         raise RuntimeError('DMG_LICENSE_NATIVE_BODY_FAILED')
 
 
+def inspect_dialog(image):
+    script = '''
+on run
+    tell application "System Events"
+        repeat 40 times
+            set targets to application processes whose bundle identifier is "com.apple.DiskImageMounter"
+            repeat with targetProcess in targets
+                repeat with targetWindow in windows of targetProcess
+                    set bodyMatches to false
+                    repeat with element in entire contents of targetWindow
+                        try
+                            if (value of element as text) contains "Sample Desktop example license, version 1." then set bodyMatches to true
+                        end try
+                    end repeat
+                    if bodyMatches and (exists button "Disagree" of targetWindow) and (exists button "Agree" of targetWindow) then
+                        click button "Disagree" of targetWindow
+                        return "declined"
+                    end if
+                end repeat
+            end repeat
+            delay 0.5
+        end repeat
+    end tell
+    return "not-found"
+end run
+'''
+
+    def attached():
+        information = subprocess.run(['/usr/bin/hdiutil', 'info', '-plist'],
+                                     capture_output=True, check=True, timeout=30)
+        return [entry for entry in plistlib.loads(information.stdout).get('images', [])
+                if entry.get('image-path') == str(image)]
+
+    if attached():
+        raise RuntimeError('DMG_LICENSE_DIALOG_IMAGE_ALREADY_ATTACHED')
+    try:
+        opened = subprocess.run(['/usr/bin/open', '-a', 'DiskImageMounter', str(image)],
+                                capture_output=True, timeout=30)
+        result = subprocess.run(['/usr/bin/osascript', '-e', script], capture_output=True, timeout=30)
+        time.sleep(1)
+        print('DMG_LICENSE_DIALOG ' + json.dumps({
+            'opened': opened.returncode == 0, 'observer_exit_code': result.returncode,
+            'declined': result.returncode == 0 and result.stdout.strip() == b'declined',
+            'attached_images': len(attached()),
+        }, sort_keys=True), flush=True)
+    finally:
+        for entry in attached():
+            devices = [value['dev-entry'] for value in entry.get('system-entities', []) if value.get('dev-entry')]
+            if not devices:
+                raise RuntimeError('DMG_LICENSE_DIALOG_CLEANUP_FAILED')
+            subprocess.run(['/usr/bin/hdiutil', 'detach', devices[0]], capture_output=True, check=True, timeout=120)
+
+
 def interactive_attach(arguments, answer, timeout=120):
     if answer not in (b'n', b'y'):
         raise ValueError('Expected one explicit license answer')

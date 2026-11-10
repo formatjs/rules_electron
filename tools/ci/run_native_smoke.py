@@ -120,7 +120,7 @@ if __name__ == "__main__":
                 subprocess.run([sys.executable, "-m", "tools.ci.plain_links_smoke",
                                 str(directory / variant / "packages/plain_links.zip"), target_os, target_arch], check=True)
             if target_os == "macos":
-                from tools.ci.dmg_license_smoke import inspect_license, interactive_attach
+                from tools.ci.dmg_license_smoke import inspect_dialog, inspect_license, interactive_attach
 
                 image = directory / variant / "packages/release_dmg.dmg"
                 mount = directory / variant / "mounted-dmg"
@@ -143,6 +143,7 @@ if __name__ == "__main__":
                 if not declined.returncode or not declined.answered or license_header not in declined.output:
                     if not declined.returncode:
                         subprocess.run(["/usr/bin/hdiutil", "detach", str(mount)], check=True, timeout=120)
+                    inspect_dialog(image)
                     raise RuntimeError('DMG_LICENSE_DECLINE_FAILED')
                 if (mount / 'Sample Desktop.app').exists():
                     raise RuntimeError('DMG_LICENSE_DECLINE_MOUNTED_IMAGE')
