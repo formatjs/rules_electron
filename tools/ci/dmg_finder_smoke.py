@@ -14,22 +14,29 @@ on run argv
     set targetFolder to (POSIX file (item 1 of argv)) as alias
     set expectedBackground to item 2 of argv
     set targetWindow to missing value
+    set stage to 1
     tell application "Finder"
         try
             open targetFolder
             set targetWindow to container window of targetFolder
             delay 1
             set viewSettings to icon view options of targetWindow
+            set stage to 2
             set pictureMatches to false
             if expectedBackground is not "" then
-                set pictureMatches to (POSIX path of (background picture of viewSettings as alias)) is expectedBackground
+                set pictureFile to background picture of viewSettings
+                set stage to 3
+                set pictureAlias to pictureFile as alias
+                set stage to 4
+                set pictureMatches to (POSIX path of pictureAlias) is expectedBackground
             end if
+            set stage to 5
             set snapshot to {(current view of targetWindow is icon view), bounds of targetWindow, toolbar visible of targetWindow, statusbar visible of targetWindow, icon size of viewSettings, text size of viewSettings, position of item "Sample Desktop.app" of targetFolder, position of item "Applications" of targetFolder, pictureMatches, bounds of window of desktop}
             close targetWindow
             return snapshot
         on error messageText number messageNumber
             if targetWindow is not missing value then close targetWindow
-            error messageText number messageNumber
+            error ("Finder smoke stage " & stage) number messageNumber
         end try
     end tell
 end run
@@ -73,7 +80,8 @@ def check_layout(mount):
         if "-1743" in result.stderr:
             raise RuntimeError("FINDER_AUTOMATION_DENIED")
         codes = re.findall(r"\((-?\d+)\)", result.stderr)
-        raise RuntimeError("FINDER_LAYOUT_SCRIPT_FAILED " + ",".join(codes))
+        stages = re.findall(r"Finder smoke stage (\d+)", result.stderr)
+        raise RuntimeError("FINDER_LAYOUT_SCRIPT_FAILED " + ",".join(codes) + " stage=" + ",".join(stages))
     try:
         values = json.loads(result.stdout.replace("{", "[").replace("}", "]"))
     except ValueError:

@@ -77,14 +77,14 @@ def hfs_volume(image):
     return offsets[0]
 
 
-def folder_finder_flags(image):
+def catalog_records(image):
     volume = hfs_volume(image)
     header = volume + 1024
     block_size = struct.unpack_from(">I", image, header + 40)[0]
     catalog = volume + struct.unpack_from(">I", image, header + 288)[0] * block_size
     node_size = struct.unpack_from(">H", image, catalog + 32)[0]
     node = struct.unpack_from(">I", image, catalog + 24)[0]
-    flags, visited = {}, set()
+    visited = set()
     while node:
         if node in visited or len(visited) > 10000:
             raise ValueError("Invalid HFS+ catalog chain")
@@ -94,11 +94,16 @@ def folder_finder_flags(image):
         for index in range(count):
             record = start + struct.unpack_from(">H", image, start + node_size - 2 * (index + 1))[0]
             data = record + 2 + struct.unpack_from(">H", image, record)[0]
-            if struct.unpack_from(">H", image, data)[0] == 1:
-                identity = struct.unpack_from(">I", image, data + 8)[0]
-                flags[identity] = struct.unpack_from(">H", image, data + 56)[0]
+            length = struct.unpack_from(">H", image, record + 6)[0]
+            name = image[record + 8:record + 8 + 2 * length].decode("utf-16be")
+            parent = struct.unpack_from(">I", image, record + 2)[0]
+            yield parent, name, data
         node = struct.unpack_from(">I", image, start)[0]
-    return flags
+
+
+def folder_finder_flags(image):
+    return {struct.unpack_from(">I", image, data + 8)[0]: struct.unpack_from(">H", image, data + 56)[0]
+            for _, _, data in catalog_records(image) if struct.unpack_from(">H", image, data)[0] == 1}
 
 
 class DmgTest(unittest.TestCase):
@@ -273,6 +278,11 @@ class DmgTest(unittest.TestCase):
         self.assertNotIn(str(self.root).encode(), data)
         volume_date = struct.unpack_from(">I", image, hfs_volume(image) + 1024 + 16)[0]
         self.assertEqual(struct.unpack_from(">I", data, 38)[0], volume_date)
+        background_records = [record for parent, name, record in catalog_records(image)
+                              if parent == 2 and name == ".background.png"]
+        self.assertEqual(len(background_records), 1)
+        background_date = struct.unpack_from(">I", image, background_records[0] + 12)[0]
+        self.assertEqual(struct.unpack_from(">I", data, 114)[0], background_date)
         moved = self.root / "moved inputs"
         moved.mkdir()
         moved_background = moved / "different name.png"
