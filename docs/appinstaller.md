@@ -1,0 +1,52 @@
+# MSIX App Installer updates
+
+`electron_msix_appinstaller` writes a deterministic `.appinstaller` descriptor
+from the final MSIX's embedded identity. It runs on BB Linux with declared Python
+and MSIX inputs. No Windows SDK tool, signing key, clock or network enters this
+action. The MSIX bytes remain unchanged.
+
+```starlark
+load("@rules_electron//electron:msix.bzl", "electron_msix_appinstaller")
+
+electron_msix_appinstaller(
+    name = "update",
+    package = ":signed_msix",
+    appinstaller_uri = "https://updates.example.com/windows/arm64/latest.appinstaller",
+    package_uri = "https://updates.example.com/windows/arm64/Example-2.0.0.msix",
+    hours_between_update_checks = 12,
+    automatic_background_task = True,
+)
+```
+
+Name, publisher, package version and CPU come from `AppxManifest.xml` inside the
+package. The descriptor version defaults to that package version;
+`appinstaller_version` overrides it with four numeric components. This validates
+metadata, not package signatures or certificate trust. Deploy final signed MSIX
+bytes with the exact identity and filename referenced by the descriptor.
+
+The rule emits Microsoft's
+[2021 schema](https://learn.microsoft.com/en-us/windows/msix/app-installer/how-to-create-appinstaller-file).
+`check_on_launch` controls `OnLaunch`; its default interval is 24 hours, with
+0–255 accepted. `show_prompt` and `update_blocks_activation` declare launch
+policy; blocking requires a prompt. `automatic_background_task` enables the
+background element. `force_update_from_any_version` explicitly permits downgrades.
+`update_uris` and `repair_uris` accept up to ten distinct fallback URLs each.
+Windows owns scheduling, prompts and policy enforcement; see
+[update settings](https://learn.microsoft.com/en-us/windows/msix/app-installer/update-settings).
+
+URLs require HTTPS without credentials, query or fragment. Percent-encode Unicode
+or spaces. `allow_http_loopback` exists for explicit native fixtures. Use separate
+CPU URLs unless distributing an MSIX bundle; this rule currently emits
+`MainPackage`, not `MainBundle` or dependency/optional-package sets.
+
+Publish package bytes before promoting the descriptor. This rule neither uploads
+nor installs them. App Installer uses Windows deployment APIs; it does not make
+MSIX an electron-updater installer. Store distribution remains a separate flow.
+
+Validation is pending. BB tests check identity, policy, URL boundaries, immutable
+inputs, relocation/mtime stability and UTF-8/UTF-16 manifests. Native x64/ARM64
+fixtures serve only unchanged BB outputs on loopback, install v1 through App
+Installer, adopt its URI through `GetAppInstallerInfo`, update to v2, launch real
+Electron and remove the package. Existing signature/activation tests remain
+separate. The short fixture does not prove background timing, prompt UX, fallback
+server failover or production certificate trust.

@@ -15,6 +15,12 @@ py_library(
 exports_files(["source_runtime_archive.bzl"])
 
 py_library(
+    name = "appinstaller_server",
+    srcs = ["windows_appinstaller_server.py"],
+    visibility = ["//tests:__pkg__"],
+)
+
+py_library(
     name = "buildbuddy_logs",
     srcs = ["buildbuddy_log.py"],
     visibility = ["//tests:__pkg__"],

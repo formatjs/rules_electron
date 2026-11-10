@@ -1,5 +1,7 @@
 # MSIX
 
+App Installer update descriptors have a separate [rule and native flow](appinstaller.md).
+
 `electron_msix` packages an assembled Windows `ElectronAppInfo` on Linux BB
 workers. No Windows executable, SDK packager or build-system wrapper runs during
 assembly. Python runtime, app tree, package manifest, optional directory manifest

@@ -8,7 +8,7 @@ load("@rules_electron//electron:dmg.bzl", "electron_dmg", "electron_dmg_license"
 load("@rules_electron//electron:files.bzl", "electron_files")
 load("@rules_electron//electron:linux.bzl", "electron_deb", "electron_rpm")
 load("@rules_electron//electron:matching.bzl", "electron_file_matcher")
-load("@rules_electron//electron:msix.bzl", "electron_msix")
+load("@rules_electron//electron:msix.bzl", "electron_msix", "electron_msix_appinstaller")
 load("@rules_electron//electron:native.bzl", "electron_cc_addon")
 load("@rules_electron//electron:npm.bzl", "electron_npm_package", "electron_npm_tree")
 load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool")
@@ -612,11 +612,16 @@ filegroup(
 filegroup(
     name = "windows_release_files",
     srcs = [
+        ":appinstaller_signed_desktop_v1",
+        ":appinstaller_signed_desktop_v2",
+        ":msix_appinstaller_v1",
+        ":msix_appinstaller_v2",
         ":msix_probe",
         ":msix_reader",
         ":msix_signed_desktop_v1",
         ":msix_signed_desktop_v2",
         ":msix_signed_probe",
+        ":msix_update",
         ":nsis_machine_v1_feed",
         ":nsis_machine_v2_feed",
         ":nsis_v1_feed",
@@ -930,7 +935,7 @@ signed_msix_fixture(
 
 [
     electron_msix(
-        name = "msix_desktop_" + suffix,
+        name = prefix + "_desktop_" + suffix,
         app = ":msix_app_" + suffix,
         file_association_icons = {
             ":msix_logo_44": ".samplemsix",
@@ -940,7 +945,7 @@ signed_msix_fixture(
             ".samplemsix": "Sample MSIX document",
             ".samplemsix_alt": "Sample MSIX alternate document",
         },
-        identity_name = "org.example.DesktopMsix",
+        identity_name = identity,
         logo_150 = ":msix_logo_150",
         logo_44 = ":msix_logo_44",
         protocols = [
@@ -952,6 +957,10 @@ signed_msix_fixture(
         store_logo = ":msix_logo_50",
         target_compatible_with = ["@platforms//os:windows"],
     )
+    for prefix, identity in [
+        ("msix", "org.example.DesktopMsix"),
+        ("appinstaller", "org.example.DesktopAppInstaller"),
+    ]
     for suffix in [
         "v1",
         "v2",
@@ -959,12 +968,65 @@ signed_msix_fixture(
 ]
 
 [
+    filegroup(
+        name = prefix + "_final_" + suffix,
+        srcs = [":" + prefix + "_signed_desktop_" + suffix],
+        output_group = "signed",
+        target_compatible_with = ["@platforms//os:windows"],
+    )
+    for prefix in [
+        "msix",
+        "appinstaller",
+    ]
+    for suffix in [
+        "v1",
+        "v2",
+    ]
+]
+
+[
+    electron_msix_appinstaller(
+        name = "msix_appinstaller_" + suffix,
+        allow_http_loopback = True,
+        appinstaller_uri = "http://127.0.0.1:31827/desktop.appinstaller",
+        automatic_background_task = True,
+        hours_between_update_checks = 0,
+        package = ":appinstaller_final_" + suffix,
+        package_uri = "http://127.0.0.1:31827/appinstaller_signed_desktop_" + suffix + ".msix",
+        target_compatible_with = ["@platforms//os:windows"],
+    )
+    for suffix in [
+        "v1",
+        "v2",
+    ]
+]
+
+electron_msix_appinstaller(
+    name = "msix_update",
+    appinstaller_uri = select({
+        ":windows_arm64": "https://updates.example.invalid/desktop/arm64/latest.appinstaller",
+        "//conditions:default": "https://updates.example.invalid/desktop/x64/latest.appinstaller",
+    }),
+    automatic_background_task = True,
+    package = ":msix_final_v2",
+    package_uri = select({
+        ":windows_arm64": "https://updates.example.invalid/desktop/arm64/Sample-2.0.0.msix",
+        "//conditions:default": "https://updates.example.invalid/desktop/x64/Sample-2.0.0.msix",
+    }),
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+[
     signed_msix_fixture(
-        name = "msix_signed_desktop_" + suffix,
-        src = ":msix_desktop_" + suffix,
+        name = prefix + "_signed_desktop_" + suffix,
+        src = ":" + prefix + "_desktop_" + suffix,
         tamper_file = "",
         target_compatible_with = ["@platforms//os:windows"],
     )
+    for prefix in [
+        "msix",
+        "appinstaller",
+    ]
     for suffix in [
         "v1",
         "v2",

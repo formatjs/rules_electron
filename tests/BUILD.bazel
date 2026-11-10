@@ -950,6 +950,20 @@ electron_update_feed(
 )
 
 py_test(
+    name = "appinstaller_server_test",
+    size = "small",
+    srcs = ["appinstaller_server_test.py"],
+    deps = ["//tools/ci:appinstaller_server"],
+)
+
+py_test(
+    name = "appinstaller_test",
+    size = "small",
+    srcs = ["appinstaller_test.py"],
+    deps = ["//electron/private:appinstaller"],
+)
+
+py_test(
     name = "msix_test",
     size = "small",
     srcs = ["msix_test.py"],

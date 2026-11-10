@@ -55,7 +55,10 @@ def _signed_impl(ctx):
         outputs = [signed] + ([tampered] if tampered else []),
         mnemonic = "ElectronPublicTestSign",
     )
-    return [DefaultInfo(files = depset([signed, public_certificate] + ([tampered] if tampered else [])))]
+    return [
+        DefaultInfo(files = depset([signed, public_certificate] + ([tampered] if tampered else []))),
+        OutputGroupInfo(signed = depset([signed])),
+    ]
 
 signed_msix_fixture = rule(
     implementation = _signed_impl,

@@ -58,7 +58,8 @@ passed single-part publication tests. BB tests run AWS's documented GET/PUT
 signature vectors and the public executable against a signature-verifying loopback server. They
 exercise session tokens, Unicode keys, repeated slashes, exact bytes/order,
 identical retry, concurrent channels, HTTP 409, redirects, wrong signatures,
-corrupt feeds and the object-size boundary. Multipart validation is pending;
-its cases include three parts with a short final part, signed query parameters,
+corrupt feeds and the object-size boundary. The
+[a2a6277 BB suite](https://formatjs.buildbuddy.io/invocation/99e04ace-069c-407f-aca3-72120237fbcb)
+passed multipart cases: three parts with a short final part, signed query parameters,
 identical-object retry, part failure, completion conflict and embedded HTTP 200
 errors. These tests do not establish live AWS or other provider interoperability.
