@@ -12,6 +12,7 @@ load("@rules_electron//electron:msix.bzl", "electron_msix")
 load("@rules_electron//electron:native.bzl", "electron_cc_addon")
 load("@rules_electron//electron:npm.bzl", "electron_npm_package", "electron_npm_tree")
 load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool")
+load("@rules_electron//electron:portable.bzl", "electron_portable")
 load("@rules_electron//electron:update.bzl", "electron_update_config", "electron_update_feed")
 load("@rules_electron//electron:windows.bzl", "electron_windows_resource_tool")
 load("@rules_python//python:defs.bzl", "py_test")
@@ -523,6 +524,16 @@ electron_nsis_tool(
     data = "@nsis_linux_x64//:data",
 )
 
+electron_portable(
+    name = "portable",
+    app = ":app",
+    app_filename = "Sample Desktop",
+    icon = ":example_installer_icon",
+    target_compatible_with = ["@platforms//os:windows"],
+    tool = ":nsis_tool",
+    verify_reproducible = True,
+)
+
 [
     electron_nsis(
         name = name,
@@ -609,6 +620,7 @@ filegroup(
         ":nsis_machine_v2_feed",
         ":nsis_v1_feed",
         ":nsis_v2_feed",
+        ":portable",
     ],
     target_compatible_with = ["@platforms//os:windows"],
 )

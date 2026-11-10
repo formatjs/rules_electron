@@ -1,5 +1,7 @@
 # Windows installers
 
+Portable launchers have a separate [rule and runtime contract](windows-portable.md).
+
 `electron_nsis.license` accepts a declared UTF-8 `.txt` or `.rtf` agreement.
 Interactive installation shows it before directory selection and requires a
 checked acceptance box. Text normalizes to BOM-marked UTF-16LE with CRLF;

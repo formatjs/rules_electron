@@ -546,6 +546,12 @@ cross_build(
 )
 
 py_test(
+    name = "portable_test",
+    srcs = ["portable_test.py"],
+    deps = ["//electron/private:portable"],
+)
+
+py_test(
     name = "nsis_test",
     size = "small",
     srcs = ["nsis_test.py"],

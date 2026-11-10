@@ -215,8 +215,23 @@ app.whenReady().then(async () => {
       assert.deepEqual(environment, { node: 'undefined', bridge: 'function', sandboxed: true, contextIsolated: true });
       const update_version = process.windowsStore ? null : await require('./updater-smoke.cjs')();
       clearTimeout(watchdog);
-      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify({ ...result, architecture: process.arch, platform: process.platform, update_version, app_version: app.getVersion(), windows_store: Boolean(process.windowsStore), classic_module_abi: classicAddon.moduleAbi }));
-      app.quit();
+      const report = { ...result, architecture: process.arch, platform: process.platform, update_version, app_version: app.getVersion(), windows_store: Boolean(process.windowsStore), classic_module_abi: classicAddon.moduleAbi };
+      console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify(report));
+      if (process.env.RULES_ELECTRON_PORTABLE_REPORT) {
+        fs.writeFileSync(process.env.RULES_ELECTRON_PORTABLE_REPORT, JSON.stringify({
+          ...report,
+          portable: {
+            directory: process.env.PORTABLE_EXECUTABLE_DIR,
+            file: process.env.PORTABLE_EXECUTABLE_FILE,
+            app_filename: process.env.PORTABLE_EXECUTABLE_APP_FILENAME,
+            executable: process.execPath,
+            arguments: process.argv.slice(1),
+          },
+        }));
+        app.exit(Number(process.env.RULES_ELECTRON_PORTABLE_EXIT || 0));
+      } else {
+        app.quit();
+      }
     } catch (error) {
       console.error(error);
       app.exit(1);

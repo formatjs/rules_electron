@@ -1,5 +1,7 @@
 """electron-updater configuration and release feeds from final artifacts."""
 
+load(":portable.bzl", "ElectronPortableInfo")
+
 def _config_impl(ctx):
     if ctx.attr.provider == "generic":
         if not ctx.attr.url.startswith("https://") and not ctx.attr.url.startswith("http://"):
@@ -57,6 +59,8 @@ def _feed_impl(ctx):
     artifacts = []
     inputs = [ctx.file.package_json]
     for target, filename in ctx.attr.artifacts.items():
+        if ElectronPortableInfo in target:
+            fail("Portable executables cannot be used as electron-updater installers")
         files = target[DefaultInfo].files.to_list()
         if len(files) != 1 or files[0].is_directory:
             fail("Update artifacts must each provide one final file: %s" % target.label)

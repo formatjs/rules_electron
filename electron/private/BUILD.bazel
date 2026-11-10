@@ -200,6 +200,26 @@ py_binary(
 )
 
 py_library(
+    name = "portable",
+    srcs = ["portable.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        ":icons",
+        ":identity",
+        ":nsis",
+        ":updates",
+    ],
+)
+
+py_binary(
+    name = "portable_packager",
+    srcs = ["portable.py"],
+    main = "portable.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":portable"],
+)
+
+py_library(
     name = "updates",
     srcs = ["update.py"],
     visibility = [

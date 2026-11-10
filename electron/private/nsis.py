@@ -80,6 +80,48 @@ def license_payload(source):
     return b'\xff\xfe' + text.replace('\n', '\r\n').encode('utf-16le')
 
 
+def payload_inventory(app, executable, directory_manifest=''):
+    app = Path(app)
+    files, directories, seen = [], set(), set()
+    for path in sorted(app.rglob('*')):
+        if path.is_symlink():
+            raise ValueError('Windows installer payload cannot contain symlinks')
+        relative = path.relative_to(app)
+        for part in relative.parts:
+            _filename(part)
+        name = relative.as_posix()
+        literal(name)
+        if name.casefold() in seen:
+            raise ValueError('Case-insensitive Windows payload collision')
+        seen.add(name.casefold())
+        if path.is_dir():
+            directories.add(name)
+        elif path.is_file():
+            files.append((name, path))
+        else:
+            raise ValueError('Windows installer requires regular payload files')
+    if directory_manifest:
+        for path in read_directories(directory_manifest):
+            for part in path.parts:
+                _filename(part)
+            name = str(path)
+            literal(name)
+            if name.casefold() in seen and name not in directories:
+                raise ValueError('Windows directory manifest collision')
+            directories.add(name)
+            seen.add(name.casefold())
+    directories.update(str(parent) for name in list(directories) for parent in Path(name).parents if str(parent) != '.')
+    files_by_case = {name.casefold() for name, _ in files}
+    if any(name.casefold() in files_by_case for name in directories):
+        raise ValueError('Windows directory manifest collision')
+    if len({name.casefold() for name in directories}) != len(directories):
+        raise ValueError('Case-insensitive Windows directory collision')
+    seen.update(name.casefold() for name in directories)
+    if not any(name == executable for name, _ in files):
+        raise ValueError('Windows app executable missing')
+    return files, directories, seen
+
+
 def installer_script(app, package_json, app_id, product_name, executable_name,
                      output, protocols=(), desktop_shortcut=False, compression="zlib",
                      updater_cache_name="", architecture="x64", payload_archive="",
@@ -152,45 +194,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         config = json.loads((app / 'resources/app-update.yml').read_text(encoding='utf-8'))
         if config.get('updaterCacheDirName') != updater_cache_name:
             raise ValueError('Installer updater cache must match app-update.yml')
-    files = []
-    directories = set()
-    seen = set()
-    for path in sorted(app.rglob("*")):
-        if path.is_symlink():
-            raise ValueError("Windows installer payload cannot contain symlinks")
-        relative = path.relative_to(app)
-        for part in relative.parts:
-            _filename(part)
-        name = relative.as_posix()
-        literal(name)
-        if name.casefold() in seen:
-            raise ValueError("Case-insensitive Windows payload collision")
-        seen.add(name.casefold())
-        if path.is_dir():
-            directories.add(name)
-        elif path.is_file():
-            files.append((name, path))
-        else:
-            raise ValueError("Windows installer requires regular payload files")
-    if directory_manifest:
-        for path in read_directories(directory_manifest):
-            for part in path.parts:
-                _filename(part)
-            name = str(path)
-            literal(name)
-            if name.casefold() in seen and name not in directories:
-                raise ValueError("Windows directory manifest collision")
-            directories.add(name)
-            seen.add(name.casefold())
-    directories.update(str(parent) for name in list(directories) for parent in Path(name).parents if str(parent) != ".")
-    files_by_case = {name.casefold() for name, _ in files}
-    if any(name.casefold() in files_by_case for name in directories):
-        raise ValueError("Windows directory manifest collision")
-    if len({name.casefold() for name in directories}) != len(directories):
-        raise ValueError("Case-insensitive Windows directory collision")
-    seen.update(name.casefold() for name in directories)
-    if not any(name == executable for name, _ in files):
-        raise ValueError("Windows app executable missing")
+    files, directories, seen = payload_inventory(app, executable, directory_manifest)
     if seen.intersection({"uninstall.exe", ".rules-electron.ini"}):
         raise ValueError("Runtime occupies installer-owned path")
     association_icons = {}
@@ -435,7 +439,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     return '\n'.join(lines) + '\n'
 
 
-def build_installer(manifest, output, script):
+def compile_executable(manifest, output, script, script_builder):
     manifest = dict(manifest)
     compiler = str(Path(manifest.pop('compiler')).resolve())
     data = str(Path(manifest.pop('data')).resolve())
@@ -463,7 +467,8 @@ def build_installer(manifest, output, script):
     def compile_once(options, directory, destination, script_path):
         options = dict(options)
         entries = license_entries(options.get('licenses', []), options.get('license_default_language', 'en_US'), options.get('license', ''))
-        options['licenses'] = []
+        if entries or 'licenses' in options:
+            options['licenses'] = []
         total = 0
         for entry in entries:
             body = license_payload(entry['source'])
@@ -482,7 +487,7 @@ def build_installer(manifest, output, script):
                 raise ValueError('7z compression requires a declared archive compiler')
             payload = directory / 'payload.7z'
             options['payload_archive'] = str(payload)
-            installer_script(output=destination, **options)
+            script_builder(output=destination, **options)
             listing = directory / 'files.txt'
             app = Path(options['app']).resolve()
             listing.write_text(''.join(path.relative_to(app).as_posix() + '\n' for path in sorted(app.rglob('*')) if path.is_file()), encoding='utf-8')
@@ -494,7 +499,7 @@ def build_installer(manifest, output, script):
             selected = {line.removeprefix('Method = ').strip() for line in methods.splitlines() if line.startswith('Method = ')}
             if any(any(not (part == 'Copy' or part.startswith('LZMA2')) for part in method.split()) for method in selected):
                 raise ValueError('NSIS payload requires plain LZMA2 or Copy streams: ' + repr(sorted(selected)))
-        text = installer_script(output=destination, **options)
+        text = script_builder(output=destination, **options)
         script_path.write_text(text, encoding='utf-8')
         subprocess.run([compiler, '-NOCONFIG', '-V2', str(script_path.resolve())], env=environment, check=True)
         app = Path(options['app']).resolve()
@@ -506,7 +511,7 @@ def build_installer(manifest, output, script):
                     'uninstaller_icon': 'uninstaller.ico', 'payload_archive': 'payload.7z',
                     'license': path.name}[role]
 
-        script_path.write_text(installer_script(output=destination, path_format=stable_path, **options), encoding='utf-8')
+        script_path.write_text(script_builder(output=destination, path_format=stable_path, **options), encoding='utf-8')
 
     with tempfile.TemporaryDirectory() as temporary:
         directory = Path(temporary)
@@ -521,13 +526,15 @@ def build_installer(manifest, output, script):
             repeat.mkdir()
             second = repeat / output.name
             repeated = dict(manifest, app=str(mirror))
-            repeated['licenses'] = []
+            if 'licenses' in manifest:
+                repeated['licenses'] = []
             for index, entry in enumerate(manifest.get('licenses', [])):
                 moved_license = repeat / ('relocated-' + str(index) + Path(entry['source']).suffix)
                 shutil.copyfile(entry['source'], moved_license)
                 os.utime(moved_license, (1234567890, 1234567890))
                 repeated['licenses'].append(dict(entry, source=str(moved_license)))
-            repeated['licenses'].reverse()
+            if 'licenses' in repeated:
+                repeated['licenses'].reverse()
             for field in ('installer_icon', 'uninstaller_icon'):
                 if manifest.get(field):
                     icon = repeat / (field + '.ico')
@@ -547,6 +554,10 @@ def build_installer(manifest, output, script):
                 raise ValueError('NSIS output is not reproducible across output directories')
             if Path(script).read_bytes() != (repeat / 'installer.nsi').read_bytes():
                 raise ValueError('NSIS script is not reproducible across output directories')
+
+
+def build_installer(manifest, output, script):
+    return compile_executable(manifest, output, script, installer_script)
 
 
 if __name__ == '__main__':

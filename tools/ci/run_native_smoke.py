@@ -221,6 +221,8 @@ if __name__ == "__main__":
                 subprocess.run([sys.executable, "tools/ci/linux_deb_smoke.py", str(directory / variant / "packages")], check=True)
                 subprocess.run([sys.executable, "tools/ci/linux_rpm_container.py", str(directory / variant / "packages")], check=True)
             if target_os == "windows":
+                subprocess.run([sys.executable, "tools/ci/windows_portable_smoke.py",
+                                str(directory / variant / "packages"), target_arch], check=True)
                 subprocess.run([sys.executable, "tools/ci/windows_elevation_smoke.py",
                                 str(directory / variant / "packages"), target_arch], check=True)
             if variant.endswith("_msvc"):
