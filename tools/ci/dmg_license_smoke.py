@@ -65,9 +65,13 @@ function run(argv) {
         raise RuntimeError('DMG_LICENSE_NATIVE_BODY_FAILED')
 
 
-def inspect_dialog(image):
+def inspect_dialog(image, answer='decline'):
+    if answer not in ('decline', 'accept'):
+        raise ValueError('Expected one explicit license answer')
     script = '''
 on run argv
+    set decision to item 1 of argv
+    set argv to rest of argv
     set maxProcesses to 0
     set maxWindows to 0
     set sawBody to false
@@ -149,8 +153,14 @@ on run argv
                     if agreeControl is not missing value then set sawAgree to true
                     if disagreeControl is not missing value then set sawDisagree to true
                     if bodyMatches and agreeControl is not missing value and disagreeControl is not missing value then
-                        click disagreeControl
-                        return "declined," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError
+                        if decision is "accept" then
+                            click agreeControl
+                            set outcome to "accepted"
+                        else
+                            click disagreeControl
+                            set outcome to "declined"
+                        end if
+                        return outcome & "," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError
                     end if
                 end repeat
             end repeat
@@ -223,24 +233,35 @@ function run() {
               'error_stage': candidates.get('error_stage') if candidates.get('error_stage') in range(1, 6) else None,
               'type_error': b'TypeError' in owners.stderr, 'reference_error': b'ReferenceError' in owners.stderr,
               'core_graphics_symbol': b'CGWindowListCopyWindowInfo' in owners.stderr}, sort_keys=True), flush=True)
-        result = subprocess.run(['/usr/bin/osascript', '-e', script, *map(str, identifiers)],
+        result = subprocess.run(['/usr/bin/osascript', '-e', script, answer, *map(str, identifiers)],
                                 capture_output=True, timeout=120)
         time.sleep(1)
+        images = attached()
+        if answer == 'accept' and result.stdout.startswith(b'accepted,'):
+            deadline = time.monotonic() + 30
+            while not images and time.monotonic() < deadline:
+                time.sleep(0.5)
+                images = attached()
+        mounts = [Path(entity['mount-point']) for entry in images
+                  for entity in entry.get('system-entities', []) if entity.get('mount-point')]
         summary = {
             'opened': opened.returncode == 0, 'observer_exit_code': result.returncode,
-            'declined': False,
-            'attached_images': len(attached()),
+            'declined': False, 'accepted': False, 'answer': answer,
+            'attached_images': len(images),
+            'mounted_payload': any((mount / 'Sample Desktop.app' / 'Contents' / 'Info.plist').is_file()
+                                   for mount in mounts),
         }
         open_error = re.search(br'\((-?\d{1,10})\)\s*$', opened.stderr)
         summary['open_error_code'] = int(open_error[1]) if open_error else None
         observer_error = re.search(br'\((-?\d{1,10})\)\s*$', result.stderr)
         summary['observer_error_code'] = int(observer_error[1]) if observer_error else None
         fields = result.stdout.strip().split(b',')
-        if (result.returncode == 0 and len(fields) == 12 and fields[0] in (b'declined', b'not-found')
+        if (result.returncode == 0 and len(fields) == 12 and fields[0] in (b'declined', b'accepted', b'not-found')
                 and all(value.isdigit() and len(value) <= 3 for value in fields[1:3] + fields[6:9])
                 and all(value in (b'true', b'false') for value in fields[3:6] + fields[9:11])
                 and fields[11] in (b'none', b'filesystem', b'format', b'permission', b'missing', b'busy', b'corrupt')):
-            summary.update(declined=fields[0] == b'declined', processes=int(fields[1]), windows=int(fields[2]),
+            summary.update(declined=fields[0] == b'declined', accepted=fields[0] == b'accepted',
+                           processes=int(fields[1]), windows=int(fields[2]),
                            body=fields[3] == b'true', agree=fields[4] == b'true', disagree=fields[5] == b'true',
                            buttons=int(fields[6]), text_controls=int(fields[7]), elements=int(fields[8]),
                            image_error=fields[9] == b'true', ok=fields[10] == b'true',
@@ -337,3 +358,7 @@ if __name__ == '__main__':
         if not result['declined'] or result['attached_images']:
             raise RuntimeError('DMG_LICENSE_DIALOG_DECLINE_FAILED')
         print('DMG_LICENSE_DIALOG_DECLINED_OK', flush=True)
+        result = inspect_dialog(image, answer='accept')
+        if not result['accepted'] or result['attached_images'] != 1 or not result['mounted_payload']:
+            raise RuntimeError('DMG_LICENSE_DIALOG_ACCEPT_FAILED')
+        print('DMG_LICENSE_DIALOG_ACCEPTED_OK', flush=True)
