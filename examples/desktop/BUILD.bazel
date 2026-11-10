@@ -544,7 +544,7 @@ electron_nsis_tool(
         installation_scope = scope,
         installer_icon = ":example_installer_icon",
         licenses = {
-            "resources/installer-license-japanese.txt": "ja_JP",
+            "resources/installer-license-japanese.rtf": "ja_JP",
             "resources/installer-license-unicode.txt": "en_US",
         },
         protocols = ["sample-desktop"],

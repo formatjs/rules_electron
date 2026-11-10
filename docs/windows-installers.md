@@ -15,7 +15,8 @@ locales are listed in `LICENSE_LANGUAGES` in the packager. Inputs have a 16 MiB
 combined normalized limit. The implementation follows
 [NSIS multilingual licenses](https://nsis.sourceforge.io/Docs/Chapter4.html#multilanguages).
 
-The example now declares English and Japanese agreements for both scopes.
+The example declares English text and Japanese RTF agreements for both scopes.
+The new RTF native case is pending; the results below used text for both locales.
 BB compilation
 checks installer/script reproducibility with relocated license inputs. Native
 Windows smoke checks visible text, disabled Next before acceptance, enabled Next

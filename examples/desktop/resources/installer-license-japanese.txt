@@ -1,6 +1,0 @@
-Sample Desktop example license, version 1.
-License locale: ja_JP.
-
-このサンプルは無保証です。インストールして実行できます。
-
-Example Unicode text: 世界 😀.

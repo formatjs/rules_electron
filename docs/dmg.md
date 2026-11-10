@@ -92,39 +92,17 @@ new XML. Signed images, existing license resources, malformed bounds and
 output/input aliases fail. Sign/notarize only after this stage.
 
 Mapping entries and labels follow the [dmg-license format](https://github.com/argv-minus-one/dmg-license/blob/master/src/makeLicensePlist.ts).
-The default field uses the resource index verified by native tests below.
-BB tests decode mappings and labels independently, preserve actual disk bytes,
-cover Unicode/surrogates and compare relocated/reordered inputs. Native smoke
-requires the sample license to be displayed, refusal to prevent mounting, and
-acceptance to mount the same BB image. The
-[e2f8568 suite](https://formatjs.buildbuddy.io/invocation/b9ae499d-447b-41ed-af02-56fa945538b9)
-and [seven cross-builds](https://formatjs.buildbuddy.io/invocation/048324fe-3ebc-4e1b-b38d-9ecac53f9b1f)
-passed. Its [native macOS job](https://github.com/formatjs/rules_electron/actions/runs/42740919873)
-decoded the English `TEXT` body, refused attachment after decline (exit 1, no
-mount), then accepted and mounted (exit 0). Readonly Finder pixels, app signature,
-runtime and updater checks passed. That workflow's Windows jobs failed the
-separate NSIS consent observer. RTF-only and non-English consent remain unproven;
-native AppKit decoding alone does not prove a visible agreement.
-The [d6d0f8b GUI probe](https://github.com/formatjs/rules_electron/actions/runs/42751084980)
-observed the English `TEXT` body and both consent controls. Disagree left the
-image unmounted; Agree mounted the same image with the app payload. It uses
-`open` to launch the system image handler. Earlier Finder AppleEvent observers
-timed out or saw a permission dialog. The same harness passed English RTF
-refusal and acceptance in [this probe](https://github.com/formatjs/rules_electron/actions/runs/42751310927).
-The [942d677 Japanese probe](https://github.com/formatjs/rules_electron/actions/runs/42753793323)
-displayed CJK/emoji text and passed both consent paths. The fix encodes the
-default resource index in `LPic`; region ID 14 produced an empty dialog for the
-single Japanese license, while index 0 worked. Region IDs remain in mapping
-entries. A French text control now precedes Japanese RTF, testing nonzero default
-index 1 on the English smoke host. The [a2979bc workflow](https://github.com/formatjs/rules_electron/actions/runs/42754562887)
-passed that case and all four native hosts. CLI consent alone
-does not establish GUI consent; RTF/multilingual CLI consent remains unproven.
-The normal macOS gate now requires both GUI paths for all three example license
-variants, including visible CJK/emoji text in RTF variants.
-The [4151ef3 native workflow](https://github.com/formatjs/rules_electron/actions/runs/42754107953)
-passed all three GUI variants, TEXT CLI consent, app/Finder/updater checks and
-the other three native hosts. Its Japanese fixture had one license at index 0;
-the nonzero fallback case remains separate.
+The `LPic` default field is a resource index; region IDs belong in the mapping
+entries. Native tests cover Japanese fallback at indices 0 and 1, with distinct
+French text preventing a false match. BB tests independently decode mappings,
+preserve disk bytes and compare relocated/reordered inputs.
+
+The [63c5336 suite](https://formatjs.buildbuddy.io/invocation/806bf4c6-ca76-454a-a85a-7738885460f3),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/c3ede607-29e9-41b6-bb13-43d6140a79d5)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42756233079)
+passed. macOS displayed each GUI license, refused mounting after Disagree and
+mounted the app after Agree. Both RTF variants required visible CJK/emoji text.
+Finder pixels, signatures, runtime and updater checks also passed.
 
 The manual `dmg_license_probe` workflow input tests a previously verified BB
 image with the workflow's current macOS harness. Linux performs authenticated,
@@ -138,16 +116,18 @@ a mounted payload; raw RTF markup fails.
 locales. It emits `TEXT` beside unchanged `RTF ` bytes at the same resource ID.
 Companion text must fit the locale's legacy encoding. Duplicate/undeclared
 locales, non-RTF primaries and invalid text fail. Companion files share the
-existing input size budget and deterministic staging. The example declares
-English and Japanese companions; native interoperability is pending. A
-RTF-only CLI probe mounted without requesting consent, so GUI success does not
-establish terminal consent. GUI tests still require the RTF Unicode body while
-CLI tests compare the declared companion text in full.
+existing input size budget and deterministic staging. The example's
+[English](https://github.com/formatjs/rules_electron/actions/runs/42756502868) and
+[Japanese](https://github.com/formatjs/rules_electron/actions/runs/42756887515)
+CLI probes matched each decoded companion in full, refused mounting after No
+and mounted the payload after Yes. GUI tests retain the RTF Unicode check.
+RTF-only images mounted through `hdiutil` without requesting consent; declare a
+plain-text companion when terminal consent is required.
 
 `electron_dmg_license` creates another legal variant without rebuilding the
 filesystem. Its `image` accepts an `electron_dmg` target (using that target's
 unlicensed base) or a raw unsigned, unlicensed `.dmg`. It shares the `licenses`,
-`license_default_language` and `license_labels` attributes above. Signed or
+`license_default_language`, `license_texts` and `license_labels` attributes above. Signed or
 already-licensed raw files fail. `ElectronDmgInfo` exposes `image`/`unlicensed`;
 the original rule also exposes the `unlicensed` output group.
 

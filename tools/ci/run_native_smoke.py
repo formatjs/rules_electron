@@ -181,7 +181,7 @@ if __name__ == "__main__":
                 finally:
                     subprocess.run(["/usr/bin/hdiutil", "detach", str(mount)], check=True, timeout=120)
                 subprocess.run([sys.executable, "tools/ci/macos_update_smoke.py", str(directory / variant / "packages")], check=True)
-                from tools.ci.dmg_license_smoke import inspect_license, smoke_dialog
+                from tools.ci.dmg_license_smoke import inspect_license, smoke_cli, smoke_dialog
 
                 for fixture in ('release_dmg.dmg', 'release_dmg_rtf.dmg', 'release_dmg_japanese.dmg'):
                     print('DMG_LICENSE_GUI_FIXTURE ' + fixture, flush=True)
@@ -189,6 +189,9 @@ if __name__ == "__main__":
                     require_unicode = fixture != 'release_dmg.dmg'
                     inspect_license(licensed, require_unicode=require_unicode)
                     smoke_dialog(licensed, require_unicode=require_unicode)
+                    if require_unicode:
+                        expected_text = inspect_license(licensed, prefer_plain=True)
+                        smoke_cli(licensed, image.parent / ('cli-' + licensed.stem), expected_text)
             if variant == "linux_x86_64":
                 release = directory / variant / "packages/release_tar.tar.gz"
                 extracted = directory / variant / "tar-release"
