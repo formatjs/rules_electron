@@ -699,3 +699,10 @@ also reached the hosted one-hour deadline, at 3,600.537 seconds, without a compi
 error. Its full-build child recorded 74,517 action-cache hits, 202 misses and 202
 uploads. Different work sets and cache populations prevent a speedup claim;
 full source desktop execution remains unverified.
+
+The [69c3287 source retry](https://formatjs.buildbuddy.io/invocation/ea3d383e-64bd-494f-ac86-1e566abfd4a5)
+reached the same hosted limit at 3,600.472 seconds. Its full-build child recorded
+73,917 hits, 1,970 misses and 1,922 uploads. Its 917 observed compilation groups
+shared no normalized target/output group with the previous run's executed
+compilations. This establishes new compilation work retained in cache, not a
+completed source desktop build or a timing improvement.

@@ -118,6 +118,8 @@ electron_dmg(
         360,
     ],
     icon_size = 112,
+    license_labels = "resources/license-labels.json",
+    licenses = {"resources/installer-license.txt": "en_US"},
     source_date_epoch = 1577836800,
     target_compatible_with = ["@platforms//os:osx"],
     text_size = 12,

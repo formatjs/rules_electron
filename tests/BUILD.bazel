@@ -109,6 +109,7 @@ py_test(
     deps = [
         "//electron/private:assembly",
         "//electron/private:dmg",
+        "//electron/private:dmg_licenses",
         "@ds_store_sources//:ds_store",
         "@mac_alias_sources//:mac_alias",
     ],

@@ -123,8 +123,22 @@ if __name__ == "__main__":
                 mount = directory / variant / "mounted-dmg"
                 mount.mkdir()
                 subprocess.run(["/usr/bin/hdiutil", "verify", str(image)], check=True, timeout=120)
-                subprocess.run(["/usr/bin/hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", str(mount), "-plist", str(image)],
-                               check=True, capture_output=True, timeout=120)
+                attach = ["/usr/bin/hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", str(mount), "-plist", str(image)]
+                license_header = b'Sample Desktop example license, version 1.'
+                declined = subprocess.run(attach, input=b'n\n', capture_output=True, timeout=120)
+                if not declined.returncode or license_header not in declined.stdout + declined.stderr:
+                    if not declined.returncode:
+                        subprocess.run(["/usr/bin/hdiutil", "detach", str(mount)], check=True, timeout=120)
+                    raise RuntimeError('DMG_LICENSE_DECLINE_FAILED')
+                if (mount / 'Sample Desktop.app').exists():
+                    raise RuntimeError('DMG_LICENSE_DECLINE_MOUNTED_IMAGE')
+                print('DMG_LICENSE_DECLINED_OK', flush=True)
+                accepted = subprocess.run(attach, input=b'y\n', capture_output=True, timeout=120)
+                if accepted.returncode or license_header not in accepted.stdout + accepted.stderr:
+                    if not accepted.returncode:
+                        subprocess.run(["/usr/bin/hdiutil", "detach", str(mount)], check=True, timeout=120)
+                    raise RuntimeError('DMG_LICENSE_ACCEPT_FAILED')
+                print('DMG_LICENSE_ACCEPTED_OK', flush=True)
                 try:
                     if (mount / "Applications").readlink().as_posix() != "/Applications":
                         raise ValueError("Invalid DMG Applications link")

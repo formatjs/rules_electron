@@ -1,6 +1,20 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 py_library(
+    name = "dmg_licenses",
+    srcs = ["dmg_licenses.py"],
+    visibility = ["//tests:__pkg__"],
+)
+
+py_binary(
+    name = "dmg_license_tool",
+    srcs = ["dmg_licenses.py"],
+    main = "dmg_licenses.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":dmg_licenses"],
+)
+
+py_library(
     name = "udif",
     srcs = ["udif.py"],
     visibility = [

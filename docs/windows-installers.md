@@ -16,6 +16,10 @@ uninstaller to a temporary child; waiting only for the launcher can observe part
 cleanup. Shortcut/ownership assertions remain required. This follows
 [NSIS's documented self-copy behavior](https://nsis.sourceforge.io/Docs/AppendixD.html)
 and [PowerShell's process-tree wait](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/start-process?view=powershell-5.1).
+The [3fe910c BB suite](https://formatjs.buildbuddy.io/invocation/ddd5ca11-a2da-4679-a68a-aaeacf07b7ff),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/beb17a70-6175-485f-b661-48241eec95ca)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42732748392)
+passed, including per-user uninstall on both Windows CPUs.
 
 `@rules_electron//electron/tools:windows_elevate` builds a native elevation bridge
 for the selected Windows CPU/compiler. Map it to `resources/elevate.exe` for the

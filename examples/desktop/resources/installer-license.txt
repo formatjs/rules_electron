@@ -1,0 +1,3 @@
+Sample Desktop example license, version 1.
+
+This sample is provided without warranty. You may install and run this example.

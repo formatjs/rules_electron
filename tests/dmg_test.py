@@ -16,6 +16,7 @@ from ds_store import DSStore
 from mac_alias import Alias
 
 from electron.private.dmg import create_dmg
+from electron.private.dmg_licenses import license_image, license_resources
 from electron.private.mac_sign import archive_bundle
 
 XORRISO, CONVERTER = [str(Path(value).resolve()) for value in sys.argv[1:3]]
@@ -337,6 +338,96 @@ class DmgTest(unittest.TestCase):
                 self.build(source, output)
         self.assertEqual(self.source.read_bytes(), self.original)
         self.assertFalse((self.bundle / "image.dmg").exists())
+
+    def test_license_resources_preserve_disk_payload_and_relocate_identically(self):
+        base = self.root / 'base.dmg'
+        self.build(self.source, base)
+        original = base.read_bytes()
+        text = self.root / 'english.txt'
+        text.write_text('License {fixture} \\ text\nUnicode: 世界 😀\n', encoding='utf-8')
+        rich = self.root / 'japanese.rtf'
+        rich_bytes = b'{\\rtf1\\ansi RTF fixture \\u26085?\\u26412?}'
+        rich.write_bytes(rich_bytes)
+        labels = self.root / 'labels.json'
+        labels.write_text('{"en_US":{"languageName":"English","agree":"Accept"},"ja_JP":{"languageName":"日本語"}}', encoding='utf-8')
+        entries = [{'source': str(text), 'locale': 'en_US'}, {'source': str(rich), 'locale': 'ja_JP'}]
+        first, second = self.root / 'licensed.dmg', self.root / 'relocated-licensed.dmg'
+        license_image(base, first, entries, default_language='ja_JP', labels=labels)
+        data = first.read_bytes()
+        xml_offset, xml_size = struct.unpack_from('>QQ', data, len(data) - 512 + 216)
+        metadata = plistlib.loads(data[xml_offset:xml_offset + xml_size])['resource-fork']
+        self.assertEqual(data[:xml_offset], original[:xml_offset])
+        self.assertEqual(decode_dmg(data), decode_dmg(original))
+        self.assertEqual(base.read_bytes(), original)
+        self.assertEqual(metadata['LPic'][0]['Data'], struct.pack('>hHhhhhhh', 14, 2, 0, 0, 0, 14, 1, 1))
+        bodies = {entry['ID']: entry['Data'] for entry in metadata['RTF ']}
+        self.assertEqual(bodies['5001'], rich_bytes)
+        self.assertIn(b'License \\{fixture\\} \\\\ text\\par', bodies['5000'])
+        self.assertIn(b'\\u19990?\\u30028?', bodies['5000'])
+        self.assertIn(b'\\u-10179?\\u-8704?', bodies['5000'])
+        strings = {entry['ID']: entry['Data'] for entry in metadata['STR#']}
+        self.assertEqual(struct.unpack_from('>H', strings['5000'])[0], 6)
+        offset, decoded = 2, []
+        while offset < len(strings['5000']):
+            length = strings['5000'][offset]
+            decoded.append(strings['5000'][offset + 1:offset + 1 + length].decode('mac_roman'))
+            offset += 1 + length
+        self.assertEqual(decoded[:3], ['English', 'Accept', 'Disagree'])
+        moved = self.root / 'different inputs'
+        moved.mkdir()
+        relocated = []
+        for entry in reversed(entries):
+            source = Path(entry['source'])
+            destination = moved / source.name
+            destination.write_bytes(source.read_bytes())
+            os.utime(destination, (1234567890, 1234567890))
+            relocated.append(dict(entry, source=str(destination)))
+        license_image(base, second, relocated, default_language='ja_JP', labels=labels)
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        self.assertNotEqual(data[-512 + 64:-512 + 80], original[-512 + 64:-512 + 80])
+        self.assertEqual(first.stat().st_mtime, 0)
+
+    def test_license_failures_preserve_inputs_and_existing_output(self):
+        base = self.root / 'base.dmg'
+        self.build(self.source, base)
+        original = base.read_bytes()
+        text = self.root / 'license.txt'
+        text.write_text('Generic license fixture', encoding='utf-8')
+        entries = [{'source': str(text), 'locale': 'en_US'}]
+        output = self.root / 'existing.dmg'
+        output.write_bytes(b'competing output')
+        cases = [([], 'en_US'), (entries * 2, 'en_US'), (entries, 'ja_JP'),
+                 ([dict(entries[0], locale='invalid')], 'invalid')]
+        for licenses, default in cases:
+            with self.subTest(default=default, count=len(licenses)), self.assertRaises(ValueError):
+                license_image(base, output, licenses, default)
+            self.assertEqual(output.read_bytes(), b'competing output')
+        for target in [base, text]:
+            with self.assertRaisesRegex(ValueError, 'outside its inputs'):
+                license_image(base, target, entries)
+        signed = bytearray(original)
+        struct.pack_into('>QQ', signed, len(signed) - 512 + 296, 1, 12)
+        damaged = self.root / 'signed.dmg'
+        damaged.write_bytes(signed)
+        with self.assertRaisesRegex(ValueError, 'unsigned image'):
+            license_image(damaged, output, entries)
+        with self.assertRaisesRegex(ValueError, 'conflict'):
+            license_image(self._licensed_image(base, entries), output, entries)
+        self.assertEqual(base.read_bytes(), original)
+        self.assertEqual(text.read_text(), 'Generic license fixture')
+        self.assertEqual(output.read_bytes(), b'competing output')
+        labels = self.root / 'bad-labels.json'
+        labels.write_text('{"en_US":{"agree":"' + 'x' * 256 + '"}}')
+        with self.assertRaisesRegex(ValueError, '255 encoded bytes'):
+            license_resources(entries, labels=labels)
+        text.write_bytes(b'bad\0text')
+        with self.assertRaisesRegex(ValueError, 'controls'):
+            license_resources(entries)
+
+    def _licensed_image(self, base, entries):
+        output = self.root / 'already-licensed.dmg'
+        license_image(base, output, entries)
+        return output
 
 
 if __name__ == "__main__":

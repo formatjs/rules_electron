@@ -16,6 +16,8 @@ electron_dmg(
     text_size = 12,
     background_color = "#ddeeff",
     background_image = "//assets:installer-background.png",
+    licenses = {"//legal:license.txt": "en_US"},
+    license_labels = "//legal:labels.json",
 )
 ```
 
@@ -38,7 +40,7 @@ It declares Cocoa x, y, width and height, with a bottom-left screen origin.
 App/Applications icon positions use centers
 inside that window; `icon_size` allows 16..512 pixels and `text_size` 10..16.
 `background_color` accepts `#RRGGBB`. Omitting `finder_window` retains the plain
-volume layout. License dialogs remain separate work.
+volume layout.
 
 `background_image` accepts a declared PNG, up to 64 MiB and 8192 pixels per axis.
 It requires `finder_window`, overrides the background color and copies unchanged
@@ -62,6 +64,38 @@ Finder-window samples with the same PNG through native color management:
 all samples were identical, `[187, 187, 187, 255]`. Screenshots stay temporary;
 only numeric samples enter logs. Existing signatures and updater lifecycle also
 passed.
+
+## License agreements
+
+`licenses` maps declared UTF-8 `.txt` or `.rtf` files to explicit locales.
+`license_default_language` defaults to `en_US` and must appear in that mapping.
+The [locale table](../electron/private/dmg_licenses.py) includes English, French,
+German, Japanese, Korean and Chinese regional IDs. Text becomes Unicode RTF;
+declared RTF bytes stay unchanged. No host locale or filename discovery supplies
+inputs.
+
+`license_labels` optionally provides a JSON object keyed by those same locales.
+Each locale can override `languageName`, `agree`, `disagree`, `print`, `save` and
+`message`. Defaults use the locale name and English controls. Labels must fit
+255 bytes in that locale's legacy encoding. License inputs allow 2 MiB per file,
+16 MiB total and at most 32 entries; labels allow 64 KiB and final XML 64 MiB.
+
+```json
+{"en_US":{"languageName":"English","agree":"Agree","message":"Read license before installing."}}
+```
+
+The separate `ElectronDmgLicense` action adds `LPic`, `STR#` and `RTF ` resources
+to the unsigned image. License edits do not change filesystem-action inputs.
+Compressed disk bytes and block maps stay unchanged; image identity includes the
+new XML. Signed images, existing license resources, malformed bounds and
+output/input aliases fail. Sign/notarize only after this stage.
+
+The resource mapping follows the [dmg-license format](https://github.com/argv-minus-one/dmg-license/blob/master/src/makeLicensePlist.ts).
+BB tests decode mappings and labels independently, preserve actual disk bytes,
+cover Unicode/surrogates and compare relocated/reordered inputs. Native smoke
+requires the sample license to be displayed, refusal to prevent mounting, and
+acceptance to mount the same BB image. Native license interoperability remains
+pending hosted validation.
 
 Metadata uses checksum-pinned MIT-licensed `ds_store` 1.3.3 and `mac_alias` 2.2.2
 Python sources. No host alias discovery, Finder, mounting or AppleScript
