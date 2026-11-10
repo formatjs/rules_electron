@@ -1,6 +1,7 @@
 """Execute selected BB outputs on matching native hosts; never build here."""
 
 import json
+import plistlib
 import os
 from pathlib import Path, PurePosixPath
 import shutil
@@ -123,9 +124,17 @@ if __name__ == "__main__":
                 mount = directory / variant / "mounted-dmg"
                 mount.mkdir()
                 subprocess.run(["/usr/bin/hdiutil", "verify", str(image)], check=True, timeout=120)
-                attach = ["/usr/bin/hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", str(mount), "-plist", str(image)]
+                information = subprocess.run(["/usr/bin/hdiutil", "imageinfo", "-plist", str(image)],
+                                             check=True, capture_output=True, timeout=120)
+                properties = plistlib.loads(information.stdout).get('Properties', {})
+                agreement = properties.get('Software License Agreement')
+                print('DMG_LICENSE_IMAGEINFO ' + json.dumps({'agreement': agreement if type(agreement) is bool else None}), flush=True)
+                attach = ["/usr/bin/hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", str(mount), str(image)]
                 license_header = b'Sample Desktop example license, version 1.'
                 declined = subprocess.run(attach, input=b'n\n', capture_output=True, timeout=120)
+                print('DMG_LICENSE_RESPONSE ' + json.dumps({'phase': 'decline', 'exit_code': declined.returncode,
+                      'header': license_header in declined.stdout + declined.stderr,
+                      'mounted': (mount / 'Sample Desktop.app').exists()}), flush=True)
                 if not declined.returncode or license_header not in declined.stdout + declined.stderr:
                     if not declined.returncode:
                         subprocess.run(["/usr/bin/hdiutil", "detach", str(mount)], check=True, timeout=120)
@@ -134,6 +143,9 @@ if __name__ == "__main__":
                     raise RuntimeError('DMG_LICENSE_DECLINE_MOUNTED_IMAGE')
                 print('DMG_LICENSE_DECLINED_OK', flush=True)
                 accepted = subprocess.run(attach, input=b'y\n', capture_output=True, timeout=120)
+                print('DMG_LICENSE_RESPONSE ' + json.dumps({'phase': 'accept', 'exit_code': accepted.returncode,
+                      'header': license_header in accepted.stdout + accepted.stderr,
+                      'mounted': (mount / 'Sample Desktop.app').exists()}), flush=True)
                 if accepted.returncode or license_header not in accepted.stdout + accepted.stderr:
                     if not accepted.returncode:
                         subprocess.run(["/usr/bin/hdiutil", "detach", str(mount)], check=True, timeout=120)
