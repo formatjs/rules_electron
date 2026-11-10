@@ -96,7 +96,7 @@ cross_smoke_bundle(
     linux_packages = ":linux_release_files",
     macos_packages = ":macos_release_files",
     windows_packages = ":windows_release_files",
-    windows_runtime_tools = ":windows_elevation_tools",
+    windows_runtime_tools = ":windows_runtime_tools",
 )
 
 electron_dmg(
@@ -600,9 +600,10 @@ electron_portable(
 ]
 
 filegroup(
-    name = "windows_elevation_tools",
+    name = "windows_runtime_tools",
     srcs = [
         ":elevation_probe",
+        ":portable",
         "@rules_electron//electron/tools:windows_elevate",
     ],
     target_compatible_with = ["@platforms//os:windows"],
@@ -620,7 +621,6 @@ filegroup(
         ":nsis_machine_v2_feed",
         ":nsis_v1_feed",
         ":nsis_v2_feed",
-        ":portable",
     ],
     target_compatible_with = ["@platforms//os:windows"],
 )

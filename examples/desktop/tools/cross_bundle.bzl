@@ -95,6 +95,12 @@ def _impl(ctx):
             inputs[variant].append(directories)
             entry["directory_manifest"] = directories.path
         entries.append(entry)
+    expected_windows = sorted([variant for variant in _VARIANTS if variant.startswith("windows_")])
+    if sorted(ctx.split_attr.windows_runtime_tools) != expected_windows:
+        fail("Windows runtime tools must cover both compilers on both CPUs")
+    for target in ctx.split_attr.windows_runtime_tools.values():
+        if not any([file.basename == "portable.exe" for file in target[DefaultInfo].files.to_list()]):
+            fail("Each Windows variant must include its portable executable")
     for targets in [ctx.split_attr.linux_packages, ctx.split_attr.macos_packages, ctx.split_attr.windows_packages, ctx.split_attr.windows_runtime_tools]:
         for variant, target in targets.items():
             for file in target[DefaultInfo].files.to_list():
