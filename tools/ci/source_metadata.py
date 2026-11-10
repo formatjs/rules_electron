@@ -21,6 +21,9 @@ ARTIFACTS = {
     'fuses_flags.bzl': 1024**2,
     'metadata-tools-MODULE.bazel.lock': 16 * 1024**2,
     'source-capture-MODULE.bazel.lock': 16 * 1024**2,
+    'linux-arm64-perfetto-target.json': 16 * 1024**2,
+    'linux-arm64-perfetto-execution.json': 16 * 1024**2,
+    'linux-arm64-perfetto-snapshot.json': 16 * 1024**2,
 }
 
 

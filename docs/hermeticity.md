@@ -660,8 +660,12 @@ The [metadata handoff](../.github/workflows/source-metadata.yml) fetches its gra
 tool pins, fuse metadata and module locks only from an exact successful
 `formatjs/electron` capture commit. Fixed filenames, bounded sizes, trusted
 bytestream hosts and SHA-256 verification gate every file. GH downloads data;
-component capture and native compilation run on BB. Actual ARM64 capture and
-cross-build validation remain pending.
+component capture and native compilation run on BB. The
+[ARM64 capture](https://formatjs.buildbuddy.io/invocation/9612c9fe-fa5f-4519-a40e-243e4f652385)
+passed with frozen metadata-tool resolution. Its graph retains separate ARM64,
+x64 generator, x64 ARM64 V8 snapshot and Rust host toolchains. The handoff also
+requires separate Perfetto target, execution and snapshot profiles. Cross-family
+dependency bindings and complete ARM64 runtime cross-build validation remain open.
 
 The packaging cross-build action query now includes forbidden build-wrapper
 mnemonics alongside its required app/DMG actions. The platform-input audit rejects
