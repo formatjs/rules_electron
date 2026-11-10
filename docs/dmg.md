@@ -50,11 +50,18 @@ finalizes the alias, then rebuilds and verifies unchanged catalog identity befor
 UDIF conversion. No mounting or target execution is involved. A path-based form also appears in
 [Chromium's Linux-compatible generator](https://chromium.googlesource.com/chromium/src/+/9c363bb2863cd723978a8a245719389a7bf1c20e/chrome/installer/mac/generate_dsstore.py).
 BB tests decode the packaged alias and image bytes, check actual catalog IDs/dates and
-compare relocated builds. Native smoke reads Finder's resolved background
+compare relocated builds. Native smoke resolves the packaged background
 alias through macOS descriptors and compares captured Finder-window pixels with
 the declared PNG through native color management. The picture getter is recorded
 as a diagnostic; it throws `-10000` on the hosted Finder even when the generated
-alias resolves. Background-image support awaits rendered-pixel validation.
+alias resolves. The [74601b7 BB suite](https://formatjs.buildbuddy.io/invocation/6452fea3-0ac9-41ca-b955-5d6f01d02dc0),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/4e19bcdb-a3a6-4a34-8bed-30313e3bfc2b)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42730207912)
+passed. The macOS host resolved the packaged alias and compared three clear
+Finder-window samples with the same PNG through native color management:
+all samples were identical, `[187, 187, 187, 255]`. Screenshots stay temporary;
+only numeric samples enter logs. Existing signatures and updater lifecycle also
+passed.
 
 Metadata uses checksum-pinned MIT-licensed `ds_store` 1.3.3 and `mac_alias` 2.2.2
 Python sources. No host alias discovery, Finder, mounting or AppleScript

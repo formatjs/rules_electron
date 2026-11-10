@@ -313,12 +313,23 @@ class DmgTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "outside its inputs"):
             self.build(self.source, background, background_image=background, finder_window=[0, 0, 640, 400])
         self.assertEqual(background.read_bytes(), valid)
-        for payload in [b"not PNG", valid[:-1], png(8193, 1, 173)]:
+        damaged = bytearray(valid)
+        damaged[29] ^= 1
+        for payload in [b"not PNG", valid[:-1], bytes(damaged), png(8193, 1, 173)]:
             background.write_bytes(payload)
             with self.subTest(size=len(payload)), self.assertRaises(ValueError):
                 self.build(self.source, self.root / "invalid-picture.dmg", background_image=background,
                            finder_window=[0, 0, 640, 400])
             self.assertFalse((self.root / "invalid-picture.dmg").exists())
+        with background.open('wb') as oversized:
+            oversized.write(valid)
+            oversized.seek(64 * 1024**2)
+            oversized.write(b'\0')
+        with self.assertRaisesRegex(ValueError, '64 MiB'):
+            self.build(self.source, self.root / 'oversized-picture.dmg', background_image=background,
+                       finder_window=[0, 0, 640, 400])
+        self.assertFalse((self.root / 'oversized-picture.dmg').exists())
+        self.assertEqual(background.stat().st_size, 64 * 1024**2 + 1)
 
     def test_output_cannot_replace_input_or_stage_inside_input_tree(self):
         for source, output in [(self.source, self.source), (self.bundle, self.bundle / "image.dmg")]:

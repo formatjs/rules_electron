@@ -3,6 +3,12 @@
 The NSIS `script` output group uses portable `app/`, icon and `payload.7z`
 references. Worker paths stay inside compilation. `verify_reproducible` compares
 both installer and exported script bytes across relocated staging directories.
+Icon inputs relocate too; shared or app-contained icons retain their logical
+roles in the exported script. The [fdaf424 BB suite](https://formatjs.buildbuddy.io/invocation/90fd7456-96ef-400b-a384-a9aeeebc79bb)
+and [seven cross-builds](https://formatjs.buildbuddy.io/invocation/497edc20-60af-4199-84c4-a9d62c2ba91a)
+passed. Both Windows CPU jobs also passed installer/update/removal in the
+[native workflow](https://github.com/formatjs/rules_electron/actions/runs/42729102533);
+that workflow's macOS job failed the separate Finder background getter check.
 
 `@rules_electron//electron/tools:windows_elevate` builds a native elevation bridge
 for the selected Windows CPU/compiler. Map it to `resources/elevate.exe` for the
