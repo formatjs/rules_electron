@@ -110,6 +110,29 @@ image with the workflow's current macOS harness. Linux performs authenticated,
 commit-bound artifact retrieval; the matching Mac host only inspects the image.
 Probe results do not publish normal native-smoke commit status.
 
+`electron_dmg_license` creates another legal variant without rebuilding the
+filesystem. Its `image` accepts an `electron_dmg` target (using that target's
+unlicensed base) or a raw unsigned, unlicensed `.dmg`. It shares the `licenses`,
+`license_default_language` and `license_labels` attributes above. Signed or
+already-licensed raw files fail. `ElectronDmgInfo` exposes `image`/`unlicensed`;
+the original rule also exposes the `unlicensed` output group.
+
+```starlark
+load("@rules_electron//electron:dmg.bzl", "electron_dmg_license")
+
+electron_dmg_license(
+    name = "release_japanese",
+    image = ":release_dmg",
+    licenses = {"//legal:license.rtf": "ja_JP"},
+    license_default_language = "ja_JP",
+)
+```
+
+The example's canonical Unicode RTF variant uses the existing filesystem image
+and a Japanese default locale. Hosted action inspection requires one filesystem
+action feeding both license variants. Native RTF consent remains pending; select
+`dmg_fixture=release_dmg_rtf.dmg` with the manual probe to inspect it.
+
 Metadata uses checksum-pinned MIT-licensed `ds_store` 1.3.3 and `mac_alias` 2.2.2
 Python sources. No host alias discovery, Finder, mounting or AppleScript
 runs in artifact actions. Geometry/color inputs and metadata bytes participate

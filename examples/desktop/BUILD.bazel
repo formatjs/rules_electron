@@ -4,7 +4,7 @@ load("@rules_electron//electron:appimage.bzl", "electron_appimage")
 load("@rules_electron//electron:archive.bzl", "electron_archive")
 load("@rules_electron//electron:asar.bzl", "electron_asar")
 load("@rules_electron//electron:defs.bzl", "electron_app", "electron_runtime")
-load("@rules_electron//electron:dmg.bzl", "electron_dmg")
+load("@rules_electron//electron:dmg.bzl", "electron_dmg", "electron_dmg_license")
 load("@rules_electron//electron:files.bzl", "electron_files")
 load("@rules_electron//electron:linux.bzl", "electron_deb", "electron_rpm")
 load("@rules_electron//electron:matching.bzl", "electron_file_matcher")
@@ -126,6 +126,14 @@ electron_dmg(
     volume_icon = ":example_icon",
 )
 
+electron_dmg_license(
+    name = "release_dmg_rtf",
+    image = ":release_dmg",
+    license_default_language = "ja_JP",
+    licenses = {"resources/installer-license.rtf": "ja_JP"},
+    target_compatible_with = ["@platforms//os:osx"],
+)
+
 filegroup(
     name = "macos_release_files",
     srcs = [
@@ -135,6 +143,7 @@ filegroup(
         ":macos_update_v2_feed",
         ":plain_links",
         ":release_dmg",
+        ":release_dmg_rtf",
     ],
     target_compatible_with = ["@platforms//os:osx"],
 )

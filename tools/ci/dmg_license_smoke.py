@@ -25,7 +25,7 @@ from zipfile import ZipFile
 Attachment = namedtuple('Attachment', 'returncode output answered')
 
 
-def inspect_license(image):
+def inspect_license(image, require_unicode=False):
     with image.open('rb') as source:
         source.seek(-512, 2)
         footer = source.read(512)
@@ -46,7 +46,8 @@ function run(argv) {
     const body = plain ? $.NSString.alloc.initWithDataEncoding(data, $.NSMacOSRomanStringEncoding)
         : $.NSAttributedString.alloc.initWithRTFDocumentAttributes(data, null);
     const text = body ? ObjC.unwrap(plain ? body : body.string) : '';
-    return JSON.stringify({decoded: Boolean(body), header: text.includes('Sample Desktop example license, version 1.'), length: text.length});
+    return JSON.stringify({decoded: Boolean(body), header: text.includes('Sample Desktop example license, version 1.'),
+        unicode: text.includes('Example Unicode text: 世界 😀.'), length: text.length});
 }
 '''
     result = subprocess.run(['/usr/bin/osascript', '-l', 'JavaScript', '-e', script,
@@ -55,11 +56,12 @@ function run(argv) {
     if result.returncode:
         raise RuntimeError('DMG_LICENSE_NATIVE_DECODE_FAILED')
     summary = json.loads(result.stdout)
-    if (set(summary) != {'decoded', 'header', 'length'} or type(summary['decoded']) is not bool
+    if (set(summary) != {'decoded', 'header', 'unicode', 'length'} or type(summary['decoded']) is not bool
+            or type(summary['unicode']) is not bool
             or type(summary['header']) is not bool or type(summary['length']) is not int):
         raise RuntimeError('DMG_LICENSE_INVALID_NATIVE_SUMMARY')
     print('DMG_LICENSE_NATIVE_BODY ' + json.dumps(summary, sort_keys=True), flush=True)
-    if not summary['decoded'] or not summary['header']:
+    if not summary['decoded'] or not summary['header'] or (require_unicode and not summary['unicode']):
         raise RuntimeError('DMG_LICENSE_NATIVE_BODY_FAILED')
 
 
@@ -266,8 +268,11 @@ def interactive_attach(arguments, answer, timeout=120):
 if __name__ == '__main__':
     if platform.system() != 'Darwin' or platform.machine() != 'arm64':
         raise RuntimeError('DMG license probe requires native macOS ARM64')
+    fixture = sys.argv[2] if len(sys.argv) > 2 else 'release_dmg.dmg'
+    if fixture not in ('release_dmg.dmg', 'release_dmg_rtf.dmg'):
+        raise RuntimeError('DMG_LICENSE_PROBE_INVALID_FIXTURE')
     with ZipFile(sys.argv[1]) as archive, tempfile.TemporaryDirectory() as temporary:
-        members = [entry for entry in archive.infolist() if entry.filename == 'macos_aarch64/packages/release_dmg.dmg']
+        members = [entry for entry in archive.infolist() if entry.filename == 'macos_aarch64/packages/' + fixture]
         if len(members) != 1 or not 0 < members[0].file_size <= 1024**3:
             raise RuntimeError('DMG_LICENSE_PROBE_INVALID_ARCHIVE')
         image = Path(temporary) / 'release.dmg'
@@ -280,7 +285,7 @@ if __name__ == '__main__':
                 target.write(data)
                 remaining -= len(data)
         subprocess.run(['/usr/bin/hdiutil', 'verify', str(image)], check=True, capture_output=True, timeout=120)
-        inspect_license(image)
+        inspect_license(image, require_unicode=fixture == 'release_dmg_rtf.dmg')
         result = inspect_dialog(image)
         if not result['declined'] or result['attached_images']:
             raise RuntimeError('DMG_LICENSE_DIALOG_DECLINE_FAILED')

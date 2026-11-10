@@ -48,5 +48,31 @@ def audit(graph, workspace):
     return counts
 
 
+def audit_dmg_variants(graph):
+    actions = graph.get('actions', [])
+    bases = [action for action in actions if action.get('mnemonic') == 'ElectronDmg']
+    licenses = [action for action in actions if action.get('mnemonic') == 'ElectronDmgLicense']
+    if len(bases) != 1 or len(bases[0].get('outputIds', [])) != 1 or len(licenses) != 2:
+        raise ValueError('Expected two DMG license variants and one filesystem action')
+    base = bases[0]['outputIds'][0]
+    finals = {value for action in licenses for value in action.get('outputIds', [])}
+    sets = {item['id']: item for item in graph.get('depSetOfFiles', [])}
+    for action in licenses:
+        pending, visited, inputs = list(action.get('inputDepSetIds', [])), set(), set()
+        while pending:
+            identifier = pending.pop()
+            if identifier in visited:
+                continue
+            visited.add(identifier)
+            entry = sets[identifier]
+            inputs.update(entry.get('directArtifactIds', []))
+            pending.extend(entry.get('transitiveDepSetIds', []))
+        if base not in inputs or inputs & finals:
+            raise ValueError('DMG variants must consume the same unlicensed filesystem image')
+    return {'filesystem_actions': 1, 'license_actions': 2}
+
+
 if __name__ == "__main__":
-    print("PLATFORM_INPUTS_AUDIT_OK " + json.dumps(audit(json.loads(Path(sys.argv[1]).read_text()), Path.cwd()), sort_keys=True))
+    graph = json.loads(Path(sys.argv[1]).read_text())
+    print("PLATFORM_INPUTS_AUDIT_OK " + json.dumps(audit(graph, Path.cwd()), sort_keys=True))
+    print('DMG_VARIANT_ACTIONS ' + json.dumps(audit_dmg_variants(graph), sort_keys=True))
