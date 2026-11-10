@@ -38,7 +38,12 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
                      updater_cache_name="", architecture="x64", payload_archive="",
                      build_version="", build_number="", file_associations=None, app_user_model_id="",
                      installer_icon="", uninstaller_icon="", directory_manifest="", file_association_icons=None,
-                     installation_scope="user", file_association_verbs=None, file_association_verb_labels=None):
+                     installation_scope="user", file_association_verbs=None, file_association_verb_labels=None,
+                     path_format=None):
+    def source_path(value):
+        path = Path(value)
+        return path_format(path) if path_format else str(path.resolve())
+
     if installation_scope not in ("user", "machine"):
         raise ValueError("NSIS installation_scope must be user or machine")
     machine = installation_scope == "machine"
@@ -161,9 +166,9 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         *(['SetCompress off'] if compression in ('7z', 'off') else ['SetCompressor /SOLID ' + compression]),
         *(['SetCompressorDictSize 8'] if compression == 'lzma' else []), 'SetDateSave off',
         '!include "FileFunc.nsh"', '!include "LogicLib.nsh"', '!include "x64.nsh"',
-        'Name ' + q(product_name), 'OutFile ' + q(str(Path(output).resolve())),
-        *(['Icon ' + q(str(Path(installer_icon).resolve()))] if installer_icon else []),
-        *(['UninstallIcon ' + q(str(Path(uninstaller_icon).resolve()))] if uninstaller_icon else []),
+        'Name ' + q(product_name), 'OutFile ' + q(source_path(output)),
+        *(['Icon ' + q(source_path(installer_icon))] if installer_icon else []),
+        *(['UninstallIcon ' + q(source_path(uninstaller_icon))] if uninstaller_icon else []),
         'InstallDir "' + ('$PROGRAMFILES64\\' if machine else '$LOCALAPPDATA\\Programs\\') + app_id + '"',
         'VIProductVersion ' + '.'.join(numeric),
         'VIAddVersionKey "ProductName" ' + q(product_name),
@@ -251,7 +256,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     ]
     if compression == '7z':
         lines += ['InitPluginsDir', 'SetOutPath "$PLUGINSDIR"',
-                  'File "/oname=payload.7z" ' + q(str(Path(payload_archive).resolve())),
+                  'File "/oname=payload.7z" ' + q(source_path(payload_archive)),
                   'IfErrors failed_install', 'SetOutPath "$INSTDIR"',
                   'Nsis7z::Extract "$PLUGINSDIR\\payload.7z"']
         for name in sorted(directories):
@@ -267,7 +272,7 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         for name, path in files:
             parent = str(Path(name).parent).replace('/', '\\').replace('$', '$$')
             lines += ['SetOutPath "$INSTDIR' + ('\\' + parent if parent != '.' else '') + '"',
-                      'File ' + q('/oname=' + Path(name).name) + ' ' + q(str(path.resolve())),
+                      'File ' + q('/oname=' + Path(name).name) + ' ' + q(source_path(path)),
                       'IfErrors failed_install']
     lines += [
         'SetOutPath "$INSTDIR"', 'WriteUninstaller "$INSTDIR\\Uninstall.exe"',
@@ -418,6 +423,22 @@ def build_installer(manifest, output, script):
         text = installer_script(output=destination, **options)
         script_path.write_text(text, encoding='utf-8')
         subprocess.run([compiler, '-NOCONFIG', '-V2', str(script_path.resolve())], env=environment, check=True)
+        app = Path(options['app']).resolve()
+        paths = {destination.resolve(): destination.name}
+        for field, name in [('installer_icon', 'installer.ico'), ('uninstaller_icon', 'uninstaller.ico'),
+                            ('payload_archive', 'payload.7z')]:
+            if options.get(field):
+                paths.setdefault(Path(options[field]).resolve(), name)
+
+        def stable_path(path):
+            path = path.resolve()
+            if path in paths:
+                return paths[path]
+            if path.is_relative_to(app):
+                return 'app/' + path.relative_to(app).as_posix()
+            raise ValueError('Unmapped NSIS script input path')
+
+        script_path.write_text(installer_script(output=destination, path_format=stable_path, **options), encoding='utf-8')
 
     with tempfile.TemporaryDirectory() as temporary:
         directory = Path(temporary)
@@ -437,6 +458,8 @@ def build_installer(manifest, output, script):
                     return hashlib.file_digest(source, 'sha256').digest()
             if digest(output) != digest(second):
                 raise ValueError('NSIS output is not reproducible across output directories')
+            if Path(script).read_bytes() != (repeat / 'installer.nsi').read_bytes():
+                raise ValueError('NSIS script is not reproducible across output directories')
 
 
 if __name__ == '__main__':

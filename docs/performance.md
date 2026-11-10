@@ -693,3 +693,9 @@ passed in 75.772 seconds before the full source build continued. These are
 mixed-cache phase observations with different example inputs. They establish
 one fewer query and an observed shorter audit phase, not a cold-build or
 end-to-end speedup. Full source desktop execution remains unverified.
+
+The next [source run](https://formatjs.buildbuddy.io/invocation/84bae3f9-8f35-4145-891a-5b659ed6dac9)
+also reached the hosted one-hour deadline, at 3,600.537 seconds, without a compiler
+error. Its full-build child recorded 74,517 action-cache hits, 202 misses and 202
+uploads. Different work sets and cache populations prevent a speedup claim;
+full source desktop execution remains unverified.

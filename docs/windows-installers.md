@@ -1,5 +1,9 @@
 # Windows installers
 
+The NSIS `script` output group uses portable `app/`, icon and `payload.7z`
+references. Worker paths stay inside compilation. `verify_reproducible` compares
+both installer and exported script bytes across relocated staging directories.
+
 `@rules_electron//electron/tools:windows_elevate` builds a native elevation bridge
 for the selected Windows CPU/compiler. Map it to `resources/elevate.exe` for the
 pinned electron-updater NSIS elevation contract. It accepts an absolute executable
