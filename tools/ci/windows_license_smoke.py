@@ -15,6 +15,7 @@ def smoke_license(installer):
     user.GetDlgItem.argtypes = [wintypes.HWND, ctypes.c_int]
     user.GetDlgItem.restype = wintypes.HWND
     user.IsWindowVisible.argtypes = [wintypes.HWND]
+    user.IsWindow.argtypes = [wintypes.HWND]
     user.IsWindowEnabled.argtypes = [wintypes.HWND]
     user.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
     user.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
@@ -32,7 +33,12 @@ def smoke_license(installer):
 
     def text(window):
         buffer = ctypes.create_unicode_buffer(65536)
-        message(window, 0x000D, len(buffer), ctypes.addressof(buffer))
+        try:
+            message(window, 0x000D, len(buffer), ctypes.addressof(buffer))
+        except RuntimeError:
+            if not user.IsWindow(window):
+                return ''
+            raise
         return buffer.value
 
     def click(window):
