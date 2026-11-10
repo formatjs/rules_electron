@@ -664,7 +664,9 @@ component capture and native compilation run on BB. The
 [ARM64 capture](https://formatjs.buildbuddy.io/invocation/9612c9fe-fa5f-4519-a40e-243e4f652385)
 passed with frozen metadata-tool resolution. Its graph retains separate ARM64,
 x64 generator, x64 ARM64 V8 snapshot and Rust host toolchains. The handoff also
-requires separate Perfetto target, execution and snapshot profiles. Cross-family
+requires separate Perfetto and V8 support target, execution and snapshot profiles.
+Support capture retains ARM64's CRC implementation and x64 host SIMD closure.
+Cross-family
 dependency bindings and complete ARM64 runtime cross-build validation remain open.
 
 The packaging cross-build action query now includes forbidden build-wrapper

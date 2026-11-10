@@ -24,6 +24,9 @@ ARTIFACTS = {
     'linux-arm64-perfetto-target.json': 16 * 1024**2,
     'linux-arm64-perfetto-execution.json': 16 * 1024**2,
     'linux-arm64-perfetto-snapshot.json': 16 * 1024**2,
+    'linux-arm64-v8-support-target.json': 16 * 1024**2,
+    'linux-arm64-v8-support-execution.json': 16 * 1024**2,
+    'linux-arm64-v8-support-snapshot.json': 16 * 1024**2,
 }
 
 
