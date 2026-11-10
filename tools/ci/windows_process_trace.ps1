@@ -10,11 +10,11 @@ $script:truncatedStarts = 0
 function Resolve-NsisName([uint32]$Identifier, [string]$EventName) {
   if ($names -contains $EventName) { return ($names | Where-Object { $_ -ieq $EventName } | Select-Object -First 1) }
   if ($EventName.Length -eq 15) {
-    $matches = @($names | Where-Object { $_.Length -gt 15 -and $_.Substring(0, 15) -ieq $EventName })
-    if ($matches.Count -eq 1) {
+    $matchingNames = @($names | Where-Object { $_.Length -gt 15 -and $_.Substring(0, 15) -ieq $EventName })
+    if ($matchingNames.Count -eq 1) {
       $script:truncatedStarts += 1
       [System.IO.File]::WriteAllText(($Output + '.truncated'), [string]$script:truncatedStarts)
-      return $matches[0]
+      return $matchingNames[0]
     }
   }
   if ($EventName -inotmatch '^(sample|instal|uninstal)') { return $null }

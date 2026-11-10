@@ -46,7 +46,7 @@ class BuildBuddyLogTest(unittest.TestCase):
 
     def test_failed_source_truncated_profile_reports_fixed_reason(self):
         data = gzip.compress(b'{"traceEvents": []}')[:-4]
-        self.assertIn('"reason": "DECODE_FAILED"', self.source_profile(data))
+        self.assertIn('"reason": "TRUNCATED_GZIP"', self.source_profile(data))
 
     def test_failed_source_profile_still_requires_matching_digest(self):
         with self.assertRaisesRegex(ValueError, 'Profile digest or size mismatch'):

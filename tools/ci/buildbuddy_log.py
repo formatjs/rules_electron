@@ -81,10 +81,20 @@ def profile_diagnostics(invocation, key, sha):
             raise ValueError("Profile digest or size mismatch")
         try:
             decoded = decode_profile(data)
-        except (EOFError, ValueError, gzip.BadGzipFile):
+        except (EOFError, ValueError, gzip.BadGzipFile) as error:
             if not terminal_source:
                 raise
-            print('Source profile unavailable:', json.dumps({'name': name, 'reason': 'DECODE_FAILED'}))
+            if isinstance(error, EOFError):
+                reason = 'TRUNCATED_GZIP'
+            elif isinstance(error, gzip.BadGzipFile):
+                reason = 'INVALID_GZIP'
+            elif isinstance(error, json.JSONDecodeError):
+                reason = 'INVALID_JSON'
+            elif str(error) == 'Profile exceeds expanded size limit':
+                reason = 'EXPANDED_SIZE_LIMIT'
+            else:
+                reason = 'DECODE_FAILED'
+            print('Source profile unavailable:', json.dumps({'name': name, 'reason': reason, 'compressed_bytes': size}))
             continue
         print("Verified BB profile " + name + ":", json.dumps((summarize_source if source else summarize)(decoded), sort_keys=True))
     for artifact in invocation.get("artifacts", []):
