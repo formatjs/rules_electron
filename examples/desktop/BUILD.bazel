@@ -227,6 +227,24 @@ electron_archive(
     target_compatible_with = ["@platforms//os:linux"],
 )
 
+electron_archive(
+    name = "release_lzip",
+    app = ":app",
+    compression_level = 1,
+    format = "tar.lz",
+    lzip = "@rules_electron//third_party:lzip",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+electron_archive(
+    name = "release_tar7z",
+    app = ":app",
+    compression_level = 1,
+    format = "tar.7z",
+    sevenzip = "@sevenzip_linux_x64//:bin/7zz",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
 alias(
     name = "smoke_app",
     actual = select({
@@ -693,9 +711,12 @@ filegroup(
         ":deb_v2_feed",
         ":plain_links",
         ":release_7z",
+        ":release_lzip",
         ":release_tar",
+        ":release_tar7z",
         ":rpm_v1",
         ":rpm_v2_feed",
+        "@rules_electron//third_party:lzip",
     ],
     target_compatible_with = ["@platforms//os:linux"],
 )

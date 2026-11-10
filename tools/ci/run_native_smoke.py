@@ -100,6 +100,21 @@ def extract_variant(archive, destination, variant):
         output.chmod(0o755 if (info.external_attr >> 16) & 0o111 else 0o644)
 
 
+def smoke_tar_release(release, extracted):
+    with tarfile.open(release) as archive:
+        members = archive.getmembers()
+        if (not members or len(members) > 200000 or sum(member.size for member in members) > 4 * 1024**3
+                or any(PurePosixPath(member.name).parts[:1] != ("sample-desktop",)
+                       or not (member.isfile() or member.isdir() or member.issym())
+                       or member.uid != 0 or member.gid != 0 or member.mtime != 0 for member in members)):
+            raise ValueError("Unexpected Linux release archive inventory")
+        archive.extractall(extracted, filter="data")
+    subprocess.run([
+        sys.executable, "examples/desktop/tools/smoke_test.py", str(extracted / "sample-desktop"),
+        "--target-os", "linux", "--target-arch", "x64",
+    ], check=True)
+
+
 if __name__ == "__main__":
     shard = os.environ["SMOKE_SHARD"]
     name = archive_name(shard)
@@ -170,21 +185,20 @@ if __name__ == "__main__":
             if variant == "linux_x86_64":
                 release = directory / variant / "packages/release_tar.tar.gz"
                 extracted = directory / variant / "tar-release"
-                with tarfile.open(release, "r:gz") as archive:
-                    members = archive.getmembers()
-                    if not members or any(
-                        PurePosixPath(member.name).parts[:1] != ("sample-desktop",)
-                        or not (member.isfile() or member.isdir() or member.issym())
-                        or member.uid != 0 or member.gid != 0 or member.mtime != 0
-                        for member in members
-                    ):
-                        raise ValueError("Unexpected Linux release archive inventory")
-                    archive.extractall(extracted, filter="data")
-                subprocess.run([
-                    sys.executable, "examples/desktop/tools/smoke_test.py", str(extracted / "sample-desktop"),
-                    "--target-os", "linux", "--target-arch", "x64",
-                ], check=True)
+                smoke_tar_release(release, extracted)
                 print("TAR_RELEASE_SMOKE_OK", flush=True)
+                packages = directory / variant / "packages"
+                for format, decoder in [
+                    ('lzip', [str(packages / 'lzip'), '-dc', str(packages / 'release_lzip.tar.lz')]),
+                    ('tar7z', ['7z', 'e', '-so', str(packages / 'release_tar7z.tar.7z')]),
+                ]:
+                    with tempfile.TemporaryDirectory(prefix=format + '-', dir=directory) as temporary:
+                        staged = Path(temporary)
+                        tar = staged / 'release.tar'
+                        with tar.open('wb') as destination:
+                            subprocess.run(decoder, stdout=destination, check=True, timeout=180)
+                        smoke_tar_release(tar, staged / 'extracted')
+                    print(format.upper() + '_RELEASE_SMOKE_OK', flush=True)
                 sevenzip = directory / variant / "packages/release_7z.7z"
                 unpacked = directory / variant / "7z-release"
                 subprocess.run(["7z", "x", "-y", "-bso0", "-bsp0", "-o" + str(unpacked), str(sevenzip)], check=True)

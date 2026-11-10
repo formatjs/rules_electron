@@ -43,8 +43,12 @@ electron_archive(
 
 BB interoperability checks cover native lzip compression with independent
 LZMA/header/trailer decoding, declared 7zip extraction, relocation/mtime
-reproducibility, Unicode paths and macOS signature bytes. Hosted validation for
-these two added formats is pending.
+reproducibility, Unicode paths and macOS signature bytes. The
+[1772ee8 suite](https://formatjs.buildbuddy.io/invocation/1951142b-2935-4178-8b33-0457d06b54a8)
+passed those checks and the public rules' actual app-fixture outputs. Desktop
+`release_lzip` and `release_tar7z` targets now enter both Linux cross-builds;
+Linux x64 smoke decodes each and launches the packaged Electron app. Native
+desktop validation for the added formats is pending.
 ZIP/tar compressors come from the declared Python toolchain. Level 1 favors packaging
 time; level 9 favors size. Choose from measured costs for the consuming application.
 
