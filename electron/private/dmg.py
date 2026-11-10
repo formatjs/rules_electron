@@ -12,7 +12,7 @@ import tempfile
 
 from electron.private.archive import inventory, relative
 from electron.private.files import normalize
-from electron.private.finder import background_alias, write_layout
+from electron.private.finder import background_alias, background_identity, write_layout
 from electron.private.icons import png_dimensions, validate_icns
 
 
@@ -92,6 +92,7 @@ def create_dmg(source, app_name, volume_name, source_date_epoch, applications_li
                     raise ValueError("DMG background dimensions exceed 8192 pixels")
                 digest.update(b".background.png\0" + image.read_bytes())
                 image_alias = background_alias(volume_name, source_date_epoch)
+            payload_digest = digest.copy()
             write_layout(layout, app_name, applications_link, finder_window, app_position,
                          applications_position, icon_size, text_size, background_color, image_alias)
             digest.update(layout.read_bytes())
@@ -99,13 +100,29 @@ def create_dmg(source, app_name, volume_name, source_date_epoch, applications_li
         environment = {"PATH": "", "HOME": str(root), "TMPDIR": str(root), "TZ": "UTC", "LC_ALL": "C",
                        "SOURCE_DATE_EPOCH": str(source_date_epoch)}
         iso = root / "filesystem.iso"
-        subprocess.run([xorriso, "-no_rc", "-local_charset", "UTF-8", "-as", "mkisofs", "-hfsplus", "-R",
-                        "-uid", "0", "-gid", "0", "-apm-block-size", "512", "-input-charset", "UTF-8", "-output-charset", "UTF-8",
-                        "-hfsplus-serial-no", digest.hexdigest()[:16], "--set_all_file_dates", date,
-                        "--modification-date=" + date, "-V", volume_name,
-                        *(["-hfs-bless-by", "show_folder", "/"] if finder_window else []),
-                        "-o", str(iso), str(staging)],
-                       env=environment, check=True, capture_output=True, timeout=1800)
+
+        def write_filesystem(identity):
+            subprocess.run([xorriso, "-no_rc", "-local_charset", "UTF-8", "-as", "mkisofs", "-hfsplus", "-R",
+                            "-uid", "0", "-gid", "0", "-apm-block-size", "512", "-input-charset", "UTF-8", "-output-charset", "UTF-8",
+                            "-hfsplus-serial-no", identity.hexdigest()[:16], "--set_all_file_dates", date,
+                            "--modification-date=" + date, "-V", volume_name,
+                            *(["-hfs-bless-by", "show_folder", "/"] if finder_window else []),
+                            "-o", str(iso), str(staging)],
+                           env=environment, check=True, capture_output=True, timeout=1800)
+
+        write_filesystem(digest)
+        if background_image:
+            identity = background_identity(iso)
+            write_layout(layout, app_name, applications_link, finder_window, app_position,
+                         applications_position, icon_size, text_size, background_color,
+                         background_alias(volume_name, source_date_epoch, *identity))
+            digest = payload_digest.copy()
+            digest.update(layout.read_bytes())
+            normalize(staging)
+            iso.unlink()
+            write_filesystem(digest)
+            if background_identity(iso) != identity:
+                raise ValueError("HFS+ background identity changed during layout finalization")
         image = root / "release.dmg"
         subprocess.run([converter, str(iso), str(image)], env=environment, check=True, capture_output=True, timeout=1800)
         with image.open("rb") as content:

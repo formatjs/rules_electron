@@ -43,16 +43,18 @@ volume layout. License dialogs remain separate work.
 `background_image` accepts a declared PNG, up to 64 MiB and 8192 pixels per axis.
 It requires `finder_window`, overrides the background color and copies unchanged
 bytes to `.background.png`. Its Carbon alias uses the explicit volume name/date
-and a path inside that volume, without build paths, host file IDs or filesystem
-discovery. The path-based form also appears in
+and a path inside that volume, without build paths or host file IDs. The writer
+reads the background's catalog ID/date from its first generated HFS+ image,
+finalizes the alias, then rebuilds and verifies unchanged catalog identity before
+UDIF conversion. No mounting or target execution is involved. A path-based form also appears in
 [Chromium's Linux-compatible generator](https://chromium.googlesource.com/chromium/src/+/9c363bb2863cd723978a8a245719389a7bf1c20e/chrome/installer/mac/generate_dsstore.py).
-BB tests decode the packaged alias and image bytes, check volume dates and
+BB tests decode the packaged alias and image bytes, check actual catalog IDs/dates and
 compare relocated builds. Native smoke reads Finder's resolved background
 picture and requires the mounted image's exact file. Background-image support
 awaits hosted validation.
 
 Metadata uses checksum-pinned MIT-licensed `ds_store` 1.3.3 and `mac_alias` 2.2.2
-Python sources. No alias filesystem discovery, Finder, mounting or AppleScript
+Python sources. No host alias discovery, Finder, mounting or AppleScript
 runs in artifact actions. Geometry/color inputs and metadata bytes participate
 in deterministic image identity. BB tests decode the packaged settings and
 auto-open catalog ID, preserve app seals and compare relocated input bytes.
