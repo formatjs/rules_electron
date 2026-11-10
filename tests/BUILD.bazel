@@ -1,6 +1,6 @@
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
-load("@rules_python//python:defs.bzl", "py_binary", "py_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 load("//electron:appimage.bzl", "electron_appimage")
 load("//electron:archive.bzl", "electron_archive")
 load("//electron:asar.bzl", "electron_asar")
@@ -601,15 +601,34 @@ py_test(
 )
 
 py_test(
+    name = "appinstaller_publication_test",
+    size = "small",
+    srcs = ["appinstaller_publication_test.py"],
+    args = ["$(rootpath //electron/tools:publish_appinstaller)"],
+    data = ["//electron/tools:publish_appinstaller"],
+    deps = [
+        ":s3_test_support",
+        "//electron/private:appinstaller",
+    ],
+)
+
+py_test(
     name = "s3_publication_test",
     size = "small",
     srcs = ["s3_publication_test.py"],
     args = ["$(rootpath //electron/tools:publish_s3)"],
     data = ["//electron/tools:publish_s3"],
     deps = [
+        ":s3_test_support",
         "//electron/private:updates",
         "//electron/tools:s3_publication",
     ],
+)
+
+py_library(
+    name = "s3_test_support",
+    testonly = True,
+    srcs = ["s3_test_support.py"],
 )
 
 py_test(

@@ -133,10 +133,13 @@ class Publisher:
         except HTTPError as error:
             return error
 
+    def content_type(self, path):
+        return "application/octet-stream"
+
     def put(self, path, condition):
         with path.open("rb") as source:
             headers = {**condition, "Content-Length": str(path.stat().st_size),
-                       "Content-Type": "application/octet-stream"}
+                       "Content-Type": self.content_type(path)}
             with self.request("PUT", path.name, source, headers) as response:
                 return response.status
 

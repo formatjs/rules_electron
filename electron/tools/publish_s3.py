@@ -144,7 +144,7 @@ class S3Publisher(Publisher):
         size = path.stat().st_size
         if size <= self.multipart_threshold:
             return super().put(path, condition)
-        with self.request('POST', path.name, query={'uploads': ''}) as response:
+        with self.request('POST', path.name, headers={'Content-Type': self.content_type(path)}, query={'uploads': ''}) as response:
             if response.status != 200:
                 raise ValueError('S3 multipart initiation failed')
             upload_id = xml_field(response_xml(response, 'InitiateMultipartUploadResult'), 'UploadId')
@@ -191,10 +191,7 @@ class S3Publisher(Publisher):
         return super().publish(output, channel, uploads)
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--feed', type=Path, required=True)
-    parser.add_argument('--channel', required=True)
+def add_s3_arguments(parser):
     parser.add_argument('--destination', required=True)
     parser.add_argument('--region', required=True)
     parser.add_argument('--access-key-env', default='AWS_ACCESS_KEY_ID')
@@ -203,11 +200,22 @@ def main():
     parser.add_argument('--allow-http-loopback', action='store_true')
     parser.add_argument('--multipart-threshold', type=int, default=MAX_PART, help='Bytes; defaults to 5 GiB.')
     parser.add_argument('--part-size', type=int, default=64 * 1024**2, help='Bytes; minimum 5 MiB.')
+
+
+def publisher_from_environment(args, publisher_type=S3Publisher):
+    return publisher_type(args.destination, args.region, os.environ[args.access_key_env],
+                          os.environ[args.secret_key_env], os.environ.get(args.session_token_env),
+                          args.allow_http_loopback, args.multipart_threshold, args.part_size)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--feed', type=Path, required=True)
+    parser.add_argument('--channel', required=True)
+    add_s3_arguments(parser)
     args = parser.parse_args()
     try:
-        publisher = S3Publisher(args.destination, args.region, os.environ[args.access_key_env],
-                                os.environ[args.secret_key_env], os.environ.get(args.session_token_env),
-                                args.allow_http_loopback, args.multipart_threshold, args.part_size)
+        publisher = publisher_from_environment(args)
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
             uploads = snapshot(args.feed, args.channel, output)

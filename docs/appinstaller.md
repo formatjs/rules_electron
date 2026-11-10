@@ -43,10 +43,33 @@ Publish package bytes before promoting the descriptor. This rule neither uploads
 nor installs them. App Installer uses Windows deployment APIs; it does not make
 MSIX an electron-updater installer. Store distribution remains a separate flow.
 
-Validation is pending. BB tests check identity, policy, URL boundaries, immutable
-inputs, relocation/mtime stability and UTF-8/UTF-16 manifests. Native x64/ARM64
+`@rules_electron//electron/tools:publish_appinstaller` performs an explicit S3
+release operation from BB Linux:
+
+```sh
+bazel run --config=bb-workflow @rules_electron//electron/tools:publish_appinstaller -- \
+  --descriptor "$appinstaller_file" --package "$signed_msix" \
+  --destination https://sample-updates.s3.us-west-2.amazonaws.com/windows/arm64/ \
+  --region us-west-2
+```
+
+Credentials and multipart options follow the [S3 publisher](s3-publication.md).
+Inputs must be regular files. The client snapshots their bytes and compares all
+four package identity fields before contacting the service. Object names come
+from public descriptor/package URLs; local Bazel output names may differ. Map
+those public URLs to the chosen destination prefix. It uploads MSIX first with
+`If-None-Match: *`, verifies identical existing bytes, then promotes the descriptor
+with a strong ETag condition. Races stop promotion. Both upload modes set explicit
+`application/msix` and `application/appinstaller` content types. This operation
+does not validate certificate trust or publish dependency/bundle sets.
+
+The [2b99e00 BB suite](https://formatjs.buildbuddy.io/invocation/17a41b65-4f45-4eba-9a98-a71e8f112e4f)
+and [seven cross-builds](https://formatjs.buildbuddy.io/invocation/85bff46d-ad69-4aad-b284-30b91e75e3d8)
+passed. Tests check identity, policy, URL boundaries, immutable inputs,
+relocation/mtime stability and UTF-8/UTF-16 manifests. Native x64/ARM64
 fixtures serve only unchanged BB outputs on loopback, install v1 through App
 Installer, adopt its URI through `GetAppInstallerInfo`, update to v2, launch real
 Electron and remove the package. Existing signature/activation tests remain
-separate. The short fixture does not prove background timing, prompt UX, fallback
+separate. [ARM64 passed](https://github.com/formatjs/rules_electron/actions/runs/42767185353/job/129666712579);
+x64 and publication validation are pending. The short fixture does not prove background timing, prompt UX, fallback
 server failover or production certificate trust.

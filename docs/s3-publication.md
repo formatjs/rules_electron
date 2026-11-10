@@ -1,5 +1,7 @@
 # S3 update publication
 
+MSIX descriptors use the separate [App Installer publication client](appinstaller.md).
+
 `@rules_electron//electron/tools:publish_s3` uploads verified update feeds using
 AWS Signature Version 4. Run it explicitly from the BB Linux release workflow.
 Artifact builds stay offline; ordinary CI never publishes releases.
