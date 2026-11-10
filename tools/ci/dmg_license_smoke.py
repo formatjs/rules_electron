@@ -79,7 +79,7 @@ on run argv
     set sawImageError to false
     set sawOK to false
     tell application "System Events"
-        repeat 40 times
+        repeat 20 times
             set targets to {}
             repeat with processId in argv
                 set targets to targets & (application processes whose unix id is (processId as integer))
@@ -100,7 +100,12 @@ on run argv
                     set textCount to 0
                     set agreeControl to missing value
                     set disagreeControl to missing value
-                    set elements to (get entire contents of targetWindow)
+                    set elements to {}
+                    try
+                        with timeout of 2 seconds
+                            set elements to (get entire contents of targetWindow)
+                        end timeout
+                    end try
                     if (count elements) > maxElements then set maxElements to count elements
                     repeat with elementReference in elements
                         set currentElement to contents of elementReference
@@ -116,8 +121,8 @@ on run argv
                         try
                             if (role of currentElement as text) is "AXButton" then
                                 set buttonCount to buttonCount + 1
-                                if (name of currentElement as text) is "Agree" then set agreeControl to element
-                                if (name of currentElement as text) is "Disagree" then set disagreeControl to element
+                                if (name of currentElement as text) is "Agree" then set agreeControl to currentElement
+                                if (name of currentElement as text) is "Disagree" then set disagreeControl to currentElement
                                 if (name of currentElement as text) is "OK" then set sawOK to true
                             end if
                             if (role of currentElement as text) is in {"AXStaticText", "AXTextArea"} then set textCount to textCount + 1
@@ -206,7 +211,7 @@ function run() {
               'type_error': b'TypeError' in owners.stderr, 'reference_error': b'ReferenceError' in owners.stderr,
               'core_graphics_symbol': b'CGWindowListCopyWindowInfo' in owners.stderr}, sort_keys=True), flush=True)
         result = subprocess.run(['/usr/bin/osascript', '-e', script, *map(str, identifiers)],
-                                capture_output=True, timeout=30)
+                                capture_output=True, timeout=120)
         time.sleep(1)
         summary = {
             'opened': opened.returncode == 0, 'observer_exit_code': result.returncode,
@@ -215,6 +220,8 @@ function run() {
         }
         open_error = re.search(br'\((-?\d{1,10})\)\s*$', opened.stderr)
         summary['open_error_code'] = int(open_error[1]) if open_error else None
+        observer_error = re.search(br'\((-?\d{1,10})\)\s*$', result.stderr)
+        summary['observer_error_code'] = int(observer_error[1]) if observer_error else None
         fields = result.stdout.strip().split(b',')
         if (result.returncode == 0 and len(fields) == 11 and fields[0] in (b'declined', b'not-found')
                 and all(value.isdigit() and len(value) <= 3 for value in fields[1:3] + fields[6:9])
