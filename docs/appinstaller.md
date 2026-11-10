@@ -70,6 +70,16 @@ relocation/mtime stability and UTF-8/UTF-16 manifests. Native x64/ARM64
 fixtures serve only unchanged BB outputs on loopback, install v1 through App
 Installer, adopt its URI through `GetAppInstallerInfo`, update to v2, launch real
 Electron and remove the package. Existing signature/activation tests remain
-separate. [ARM64 passed](https://github.com/formatjs/rules_electron/actions/runs/42767185353/job/129666712579);
-x64 and publication validation are pending. The short fixture does not prove background timing, prompt UX, fallback
+separate. [All four native hosts passed](https://github.com/formatjs/rules_electron/actions/runs/42767185353),
+including the complete handoff on Windows x64/ARM64. The
+[3445e4f BB suite](https://formatjs.buildbuddy.io/invocation/21a9f3d8-4d73-4216-b158-ce2463d2c854)
+passed the public publication command against a signature-verifying server:
+exact bytes/names, MIME, ordering, retries, identity rejection and channel races.
+No live release was published.
+
+An additional native gate now checks Windows'
+[`CheckUpdateAvailabilityAsync`](https://learn.microsoft.com/en-us/uwp/api/windows.applicationmodel.package.checkupdateavailabilityasync?view=winrt-28000)
+for no updates, an available v2, then no updates after installation. It uses
+`PackageManager.FindPackageForUser` rather than the documented unsupported
+`Package.Current` path. This discovery gate is pending. The short fixture does not prove background timing, prompt UX, fallback
 server failover or production certificate trust.

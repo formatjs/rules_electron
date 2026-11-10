@@ -98,6 +98,31 @@ function Assert-DocumentIcons($Package) {
   }
   Write-Output 'MSIX_DOCUMENT_ICONS_OK'
 }
+function Assert-AppInstallerAvailability($Package, [ValidateSet('NoUpdates','Available')][string]$Expected) {
+  # Load Windows' async projection; no source compilation.
+  Add-Type -AssemblyName System.Runtime.WindowsRuntime
+  $resultType = [Windows.ApplicationModel.PackageUpdateAvailabilityResult,Windows.ApplicationModel,ContentType=WindowsRuntime]
+  $methods = @([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
+    $_.Name -ceq 'AsTask' -and $_.IsGenericMethodDefinition -and
+    $_.GetGenericArguments().Count -eq 1 -and $_.GetParameters().Count -eq 1 -and
+    $_.GetParameters()[0].ParameterType.Name -ceq 'IAsyncOperation`1'
+  })
+  if ($methods.Count -ne 1) { throw 'MSIX WinRT async projection unavailable' }
+  $operation = $Package.CheckUpdateAvailabilityAsync()
+  $conversion = $methods[0].MakeGenericMethod([Type[]]@($resultType))
+  $task = $conversion.Invoke($null, [object[]]@($operation))
+  if (-not $task.Wait(60000)) { $operation.Cancel(); throw 'MSIX update availability timeout' }
+  $availability = $task.Result.Availability.ToString()
+  if (@('Unknown','NoUpdates','Available','Required','Error') -cnotcontains $availability) {
+    throw 'MSIX update availability returned unknown value'
+  }
+  if ($availability -cne $Expected) {
+    $code = if ($task.Result.ExtendedError) { $task.Result.ExtendedError.HResult } else { 0 }
+    Write-Output ('MSIX_APPINSTALLER_AVAILABILITY_MISMATCH expected=' + $Expected + ' actual=' + $availability + ' hresult=' + $code)
+    throw 'MSIX update availability mismatch'
+  }
+  Write-Output ('MSIX_APPINSTALLER_AVAILABILITY_OK ' + $Expected)
+}
 function Assert-AppInstaller {
   $uri = 'http://127.0.0.1:31827/desktop.appinstaller'
   $arguments = @('-u', 'tools/ci/windows_appinstaller_server.py', '--packages', ('"' + $Packages + '"'), '--port', '31827')
@@ -117,6 +142,7 @@ function Assert-AppInstaller {
     foreach ($release in @(@{Suffix='v1'; Version='1.0.0'}, @{Suffix='v2'; Version='2.0.0'})) {
       if ($release.Suffix -eq 'v2') {
         Invoke-WebRequest -Uri 'http://127.0.0.1:31827/use-v2' -Method Post -UseBasicParsing -TimeoutSec 5 | Out-Null
+        Assert-AppInstallerAvailability $native 'Available'
       }
       Add-AppxPackage -Path $uri -AppInstallerFile -ForceTargetApplicationShutdown
       $package = Get-AppxPackage -Name $appinstallerIdentity
@@ -129,6 +155,7 @@ function Assert-AppInstaller {
       $native = $manager.FindPackageForUser('', $package.PackageFullName)
       $info = $native.GetAppInstallerInfo()
       if (-not $info -or $info.Uri.AbsoluteUri -cne $uri) { throw 'MSIX App Installer URI was not adopted' }
+      Assert-AppInstallerAvailability $native 'NoUpdates'
       Assert-DocumentIcons $package
       & $reader --handlers $family present
       if ($LASTEXITCODE -ne 0) { throw 'MSIX App Installer handlers missing' }
