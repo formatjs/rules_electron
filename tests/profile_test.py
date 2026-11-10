@@ -65,6 +65,17 @@ class ProfileTest(unittest.TestCase):
         self.assertEqual(set(summary['categories']), set(categories))
         self.assertNotIn('private-', json.dumps(summary))
 
+    def test_source_summary_reports_only_fixed_public_merkle_operation_names(self):
+        summary = summarize_source({'traceEvents': [
+            {'ph': 'X', 'ts': 0, 'dur': 1000000, 'cat': 'general information', 'name': name}
+            for name in ['MerkleTreeComputer.buildForSpawn', 'acquiring semaphore', 'private-operation']
+        ]})
+        self.assertEqual(summary['operations'], {
+            'MerkleTreeComputer.buildForSpawn': {'count': 1, 'cumulative_seconds': 1.0, 'max_seconds': 1.0},
+            'acquiring semaphore': {'count': 1, 'cumulative_seconds': 1.0, 'max_seconds': 1.0},
+        })
+        self.assertNotIn('private-', json.dumps(summary))
+
     def test_source_summary_keeps_metrics_without_trace_labels(self):
         result = summarize_source({"traceEvents": [
             {"ph": "X", "cat": "general information", "name": "runAnalysisPhase", "ts": 0, "dur": 2000000},

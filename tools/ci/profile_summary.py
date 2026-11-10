@@ -27,6 +27,7 @@ def summarize_source(profile):
         "CargoBuildScriptRun", "CargoBuildScriptCompile", "ElectronPython", "FileWrite",
     }
     phases = {"runAnalysisPhase", "runLoadingPhase", "evaluateTargetPatterns", "runExecutorMainPhase"}
+    operations = {'MerkleTreeComputer.buildForSpawn', 'MerkleTreeComputer.buildForFiles', 'acquiring semaphore'}
     events = []
     for event in profile["traceEvents"]:
         args = event.get("args", {})
@@ -44,10 +45,16 @@ def summarize_source(profile):
             "ph": "X", "pid": event.get("pid"), "tid": event.get("tid"),
             "ts": timestamp, "dur": duration,
             "cat": event.get("cat") if event.get("cat") in categories else "other",
-            "name": event.get("name") if event.get("name") in phases else "",
+            "name": event.get("name") if event.get("name") in phases | operations else "",
             "args": {"mnemonic": mnemonic if mnemonic in mnemonics else "other"} if mnemonic else {},
         })
     result = summarize({"traceEvents": events})
+    result['operations'] = {}
+    for name in sorted(operations):
+        durations = [event['dur'] / 1000000 for event in events if event.get('ph') == 'X' and event.get('name') == name]
+        if durations:
+            result['operations'][name] = {'count': len(durations), 'cumulative_seconds': round(sum(durations), 3),
+                                          'max_seconds': round(max(durations), 3)}
     if not 0 <= result["trace_span_seconds"] <= 7 * 86400:
         raise ValueError("Source profile span exceeds limits")
     return result
