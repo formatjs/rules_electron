@@ -211,7 +211,7 @@ end run
         owners = subprocess.run(['/usr/bin/osascript', '-l', 'JavaScript', '-e', '''
 ObjC.import('CoreGraphics');
 ObjC.import('Foundation');
-function run() {
+function run(argv) {
     let visible = 0;
     let stage = 0;
     try {
@@ -223,9 +223,10 @@ function run() {
         stage = 3;
         visible = windows.length;
         stage = 4;
-        const owners = [...new Set(windows.filter(window =>
-            /license|agreement|release\\.dmg|Sample Desktop/i.test(window.kCGWindowName || '')
-        ).map(window => window.kCGWindowOwnerPID))];
+        const owners = [...new Set(windows.filter(window => {
+            const title = window.kCGWindowName || '';
+            return title.includes(argv[0]) || /license|agreement|Sample Desktop/i.test(title);
+        }).map(window => window.kCGWindowOwnerPID))];
         if (owners.length) return JSON.stringify({owners, visible});
         stage = 5;
         $.NSThread.sleepForTimeInterval(0.5);
@@ -235,7 +236,7 @@ function run() {
         return JSON.stringify({owners: [], visible: Number(visible) || 0, error_stage: stage});
     }
 }
-'''], capture_output=True, timeout=20)
+''', image.stem], capture_output=True, timeout=20)
         candidates = json.loads(owners.stdout) if owners.returncode == 0 else {'owners': [], 'visible': 0}
         identifiers = candidates.get('owners', [])
         if (not isinstance(identifiers, list) or len(identifiers) > 16
