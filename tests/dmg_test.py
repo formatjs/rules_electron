@@ -268,7 +268,7 @@ class DmgTest(unittest.TestCase):
         self.assertEqual(alias.volume.name, "Sample 世界")
         self.assertEqual(alias.volume.posix_path, "/Volumes/Sample 世界")
         self.assertEqual((alias.target.filename, alias.target.posix_path, alias.target.carbon_path),
-                         (".background.png", "/.background.png", "Sample 世界:.background.png"))
+                         (".background.png", "/.background.png", "Sample 世界:.background.png".encode("utf-8")))
         self.assertEqual((alias.target.folder_cnid, alias.target.cnid), (2, 0xffffffff))
         self.assertNotIn(str(self.root).encode(), data)
         volume_date = struct.unpack_from(">I", image, hfs_volume(image) + 1024 + 16)[0]

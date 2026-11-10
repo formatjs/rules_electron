@@ -81,8 +81,12 @@ bytes to `.VolumeIcon.icns` and sets the HFS+ root folder's custom-icon flag.
 The signed app bundle stays immutable; icon bytes participate in volume identity.
 BB tests read catalog flags independently, compare relocated image bytes and
 reject malformed icons or output/input aliases. Native smoke asks NSWorkspace
-for the mounted volume icon and checks its fixture pixels. This icon extension
-awaits hosted validation. The flag follows [Apple TN1150](https://developer.apple.com/library/archive/technotes/tn/tn1150.html).
+for the mounted volume icon and compares its rendered pixels against the same
+declared app icon through native color management. Exact ICNS byte equality is
+also required. The [69c3287 suite](https://formatjs.buildbuddy.io/invocation/a1cf3460-1178-4f32-acd9-3738a09b3bfb),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/d86d10a4-aba4-41c4-ba30-d376cf53a1e1)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42724309931)
+passed. The flag follows [Apple TN1150](https://developer.apple.com/library/archive/technotes/tn/tn1150.html).
 
 ## Release clients
 
