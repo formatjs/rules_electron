@@ -152,7 +152,7 @@ function run() {
         stage = 1;
         const raw = $.CGWindowListCopyWindowInfo(1, 0);
         stage = 2;
-        const windows = ObjC.deepUnwrap(raw);
+        const windows = ObjC.deepUnwrap(ObjC.castRefToObject(raw)) || [];
         stage = 3;
         visible = windows.length;
         stage = 4;
