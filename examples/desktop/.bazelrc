@@ -19,6 +19,9 @@ build:rbe --remote_timeout=10m
 build:rbe --remote_download_toplevel
 build:rbe --remote_cache_compression
 build:rbe --jobs=50
+
+build:prebuilt-packaging-benchmark --modify_execution_info=^(Electron.*|MakeDeb)$=+no-cache
+build:prebuilt-packaging-benchmark --build_metadata=PREBUILT_SAMPLE_PACKAGING_CACHE=bypassed
 try-import %workspace%/.bazelrc.user
 
 # Use only on hosts licensed for the Visual Studio runtime.
