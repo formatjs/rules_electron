@@ -810,3 +810,24 @@ also passed all four hosts. The macOS updater's final ZIP fell from 285,575,214
 to 239,857,132 bytes (16.01%). Its real differential update fetched 446,182 bytes,
 reusing 99.81% of the final archive. These fixtures use bootstrap Electron;
 source-runtime integration remains separately tracked.
+
+## Source frontend samples
+
+The source workflow now samples its existing Bazel server every five seconds.
+Only numeric CPU, RSS, thread and page-fault counters from
+[Linux procfs](https://docs.kernel.org/filesystems/proc.html) enter
+`source-frontend-metrics.jsonl`. The sampler stops when the server exits or its
+PID is reused. Owned sampler cleanup preserves the original build command and
+exit status. Failure to collect diagnostics does not change build success.
+
+This complements Bazel's existing profile counters. Its
+[resource collector](https://github.com/bazelbuild/bazel/blob/9.2.0/src/main/java/com/google/devtools/build/lib/profiler/CollectLocalResourceUsage.java)
+flushes CPU/memory series at profiler shutdown, which a deadline can interrupt.
+Line-flushed samples retain a usable prefix. The observer verifies repository,
+commit, terminal source workflow, digest and bounded size before reporting
+weighted CPU usage and sampled peak RSS. It drops an incomplete final record;
+unknown fields, invalid numbers and nonmonotonic times fail without echoing data.
+RSS is sampled process memory, not JVM heap or remote-worker memory. Timing data
+stays in diagnostic artifacts. No product action reads it.
+
+BB validation and the first source measurement are pending.

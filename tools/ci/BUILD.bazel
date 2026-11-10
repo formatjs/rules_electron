@@ -28,6 +28,7 @@ py_library(
         ":artifacts",
         ":profiles",
         ":smoke_shards",
+        ":source_frontend_metrics",
     ],
 )
 
@@ -133,5 +134,11 @@ py_library(
 py_library(
     name = "execution_diagnostics",
     srcs = ["execution_diagnostics.py"],
+    visibility = ["//tests:__pkg__"],
+)
+
+py_library(
+    name = "source_frontend_metrics",
+    srcs = ["source_frontend_metrics.py"],
     visibility = ["//tests:__pkg__"],
 )

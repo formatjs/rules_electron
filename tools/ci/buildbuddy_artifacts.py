@@ -50,6 +50,13 @@ def source_profile_uri(response, expected_sha, artifact_name):
     return _artifact_uri(response, expected_sha, artifact_name, 64 * 1024**2, require_success=False)
 
 
+def source_frontend_metrics_uri(response, expected_sha):
+    invocations = response.get('invocation', [])
+    if len(invocations) != 1 or invocations[0].get('pattern') != 'Source-built desktop example':
+        raise ValueError('Expected source workflow frontend metrics')
+    return _artifact_uri(response, expected_sha, 'source-frontend-metrics.jsonl', 1024**2, require_success=False)
+
+
 def _artifact_uri(response, expected_sha, artifact_name, max_bytes, require_success):
     invocations = response.get("invocation", [])
     if len(invocations) != 1:

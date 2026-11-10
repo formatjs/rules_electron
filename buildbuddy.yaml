@@ -107,6 +107,20 @@ actions:
             --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
             //tools:file_matcher_test
           cp MODULE.bazel.lock "$BUILDBUDDY_ARTIFACTS_DIRECTORY/source-example-analysis-MODULE.bazel.lock"
+          source_metrics_pid=""
+          stop_source_metrics() {
+            if [[ -n "$source_metrics_pid" ]]; then
+              kill "$source_metrics_pid" 2>/dev/null || true
+              wait "$source_metrics_pid" 2>/dev/null || true
+              source_metrics_pid=""
+            fi
+          }
+          trap stop_source_metrics EXIT
+          if source_server_pid="$(bazel --host_jvm_args=-Xmx24g info server_pid)"; then
+            python3 "$source_root/tools/ci/source_frontend_metrics.py" --pid "$source_server_pid" \
+              --output "$BUILDBUDDY_ARTIFACTS_DIRECTORY/source-frontend-metrics.jsonl" &
+            source_metrics_pid="$!"
+          fi
           bazel --host_jvm_args=-Xmx24g build --config=bb-workflow --config=msvc-license --remote_download_toplevel \
             --discard_analysis_cache --notrack_incremental_state \
             --registry="file://$source_registry" --registry=https://bcr.bazel.build \
@@ -117,5 +131,6 @@ actions:
             --experimental_profile_additional_tasks=remote_download \
             --experimental_profile_additional_tasks=remote_cache_check \
             //:cross_build_smoke_bundle
+          stop_source_metrics
           cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"
           cp MODULE.bazel.lock "$BUILDBUDDY_ARTIFACTS_DIRECTORY/source-example-MODULE.bazel.lock"
