@@ -111,6 +111,22 @@ class AssemblyTest(unittest.TestCase):
             {"source": str(self.main), "path": "resources/app/main.js"},
         ]
 
+    def test_windows_branding_keeps_wer_helper_aligned_with_executable(self):
+        helper = self.root / "wer.dll"
+        helper.write_bytes(b"crash helper")
+        entries = [dict(entry, path="electron.exe") if entry["path"] == "electron" else entry for entry in self.entries]
+        entries.append({"source": str(helper), "path": "electron_wer.dll"})
+        for name in ["Sample", "Sample.exe"]:
+            with self.subTest(name=name):
+                output = self.root / name
+                assemble(entries, output, platform="windows", executable_name=name)
+                self.assertEqual((output / "Sample.exe").read_bytes(), b"runtime")
+                self.assertEqual((output / "Sample_wer.dll").read_bytes(), b"crash helper")
+                self.assertFalse((output / "electron_wer.dll").exists())
+        with self.assertRaisesRegex(ValueError, "crash helper destination already occupied"):
+            assemble(entries + [{"source": str(helper), "path": "SAMPLE_wer.dll"}], self.root / "collision", platform="windows", executable_name="Sample")
+        self.assertEqual(helper.read_bytes(), b"crash helper")
+
     def test_relocatable_layout_and_normalized_metadata(self):
         output = self.root / "distribution"
         assemble(self.entries, output)

@@ -239,6 +239,14 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
             if occupied:
                 raise ValueError(f"Executable destination already occupied: {name}")
             (output / original).rename(binary)
+        if platform == "windows":
+            helper = output / "electron_wer.dll"
+            branded_helper = output / (binary.stem + "_wer.dll")
+            if helper.exists() and helper != branded_helper:
+                if any(path != helper and path.name.casefold() == branded_helper.name.casefold() for path in output.iterdir()):
+                    raise ValueError("Windows crash helper destination already occupied")
+                # Electron 45 locates its WER helper using the executable basename.
+                helper.rename(branded_helper)
     if windows_resource_tool:
         subprocess.run([
             windows_resource_tool["node"], windows_resource_tool["script"],
