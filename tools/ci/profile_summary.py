@@ -5,6 +5,8 @@ import gzip
 import io
 import json
 import math
+import codecs
+import zlib
 
 
 def summarize_source(profile):
@@ -50,6 +52,63 @@ def decode_profile(data, limit=128 * 1024**2):
     if len(decoded) > limit:
         raise ValueError("Profile exceeds expanded size limit")
     return json.loads(decoded)
+
+
+def recover_source_profile(data, limit=128 * 1024**2):
+    inflater = zlib.decompressobj(31)
+    decoded = inflater.decompress(data, limit + 1)
+    if len(decoded) > limit:
+        raise ValueError('Profile exceeds expanded size limit')
+    if inflater.eof:
+        raise ValueError('Recovery requires a truncated gzip stream')
+    text = codecs.getincrementaldecoder('utf-8')().decode(decoded, final=False)
+    decoder = json.JSONDecoder()
+    position = 0
+
+    def skip_space():
+        nonlocal position
+        while position < len(text) and text[position] in ' \r\n\t':
+            position += 1
+
+    def consume(token):
+        nonlocal position
+        skip_space()
+        if not text.startswith(token, position):
+            raise ValueError('Invalid source profile prefix')
+        position += len(token)
+
+    consume('{')
+    while True:
+        skip_space()
+        key, position = decoder.raw_decode(text, position)
+        if not isinstance(key, str):
+            raise ValueError('Invalid source profile key')
+        consume(':')
+        if key == 'traceEvents':
+            break
+        skip_space()
+        _, position = decoder.raw_decode(text, position)
+        consume(',')
+    consume('[')
+    events = []
+    while True:
+        skip_space()
+        if position >= len(text) or text[position] == ']':
+            break
+        try:
+            event, position = decoder.raw_decode(text, position)
+        except json.JSONDecodeError:
+            break
+        if not isinstance(event, dict):
+            raise ValueError('Invalid source profile event')
+        events.append(event)
+        skip_space()
+        if position >= len(text) or text[position] == ']':
+            break
+        consume(',')
+    if not events:
+        raise ValueError('Source profile contains no recoverable events')
+    return {'traceEvents': events}
 
 
 def summarize(profile):

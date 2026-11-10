@@ -1,11 +1,39 @@
 import gzip
 import json
 import unittest
+import zlib
 
-from tools.ci.profile_summary import decode_profile, summarize, summarize_source
+from tools.ci.profile_summary import decode_profile, recover_source_profile, summarize, summarize_source
 
 
 class ProfileTest(unittest.TestCase):
+    def test_truncated_source_profile_recovers_only_complete_events(self):
+        event = {'ph': 'X', 'cat': 'action processing', 'name': 'private-path',
+                 'ts': 0, 'dur': 2000000, 'args': {'mnemonic': 'CppCompile'}}
+        prefix = '{"otherData":{"note":"traceEvents"},"traceEvents":[' + json.dumps(event)
+        data = gzip.compress((prefix + ',{"name":"unfinished').encode())[:-8]
+        with self.assertRaises(EOFError):
+            decode_profile(data)
+        recovered = recover_source_profile(data)
+        self.assertEqual(recovered['traceEvents'], [event])
+        summary = summarize_source(recovered)
+        self.assertEqual(summary['actions']['CppCompile']['count'], 1)
+        self.assertEqual(summary['trace_span_seconds'], 2)
+        self.assertNotIn('private-', json.dumps(summary))
+
+    def test_source_recovery_rejects_complete_corrupt_oversized_and_empty_streams(self):
+        data = gzip.compress(b'{"traceEvents":[]}')
+        with self.assertRaisesRegex(ValueError, 'truncated gzip'):
+            recover_source_profile(data)
+        corrupt = bytearray(data)
+        corrupt[-8] ^= 1
+        with self.assertRaises(zlib.error):
+            recover_source_profile(corrupt)
+        with self.assertRaisesRegex(ValueError, 'expanded size limit'):
+            recover_source_profile(gzip.compress(b' ' * 100)[:-8], limit=10)
+        with self.assertRaisesRegex(ValueError, 'no recoverable events'):
+            recover_source_profile(data[:-8])
+
     def test_parallel_action_time_is_distinct_from_trace_span(self):
         profile = {"traceEvents": [
             {"ph": "M", "name": "thread_name", "tid": 0, "args": {"name": "Critical Path"}},

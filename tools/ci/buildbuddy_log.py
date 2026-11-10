@@ -3,6 +3,7 @@
 import json
 import hashlib
 import gzip
+import zlib
 import os
 import re
 import urllib.request
@@ -11,11 +12,11 @@ from collections import Counter
 
 try:
     from .buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id, source_profile_uri
-    from .profile_summary import decode_profile, summarize, summarize_source
+    from .profile_summary import decode_profile, recover_source_profile, summarize, summarize_source
     from .smoke_shards import SHARDS, archive_name
 except ImportError:
     from buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id, source_profile_uri
-    from profile_summary import decode_profile, summarize, summarize_source
+    from profile_summary import decode_profile, recover_source_profile, summarize, summarize_source
     from smoke_shards import SHARDS, archive_name
 
 
@@ -86,6 +87,12 @@ def profile_diagnostics(invocation, key, sha):
                 raise
             if isinstance(error, EOFError):
                 reason = 'TRUNCATED_GZIP'
+                try:
+                    summary = summarize_source(recover_source_profile(data))
+                except (ValueError, zlib.error):
+                    pass
+                else:
+                    print('Recovered incomplete BB source profile ' + name + ':', json.dumps(summary, sort_keys=True))
             elif isinstance(error, gzip.BadGzipFile):
                 reason = 'INVALID_GZIP'
             elif isinstance(error, json.JSONDecodeError):

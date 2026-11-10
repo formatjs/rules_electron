@@ -48,6 +48,15 @@ class BuildBuddyLogTest(unittest.TestCase):
         data = gzip.compress(b'{"traceEvents": []}')[:-4]
         self.assertIn('"reason": "TRUNCATED_GZIP"', self.source_profile(data))
 
+    def test_recovered_source_profile_is_redacted_and_marked_incomplete(self):
+        event = {'ph': 'X', 'ts': 0, 'dur': 1000000, 'cat': 'private-category',
+                 'name': 'private-path', 'args': {'mnemonic': 'private-mnemonic'}}
+        data = gzip.compress(('{"traceEvents":[' + json.dumps(event) + ',{"unfinished":').encode())[:-8]
+        output = self.source_profile(data)
+        self.assertIn('Recovered incomplete BB source profile', output)
+        self.assertIn('"trace_span_seconds": 1.0', output)
+        self.assertIn('"reason": "TRUNCATED_GZIP"', output)
+
     def test_failed_source_profile_still_requires_matching_digest(self):
         with self.assertRaisesRegex(ValueError, 'Profile digest or size mismatch'):
             self.source_profile(gzip.compress(b'{}'), digest='b' * 64)
