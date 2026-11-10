@@ -4,10 +4,36 @@ import tempfile
 import struct
 import unittest
 
-from electron.private.nsis import build_installer, installer_script, literal
+from electron.private.nsis import build_installer, installer_script, license_payload, literal
 
 
 class NsisTest(unittest.TestCase):
+    def test_declared_license_normalizes_unicode_and_requires_explicit_acceptance(self):
+        source = self.root / 'agreement.txt'
+        original = 'License 世界 😀\r\nNext\rLast\n'.encode('utf-8-sig')
+        source.write_bytes(original)
+        self.assertEqual(license_payload(source), b'\xff\xfe' + 'License 世界 😀\r\nNext\r\nLast\r\n'.encode('utf-16le'))
+        self.assertEqual(source.read_bytes(), original)
+        script = self.render(license=str(source))
+        self.assertIn('LicenseData "' + str(source) + '"', script)
+        self.assertIn('LicenseForceSelection checkbox', script)
+        self.assertLess(script.index('PageEx license'), script.index('Page directory'))
+        self.assertNotIn('PageEx license', self.render())
+        source = self.root / 'agreement.rtf'
+        original = b'{\\rtf1\\ansi License \\u19990?\\u30028?}'
+        source.write_bytes(original)
+        self.assertEqual(license_payload(source), original)
+
+    def test_invalid_or_oversized_licenses_fail_without_changing_inputs(self):
+        for name, data in [('license.txt', b''), ('license.txt', b'\0invalid'),
+                           ('license.txt', b'\xffinvalid'), ('license.rtf', b'{\\rtf1 incomplete'),
+                           ('license.html', b'<p>License</p>'), ('license.txt', b'x' * (2 * 1024**2 + 1))]:
+            source = self.root / name
+            source.write_bytes(data)
+            with self.subTest(name=name, size=len(data)), self.assertRaises(ValueError):
+                license_payload(source)
+            self.assertEqual(source.read_bytes(), data)
+
     def test_installation_scope_separates_registry_and_ownership(self):
         user = self.render(protocols=["sample"], file_associations={".sample": "Sample"})
         machine = self.render(installation_scope="machine", protocols=["sample"], file_associations={".sample": "Sample"})

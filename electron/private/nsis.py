@@ -33,13 +33,31 @@ def scope_guard(scope, label):
     ]
 
 
+def license_payload(source):
+    source = Path(source)
+    with source.open('rb') as stream:
+        data = stream.read(2 * 1024**2 + 1)
+    if len(data) > 2 * 1024**2:
+        raise ValueError('NSIS license exceeds 2 MiB')
+    if source.suffix == '.rtf':
+        if not data.startswith(b'{\\rtf1') or not data.rstrip().endswith(b'}') or b'\0' in data:
+            raise ValueError('NSIS license requires valid RTF')
+        return data
+    if source.suffix != '.txt':
+        raise ValueError('NSIS license requires UTF-8 .txt or .rtf')
+    text = data.decode('utf-8-sig').replace('\r\n', '\n').replace('\r', '\n')
+    if not text.strip() or any(ord(char) < 32 and char not in '\n\t' for char in text):
+        raise ValueError('NSIS license text is empty or contains controls')
+    return b'\xff\xfe' + text.replace('\n', '\r\n').encode('utf-16le')
+
+
 def installer_script(app, package_json, app_id, product_name, executable_name,
                      output, protocols=(), desktop_shortcut=False, compression="zlib",
                      updater_cache_name="", architecture="x64", payload_archive="",
                      build_version="", build_number="", file_associations=None, app_user_model_id="",
                      installer_icon="", uninstaller_icon="", directory_manifest="", file_association_icons=None,
                      installation_scope="user", file_association_verbs=None, file_association_verb_labels=None,
-                     path_format=None):
+                     path_format=None, license=""):
     def source_path(value, role='app'):
         path = Path(value)
         return path_format(path, role) if path_format else str(path.resolve())
@@ -61,6 +79,8 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
     for icon in [installer_icon, uninstaller_icon]:
         if icon:
             validate_ico(icon)
+    if license and Path(license).suffix not in ('.txt', '.rtf'):
+        raise ValueError('NSIS license requires UTF-8 .txt or .rtf')
     _filename(product_name)
     executable = executable_name if executable_name.endswith(".exe") else executable_name + ".exe"
     _filename(executable)
@@ -176,6 +196,8 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         'VIAddVersionKey "FileVersion" ' + q(file_version),
         'VIAddVersionKey "ProductVersion" ' + q(version),
         'VIAddVersionKey "LegalCopyright" ""',
+        *(['PageEx license', 'LicenseData ' + q(source_path(license, 'license')),
+           'LicenseForceSelection checkbox', 'PageExEnd'] if license else []),
         'Page directory', 'Page instfiles', 'UninstPage uninstConfirm', 'UninstPage instfiles',
     ]
     for prefix in ['', 'un.']:
@@ -403,6 +425,10 @@ def build_installer(manifest, output, script):
 
     def compile_once(options, directory, destination, script_path):
         options = dict(options)
+        if options.get('license'):
+            prepared = directory / ('license' + Path(options['license']).suffix)
+            prepared.write_bytes(license_payload(options['license']))
+            options['license'] = str(prepared)
         if options.get('compression') == '7z':
             if not archive_compiler:
                 raise ValueError('7z compression requires a declared archive compiler')
@@ -429,7 +455,8 @@ def build_installer(manifest, output, script):
             if role == 'app':
                 return 'app/' + path.resolve().relative_to(app).as_posix()
             return {'output': destination.name, 'installer_icon': 'installer.ico',
-                    'uninstaller_icon': 'uninstaller.ico', 'payload_archive': 'payload.7z'}[role]
+                    'uninstaller_icon': 'uninstaller.ico', 'payload_archive': 'payload.7z',
+                    'license': 'license' + path.suffix}[role]
 
         script_path.write_text(installer_script(output=destination, path_format=stable_path, **options), encoding='utf-8')
 
@@ -452,6 +479,11 @@ def build_installer(manifest, output, script):
                     shutil.copyfile(manifest[field], icon)
                     os.utime(icon, (1234567890, 1234567890))
                     repeated[field] = str(icon)
+            if manifest.get('license'):
+                moved_license = repeat / ('relocated' + Path(manifest['license']).suffix)
+                shutil.copyfile(manifest['license'], moved_license)
+                os.utime(moved_license, (1234567890, 1234567890))
+                repeated['license'] = str(moved_license)
             compile_once(repeated, repeat, second, repeat / 'installer.nsi')
             def digest(path):
                 with path.open('rb') as source:

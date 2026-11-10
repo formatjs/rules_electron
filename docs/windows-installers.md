@@ -1,5 +1,18 @@
 # Windows installers
 
+`electron_nsis.license` accepts a declared UTF-8 `.txt` or `.rtf` agreement.
+Interactive installation shows it before directory selection and requires a
+checked acceptance box. Text normalizes to BOM-marked UTF-16LE with CRLF;
+RTF bytes stay unchanged. Inputs must be nonempty and at most 2 MiB. License
+paths/content do not enter script expressions. Silent `/S` installs and
+electron-updater skip interactive pages, following NSIS behavior.
+
+The example declares one agreement for both installer scopes. BB compilation
+checks installer/script reproducibility with relocated license inputs. Native
+Windows smoke checks visible text, disabled Next before acceptance, enabled Next
+after checking, and cancellation without registration. Native consent validation
+is pending. Multilingual license selection remains open.
+
 The NSIS `script` output group uses portable `app/`, icon and `payload.7z`
 references. Worker paths stay inside compilation. `verify_reproducible` compares
 both installer and exported script bytes across relocated staging directories.

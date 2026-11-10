@@ -20,6 +20,7 @@ from urllib.parse import unquote, urlsplit
 import winreg
 
 from windows_installer_trace import installer_trace
+from windows_license_smoke import smoke_license
 
 APP_ID = "org.example.sample-desktop"
 REGISTRY = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" + APP_ID
@@ -249,6 +250,8 @@ if __name__ == "__main__":
         raise RuntimeError("Disposable host already contains sample state: " + ", ".join(k for k, v in existing.items() if v))
     first = packages / "nsis_v1_feed/Sample-1.0.0.exe"
     second = packages / "nsis_v2_feed/Sample-2.0.0.exe"
+    smoke_license(first)
+    assert not registry_exists(REGISTRY)
     icon(first, architecture, 73)
     icon(second, architecture, 73)
     with tempfile.TemporaryDirectory() as directory:
