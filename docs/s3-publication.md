@@ -38,14 +38,27 @@ bytes before reuse. Channel metadata uploads last using a strong ETag and
 A concurrent write, HTTP 409/412, redirect or other failed request stops promotion;
 rerun after resolving the conflict. Serialize intended channel promotions.
 
-Single-part uploads up to 5 GiB per object are supported. Multipart uploads,
-ACL/storage-class/encryption overrides, credential refresh and live cloud-policy
-validation remain open. Bucket defaults own those storage policies. Exceptions
-and service bodies are withheld from command output.
+Objects above 5 GiB use multipart uploads. `--multipart-threshold` can select a
+lower byte threshold; `--part-size` defaults to 64 MiB and must be 5 MiB–5 GiB.
+The client increases part size when needed to stay within 10,000 parts, following
+[S3's limits](https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html).
+Each part streams from a bounded file slice with its own signed hash. Completion
+uses the same conditional write as a single-part upload. HTTP 200 alone is
+insufficient: the client checks the completion XML and rejects embedded errors.
+Failed operations abort only their own upload IDs. A retry verifies completed
+objects; unfinished parts are uploaded again. Process termination before cleanup
+can leave an incomplete upload for the bucket's lifecycle policy.
 
-Validation is pending. BB tests run AWS's documented GET/PUT signature vectors
-and the public executable against a signature-verifying loopback server. They
+ACL/storage-class/encryption overrides, credential refresh and live cloud-policy
+validation remain open. Bucket defaults own storage policies. Exceptions and
+service bodies are withheld from command output.
+
+The [d1a8e7f BB suite](https://formatjs.buildbuddy.io/invocation/c323eb72-4e0b-4e8a-a238-b11ac186d84a)
+passed single-part publication tests. BB tests run AWS's documented GET/PUT
+signature vectors and the public executable against a signature-verifying loopback server. They
 exercise session tokens, Unicode keys, repeated slashes, exact bytes/order,
 identical retry, concurrent channels, HTTP 409, redirects, wrong signatures,
-corrupt feeds and the single-part size boundary. These tests do not establish
-live AWS or other provider interoperability.
+corrupt feeds and the object-size boundary. Multipart validation is pending;
+its cases include three parts with a short final part, signed query parameters,
+identical-object retry, part failure, completion conflict and embedded HTTP 200
+errors. These tests do not establish live AWS or other provider interoperability.

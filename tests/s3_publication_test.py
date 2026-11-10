@@ -12,10 +12,12 @@ import sys
 import tempfile
 import threading
 import unittest
-from urllib.parse import unquote
+from unittest.mock import Mock
+from urllib.parse import parse_qs, parse_qsl, quote, unquote, urlsplit
+from xml.etree import ElementTree as ET
 
 from electron.private.update import create_feed
-from electron.tools.publish_s3 import S3Publisher, signed_headers
+from electron.tools.publish_s3 import MAX_OBJECT, MIN_PART, S3Publisher, signed_headers
 
 TOOL = Path(sys.argv.pop(1)).resolve()
 ACCESS = 'FIXTUREACCESSKEY'
@@ -32,10 +34,13 @@ def authorized(request, body):
         return False
     date, signed, signature = match.groups()
     names = signed.split(';')
+    url = urlsplit(request.path)
+    query = parse_qs(url.query, keep_blank_values=True)
     required = {'host', 'x-amz-date', 'x-amz-content-sha256', 'x-amz-security-token'}
-    if request.command == 'PUT':
+    if request.command == 'PUT' or request.command == 'POST' and 'uploadId' in query:
         required.update({'content-length', 'content-type'})
-        required.add('if-match' if request.headers.get('If-Match') else 'if-none-match')
+        if request.command != 'PUT' or 'uploadId' not in query:
+            required.add('if-match' if request.headers.get('If-Match') else 'if-none-match')
     if names != sorted(set(names)) or not required.issubset(names):
         return False
     timestamp = request.headers['x-amz-date']
@@ -44,7 +49,9 @@ def authorized(request, body):
             or abs((datetime.now(timezone.utc) - datetime.strptime(timestamp, '%Y%m%dT%H%M%SZ')
                     .replace(tzinfo=timezone.utc)).total_seconds()) > 120):
         return False
-    canonical = request.command + '\n' + request.path + '\n\n'
+    canonical_query = '&'.join(key + '=' + value for key, value in sorted(
+        (quote(key, safe='-._~'), quote(value, safe='-._~')) for key, value in parse_qsl(url.query, keep_blank_values=True)))
+    canonical = request.command + '\n' + url.path + '\n' + canonical_query + '\n'
     canonical += ''.join(name + ':' + ' '.join(request.headers[name].split()) + '\n' for name in names)
     canonical += '\n' + signed + '\n' + hashlib.sha256(body).hexdigest()
     scope = date + '/us-west-2/s3/aws4_request'
@@ -71,6 +78,7 @@ class S3PublicationTest(unittest.TestCase):
                     release_date='2026-01-02T03:04:05Z', blockmaps=[self.name])
         self.objects, self.requests = {}, []
         self.redirect, self.race, self.conflict = False, False, False
+        self.uploads, self.aborted, self.multipart_mode, self.extra_args = {}, [], None, []
         owner = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -79,10 +87,12 @@ class S3PublicationTest(unittest.TestCase):
 
             def handle_request(self):
                 body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
-                name = unquote(self.path[len(PREFIX):])
+                url = urlsplit(self.path)
+                name = unquote(url.path[len(PREFIX):])
+                query = parse_qs(url.query, keep_blank_values=True)
                 valid = authorized(self, body) and self.path.startswith(PREFIX)
                 owner.requests.append((self.command, name, valid))
-                status, reply = 200, b''
+                status, reply, etag = 200, b'', None
                 if not valid:
                     status = 403
                 elif owner.redirect:
@@ -92,6 +102,45 @@ class S3PublicationTest(unittest.TestCase):
                 elif self.command == 'GET':
                     status = 200 if name in owner.objects else 404
                     reply = owner.objects.get(name, b'')
+                elif self.command == 'POST' and query == {'uploads': ['']}:
+                    identifier = 'fixture+upload/id=' + str(len(owner.requests))
+                    owner.uploads[identifier] = {'name': name, 'parts': {}}
+                    reply = ('<InitiateMultipartUploadResult><UploadId>' + identifier
+                             + '</UploadId></InitiateMultipartUploadResult>').encode()
+                elif 'uploadId' in query:
+                    identifier = query['uploadId'][0]
+                    upload = owner.uploads.get(identifier)
+                    if not upload or upload['name'] != name:
+                        status = 404
+                    elif self.command == 'DELETE':
+                        del owner.uploads[identifier]
+                        owner.aborted.append(identifier)
+                        status = 204
+                    elif self.command == 'PUT':
+                        number = int(query['partNumber'][0])
+                        if owner.multipart_mode == 'part_failure' and number == 2:
+                            status = 503
+                        else:
+                            etag = '"' + hashlib.sha256(body).hexdigest() + '"'
+                            upload['parts'][number] = (body, etag)
+                    elif self.command == 'POST':
+                        parts = ET.fromstring(body)
+                        actual = [(int(entry[0].text), entry[1].text) for entry in parts]
+                        expected = [(number, value[1]) for number, value in sorted(upload['parts'].items())]
+                        if actual != expected or [number for number, _ in actual] != list(range(1, len(actual) + 1)):
+                            status = 400
+                        elif owner.multipart_mode == 'embedded_error':
+                            reply = b'<Error><Code>InternalError</Code></Error>'
+                        elif owner.multipart_mode == 'completion_conflict':
+                            status = 409
+                        elif self.headers.get('If-None-Match') != '*':
+                            status = 400
+                        elif name in owner.objects:
+                            status = 412
+                        else:
+                            owner.objects[name] = b''.join(upload['parts'][number][0] for number, _ in actual)
+                            del owner.uploads[identifier]
+                            reply = b'<CompleteMultipartUploadResult><ETag>"complete"</ETag></CompleteMultipartUploadResult>'
                 elif owner.conflict:
                     status = 409
                 elif name == 'latest.yml' and owner.race:
@@ -106,13 +155,15 @@ class S3PublicationTest(unittest.TestCase):
                 self.send_header('Content-Length', str(len(reply)))
                 if status == 200 and name == 'latest.yml':
                     self.send_header('ETag', '"fixture-etag"')
+                elif etag:
+                    self.send_header('ETag', etag)
                 if owner.redirect:
                     self.send_header('Location', owner.url + 'credential-target')
                 self.end_headers()
                 if self.command != 'HEAD':
                     self.wfile.write(reply)
 
-            do_HEAD = do_GET = do_PUT = handle_request
+            do_HEAD = do_GET = do_PUT = do_POST = do_DELETE = handle_request
 
         server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -127,7 +178,7 @@ class S3PublicationTest(unittest.TestCase):
             str(TOOL), '--feed', str(self.feed), '--channel', 'latest.yml', '--destination', self.url,
             '--region', 'us-west-2', '--allow-http-loopback', '--access-key-env', 'FIXTURE_ACCESS',
             '--secret-key-env', 'FIXTURE_SECRET', '--session-token-env', 'FIXTURE_TOKEN',
-        ], env={**os.environ, 'FIXTURE_ACCESS': ACCESS, 'FIXTURE_SECRET': secret, 'FIXTURE_TOKEN': TOKEN},
+        ] + self.extra_args, env={**os.environ, 'FIXTURE_ACCESS': ACCESS, 'FIXTURE_SECRET': secret, 'FIXTURE_TOKEN': TOKEN},
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
         self.assertEqual(result.returncode == 0, success, result.stderr.decode())
         for value in (ACCESS, SECRET, TOKEN, secret):
@@ -174,17 +225,53 @@ class S3PublicationTest(unittest.TestCase):
         self.assertEqual(self.requests, [('HEAD', 'latest.yml', True)])
         self.assertEqual(self.objects, {})
 
-    def test_oversized_single_part_fails_before_network(self):
-        large = self.root / 'large.exe'
-        with large.open('wb') as output:
-            output.truncate(5 * 1024**3 + 1)
+    def test_oversized_object_fails_before_network(self):
+        large = Mock(spec=Path)
+        large.stat.return_value.st_size = MAX_OBJECT + 1
         publisher = S3Publisher(self.url, 'us-west-2', ACCESS, SECRET, TOKEN, True)
-        with self.assertRaisesRegex(ValueError, 'single-part'):
+        with self.assertRaisesRegex(ValueError, 'part-count'):
             publisher.publish(self.feed, 'latest.yml', [large])
         self.assertEqual(self.requests, [])
 
+    def multipart_feed(self):
+        source = self.root / 'large.exe'
+        source.write_bytes(bytes(range(256)) * (2 * MIN_PART // 256) + b'last partial part')
+        self.feed = self.root / 'multipart-feed'
+        create_feed(artifacts=[{'source': source, 'name': self.name}], package_json=self.root / 'package.json',
+                    output=self.feed, platform='windows', architecture='arm64', release_date='2026-01-02T03:04:05Z')
+        self.extra_args = ['--multipart-threshold', str(MIN_PART), '--part-size', str(MIN_PART)]
+
+    def test_multipart_exact_parts_conditional_completion_and_identical_retry(self):
+        self.multipart_feed()
+        self.publish()
+        self.assertEqual(self.objects, {path.name: path.read_bytes() for path in self.feed.iterdir()})
+        self.assertEqual([method for method, name, _ in self.requests if name == self.name],
+                         ['POST', 'PUT', 'PUT', 'PUT', 'POST'])
+        self.assertEqual(self.uploads, {})
+        self.assertEqual(self.aborted, [])
+        self.requests.clear()
+        self.publish()
+        self.assertEqual(len(self.aborted), 1)
+        self.assertEqual(self.uploads, {})
+        self.assertTrue(all(valid for _, _, valid in self.requests))
+        self.assertIn(('GET', self.name, True), self.requests)
+
+    def test_multipart_failures_abort_owned_upload_without_channel_promotion(self):
+        self.multipart_feed()
+        for mode in ('part_failure', 'embedded_error', 'completion_conflict'):
+            with self.subTest(mode=mode):
+                self.multipart_mode = mode
+                self.publish(False)
+                self.assertEqual(self.objects, {})
+                self.assertEqual(self.uploads, {})
+        self.assertEqual(len(self.aborted), 3)
+        self.multipart_mode = None
+        self.publish()
+
     def test_aws_documented_get_and_put_signature_vectors(self):
         cases = [
+            ('GET', '/?lifecycle', {}, b'',
+             'fea454ca298b7da1c68078a5d1bdbfbbe0d65c699e0f91ac7a200a0136783543'),
             ('GET', '/test.txt', {'Range': 'bytes=0-9'}, b'',
              'f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c6036bdb41'),
             ('PUT', '/test%24file.text', {'Date': 'Fri, 24 May 2013 00:00:00 GMT',
