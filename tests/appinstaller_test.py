@@ -27,7 +27,7 @@ class AppInstallerTest(unittest.TestCase):
         with ZipFile(self.package, 'w') as archive:
             archive.writestr('AppxManifest.xml', data)
 
-    def render(self, package_uri=package_uri, **options):
+    def render(self, package_uri='https://updates.example.invalid/Sample%20Setup.msix', **options):
         create_appinstaller(package=self.package, output=self.output,
                             appinstaller_uri='https://updates.example.invalid/latest.appinstaller',
                             package_uri=package_uri, **options)
