@@ -24,7 +24,7 @@ on:
         description: Declared DMG fixture to inspect
         type: choice
         default: release_dmg.dmg
-        options: [release_dmg.dmg, release_dmg_rtf.dmg]
+        options: [release_dmg.dmg, release_dmg_rtf.dmg, release_dmg_japanese.dmg]
       source_workflows_only:
         description: Find BB source workflows for exact commit without reading logs
         type: boolean

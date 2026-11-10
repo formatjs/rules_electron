@@ -73,6 +73,10 @@ on run argv
     set sawBody to false
     set sawAgree to false
     set sawDisagree to false
+    set maxButtons to 0
+    set maxTexts to 0
+    set sawImageError to false
+    set sawOK to false
     tell application "System Events"
         repeat 40 times
             set targets to {}
@@ -91,6 +95,8 @@ on run argv
                 if (count processWindows) > maxWindows then set maxWindows to count processWindows
                 repeat with targetWindow in processWindows
                     set bodyMatches to false
+                    set buttonCount to 0
+                    set textCount to 0
                     set agreeControl to missing value
                     set disagreeControl to missing value
                     repeat with element in entire contents of targetWindow
@@ -98,25 +104,38 @@ on run argv
                             if (value of element as text) contains "Sample Desktop example license, version 1." then set bodyMatches to true
                         end try
                         try
+                            if (name of element as text) contains "Sample Desktop example license, version 1." then set bodyMatches to true
+                        end try
+                        try
+                            if (description of element as text) contains "Sample Desktop example license, version 1." then set bodyMatches to true
+                        end try
+                        try
                             if (role of element as text) is "AXButton" then
+                                set buttonCount to buttonCount + 1
                                 if (name of element as text) is "Agree" then set agreeControl to element
                                 if (name of element as text) is "Disagree" then set disagreeControl to element
+                                if (name of element as text) is "OK" then set sawOK to true
                             end if
+                            if (role of element as text) is in {"AXStaticText", "AXTextArea"} then set textCount to textCount + 1
+                            set elementText to (value of element as text) & " " & (name of element as text)
+                            if elementText contains "couldn't be opened" or elementText contains "couldn’t be opened" then set sawImageError to true
                         end try
                     end repeat
+                    if buttonCount > maxButtons then set maxButtons to buttonCount
+                    if textCount > maxTexts then set maxTexts to textCount
                     if bodyMatches then set sawBody to true
                     if agreeControl is not missing value then set sawAgree to true
                     if disagreeControl is not missing value then set sawDisagree to true
                     if bodyMatches and agreeControl is not missing value and disagreeControl is not missing value then
                         click disagreeControl
-                        return "declined," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree
+                        return "declined," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & sawImageError & "," & sawOK
                     end if
                 end repeat
             end repeat
             delay 0.5
         end repeat
     end tell
-    return "not-found," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree
+    return "not-found," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & sawImageError & "," & sawOK
 end run
 '''
 
@@ -193,11 +212,12 @@ function run() {
         open_error = re.search(br'\((-?\d{1,10})\)\s*$', opened.stderr)
         summary['open_error_code'] = int(open_error[1]) if open_error else None
         fields = result.stdout.strip().split(b',')
-        if (result.returncode == 0 and len(fields) == 6 and fields[0] in (b'declined', b'not-found')
-                and all(value.isdigit() and len(value) <= 3 for value in fields[1:3])
-                and all(value in (b'true', b'false') for value in fields[3:])):
+        if (result.returncode == 0 and len(fields) == 10 and fields[0] in (b'declined', b'not-found')
+                and all(value.isdigit() and len(value) <= 3 for value in fields[1:3] + fields[6:8])
+                and all(value in (b'true', b'false') for value in fields[3:6] + fields[8:])):
             summary.update(declined=fields[0] == b'declined', processes=int(fields[1]), windows=int(fields[2]),
-                           body=fields[3] == b'true', agree=fields[4] == b'true', disagree=fields[5] == b'true')
+                           body=fields[3] == b'true', agree=fields[4] == b'true', disagree=fields[5] == b'true',
+                           buttons=int(fields[6]), text_controls=int(fields[7]), image_error=fields[8] == b'true', ok=fields[9] == b'true')
         print('DMG_LICENSE_DIALOG ' + json.dumps(summary, sort_keys=True), flush=True)
         return summary
     finally:
@@ -269,7 +289,7 @@ if __name__ == '__main__':
     if platform.system() != 'Darwin' or platform.machine() != 'arm64':
         raise RuntimeError('DMG license probe requires native macOS ARM64')
     fixture = sys.argv[2] if len(sys.argv) > 2 else 'release_dmg.dmg'
-    if fixture not in ('release_dmg.dmg', 'release_dmg_rtf.dmg'):
+    if fixture not in ('release_dmg.dmg', 'release_dmg_rtf.dmg', 'release_dmg_japanese.dmg'):
         raise RuntimeError('DMG_LICENSE_PROBE_INVALID_FIXTURE')
     with ZipFile(sys.argv[1]) as archive, tempfile.TemporaryDirectory() as temporary:
         members = [entry for entry in archive.infolist() if entry.filename == 'macos_aarch64/packages/' + fixture]
@@ -285,7 +305,7 @@ if __name__ == '__main__':
                 target.write(data)
                 remaining -= len(data)
         subprocess.run(['/usr/bin/hdiutil', 'verify', str(image)], check=True, capture_output=True, timeout=120)
-        inspect_license(image, require_unicode=fixture == 'release_dmg_rtf.dmg')
+        inspect_license(image, require_unicode=fixture != 'release_dmg.dmg')
         result = inspect_dialog(image)
         if not result['declined'] or result['attached_images']:
             raise RuntimeError('DMG_LICENSE_DIALOG_DECLINE_FAILED')

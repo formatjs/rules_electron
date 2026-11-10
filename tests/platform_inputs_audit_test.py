@@ -15,12 +15,13 @@ class PlatformInputsAuditTest(unittest.TestCase):
             {'mnemonic': 'ElectronDmg', 'outputIds': [10]},
             {'mnemonic': 'ElectronDmgLicense', 'outputIds': [20], 'inputDepSetIds': [2]},
             {'mnemonic': 'ElectronDmgLicense', 'outputIds': [21], 'inputDepSetIds': [3]},
+            {'mnemonic': 'ElectronDmgLicense', 'outputIds': [22], 'inputDepSetIds': [3]},
         ], 'depSetOfFiles': [
             {'id': 1, 'directArtifactIds': [10]},
             {'id': 2, 'transitiveDepSetIds': [1]},
             {'id': 3, 'directArtifactIds': [10]},
         ]}
-        self.assertEqual(audit_dmg_variants(graph), {'filesystem_actions': 1, 'license_actions': 2})
+        self.assertEqual(audit_dmg_variants(graph), {'filesystem_actions': 1, 'license_actions': 3})
         changed = copy.deepcopy(graph)
         changed['depSetOfFiles'][2]['directArtifactIds'] = [20]
         with self.assertRaisesRegex(ValueError, 'same unlicensed filesystem image'):
@@ -31,7 +32,7 @@ class PlatformInputsAuditTest(unittest.TestCase):
             audit_dmg_variants(changed)
         changed = copy.deepcopy(graph)
         changed['actions'].pop()
-        with self.assertRaisesRegex(ValueError, 'two DMG license variants'):
+        with self.assertRaisesRegex(ValueError, 'three DMG license variants'):
             audit_dmg_variants(changed)
         with self.assertRaises(ValueError):
             audit_dmg_variants({})

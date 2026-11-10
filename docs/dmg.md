@@ -128,10 +128,11 @@ electron_dmg_license(
 )
 ```
 
-The example's canonical Unicode RTF variant uses the existing filesystem image
-and a Japanese default locale. Hosted action inspection requires one filesystem
-action feeding both license variants. Native RTF consent remains pending; select
-`dmg_fixture=release_dmg_rtf.dmg` with the manual probe to inspect it.
+The example's English text, English Unicode RTF and Japanese-default Unicode RTF
+variants use the same filesystem image. Hosted action inspection requires one
+filesystem action feeding all three license variants. Native RTF consent remains
+pending; select `dmg_fixture=release_dmg_rtf.dmg` or
+`dmg_fixture=release_dmg_japanese.dmg` with the manual probe to inspect them.
 
 Metadata uses checksum-pinned MIT-licensed `ds_store` 1.3.3 and `mac_alias` 2.2.2
 Python sources. No host alias discovery, Finder, mounting or AppleScript

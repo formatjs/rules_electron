@@ -52,8 +52,8 @@ def audit_dmg_variants(graph):
     actions = graph.get('actions', [])
     bases = [action for action in actions if action.get('mnemonic') == 'ElectronDmg']
     licenses = [action for action in actions if action.get('mnemonic') == 'ElectronDmgLicense']
-    if len(bases) != 1 or len(bases[0].get('outputIds', [])) != 1 or len(licenses) != 2:
-        raise ValueError('Expected two DMG license variants and one filesystem action')
+    if len(bases) != 1 or len(bases[0].get('outputIds', [])) != 1 or len(licenses) != 3:
+        raise ValueError('Expected three DMG license variants and one filesystem action')
     base = bases[0]['outputIds'][0]
     finals = {value for action in licenses for value in action.get('outputIds', [])}
     sets = {item['id']: item for item in graph.get('depSetOfFiles', [])}
@@ -69,7 +69,7 @@ def audit_dmg_variants(graph):
             pending.extend(entry.get('transitiveDepSetIds', []))
         if base not in inputs or inputs & finals:
             raise ValueError('DMG variants must consume the same unlicensed filesystem image')
-    return {'filesystem_actions': 1, 'license_actions': 2}
+    return {'filesystem_actions': 1, 'license_actions': 3}
 
 
 if __name__ == "__main__":
