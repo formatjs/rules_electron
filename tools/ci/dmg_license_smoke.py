@@ -77,6 +77,9 @@ on run argv
             repeat with processId in argv
                 set targets to targets & (application processes whose unix id is (processId as integer))
             end repeat
+            if (count argv) is 0 then
+                set targets to application processes whose background only is false or name is "DiskImageMounter" or name is "diskimages-helper" or name is "CoreServicesUIAgent"
+            end if
             if (count targets) > maxProcesses then set maxProcesses to count targets
             repeat with targetProcess in targets
                 set processWindows to {}
@@ -143,16 +146,27 @@ ObjC.import('CoreGraphics');
 ObjC.import('Foundation');
 function run() {
     let visible = 0;
+    let stage = 0;
+    try {
     for (let attempt = 0; attempt < 24; attempt++) {
-        const windows = ObjC.deepUnwrap($.CGWindowListCopyWindowInfo(1, 0));
+        stage = 1;
+        const raw = $.CGWindowListCopyWindowInfo(1, 0);
+        stage = 2;
+        const windows = ObjC.deepUnwrap(raw);
+        stage = 3;
         visible = windows.length;
+        stage = 4;
         const owners = [...new Set(windows.filter(window =>
             /license|agreement|release\\.dmg|Sample Desktop/i.test(window.kCGWindowName || '')
         ).map(window => window.kCGWindowOwnerPID))];
         if (owners.length) return JSON.stringify({owners, visible});
+        stage = 5;
         $.NSThread.sleepForTimeInterval(0.5);
     }
     return JSON.stringify({owners: [], visible});
+    } catch (error) {
+        return JSON.stringify({owners: [], visible: Number(visible) || 0, error_stage: stage});
+    }
 }
 '''], capture_output=True, timeout=20)
         candidates = json.loads(owners.stdout) if owners.returncode == 0 else {'owners': [], 'visible': 0}
@@ -163,6 +177,7 @@ function run() {
             raise RuntimeError('DMG_LICENSE_INVALID_WINDOW_SUMMARY')
         print('DMG_LICENSE_WINDOW_OWNERS ' + json.dumps({'candidates': len(identifiers),
               'visible_windows': candidates['visible'], 'observer_exit_code': owners.returncode,
+              'error_stage': candidates.get('error_stage') if candidates.get('error_stage') in range(1, 6) else None,
               'type_error': b'TypeError' in owners.stderr, 'reference_error': b'ReferenceError' in owners.stderr,
               'core_graphics_symbol': b'CGWindowListCopyWindowInfo' in owners.stderr}, sort_keys=True), flush=True)
         result = subprocess.run(['/usr/bin/osascript', '-e', script, *map(str, identifiers)],
