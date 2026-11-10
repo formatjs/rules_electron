@@ -78,6 +78,7 @@ on run argv
     set maxElements to 0
     set sawImageError to false
     set sawOK to false
+    set diskError to "none"
     tell application "System Events"
         repeat 20 times
             set targets to {}
@@ -126,9 +127,21 @@ on run argv
                                 if (name of currentElement as text) is "OK" then set sawOK to true
                             end if
                             if (role of currentElement as text) is in {"AXStaticText", "AXTextArea"} then set textCount to textCount + 1
-                            set elementText to (value of currentElement as text) & " " & (name of currentElement as text)
-                            if elementText contains "couldn't be opened" or elementText contains "couldn’t be opened" then set sawImageError to true
                         end try
+                        set elementText to ""
+                        try
+                            set elementText to value of currentElement as text
+                        end try
+                        try
+                            set elementText to elementText & " " & (name of currentElement as text)
+                        end try
+                        if elementText contains "couldn't be opened" or elementText contains "couldn’t be opened" or elementText contains "could not be opened" or elementText contains "can't be opened" then set sawImageError to true
+                        if elementText contains "no mountable file systems" then set diskError to "filesystem"
+                        if elementText contains "not recognized" then set diskError to "format"
+                        if elementText contains "permission" or elementText contains "not permitted" then set diskError to "permission"
+                        if elementText contains "no such file" or elementText contains "not found" then set diskError to "missing"
+                        if elementText contains "resource busy" then set diskError to "busy"
+                        if elementText contains "corrupt" or elementText contains "damaged" then set diskError to "corrupt"
                     end repeat
                     if buttonCount > maxButtons then set maxButtons to buttonCount
                     if textCount > maxTexts then set maxTexts to textCount
@@ -137,14 +150,14 @@ on run argv
                     if disagreeControl is not missing value then set sawDisagree to true
                     if bodyMatches and agreeControl is not missing value and disagreeControl is not missing value then
                         click disagreeControl
-                        return "declined," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK
+                        return "declined," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError
                     end if
                 end repeat
             end repeat
             delay 0.5
         end repeat
     end tell
-    return "not-found," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK
+    return "not-found," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError
 end run
 '''
 
@@ -223,13 +236,15 @@ function run() {
         observer_error = re.search(br'\((-?\d{1,10})\)\s*$', result.stderr)
         summary['observer_error_code'] = int(observer_error[1]) if observer_error else None
         fields = result.stdout.strip().split(b',')
-        if (result.returncode == 0 and len(fields) == 11 and fields[0] in (b'declined', b'not-found')
+        if (result.returncode == 0 and len(fields) == 12 and fields[0] in (b'declined', b'not-found')
                 and all(value.isdigit() and len(value) <= 3 for value in fields[1:3] + fields[6:9])
-                and all(value in (b'true', b'false') for value in fields[3:6] + fields[9:])):
+                and all(value in (b'true', b'false') for value in fields[3:6] + fields[9:11])
+                and fields[11] in (b'none', b'filesystem', b'format', b'permission', b'missing', b'busy', b'corrupt')):
             summary.update(declined=fields[0] == b'declined', processes=int(fields[1]), windows=int(fields[2]),
                            body=fields[3] == b'true', agree=fields[4] == b'true', disagree=fields[5] == b'true',
                            buttons=int(fields[6]), text_controls=int(fields[7]), elements=int(fields[8]),
-                           image_error=fields[9] == b'true', ok=fields[10] == b'true')
+                           image_error=fields[9] == b'true', ok=fields[10] == b'true',
+                           disk_error=fields[11].decode('ascii'))
         print('DMG_LICENSE_DIALOG ' + json.dumps(summary, sort_keys=True), flush=True)
         return summary
     finally:
