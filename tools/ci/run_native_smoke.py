@@ -127,15 +127,6 @@ if __name__ == "__main__":
             extract_variant(archive, directory, variant)
             target_os, target_arch = VARIANTS[variant]
             app = prepare_app(directory, variant, target_os)
-            if target_os == 'macos':
-                from tools.ci.dmg_license_smoke import inspect_license, smoke_dialog
-
-                for fixture in ('release_dmg.dmg', 'release_dmg_rtf.dmg', 'release_dmg_japanese.dmg'):
-                    print('DMG_LICENSE_GUI_FIXTURE ' + fixture, flush=True)
-                    licensed = directory / variant / 'packages' / fixture
-                    require_unicode = fixture != 'release_dmg.dmg'
-                    inspect_license(licensed, require_unicode=require_unicode)
-                    smoke_dialog(licensed, require_unicode=require_unicode)
             subprocess.run([
                 sys.executable, "examples/desktop/tools/smoke_test.py", str(app),
                 "--target-os", target_os, "--target-arch", target_arch,
@@ -190,6 +181,14 @@ if __name__ == "__main__":
                 finally:
                     subprocess.run(["/usr/bin/hdiutil", "detach", str(mount)], check=True, timeout=120)
                 subprocess.run([sys.executable, "tools/ci/macos_update_smoke.py", str(directory / variant / "packages")], check=True)
+                from tools.ci.dmg_license_smoke import inspect_license, smoke_dialog
+
+                for fixture in ('release_dmg.dmg', 'release_dmg_rtf.dmg', 'release_dmg_japanese.dmg'):
+                    print('DMG_LICENSE_GUI_FIXTURE ' + fixture, flush=True)
+                    licensed = image.parent / fixture
+                    require_unicode = fixture != 'release_dmg.dmg'
+                    inspect_license(licensed, require_unicode=require_unicode)
+                    smoke_dialog(licensed, require_unicode=require_unicode)
             if variant == "linux_x86_64":
                 release = directory / variant / "packages/release_tar.tar.gz"
                 extracted = directory / variant / "tar-release"
