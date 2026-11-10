@@ -150,14 +150,18 @@ class LinuxPackageTest(unittest.TestCase):
     def test_custom_install_directory_and_service_payload_keep_launch_paths_consistent(self):
         service = self.root / "sample.service"
         service.write_bytes(b"[Service]\nExecStart=/opt/Sample/sample\n")
-        output = self.payload(install_directory="opt/Sample", payload_files=[
+        output = self.payload(install_directory="opt/Sample", desktop_id="sample", startup_wm_class="Sample", payload_files=[
             {"source": str(service), "path": "lib/systemd/system/sample.service"},
         ])
         with tarfile.open(output) as archive:
             self.assertEqual(archive.extractfile("opt/Sample/sample").read(), b"target executable")
             self.assertEqual(archive.extractfile("lib/systemd/system/sample.service").read(), service.read_bytes())
             self.assertIn(b"exec /opt/Sample/sample", archive.extractfile("usr/bin/sample").read())
-            self.assertIn(b"Exec=/opt/Sample/sample %U\n", archive.extractfile("usr/share/applications/org.example.sample.desktop").read())
+            desktop = archive.extractfile("usr/share/applications/sample.desktop").read()
+            self.assertIn(b"Exec=/opt/Sample/sample %U\n", desktop)
+            self.assertIn(b"StartupWMClass=Sample\n", desktop)
+            self.assertIn(b"Icon=sample\n", desktop)
+            self.assertEqual(archive.extractfile("usr/share/icons/hicolor/scalable/apps/sample.svg").read(), self.icon.read_bytes())
             self.assertEqual(archive.getmember("lib/systemd/system/sample.service").mode, 0o644)
 
     def test_custom_payload_rejects_escapes_and_existing_destinations_before_writing(self):

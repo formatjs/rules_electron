@@ -26,6 +26,8 @@ def _payload_impl(ctx):
         "package_json": app.package_json.path,
         "app_id": app.app_id,
         "install_directory": ctx.attr.install_directory,
+        "desktop_id": ctx.attr.desktop_id,
+        "startup_wm_class": ctx.attr.startup_wm_class,
         "payload_files": [{"source": f.path, "path": path} for t, path in ctx.attr.payload_files.items() for f in t.files.to_list()],
         "product_name": app.product_name,
         "executable_name": app.executable_name,
@@ -53,6 +55,8 @@ _linux_payload = rule(
         "app": attr.label(mandatory = True, providers = [ElectronAppInfo]),
         "revision": attr.string(),
         "install_directory": attr.string(),
+        "desktop_id": attr.string(),
+        "startup_wm_class": attr.string(),
         "payload_files": attr.label_keyed_string_dict(allow_files = True),
         "setuid_sandbox": attr.bool(default = False),
         "package_type": attr.string(default = "deb", values = ["deb", "rpm"]),
@@ -69,7 +73,7 @@ _linux_payload = rule(
     outputs = {"tar": "%{name}.tar.gz", "version": "%{name}.version"},
 )
 
-def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, setuid_sandbox = False, file_association_icons = {}, install_directory = "", payload_files = {}, **kwargs):
+def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, setuid_sandbox = False, file_association_icons = {}, install_directory = "", payload_files = {}, desktop_id = "", startup_wm_class = "", **kwargs):
     """Build a DEB with desktop integration; scripts are declared inputs, never run during packaging.
 
     Args:
@@ -92,6 +96,8 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         file_association_icons: PNG/SVG labels mapped to registered MIME types.
         install_directory: Package-root-relative app directory; defaults to opt/<app_id>.
         payload_files: Declared files mapped to package-root-relative destinations, such as service units.
+        desktop_id: Desktop entry and icon identifier; defaults to app_id.
+        startup_wm_class: Window class matched by the desktop shell; defaults to package name.
         **kwargs: Standard target attributes, including visibility.
     """
     compatible = ["@platforms//os:linux"] + kwargs.pop("target_compatible_with", [])
@@ -108,6 +114,8 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         setuid_sandbox = setuid_sandbox,
         install_directory = install_directory,
         payload_files = payload_files,
+        desktop_id = desktop_id,
+        startup_wm_class = startup_wm_class,
         target_compatible_with = compatible,
     )
     pkg_deb(

@@ -30,21 +30,22 @@ def _desktop_string(value):
 def create_payload(app, package_json, app_id, product_name, executable_name,
                    architecture, revision, description, categories, protocols,
                    file_associations, icons, output, version_output, directory_manifest="", setuid_sandbox=False,
-                   file_association_icons=(), package_type="deb", install_directory="", payload_files=()):
+                   file_association_icons=(), package_type="deb", install_directory="", payload_files=(), desktop_id="", startup_wm_class=""):
     with inventory(Path(app), "linux") as (app_entries, open_app):
         _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
                         architecture, revision, description, categories, protocols, file_associations,
                         icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons, package_type,
-                        install_directory, payload_files)
+                        install_directory, payload_files, desktop_id, startup_wm_class)
 
 
 def _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
                     architecture, revision, description, categories, protocols,
                     file_associations, icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons, package_type,
-                    install_directory, payload_files):
+                    install_directory, payload_files, desktop_id, startup_wm_class):
     if package_type not in ("deb", "rpm"):
         raise ValueError("Unsupported Linux package type")
     _identifier(app_id, "app_id")
+    desktop_id = _identifier(desktop_id or app_id, "desktop_id")
     _identifier(executable_name, "executable_name")
     if architecture not in ("amd64", "arm64"):
         raise ValueError("Unsupported Linux package architecture")
@@ -91,15 +92,15 @@ def _create_payload(app_entries, open_app, package_json, app_id, product_name, e
     launch = "/" + prefix + "/" + executable_name
     desktop = {
         "Type": "Application", "Name": product_name, "Comment": description,
-        "Exec": launch + " %U", "TryExec": launch, "Icon": app_id,
+        "Exec": launch + " %U", "TryExec": launch, "Icon": desktop_id,
         "Terminal": "false", "Categories": ";".join(categories) + (";" if categories else ""),
         "MimeType": ";".join(["x-scheme-handler/" + p for p in protocols] + sorted(file_associations)) + (";" if protocols or file_associations else ""),
-        "StartupWMClass": package.get("name", executable_name),
+        "StartupWMClass": startup_wm_class or package.get("name", executable_name),
     }
     generated = {
         prefix + "/resources/package-type": ((package_type + "\n").encode(), 0o644),
         "usr/bin/" + executable_name: (("#!/bin/sh\nexec " + shlex.quote(launch) + ' "$@"\n').encode(), 0o755),
-        "usr/share/applications/" + app_id + ".desktop": (("[Desktop Entry]\n" + "\n".join(k + "=" + _desktop_string(v) for k, v in desktop.items()) + "\n").encode(), 0o644),
+        "usr/share/applications/" + desktop_id + ".desktop": (("[Desktop Entry]\n" + "\n".join(k + "=" + _desktop_string(v) for k, v in desktop.items()) + "\n").encode(), 0o644),
     }
     if file_associations:
         generated["usr/share/mime/packages/" + app_id + ".xml"] = (ET.tostring(mime_info, encoding="utf-8", xml_declaration=True), 0o644)
@@ -129,7 +130,7 @@ def _create_payload(app_entries, open_app, package_json, app_id, product_name, e
             extension = ".png"
         else:
             raise ValueError("Icons require PNG pixel size or scalable SVG")
-        destination = "usr/share/icons/hicolor/" + size + "/apps/" + app_id + extension
+        destination = "usr/share/icons/hicolor/" + size + "/apps/" + desktop_id + extension
         if destination in entries:
             raise ValueError("Duplicate icon size")
         entries[destination] = (Entry("file", 0o755 if source.stat().st_mode & 0o111 else 0o644, source.stat().st_size, source),
