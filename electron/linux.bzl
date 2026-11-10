@@ -13,7 +13,7 @@ def _payload_impl(ctx):
             architecture = name
     if not architecture:
         fail("Unsupported DEB target architecture")
-    for target in ctx.attr.icons.keys() + ctx.attr.file_association_icons.keys():
+    for target in ctx.attr.icons.keys() + ctx.attr.file_association_icons.keys() + ctx.attr.payload_files.keys():
         if len(target.files.to_list()) != 1:
             fail("Each icon mapping requires exactly one file")
     manifest = ctx.actions.declare_file(ctx.label.name + ".json")
@@ -25,6 +25,8 @@ def _payload_impl(ctx):
         "package_type": ctx.attr.package_type,
         "package_json": app.package_json.path,
         "app_id": app.app_id,
+        "install_directory": ctx.attr.install_directory,
+        "payload_files": [{"source": f.path, "path": path} for t, path in ctx.attr.payload_files.items() for f in t.files.to_list()],
         "product_name": app.product_name,
         "executable_name": app.executable_name,
         "architecture": architecture,
@@ -39,7 +41,7 @@ def _payload_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._payload,
         arguments = [manifest.path, ctx.outputs.tar.path, ctx.outputs.version.path],
-        inputs = [manifest, app.artifact, app.package_json] + ([directories] if directories else []) + [f for t in ctx.attr.icons.keys() + ctx.attr.file_association_icons.keys() for f in t.files.to_list()],
+        inputs = [manifest, app.artifact, app.package_json] + ([directories] if directories else []) + [f for t in ctx.attr.icons.keys() + ctx.attr.file_association_icons.keys() + ctx.attr.payload_files.keys() for f in t.files.to_list()],
         outputs = [ctx.outputs.tar, ctx.outputs.version],
         mnemonic = "ElectronLinuxPayload",
         progress_message = "Packaging Electron Linux payload %{label}",
@@ -50,6 +52,8 @@ _linux_payload = rule(
     attrs = {
         "app": attr.label(mandatory = True, providers = [ElectronAppInfo]),
         "revision": attr.string(),
+        "install_directory": attr.string(),
+        "payload_files": attr.label_keyed_string_dict(allow_files = True),
         "setuid_sandbox": attr.bool(default = False),
         "package_type": attr.string(default = "deb", values = ["deb", "rpm"]),
         "description": attr.string(mandatory = True),
@@ -65,7 +69,7 @@ _linux_payload = rule(
     outputs = {"tar": "%{name}.tar.gz", "version": "%{name}.version"},
 )
 
-def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, setuid_sandbox = False, file_association_icons = {}, **kwargs):
+def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, setuid_sandbox = False, file_association_icons = {}, install_directory = "", payload_files = {}, **kwargs):
     """Build a DEB with desktop integration; scripts are declared inputs, never run during packaging.
 
     Args:
@@ -86,6 +90,8 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         postrm: Optional declared maintainer script.
         setuid_sandbox: Install a matching chrome-sandbox ELF helper as root:root 4755.
         file_association_icons: PNG/SVG labels mapped to registered MIME types.
+        install_directory: Package-root-relative app directory; defaults to opt/<app_id>.
+        payload_files: Declared files mapped to package-root-relative destinations, such as service units.
         **kwargs: Standard target attributes, including visibility.
     """
     compatible = ["@platforms//os:linux"] + kwargs.pop("target_compatible_with", [])
@@ -100,6 +106,8 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         file_associations = file_associations,
         categories = categories,
         setuid_sandbox = setuid_sandbox,
+        install_directory = install_directory,
+        payload_files = payload_files,
         target_compatible_with = compatible,
     )
     pkg_deb(

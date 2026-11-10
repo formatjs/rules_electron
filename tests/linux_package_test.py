@@ -147,6 +147,28 @@ class LinuxPackageTest(unittest.TestCase):
         create_payload(**options)
         return self.root / (name + ".tar.gz")
 
+    def test_custom_install_directory_and_service_payload_keep_launch_paths_consistent(self):
+        service = self.root / "sample.service"
+        service.write_bytes(b"[Service]\nExecStart=/opt/Sample/sample\n")
+        output = self.payload(install_directory="opt/Sample", payload_files=[
+            {"source": str(service), "path": "lib/systemd/system/sample.service"},
+        ])
+        with tarfile.open(output) as archive:
+            self.assertEqual(archive.extractfile("opt/Sample/sample").read(), b"target executable")
+            self.assertEqual(archive.extractfile("lib/systemd/system/sample.service").read(), service.read_bytes())
+            self.assertIn(b"exec /opt/Sample/sample", archive.extractfile("usr/bin/sample").read())
+            self.assertIn(b"Exec=/opt/Sample/sample %U\n", archive.extractfile("usr/share/applications/org.example.sample.desktop").read())
+            self.assertEqual(archive.getmember("lib/systemd/system/sample.service").mode, 0o644)
+
+    def test_custom_payload_rejects_escapes_and_existing_destinations_before_writing(self):
+        for destination in ["../escape", "/absolute", "opt/org.example.sample/sample", "usr/bin/sample", "opt/org.example.sample/resource/child"]:
+            with self.subTest(destination=destination), self.assertRaises(ValueError):
+                self.payload(name="invalid-payload", payload_files=[{"source": str(self.icon), "path": destination}])
+        for directory in ["../escape", "/opt/Sample", "opt/Sample/../Other", "opt/Sample name", "opt/Sample\nInjected"]:
+            with self.subTest(directory=directory), self.assertRaises(ValueError):
+                self.payload(name="invalid-payload", install_directory=directory)
+        self.assertFalse((self.root / "invalid-payload.tar.gz").exists())
+
     def test_payload_metadata_modes_symlinks_and_reproducibility(self):
         first = self.payload()
         os.utime(self.app / "sample", (123456789, 123456789))

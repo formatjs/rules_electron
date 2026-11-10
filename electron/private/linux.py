@@ -12,7 +12,7 @@ import tarfile
 import xml.etree.ElementTree as ET
 
 from electron.private.update import _version
-from electron.private.files import read_directories
+from electron.private.files import read_directories, relative_path
 from electron.private.archive import Entry, inventory, resolve
 from electron.private.icons import png_dimensions
 
@@ -30,16 +30,18 @@ def _desktop_string(value):
 def create_payload(app, package_json, app_id, product_name, executable_name,
                    architecture, revision, description, categories, protocols,
                    file_associations, icons, output, version_output, directory_manifest="", setuid_sandbox=False,
-                   file_association_icons=(), package_type="deb"):
+                   file_association_icons=(), package_type="deb", install_directory="", payload_files=()):
     with inventory(Path(app), "linux") as (app_entries, open_app):
         _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
                         architecture, revision, description, categories, protocols, file_associations,
-                        icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons, package_type)
+                        icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons, package_type,
+                        install_directory, payload_files)
 
 
 def _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
                     architecture, revision, description, categories, protocols,
-                    file_associations, icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons, package_type):
+                    file_associations, icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons, package_type,
+                    install_directory, payload_files):
     if package_type not in ("deb", "rpm"):
         raise ValueError("Unsupported Linux package type")
     _identifier(app_id, "app_id")
@@ -82,7 +84,10 @@ def _create_payload(app_entries, open_app, package_json, app_id, product_name, e
             if not pattern or "/" in pattern or "\\" in pattern or any(ord(c) < 32 for c in pattern):
                 raise ValueError("Invalid MIME filename glob")
             ET.SubElement(node, "{" + namespace + "}glob", {"pattern": pattern})
-    prefix = "opt/" + app_id
+    prefix = install_directory or "opt/" + app_id
+    relative_path(prefix)
+    if not re.fullmatch(r"[A-Za-z0-9._+/-]+", prefix):
+        raise ValueError("Invalid Linux install directory")
     launch = "/" + prefix + "/" + executable_name
     desktop = {
         "Type": "Application", "Name": product_name, "Comment": description,
@@ -152,6 +157,15 @@ def _create_payload(app_entries, open_app, package_json, app_id, product_name, e
         if destination in entries:
             raise ValueError("Duplicate file-type icon size")
         entries[destination] = (Entry("file", 0o644, source.stat().st_size, source), lambda entry: entry.source.open("rb"))
+    for mapping in payload_files:
+        destination = str(relative_path(mapping["path"]))
+        if destination in entries or destination in generated or destination in empty:
+            raise ValueError("Linux payload destination collision")
+        source = Path(mapping["source"])
+        if not source.is_file():
+            raise ValueError("Linux payload source must be a file")
+        entries[destination] = (Entry("file", 0o755 if source.stat().st_mode & 0o111 else 0o644, source.stat().st_size, source),
+                                lambda entry: entry.source.open("rb"))
     directories = empty | {str(parent) for name in [*entries, *generated, *empty] for parent in PurePosixPath(name).parents if str(parent) != "."}
     if directories & (entries.keys() | generated.keys()):
         raise ValueError("Linux payload file/directory collision")
