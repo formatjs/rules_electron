@@ -1,11 +1,13 @@
 """Read BB-generated DMG settings through the matching native Finder."""
 
 import json
+import base64
 from pathlib import Path
 import re
 import platform
 import plistlib
 import subprocess
+import struct
 import sys
 
 
@@ -65,6 +67,42 @@ function run(argv) {
 '''
 
 
+NATIVE_ALIAS_SCRIPT = r'''
+ObjC.import('Foundation');
+function run(argv) {
+    const path = argv[0].replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const script = $.NSAppleScript.alloc.initWithSource($('return (POSIX file "' + path + '") as alias'));
+    const error = Ref();
+    const descriptor = script.executeAndReturnError(error);
+    if (!descriptor || descriptor.isNil()) return JSON.stringify({status: 0});
+    return JSON.stringify({status: 1, type: Number(descriptor.descriptorType),
+        data: ObjC.unwrap(descriptor.data.base64EncodedStringWithOptions(0))});
+}
+'''
+
+
+def report_native_alias(path):
+    result = subprocess.run(["/usr/bin/osascript", "-l", "JavaScript", "-e", NATIVE_ALIAS_SCRIPT, str(path)],
+                            capture_output=True, text=True, timeout=30)
+    if result.returncode or len(result.stdout) > 1024**2:
+        print("DMG_NATIVE_ALIAS_UNAVAILABLE", flush=True)
+        return
+    try:
+        record = json.loads(result.stdout)
+        data = base64.b64decode(record.get("data", ""), validate=True)
+    except (ValueError, TypeError):
+        print("DMG_NATIVE_ALIAS_RESPONSE_INVALID", flush=True)
+        return
+    observed = {"descriptor_type": record.get("type", 0), "bytes": len(data)}
+    if record.get("type") == 0x616c6973 and len(data) >= 150 and struct.unpack_from(">H", data, 6)[0] == 2:
+        observed.update(version=2, volume_date=struct.unpack_from(">I", data, 38)[0],
+                        disk_type=struct.unpack_from(">H", data, 44)[0],
+                        folder_id=struct.unpack_from(">I", data, 46)[0],
+                        file_id=struct.unpack_from(">I", data, 114)[0],
+                        file_date=struct.unpack_from(">I", data, 118)[0])
+    print("DMG_NATIVE_ALIAS_OBSERVED " + json.dumps(observed, sort_keys=True), flush=True)
+
+
 def check_layout(mount):
     if platform.system() != "Darwin" or platform.machine().lower() != "arm64":
         raise ValueError("Finder smoke requires matching macOS ARM64 host")
@@ -74,6 +112,7 @@ def check_layout(mount):
     background = mount / ".background.png"
     if not background.is_file():
         raise ValueError("Missing BB-generated Finder background")
+    report_native_alias(background)
     result = subprocess.run(["/usr/bin/osascript", "-s", "s", "-e", SCRIPT, str(mount), str(background)],
                             capture_output=True, text=True, timeout=30)
     if result.returncode:

@@ -272,6 +272,7 @@ class DmgTest(unittest.TestCase):
         alias = Alias.from_bytes(data)
         self.assertEqual(alias.volume.name, "Sample 世界")
         self.assertEqual(alias.volume.posix_path, "/Volumes/Sample 世界")
+        self.assertEqual(alias.volume.disk_type, 0)
         self.assertEqual((alias.target.filename, alias.target.posix_path, alias.target.carbon_path),
                          (".background.png", "/.background.png", "Sample 世界:.background.png".encode("utf-8")))
         self.assertEqual(alias.target.folder_cnid, 2)
