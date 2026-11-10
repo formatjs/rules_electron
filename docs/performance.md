@@ -17,9 +17,18 @@ Current changes:
   for large incompressible files; product bytes remain unchanged.
 - Smoke ZIPs store `.7z` and `.lz` packages directly, alongside existing stored
   DEB/NSIS/AppImage members. This avoids deflating the examples' compressed
-  payloads again. Product archives remain unchanged; no latency delta measured yet.
+  payloads again. Product archive generation remains unchanged.
 
 ## Recorded observations
+
+For Linux x64 smoke packing, [8ec226b](https://formatjs.buildbuddy.io/invocation/769e347f-4145-49e0-8e55-2b9734638a2e)
+recorded 31.781 seconds of worker execution and 31.509 CPU-seconds. After storing
+`.7z`/`.lz` members, [b21a900](https://formatjs.buildbuddy.io/invocation/dc54d008-fc83-4b23-8a3a-814313b02c10)
+recorded 23.074 seconds and 22.496 CPU-seconds. Linux shard sizes were
+1,190,982,005 and 1,190,909,270 bytes. Reported worker peak memory was higher:
+1,128,337,408 versus 2,310,795,264 bytes. Different worker/cache conditions prevent
+a controlled whole-build speedup claim. Both commits passed all four native hosts;
+the product archive algorithms did not change.
 
 The [0b869ae matrix](https://formatjs.buildbuddy.io/invocation/aca4f1f5-ccaf-4d7e-bdb8-4fe543a52fa4)
 records one 160.846-second smoke archive action and a 285.545-second critical
