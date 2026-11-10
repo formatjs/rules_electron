@@ -79,13 +79,18 @@ if __name__ == '__main__':
         executable = root / 'Renamed portable 世界.exe'
         shutil.copyfile(Path(sys.argv[1]) / 'portable.exe', executable)
         original = executable.read_bytes()
+        outside = root / 'outside extraction'
+        outside.mkdir()
+        sentinel = outside / 'must survive.txt'
+        sentinel.write_bytes(b'outside extraction ownership')
         runs = []
 
         def launch(index, exit_code):
             report = root / ('report-' + str(index) + '.json')
             data = root / ('data-' + str(index))
             environment = dict(os.environ, APPDATA=str(data / 'appdata'), LOCALAPPDATA=str(data / 'localappdata'),
-                               RULES_ELECTRON_PORTABLE_REPORT=str(report), RULES_ELECTRON_PORTABLE_EXIT=str(exit_code))
+                               RULES_ELECTRON_PORTABLE_REPORT=str(report), RULES_ELECTRON_PORTABLE_EXIT=str(exit_code),
+                               RULES_ELECTRON_PORTABLE_JUNCTION=str(outside))
             environment.pop('ELECTRON_RUN_AS_NODE', None)
             environment.pop('NODE_OPTIONS', None)
             process = subprocess.Popen([str(executable), '--smoke', '--disable-gpu', '--disable-dev-shm-usage',
@@ -102,6 +107,8 @@ if __name__ == '__main__':
                 if actual != exit_code:
                     raise RuntimeError('PORTABLE_EXIT_FORWARDING_FAILED')
                 check_report(report, executable, architecture, ARGUMENTS, original)
+                if sentinel.read_bytes() != b'outside extraction ownership':
+                    raise RuntimeError('PORTABLE_JUNCTION_TARGET_CHANGED')
             concurrent = [launch(index, 0) for index in (2, 3)]
             paths = []
             for process, report in concurrent:
@@ -110,6 +117,8 @@ if __name__ == '__main__':
                 paths.append(check_report(report, executable, architecture, ARGUMENTS, original))
             if len(set(paths)) != 2:
                 raise RuntimeError('PORTABLE_EXTRACTION_COLLISION')
+            if sentinel.read_bytes() != b'outside extraction ownership':
+                raise RuntimeError('PORTABLE_JUNCTION_TARGET_CHANGED')
         finally:
             for process in runs:
                 terminate(process)

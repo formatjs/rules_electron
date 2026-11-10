@@ -27,13 +27,13 @@ class PortableTest(unittest.TestCase):
 
     def test_launch_has_owned_cleanup_and_no_installation_side_effects(self):
         script = self.render()
-        self.assertIn('StrCpy $INSTDIR "$PLUGINSDIR\\app"', script)
+        self.assertIn('StrCpy $INSTDIR "$PortableRoot\\app"', script)
         self.assertIn('RequestExecutionLevel user', script)
         self.assertIn('kernel32::GetCommandLineW()', script)
         self.assertNotIn('$CMDLINE', script)
-        self.assertLess(script.index('ExecWait'), script.index('RMDir /r "$INSTDIR"'))
+        self.assertLess(script.index('ExecWait'), script.index('Call PortableRemoveTree', script.index('ExecWait')))
         self.assertIn('SetErrorLevel $R2', script)
-        for command in ('WriteReg', 'CreateShortcut', 'WriteUninstaller', 'RMDir /r "$EXEDIR"'):
+        for command in ('WriteReg', 'CreateShortcut', 'WriteUninstaller', 'RMDir /r'):
             self.assertNotIn(command, script)
         for name in ('DIR', 'FILE', 'APP_FILENAME'):
             self.assertIn('PORTABLE_EXECUTABLE_' + name, script)

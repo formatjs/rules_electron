@@ -41,6 +41,69 @@ SetErrors
 FunctionEnd'''
 
 
+CLEANUP = r'''Function PortableRemoveTree
+Exch $0
+Push $1
+Push $2
+Push $3
+Push $4
+System::Call 'kernel32::GetFileAttributesW(w r0) i.r4'
+IntCmp $4 -1 cleanup_missing
+IntOp $3 $4 & 0x400
+IntCmp $3 0 0 cleanup_remove_directory cleanup_remove_directory
+ClearErrors
+FindFirst $1 $2 "$0\*"
+IfErrors cleanup_remove_directory
+cleanup_entry:
+StrCmp $2 "" cleanup_close
+StrCmp $2 "." cleanup_next
+StrCmp $2 ".." cleanup_next
+StrLen $3 $0
+StrLen $4 $2
+IntOp $3 $3 + $4
+IntOp $3 $3 + 1
+IntCmp $3 ${NSIS_MAX_STRLEN} cleanup_too_long 0 cleanup_too_long
+StrCpy $3 "$0\$2"
+System::Call 'kernel32::GetFileAttributesW(w r3) i.r4'
+IntCmp $4 -1 cleanup_entry_failed
+IntOp $4 $4 & 0x10
+IntCmp $4 0 cleanup_file
+Push $3
+Call PortableRemoveTree
+Goto cleanup_next
+cleanup_file:
+ClearErrors
+Delete "$3"
+IfErrors cleanup_entry_failed cleanup_next
+cleanup_too_long:
+StrCpy $PortableCleanupError 1
+Goto cleanup_next
+cleanup_entry_failed:
+StrCpy $PortableCleanupError 1
+cleanup_next:
+FindNext $1 $2
+Goto cleanup_entry
+cleanup_close:
+FindClose $1
+cleanup_remove_directory:
+ClearErrors
+RMDir "$0"
+IfErrors cleanup_failed cleanup_return
+cleanup_missing:
+System::Call 'kernel32::GetLastError() i.r4'
+IntCmp $4 2 cleanup_return
+IntCmp $4 3 cleanup_return
+cleanup_failed:
+StrCpy $PortableCleanupError 1
+cleanup_return:
+Pop $4
+Pop $3
+Pop $2
+Pop $1
+Pop $0
+FunctionEnd'''
+
+
 def portable_script(app, package_json, app_id, product_name, executable_name, output,
                     architecture='x64', compression='7z', payload_archive='', directory_manifest='',
                     installer_icon='', app_filename='', build_version='', build_number='', path_format=None):
@@ -77,6 +140,7 @@ def portable_script(app, package_json, app_id, product_name, executable_name, ou
         *(['SetCompress off'] if compression in ('7z', 'off') else ['SetCompressor /SOLID ' + compression]),
         *(['SetCompressorDictSize 8'] if compression == 'lzma' else []),
         '!include "LogicLib.nsh"', '!include "x64.nsh"', 'Var PortableArgs',
+        'Var PortableRoot', 'Var PortableCleanupError',
         'Name ' + q(product_name), 'OutFile ' + q(source_path(output, 'output')),
         *(['Icon ' + q(source_path(installer_icon, 'installer_icon'))] if installer_icon else []),
         'VIProductVersion ' + '.'.join(numeric),
@@ -84,12 +148,15 @@ def portable_script(app, package_json, app_id, product_name, executable_name, ou
         'VIAddVersionKey "FileDescription" ' + q(product_name + ' Portable'),
         'VIAddVersionKey "FileVersion" ' + q(file_version),
         'VIAddVersionKey "ProductVersion" ' + q(version),
-        *PARAMETERS.splitlines(), 'Function .onInit',
+        *PARAMETERS.splitlines(), *CLEANUP.splitlines(), 'Function .onInit',
         '${Unless} ${' + ('IsNativeARM64' if architecture == 'arm64' else 'IsNativeAMD64') + '}',
         'SetErrorLevel 1', 'Abort "Portable app requires matching native Windows architecture."',
         '${EndUnless}', 'FunctionEnd', 'Section "Launch"',
         'Call PortableParameters', 'IfErrors portable_start_failed',
-        'InitPluginsDir', 'StrCpy $INSTDIR "$PLUGINSDIR\\app"',
+        'InitPluginsDir', 'ClearErrors', 'GetTempFileName $PortableRoot "$TEMP"',
+        'IfErrors portable_start_failed', 'Delete "$PortableRoot"',
+        'IfErrors portable_start_failed', 'CreateDirectory "$PortableRoot"',
+        'IfErrors portable_start_failed', 'StrCpy $INSTDIR "$PortableRoot\\app"',
         'ClearErrors', 'CreateDirectory "$INSTDIR"', 'IfErrors portable_failed',
     ]
     if compression == '7z':
@@ -123,7 +190,8 @@ def portable_script(app, package_json, app_id, product_name, executable_name, ou
         'IfErrors portable_failed', 'Goto portable_cleanup',
         'portable_failed:', 'StrCpy $R2 1', 'portable_cleanup:',
         'SetOutPath "$EXEDIR"', 'StrCpy $R3 150', 'portable_cleanup_retry:',
-        'ClearErrors', 'RMDir /r "$INSTDIR"', 'IfErrors 0 portable_cleanup_done',
+        'StrCpy $PortableCleanupError 0', 'Push $PortableRoot', 'Call PortableRemoveTree',
+        'StrCmp $PortableCleanupError 0 portable_cleanup_done',
         'IntOp $R3 $R3 - 1', 'IntCmp $R3 0 portable_cleanup_failed portable_cleanup_failed portable_cleanup_wait',
         'portable_cleanup_wait:', 'Sleep 200', 'Goto portable_cleanup_retry',
         'portable_cleanup_failed:', 'StrCmp $R2 0 0 portable_cleanup_done', 'StrCpy $R2 1',

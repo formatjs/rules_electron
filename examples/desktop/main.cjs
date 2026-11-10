@@ -218,6 +218,13 @@ app.whenReady().then(async () => {
       const report = { ...result, architecture: process.arch, platform: process.platform, update_version, app_version: app.getVersion(), windows_store: Boolean(process.windowsStore), classic_module_abi: classicAddon.moduleAbi };
       console.log('EXAMPLE_SMOKE_OK ' + JSON.stringify(report));
       if (process.env.RULES_ELECTRON_PORTABLE_REPORT) {
+        if (process.env.RULES_ELECTRON_PORTABLE_JUNCTION) {
+          const directory = path.dirname(process.execPath);
+          fs.symlinkSync(process.env.RULES_ELECTRON_PORTABLE_JUNCTION,
+            path.join(directory, 'cleanup-junction'), 'junction');
+          fs.mkdirSync(path.join(directory, 'cleanup-owned', 'nested'), { recursive: true });
+          fs.writeFileSync(path.join(directory, 'cleanup-owned', 'nested', 'temporary.txt'), 'owned');
+        }
         fs.writeFileSync(process.env.RULES_ELECTRON_PORTABLE_REPORT, JSON.stringify({
           ...report,
           portable: {

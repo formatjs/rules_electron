@@ -21,7 +21,9 @@ Windows command line, including `/D=` arguments that NSIS otherwise consumes.
 Command lines exceeding the declared compiler's string capacity fail before
 extraction. The launcher waits for the app, preserves its exit status and retries
 owned extraction cleanup for up to 30 seconds. It creates no installation
-registry entries, uninstaller or shortcuts. Symlinks and unsafe/colliding
+registry entries, uninstaller or shortcuts. Cleanup removes directory junctions
+without traversing their targets. Extraction lives outside NSIS's plugin tree,
+so NSIS's automatic recursive cleanup never owns app-created files. Symlinks and unsafe/colliding
 Windows names fail during packaging; tracked empty directories are preserved.
 
 The child receives the [electron-builder portable variables](https://www.electron.build/docs/nsis/#portable):
