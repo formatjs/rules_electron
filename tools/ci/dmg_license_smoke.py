@@ -65,7 +65,7 @@ function run(argv) {
 
 def inspect_dialog(image):
     script = '''
-on run
+on run argv
     set maxProcesses to 0
     set maxWindows to 0
     set sawBody to false
@@ -73,7 +73,10 @@ on run
     set sawDisagree to false
     tell application "System Events"
         repeat 40 times
-            set targets to application processes
+            set targets to {}
+            repeat with processId in argv
+                set targets to targets & (application processes whose unix id is (processId as integer))
+            end repeat
             if (count targets) > maxProcesses then set maxProcesses to count targets
             repeat with targetProcess in targets
                 set processWindows to {}
@@ -130,7 +133,33 @@ on run argv
 end run
 ''', str(image)],
                                 capture_output=True, timeout=30)
-        result = subprocess.run(['/usr/bin/osascript', '-e', script], capture_output=True, timeout=30)
+        owners = subprocess.run(['/usr/bin/osascript', '-l', 'JavaScript', '-e', '''
+ObjC.import('CoreGraphics');
+ObjC.import('Foundation');
+function run() {
+    let visible = 0;
+    for (let attempt = 0; attempt < 24; attempt++) {
+        const windows = ObjC.deepUnwrap($.CGWindowListCopyWindowInfo(1, 0));
+        visible = windows.length;
+        const owners = [...new Set(windows.filter(window =>
+            /license|agreement|release\\.dmg|Sample Desktop/i.test(window.kCGWindowName || '')
+        ).map(window => window.kCGWindowOwnerPID))];
+        if (owners.length) return JSON.stringify({owners, visible});
+        $.NSThread.sleepForTimeInterval(0.5);
+    }
+    return JSON.stringify({owners: [], visible});
+}
+'''], capture_output=True, timeout=20)
+        candidates = json.loads(owners.stdout) if owners.returncode == 0 else {'owners': [], 'visible': 0}
+        identifiers = candidates.get('owners', [])
+        if (not isinstance(identifiers, list) or len(identifiers) > 16
+                or any(type(value) is not int or not 0 < value <= 2**31 for value in identifiers)
+                or type(candidates.get('visible')) is not int or not 0 <= candidates['visible'] <= 4096):
+            raise RuntimeError('DMG_LICENSE_INVALID_WINDOW_SUMMARY')
+        print('DMG_LICENSE_WINDOW_OWNERS ' + json.dumps({'candidates': len(identifiers),
+              'visible_windows': candidates['visible'], 'observer_exit_code': owners.returncode}, sort_keys=True), flush=True)
+        result = subprocess.run(['/usr/bin/osascript', '-e', script, *map(str, identifiers)],
+                                capture_output=True, timeout=30)
         time.sleep(1)
         summary = {
             'opened': opened.returncode == 0, 'observer_exit_code': result.returncode,
