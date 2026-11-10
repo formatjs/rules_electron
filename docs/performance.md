@@ -21,6 +21,13 @@ Current changes:
 
 ## Recorded observations
 
+The prebuilt sample benchmark builds `examples/desktop//:cross_build_smoke_bundle`
+for all seven variants using the pinned Electron runtime. On
+`codex/prebuilt-sample-benchmark`, Electron packaging actions and `MakeDeb` carry
+`no-cache`; compiler and tool caches remain enabled. This measures packaging
+work with prebuilt Chromium/Node runtime binaries. It does not claim a cold
+toolchain build or complete electron-builder feature parity.
+
 For Linux x64 smoke packing, [8ec226b](https://formatjs.buildbuddy.io/invocation/769e347f-4145-49e0-8e55-2b9734638a2e)
 recorded 31.781 seconds of worker execution and 31.509 CPU-seconds. After storing
 `.7z`/`.lz` members, [b21a900](https://formatjs.buildbuddy.io/invocation/dc54d008-fc83-4b23-8a3a-814313b02c10)
