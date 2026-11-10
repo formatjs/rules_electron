@@ -106,6 +106,7 @@ actions:
             --registry="file://$source_registry" --registry=https://bcr.bazel.build \
             --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
             //tools:file_matcher_test
+          cp MODULE.bazel.lock "$BUILDBUDDY_ARTIFACTS_DIRECTORY/source-example-analysis-MODULE.bazel.lock"
           bazel --host_jvm_args=-Xmx24g build --config=bb-workflow --config=msvc-license --remote_download_toplevel \
             --discard_analysis_cache --notrack_incremental_state \
             --registry="file://$source_registry" --registry=https://bcr.bazel.build \
