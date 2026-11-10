@@ -2,18 +2,20 @@
 
 import json
 import hashlib
+import gzip
 import os
 import re
 import urllib.request
+import urllib.error
 from collections import Counter
 
 try:
-    from .buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id
-    from .profile_summary import decode_profile, summarize
+    from .buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id, source_profile_uri
+    from .profile_summary import decode_profile, summarize, summarize_source
     from .smoke_shards import SHARDS, archive_name
 except ImportError:
-    from buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id
-    from profile_summary import decode_profile, summarize
+    from buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id, source_profile_uri
+    from profile_summary import decode_profile, summarize, summarize_source
     from smoke_shards import SHARDS, archive_name
 
 
@@ -57,15 +59,34 @@ def resource_diagnostics(identifier, key, max_bytes=64 * 1024**2):
 
 
 def profile_diagnostics(invocation, key, sha):
+    source = invocation.get('pattern') == 'Source-built desktop example'
+    terminal_source = source and invocation.get('invocationStatus') == 'COMPLETE_INVOCATION_STATUS'
     for name in ["cross-build-profile.json.gz", "fixture-profile.json.gz"]:
-        if not invocation.get("success") or not any(a.get("name", "").endswith(name) for a in invocation.get("artifacts", [])):
+        if (not invocation.get('success') and not terminal_source
+                or not any(a.get("name", "").endswith(name) for a in invocation.get("artifacts", [])):
             continue
-        uri, digest, size = artifact_uri({"invocation": [invocation]}, sha, artifact_name=name, max_bytes=64 * 1024**2)
-        with api_request("GetFile", {"uri": uri}, key) as response:
-            data = response.read(size + 1)
+        if terminal_source:
+            uri, digest, size = source_profile_uri({'invocation': [invocation]}, sha, name)
+        else:
+            uri, digest, size = artifact_uri({"invocation": [invocation]}, sha, artifact_name=name, max_bytes=64 * 1024**2)
+        try:
+            with api_request("GetFile", {"uri": uri}, key) as response:
+                data = response.read(size + 1)
+        except urllib.error.HTTPError as error:
+            if not terminal_source or error.code != 404:
+                raise
+            print('Source profile unavailable:', json.dumps({'name': name, 'reason': 'NOT_FOUND'}))
+            continue
         if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
             raise ValueError("Profile digest or size mismatch")
-        print("Verified BB profile " + name + ":", json.dumps(summarize(decode_profile(data)), sort_keys=True))
+        try:
+            decoded = decode_profile(data)
+        except (EOFError, ValueError, gzip.BadGzipFile):
+            if not terminal_source:
+                raise
+            print('Source profile unavailable:', json.dumps({'name': name, 'reason': 'DECODE_FAILED'}))
+            continue
+        print("Verified BB profile " + name + ":", json.dumps((summarize_source if source else summarize)(decoded), sort_keys=True))
     for artifact in invocation.get("artifacts", []):
         name = artifact.get("name", "").rsplit("/", 1)[-1]
         if (name in ["electron-cross-smoke.zip"] + [archive_name(shard) for shard in SHARDS]

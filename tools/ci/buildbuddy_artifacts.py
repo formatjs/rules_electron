@@ -38,6 +38,19 @@ def invocation_id(url):
 
 
 def artifact_uri(response, expected_sha, artifact_name=ARCHIVE, max_bytes=MAX_BYTES):
+    return _artifact_uri(response, expected_sha, artifact_name, max_bytes, require_success=True)
+
+
+def source_profile_uri(response, expected_sha, artifact_name):
+    if artifact_name not in ('cross-build-profile.json.gz', 'fixture-profile.json.gz'):
+        raise ValueError('Only source timing profiles allow failed invocations')
+    invocations = response.get('invocation', [])
+    if len(invocations) != 1 or invocations[0].get('pattern') != 'Source-built desktop example':
+        raise ValueError('Expected source workflow timing profile')
+    return _artifact_uri(response, expected_sha, artifact_name, 64 * 1024**2, require_success=False)
+
+
+def _artifact_uri(response, expected_sha, artifact_name, max_bytes, require_success):
     invocations = response.get("invocation", [])
     if len(invocations) != 1:
         raise ValueError("Expected one BuildBuddy invocation")
@@ -45,7 +58,7 @@ def artifact_uri(response, expected_sha, artifact_name=ARCHIVE, max_bytes=MAX_BY
     if (invocation.get("commitSha") != expected_sha
             or invocation.get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron"
             or invocation.get("pattern") not in SMOKE_WORKFLOWS
-            or not invocation.get("success")
+            or (require_success and not invocation.get("success"))
             or invocation.get("invocationStatus") != "COMPLETE_INVOCATION_STATUS"):
         raise ValueError("Expected successful matrix invocation for this repository and commit")
     artifacts = [a for a in invocation.get("artifacts", []) if PurePosixPath(a.get("name", "")).name == artifact_name]

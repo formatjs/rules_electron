@@ -1,15 +1,57 @@
 """Large resource snapshots must not prevent build-status diagnostics."""
 
 from contextlib import nullcontext, redirect_stdout
+import gzip
+import hashlib
 import io
 import json
 import unittest
 from unittest.mock import Mock, patch
 
-from tools.ci.buildbuddy_log import resource_diagnostics
+from tools.ci.buildbuddy_log import profile_diagnostics, resource_diagnostics
 
 
 class BuildBuddyLogTest(unittest.TestCase):
+    def source_profile(self, data, digest=None):
+        invocation = {
+            'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/formatjs/rules_electron',
+            'pattern': 'Source-built desktop example', 'success': False,
+            'invocationStatus': 'COMPLETE_INVOCATION_STATUS',
+            'artifacts': [{'name': 'cross-build-profile.json.gz',
+                           'uri': 'bytestream://formatjs.buildbuddy.io/blobs/'
+                           + (digest or hashlib.sha256(data).hexdigest()) + '/' + str(len(data))}],
+        }
+        output = io.StringIO()
+        with patch('tools.ci.buildbuddy_log.api_request', return_value=nullcontext(io.BytesIO(data))) as request:
+            with redirect_stdout(output):
+                profile_diagnostics(invocation, 'private-read-key', 'a' * 40)
+        request.assert_called_once()
+        self.assertNotIn('private-', output.getvalue())
+        return output.getvalue()
+
+    def test_failed_source_profile_redacts_names_paths_and_unknown_mnemonics(self):
+        profile = {'traceEvents': [
+            {'ph': 'X', 'ts': 0, 'dur': 2000000, 'cat': 'action processing',
+             'name': 'private-command', 'args': {'mnemonic': 'CppCompile', 'path': 'private-source'}},
+            {'ph': 'X', 'ts': 2000000, 'dur': 1000000, 'cat': 'private-category',
+             'name': 'private-command', 'args': {'mnemonic': 'private-mnemonic'}},
+            {'ph': 'X', 'ts': 0, 'dur': 3000000, 'cat': 'general information', 'name': 'runExecutorMainPhase'},
+        ]}
+        output = self.source_profile(gzip.compress(json.dumps(profile).encode()))
+        summary = json.loads(output.split('Verified BB profile cross-build-profile.json.gz: ', 1)[1].splitlines()[0])
+        self.assertEqual(summary['trace_span_seconds'], 3)
+        self.assertEqual(summary['actions']['CppCompile']['count'], 1)
+        self.assertEqual(summary['categories']['other']['cumulative_seconds'], 1)
+        self.assertEqual(summary['phases_seconds'], {'runExecutorMainPhase': 3})
+
+    def test_failed_source_truncated_profile_reports_fixed_reason(self):
+        data = gzip.compress(b'{"traceEvents": []}')[:-4]
+        self.assertIn('"reason": "DECODE_FAILED"', self.source_profile(data))
+
+    def test_failed_source_profile_still_requires_matching_digest(self):
+        with self.assertRaisesRegex(ValueError, 'Profile digest or size mismatch'):
+            self.source_profile(gzip.compress(b'{}'), digest='b' * 64)
+
     def summary(self, payload, max_bytes):
         output = io.StringIO()
         stream = io.BytesIO(payload)

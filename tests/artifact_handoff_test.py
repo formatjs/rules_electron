@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from zipfile import ZipFile, ZipInfo
 
-from tools.ci.buildbuddy_artifacts import artifact_uri, invocation_id
+from tools.ci.buildbuddy_artifacts import artifact_uri, invocation_id, source_profile_uri
 from tools.ci.run_native_smoke import extract_variant
 from tools.ci.smoke_shards import SHARDS, archive_name
 
@@ -45,6 +45,29 @@ class ArtifactHandoffTest(unittest.TestCase):
             invalid["invocation"][0][field] = value
             with self.subTest(field=field), self.assertRaises(ValueError):
                 artifact_uri(invalid, "a" * 40)
+
+    def test_failed_source_profile_is_data_only_and_still_bound_to_terminal_commit(self):
+        response = self.response()
+        invocation = response['invocation'][0]
+        invocation.update(pattern='Source-built desktop example', success=False)
+        invocation['artifacts'][0]['name'] = 'cross-build-profile.json.gz'
+        self.assertEqual(source_profile_uri(response, 'a' * 40, 'cross-build-profile.json.gz')[1:], ('b' * 64, 12))
+        with self.assertRaises(ValueError):
+            artifact_uri(response, 'a' * 40, artifact_name='cross-build-profile.json.gz')
+        with self.assertRaises(ValueError):
+            source_profile_uri(response, 'a' * 40, 'electron-cross-smoke.zip')
+        for field, value in [('commitSha', 'c' * 40), ('repoUrl', 'https://github.com/example/private'),
+                             ('pattern', 'Cross-build Electron Apps'), ('invocationStatus', 'PARTIAL_INVOCATION_STATUS')]:
+            invalid = copy.deepcopy(response)
+            invalid['invocation'][0][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                source_profile_uri(invalid, 'a' * 40, 'cross-build-profile.json.gz')
+        for uri in ['bytestream://untrusted.example/blobs/' + 'b' * 64 + '/12',
+                    'bytestream://formatjs.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(64 * 1024**2 + 1)]:
+            invalid = copy.deepcopy(response)
+            invalid['invocation'][0]['artifacts'][0]['uri'] = uri
+            with self.subTest(uri=uri), self.assertRaises(ValueError):
+                source_profile_uri(invalid, 'a' * 40, 'cross-build-profile.json.gz')
 
     def test_invocation_host_is_fixed_before_using_credentials(self):
         identifier = "12345678-1234-1234-1234-123456789abc"
