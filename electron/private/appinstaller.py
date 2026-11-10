@@ -11,6 +11,8 @@ from zipfile import ZipFile
 NAMESPACE = 'http://schemas.microsoft.com/appx/appinstaller/2021'
 FOUNDATION = 'http://schemas.microsoft.com/appx/manifest/foundation/windows10'
 LIMIT = 4 * 1024**2
+BUNDLE = 'http://schemas.microsoft.com/appx/2013/bundle'
+BUNDLE_MANIFEST = 'AppxMetadata/AppxBundleManifest.xml'
 
 
 def version(value):
@@ -33,16 +35,20 @@ def uri(value, allow_http_loopback):
     return value
 
 
-def read_package_manifest(package):
+def read_manifest(package, name):
     with ZipFile(package) as archive:
-        entries = [info for info in archive.infolist() if info.filename == 'AppxManifest.xml']
+        entries = [info for info in archive.infolist() if info.filename == name]
         if len(entries) != 1 or entries[0].file_size > LIMIT or entries[0].flag_bits & 1:
-            raise ValueError('MSIX requires one bounded AppxManifest.xml')
+            raise ValueError('MSIX requires one bounded manifest')
         data = archive.read(entries[0])
     decoded = data.decode('utf-16' if data.startswith((b'\xff\xfe', b'\xfe\xff')) else 'utf-8-sig')
     if re.search(r'<!\s*(?:DOCTYPE|ENTITY)\b', decoded):
         raise ValueError('MSIX manifest cannot declare entities or a document type')
-    root = ET.fromstring(data)
+    return ET.fromstring(data)
+
+
+def read_package_manifest(package):
+    root = read_manifest(package, 'AppxManifest.xml')
     identities = root.findall('{' + FOUNDATION + '}Identity')
     if root.tag != '{' + FOUNDATION + '}Package' or len(identities) != 1:
         raise ValueError('Invalid MSIX package identity')
@@ -60,11 +66,29 @@ def package_identity(package):
     return {key: identity[key] for key in ('Name', 'Publisher', 'ProcessorArchitecture')} | {'Version': version(identity.get('Version'))}
 
 
+def distribution_identity(package):
+    with ZipFile(package) as archive:
+        names = set(archive.namelist())
+    if 'AppxManifest.xml' in names:
+        if BUNDLE_MANIFEST in names:
+            raise ValueError('MSIX cannot contain both package and bundle manifests')
+        return 'MainPackage', package_identity(package)
+    root = read_manifest(package, BUNDLE_MANIFEST)
+    identities = root.findall('{' + BUNDLE + '}Identity')
+    if root.tag != '{' + BUNDLE + '}Bundle' or len(identities) != 1:
+        raise ValueError('Invalid MSIX bundle identity')
+    identity = identities[0].attrib
+    if (not re.fullmatch(r'[A-Za-z0-9.-]{3,50}', identity.get('Name', ''))
+            or not identity.get('Publisher', '').strip()):
+        raise ValueError('Unsupported MSIX bundle identity')
+    return 'MainBundle', {key: identity[key] for key in ('Name', 'Publisher')} | {'Version': version(identity.get('Version'))}
+
+
 def create_appinstaller(package, output, appinstaller_uri, package_uri, appinstaller_version='',
                         check_on_launch=True, hours_between_update_checks=24, show_prompt=False,
                         update_blocks_activation=False, automatic_background_task=False,
                         force_update_from_any_version=False, update_uris=(), repair_uris=(), allow_http_loopback=False):
-    identity = package_identity(package)
+    kind, identity = distribution_identity(package)
     if type(hours_between_update_checks) is not int or not 0 <= hours_between_update_checks <= 255:
         raise ValueError('Update interval must be 0..255 hours')
     if update_blocks_activation and not show_prompt:
@@ -73,7 +97,7 @@ def create_appinstaller(package, output, appinstaller_uri, package_uri, appinsta
         raise ValueError('Launch settings require check_on_launch')
     root = ET.Element('AppInstaller', xmlns=NAMESPACE, Version=version(appinstaller_version or identity['Version']),
                       Uri=uri(appinstaller_uri, allow_http_loopback))
-    ET.SubElement(root, 'MainPackage', **identity, Uri=uri(package_uri, allow_http_loopback))
+    ET.SubElement(root, kind, **identity, Uri=uri(package_uri, allow_http_loopback))
     if check_on_launch or automatic_background_task or force_update_from_any_version:
         settings = ET.SubElement(root, 'UpdateSettings')
         if check_on_launch:

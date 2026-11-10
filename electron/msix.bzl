@@ -102,9 +102,9 @@ def _appinstaller_impl(ctx):
 electron_msix_appinstaller = rule(
     implementation = _appinstaller_impl,
     attrs = {
-        "package": attr.label(mandatory = True, allow_single_file = [".msix"]),
+        "package": attr.label(mandatory = True, allow_single_file = [".msix", ".msixbundle"]),
         "appinstaller_uri": attr.string(mandatory = True, doc = "Public URL of this update descriptor."),
-        "package_uri": attr.string(mandatory = True, doc = "Public URL of the final MSIX package."),
+        "package_uri": attr.string(mandatory = True, doc = "Public URL of the final MSIX package or bundle."),
         "appinstaller_version": attr.string(doc = "Four-component descriptor version; defaults to MSIX identity version."),
         "check_on_launch": attr.bool(default = True),
         "hours_between_update_checks": attr.int(default = 24),
@@ -117,7 +117,7 @@ electron_msix_appinstaller = rule(
         "allow_http_loopback": attr.bool(doc = "Permit explicit HTTP loopback fixtures; production URLs require HTTPS."),
         "_writer": attr.label(default = Label("//electron/private:appinstaller_writer"), executable = True, cfg = "exec"),
     },
-    doc = "Write deterministic 2021 App Installer XML from final MSIX identity. No publication, signing or deployment.",
+    doc = "Write deterministic 2021 App Installer XML from final MSIX package or bundle identity. No publication, signing or deployment.",
 )
 
 def _bundle_impl(ctx):

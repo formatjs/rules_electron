@@ -1,7 +1,7 @@
 # MSIX App Installer updates
 
 `electron_msix_appinstaller` writes a deterministic `.appinstaller` descriptor
-from the final MSIX's embedded identity. It runs on BB Linux with declared Python
+from the final MSIX package or bundle's embedded identity. It runs on BB Linux with declared Python
 and MSIX inputs. No Windows SDK tool, signing key, clock or network enters this
 action. The MSIX bytes remain unchanged.
 
@@ -36,8 +36,10 @@ Windows owns scheduling, prompts and policy enforcement; see
 
 URLs require HTTPS without credentials, query or fragment. Percent-encode Unicode
 or spaces. `allow_http_loopback` exists for explicit native fixtures. Use separate
-CPU URLs unless distributing an MSIX bundle; this rule currently emits
-`MainPackage`, not `MainBundle` or dependency/optional-package sets.
+CPU URLs for individual packages. A final `.msixbundle` selects `MainBundle`
+automatically, deriving name, publisher and version from its bundle manifest.
+One descriptor then serves both CPUs; Windows selects the native payload.
+Dependency and optional-package sets remain unsupported.
 
 Publish package bytes before promoting the descriptor. This rule neither uploads
 nor installs them. App Installer uses Windows deployment APIs; it does not make
@@ -55,13 +57,13 @@ bazel run --config=bb-workflow @rules_electron//electron/tools:publish_appinstal
 
 Credentials and multipart options follow the [S3 publisher](s3-publication.md).
 Inputs must be regular files. The client snapshots their bytes and compares all
-four package identity fields before contacting the service. Object names come
+package or bundle identity fields and descriptor type before contacting the service. Object names come
 from public descriptor/package URLs; local Bazel output names may differ. Map
 those public URLs to the chosen destination prefix. It uploads MSIX first with
 `If-None-Match: *`, verifies identical existing bytes, then promotes the descriptor
 with a strong ETag condition. Races stop promotion. Both upload modes set explicit
-`application/msix` and `application/appinstaller` content types. This operation
-does not validate certificate trust or publish dependency/bundle sets.
+`application/msix`, `application/msixbundle` and `application/appinstaller` content types. This operation
+does not validate certificate trust or publish dependency sets.
 
 The [2b99e00 BB suite](https://formatjs.buildbuddy.io/invocation/17a41b65-4f45-4eba-9a98-a71e8f112e4f)
 and [seven cross-builds](https://formatjs.buildbuddy.io/invocation/85bff46d-ad69-4aad-b284-30b91e75e3d8)
@@ -84,3 +86,8 @@ for no updates, an available v2, then no updates after installation. It uses
 `Package.Current` path. The [6d9edc2 native workflow](https://github.com/formatjs/rules_electron/actions/runs/42768748680)
 passed all three states on both Windows CPUs and passed all four hosts. The short fixture does not prove background timing, prompt UX, fallback
 server failover or production certificate trust.
+
+Bundle descriptor/publication validation is pending. The fixture reuses the same
+BB-built signed v1/v2 bundles for direct deployment and a separate App Installer
+handoff, checking native CPU selection, adopted URI, update availability, real
+Electron execution and uninstall. It serves unchanged descriptor/bundle bytes.

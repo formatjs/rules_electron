@@ -48,5 +48,33 @@ class AppInstallerServerTest(unittest.TestCase):
                     thread.join(timeout=5)
 
 
+    def test_bundle_mode_serves_only_declared_bundle_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for version in ('v1', 'v2'):
+                (root / ('msix_bundle_appinstaller_' + version + '.appinstaller')).write_bytes(version.encode())
+                (root / ('msix_signed_bundle_' + version + '.msixbundle')).write_bytes(b'bundle-' + version.encode())
+            with FixtureServer(('127.0.0.1', 0), root, bundle=True) as server:
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                try:
+                    base = 'http://127.0.0.1:' + str(server.server_port)
+                    for version in ('v1', 'v2'):
+                        if version == 'v2':
+                            with urlopen(Request(base + '/use-v2', data=b''), timeout=5) as response:
+                                self.assertEqual(response.status, 204)
+                        with urlopen(base + '/bundle.appinstaller', timeout=5) as response:
+                            self.assertEqual(response.read(), version.encode())
+                        with urlopen(base + '/msix_signed_bundle_' + version + '.msixbundle', timeout=5) as response:
+                            self.assertEqual(response.read(), b'bundle-' + version.encode())
+                            self.assertEqual(response.headers['Content-Type'], 'application/msixbundle')
+                    with self.assertRaises(HTTPError) as error:
+                        urlopen(base + '/desktop.appinstaller', timeout=5)
+                    self.assertEqual(error.exception.code, 404)
+                finally:
+                    server.shutdown()
+                    thread.join(timeout=5)
+
+
 if __name__ == '__main__':
     unittest.main()

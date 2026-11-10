@@ -12,7 +12,7 @@ from urllib.parse import quote, unquote
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
-from electron.private.appinstaller import FOUNDATION, NAMESPACE, create_appinstaller
+from electron.private.appinstaller import BUNDLE, BUNDLE_MANIFEST, FOUNDATION, NAMESPACE, create_appinstaller
 from tests.s3_test_support import ACCESS, PREFIX, SECRET, TOKEN, authorized
 
 TOOL = Path(sys.argv.pop(1)).resolve()
@@ -108,6 +108,42 @@ class AppInstallerPublicationTest(unittest.TestCase):
         self.assertIn(('GET', self.name, None, True), self.requests)
         self.assertEqual(self.package.read_bytes(), expected[self.name])
         self.assertEqual(self.descriptor.read_bytes(), expected['latest.appinstaller'])
+
+    def test_bundle_publication_binds_identity_type_and_promotes_exact_bytes(self):
+        self.package = self.root / 'build-output.msixbundle'
+        self.name = 'Example bundle.msixbundle'
+        with ZipFile(self.package, 'w') as archive:
+            archive.writestr(BUNDLE_MANIFEST, '<Bundle xmlns="' + BUNDLE + '"><Identity '
+                             'Name="org.example.Bundle" Publisher="CN=Example" Version="3.0.0.7"/></Bundle>')
+            archive.writestr('package-x64.msix', bytes(range(256)) * 1024)
+        create_appinstaller(self.package, self.descriptor, 'https://updates.example.invalid/latest.appinstaller',
+                            'https://updates.example.invalid/' + quote(self.name))
+        self.publish()
+        self.assertEqual(self.objects, {self.name: self.package.read_bytes(),
+                                       'latest.appinstaller': self.descriptor.read_bytes()})
+        self.assertEqual(self.requests, [
+            ('HEAD', 'latest.appinstaller', None, True),
+            ('PUT', self.name, 'application/msixbundle', True),
+            ('PUT', 'latest.appinstaller', 'application/appinstaller', True),
+        ])
+        self.requests.clear()
+        original = self.descriptor.read_bytes()
+        for change in ('version', 'both', 'type', 'cpu'):
+            root = ET.fromstring(original)
+            ns = '{' + NAMESPACE + '}'
+            main = root.find(ns + 'MainBundle')
+            if change == 'version':
+                main.set('Version', '9.0.0.0')
+            elif change == 'both':
+                ET.SubElement(root, ns + 'MainPackage', **main.attrib)
+            elif change == 'type':
+                main.tag = ns + 'MainPackage'
+                main.set('Uri', 'https://updates.example.invalid/fake.msix')
+            else:
+                main.set('ProcessorArchitecture', 'x64')
+            self.descriptor.write_bytes(ET.tostring(root))
+            self.publish(False)
+        self.assertEqual(self.requests, [])
 
     def test_identity_extra_packages_and_unsafe_urls_fail_before_network(self):
         original = self.descriptor.read_bytes()

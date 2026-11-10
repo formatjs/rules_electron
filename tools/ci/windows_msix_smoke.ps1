@@ -153,9 +153,12 @@ function Assert-Bundle {
   if ($LASTEXITCODE -ne 0) { throw 'MSIX bundle uninstall left handlers' }
   Write-Output 'MSIX_BUNDLE_INSTALL_UPDATE_REMOVE_OK'
 }
-function Assert-AppInstaller {
-  $uri = 'http://127.0.0.1:31827/desktop.appinstaller'
+function Assert-AppInstaller([switch]$Bundle) {
+  $identity = if ($Bundle) { $bundleIdentity } else { $appinstallerIdentity }
+  $marker = if ($Bundle) { 'MSIX_BUNDLE_APPINSTALLER' } else { 'MSIX_APPINSTALLER' }
+  $uri = if ($Bundle) { 'http://127.0.0.1:31827/bundle.appinstaller' } else { 'http://127.0.0.1:31827/desktop.appinstaller' }
   $arguments = @('-u', 'tools/ci/windows_appinstaller_server.py', '--packages', ('"' + $Packages + '"'), '--port', '31827')
+  if ($Bundle) { $arguments += '--bundle' }
   $server = Start-Process -FilePath $Python -ArgumentList $arguments -PassThru -NoNewWindow
   try {
     $ready = $false
@@ -175,7 +178,7 @@ function Assert-AppInstaller {
         Assert-AppInstallerAvailability $native 'Available'
       }
       Add-AppxPackage -Path $uri -AppInstallerFile -ForceTargetApplicationShutdown
-      $package = Get-AppxPackage -Name $appinstallerIdentity
+      $package = Get-AppxPackage -Name $identity
       if (-not $package -or $package.Version.ToString() -cne ($release.Version + '.7') -or
           $package.Publisher -cne 'CN=Example' -or $package.Architecture.ToString() -ine $Architecture) {
         throw 'MSIX App Installer package identity mismatch'
@@ -192,13 +195,13 @@ function Assert-AppInstaller {
       $executable = Join-Path $package.InstallLocation 'sample-desktop.exe'
       & $Python 'examples/desktop/tools/smoke_test.py' $executable --installed --msix --target-os windows --target-arch $Architecture --expected-version $release.Version
       if ($LASTEXITCODE -ne 0) { throw 'MSIX App Installer Electron smoke failed' }
-      Write-Output ('MSIX_APPINSTALLER_VERSION_OK ' + $release.Version)
+      Write-Output ($marker + '_VERSION_OK ' + $release.Version)
     }
     Remove-AppxPackage -Package $package.PackageFullName
-    if (Get-AppxPackage -Name $appinstallerIdentity) { throw 'MSIX App Installer uninstall left registration' }
+    if (Get-AppxPackage -Name $identity) { throw 'MSIX App Installer uninstall left registration' }
     & $reader --handlers $family absent
     if ($LASTEXITCODE -ne 0) { throw 'MSIX App Installer uninstall left handlers' }
-    Write-Output 'MSIX_APPINSTALLER_INSTALL_UPDATE_REMOVE_OK'
+    Write-Output ($marker + '_INSTALL_UPDATE_REMOVE_OK')
   } finally {
     if (-not $server.HasExited) { $server.Kill(); $server.WaitForExit() }
   }
@@ -268,6 +271,7 @@ try {
   Write-Output 'MSIX_DESKTOP_INSTALL_UPDATE_REMOVE_OK'
   Assert-AppInstaller
   Assert-Bundle
+  Assert-AppInstaller -Bundle
 } finally {
   try {
     foreach ($name in @($identity, $desktopIdentity, $appinstallerIdentity, $bundleIdentity)) {

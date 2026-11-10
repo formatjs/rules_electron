@@ -9,8 +9,9 @@ from urllib.parse import urlsplit
 
 
 class FixtureServer(ThreadingHTTPServer):
-    def __init__(self, address, packages):
+    def __init__(self, address, packages, bundle=False):
         self.packages, self.release = Path(packages), 'v1'
+        self.bundle = bundle
         super().__init__(address, Handler)
 
 
@@ -35,6 +36,10 @@ class Handler(BaseHTTPRequestHandler):
             names = {'/desktop.appinstaller': ('msix_appinstaller_' + self.server.release + '.appinstaller', 'application/appinstaller')}
             names.update({'/appinstaller_signed_desktop_' + version + '.msix':
                           ('appinstaller_signed_desktop_' + version + '.msix', 'application/msix') for version in ('v1', 'v2')})
+            if self.server.bundle:
+                names = {'/bundle.appinstaller': ('msix_bundle_appinstaller_' + self.server.release + '.appinstaller', 'application/appinstaller')}
+                names.update({'/msix_signed_bundle_' + version + '.msixbundle':
+                              ('msix_signed_bundle_' + version + '.msixbundle', 'application/msixbundle') for version in ('v1', 'v2')})
             if path not in names:
                 self.send_error(404)
                 return
@@ -83,6 +88,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--packages', type=Path, required=True)
     parser.add_argument('--port', type=int, required=True)
+    parser.add_argument('--bundle', action='store_true')
     args = parser.parse_args()
-    with FixtureServer(('127.0.0.1', args.port), args.packages) as server:
+    with FixtureServer(('127.0.0.1', args.port), args.packages, args.bundle) as server:
         server.serve_forever()

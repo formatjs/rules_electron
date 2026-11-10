@@ -40,13 +40,17 @@ logical filenames are deterministic; temporary storage bounds memory use.
 Output is unsigned. Sign the final bundle with the
 [Windows release interface](signing.md), using its declared publisher identity.
 Constructing the bundle does not establish package signature trust or Store
-acceptance. App Installer `MainBundle` generation/publication remains separate
-work; the existing descriptor rule currently handles `MainPackage` only.
+acceptance. Pass the final signed bundle to
+[`electron_msix_appinstaller`](appinstaller.md) for `MainBundle` metadata and
+conditional S3 publication.
 
-Validation is pending. BB tests independently decode ZIP records, compare
+The [41cef16 BB suite](https://formatjs.buildbuddy.io/invocation/fec649e6-7500-4f90-8635-b1da9236a831)
+and [cross-build](https://formatjs.buildbuddy.io/invocation/c72c5342-204f-4cb3-8e39-d96a032a98ce) passed. BB tests independently decode ZIP records, compare
 payload bytes and offsets, verify the single-manifest block map, check input
 relocation/order/mtime stability and reject incompatible inputs. The generic
 example builds/signs v1/v2 bundles containing both CPUs. Native x64/ARM64 hosts
-will verify trust, use `IAppxBundleReader`, check inner package identities and
-offset bytes, install the matching payload, launch real bootstrap Electron,
-upgrade and remove it. No foreign-CPU executable runs during these checks.
+verified trust, use `IAppxBundleReader`, check inner package identities and
+offset bytes, installed the matching payload, launched real bootstrap Electron,
+upgraded and removed it. Both CPUs passed bundle-specific checks in
+[the native workflow](https://github.com/formatjs/rules_electron/actions/runs/42771327979);
+the ARM64 job later failed its separate NSIS machine-install state gate. No foreign-CPU executable runs during these checks.

@@ -11,7 +11,7 @@ import tempfile
 from urllib.parse import quote, unquote, urlsplit
 from xml.etree import ElementTree as ET
 
-from electron.private.appinstaller import LIMIT, NAMESPACE, package_identity, uri, version
+from electron.private.appinstaller import LIMIT, NAMESPACE, distribution_identity, uri, version
 from electron.tools.publish_s3 import S3Publisher, add_s3_arguments, publisher_from_environment
 from electron.tools.publish_update import filename
 
@@ -44,13 +44,17 @@ def stage(descriptor, package, output, allow_http_loopback=False):
         raise ValueError('Invalid App Installer descriptor')
     root = ET.fromstring(data)
     ns = '{' + NAMESPACE + '}'
-    allowed = {ns + name for name in ('MainPackage', 'UpdateSettings', 'UpdateUris', 'RepairUris')}
+    allowed = {ns + name for name in ('MainPackage', 'MainBundle', 'UpdateSettings', 'UpdateUris', 'RepairUris')}
     if (root.tag != ns + 'AppInstaller' or any(child.tag not in allowed for child in root)
             or any(sum(child.tag == tag for child in root) > 1 for tag in allowed)):
         raise ValueError('Publication requires a single-package App Installer descriptor')
-    main = root.find(ns + 'MainPackage')
-    if main is None:
-        raise ValueError('App Installer requires a main package')
+    mains = [child for child in root if child.tag in (ns + 'MainPackage', ns + 'MainBundle')]
+    if len(mains) != 1:
+        raise ValueError('App Installer requires exactly one main package or bundle')
+    main = mains[0]
+    kind = main.tag[len(ns):]
+    if len(main):
+        raise ValueError('App Installer main payload cannot have child elements')
     for name in ('Update', 'Repair'):
         group = root.find(ns + name + 'Uris')
         if group is not None:
@@ -62,14 +66,15 @@ def stage(descriptor, package, output, allow_http_loopback=False):
                 uri(value, allow_http_loopback)
     version(root.attrib.get('Version'))
     channel = public_name(root.attrib.get('Uri'), '.appinstaller', allow_http_loopback)
-    name = public_name(main.attrib.get('Uri'), '.msix', allow_http_loopback)
+    name = public_name(main.attrib.get('Uri'), '.msixbundle' if kind == 'MainBundle' else '.msix', allow_http_loopback)
     if channel.casefold() == name.casefold():
         raise ValueError('Publication filename collision')
     target = output / name
     with open_regular(package) as source, target.open('wb') as destination:
         shutil.copyfileobj(source, destination, 1024**2)
-    expected = {**package_identity(target), 'Uri': main.attrib['Uri']}
-    if main.attrib != expected:
+    actual_kind, identity = distribution_identity(target)
+    expected = {**identity, 'Uri': main.attrib['Uri']}
+    if kind != actual_kind or main.attrib != expected:
         raise ValueError('App Installer identity differs from the supplied MSIX')
     (output / channel).write_bytes(data)
     return channel, [target]
@@ -77,7 +82,8 @@ def stage(descriptor, package, output, allow_http_loopback=False):
 
 class AppInstallerPublisher(S3Publisher):
     def content_type(self, path):
-        return 'application/appinstaller' if path.suffix.lower() == '.appinstaller' else 'application/msix'
+        return {'.appinstaller': 'application/appinstaller', '.msixbundle': 'application/msixbundle'}.get(
+            path.suffix.lower(), 'application/msix')
 
 
 def main():

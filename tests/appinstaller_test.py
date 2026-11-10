@@ -9,7 +9,7 @@ import unittest
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
-from electron.private.appinstaller import FOUNDATION, NAMESPACE, create_appinstaller
+from electron.private.appinstaller import BUNDLE, BUNDLE_MANIFEST, FOUNDATION, NAMESPACE, create_appinstaller
 
 
 class AppInstallerTest(unittest.TestCase):
@@ -27,10 +27,10 @@ class AppInstallerTest(unittest.TestCase):
         with ZipFile(self.package, 'w') as archive:
             archive.writestr('AppxManifest.xml', data)
 
-    def render(self, **options):
+    def render(self, package_uri=package_uri, **options):
         create_appinstaller(package=self.package, output=self.output,
                             appinstaller_uri='https://updates.example.invalid/latest.appinstaller',
-                            package_uri='https://updates.example.invalid/Sample%20Setup.msix', **options)
+                            package_uri=package_uri, **options)
         return ET.fromstring(self.output.read_bytes())
 
     def test_identity_and_policy_come_from_declared_bytes_and_options(self):
@@ -67,6 +67,27 @@ class AppInstallerTest(unittest.TestCase):
         self.write_manifest(self.manifest.encode('utf-16'))
         self.render()
         self.assertEqual(self.output.read_bytes(), expected)
+
+    def test_bundle_uses_bundle_identity_without_cpu_and_preserves_bytes(self):
+        self.package = self.root / 'signed.msixbundle'
+        with ZipFile(self.package, 'w') as archive:
+            archive.writestr(BUNDLE_MANIFEST, '<Bundle xmlns="' + BUNDLE + '"><Identity '
+                             'Name="org.example.Bundle" Publisher="CN=Example" Version="4.5.6.7"/></Bundle>')
+            archive.writestr('package-arm64.msix', b'unchanged inner package')
+        before = self.package.read_bytes()
+        root = self.render(package_uri='https://updates.example.invalid/Sample.msixbundle')
+        ns = '{' + NAMESPACE + '}'
+        self.assertIsNone(root.find(ns + 'MainPackage'))
+        self.assertEqual(root.find(ns + 'MainBundle').attrib, {
+            'Name': 'org.example.Bundle', 'Publisher': 'CN=Example', 'Version': '4.5.6.7',
+            'Uri': 'https://updates.example.invalid/Sample.msixbundle',
+        })
+        self.assertEqual(root.attrib['Version'], '4.5.6.7')
+        self.assertEqual(self.package.read_bytes(), before)
+        with ZipFile(self.package, 'a') as archive:
+            archive.writestr('AppxManifest.xml', self.manifest)
+        with self.assertRaisesRegex(ValueError, 'both package and bundle'):
+            self.render()
 
     def test_invalid_versions_policies_and_fallbacks_fail(self):
         for options in ({'appinstaller_version': '1.2.3'}, {'appinstaller_version': '1.2.3.65536'},

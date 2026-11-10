@@ -617,6 +617,8 @@ filegroup(
         ":appinstaller_signed_desktop_v2",
         ":msix_appinstaller_v1",
         ":msix_appinstaller_v2",
+        ":msix_bundle_appinstaller_v1",
+        ":msix_bundle_appinstaller_v2",
         ":msix_probe",
         ":msix_reader",
         ":msix_signed_bundle_v1",
@@ -1068,6 +1070,35 @@ electron_msix_appinstaller(
         name = "msix_signed_bundle_" + suffix,
         src = ":desktop_bundle_" + suffix,
         tamper_file = "",
+        target_compatible_with = ["@platforms//os:windows"],
+    )
+    for suffix in [
+        "v1",
+        "v2",
+    ]
+]
+
+[
+    electron_msix_appinstaller(
+        name = "msix_bundle_appinstaller_" + suffix,
+        allow_http_loopback = True,
+        appinstaller_uri = "http://127.0.0.1:31827/bundle.appinstaller",
+        hours_between_update_checks = 0,
+        package = ":msix_final_bundle_" + suffix,
+        package_uri = "http://127.0.0.1:31827/msix_signed_bundle_" + suffix + ".msixbundle",
+        target_compatible_with = ["@platforms//os:windows"],
+    )
+    for suffix in [
+        "v1",
+        "v2",
+    ]
+]
+
+[
+    filegroup(
+        name = "msix_final_bundle_" + suffix,
+        srcs = [":msix_signed_bundle_" + suffix],
+        output_group = "signed",
         target_compatible_with = ["@platforms//os:windows"],
     )
     for suffix in [
