@@ -8,6 +8,32 @@ from electron.private.nsis import build_installer, installer_script, license_pay
 
 
 class NsisTest(unittest.TestCase):
+    def test_multilingual_licenses_have_stable_order_default_and_silent_bypass(self):
+        entries = [{'source': str(self.root / 'Japanese.txt'), 'locale': 'ja_JP'},
+                   {'source': str(self.root / 'English.rtf'), 'locale': 'en_US'}]
+        script = self.render(licenses=entries)
+        self.assertEqual(script, self.render(licenses=list(reversed(entries))))
+        self.assertLess(script.index('Language files/English.nlf'), script.index('Language files/Japanese.nlf'))
+        self.assertIn('LicenseLangString rulesElectronLicense 1041 "' + entries[0]['source'] + '"', script)
+        self.assertIn('LicenseData $(rulesElectronLicense)', script)
+        self.assertIn('LicenseForceSelection checkbox', script)
+        self.assertLess(script.index('IfSilent license_language_selected'), script.index('LangDLL::LangDialog'))
+        self.assertLess(script.index('StrCmp $LANGUAGE "cancel"'), script.index('license_language_selected:'))
+        japanese = self.render(licenses=entries, license_default_language='ja_JP')
+        self.assertLess(japanese.index('Language files/Japanese.nlf'), japanese.index('Language files/English.nlf'))
+        self.assertNotIn('LangDLL::LangDialog', self.render(licenses=entries[:1], license_default_language='ja_JP'))
+
+    def test_multilingual_licenses_reject_ambiguous_or_undeclared_languages(self):
+        entry = {'source': str(self.root / 'agreement.txt'), 'locale': 'en_US'}
+        invalid = [dict(licenses=[entry, entry]), dict(licenses=[entry], license='agreement.txt'),
+                   dict(licenses=[entry], license_default_language='ja_JP'),
+                   dict(licenses=[dict(entry, locale='${HOST}')]), dict(licenses=[dict(entry, locale=[])]),
+                   dict(licenses=[dict(entry, source='agreement.html')]), dict(licenses='en_US'),
+                   dict(licenses=[entry] * 33)]
+        for options in invalid:
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                self.render(**options)
+
     def test_declared_license_normalizes_unicode_and_requires_explicit_acceptance(self):
         source = self.root / 'agreement.txt'
         original = 'License 世界 😀\r\nNext\rLast\n'.encode('utf-8-sig')

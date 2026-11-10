@@ -46,6 +46,11 @@ def _installer_impl(ctx):
     tool = ctx.attr.tool[ElectronNsisToolInfo]
     if ctx.attr.compression == "7z" and not tool.archive_compiler:
         fail("7z compression requires an execution archive_compiler in the NSIS tool")
+    if ctx.file.license and ctx.attr.licenses:
+        fail("license and licenses are mutually exclusive")
+    for target in ctx.attr.licenses:
+        if len(target.files.to_list()) != 1 or target.files.to_list()[0].is_directory:
+            fail("Each license must provide one text or RTF file")
     manifest = ctx.actions.declare_file(ctx.label.name + ".json")
     output = ctx.actions.declare_file(ctx.label.name + ".exe")
     script = ctx.actions.declare_file(ctx.label.name + ".nsi")
@@ -70,6 +75,8 @@ def _installer_impl(ctx):
         "installer_icon": ctx.file.installer_icon.path if ctx.file.installer_icon else "",
         "uninstaller_icon": ctx.file.uninstaller_icon.path if ctx.file.uninstaller_icon else "",
         "license": ctx.file.license.path if ctx.file.license else "",
+        "licenses": [{"source": target.files.to_list()[0].path, "locale": locale} for target, locale in ctx.attr.licenses.items()],
+        "license_default_language": ctx.attr.license_default_language,
         "desktop_shortcut": ctx.attr.desktop_shortcut,
         "verify_reproducible": ctx.attr.verify_reproducible,
         "compression": ctx.attr.compression,
@@ -81,7 +88,7 @@ def _installer_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._packager,
         arguments = [manifest.path, output.path, script.path],
-        inputs = [manifest, app.artifact, app.package_json, tool.data] + ([directories] if directories else []) + ([ctx.file.installer_icon] if ctx.file.installer_icon else []) + ([ctx.file.uninstaller_icon] if ctx.file.uninstaller_icon else []) + ([ctx.file.license] if ctx.file.license else []),
+        inputs = [manifest, app.artifact, app.package_json, tool.data] + ([directories] if directories else []) + ([ctx.file.installer_icon] if ctx.file.installer_icon else []) + ([ctx.file.uninstaller_icon] if ctx.file.uninstaller_icon else []) + ([ctx.file.license] if ctx.file.license else []) + [target.files.to_list()[0] for target in ctx.attr.licenses],
         tools = [tool.runner] + ([tool.archive_runner] if ctx.attr.compression == "7z" else []),
         outputs = [output, script],
         mnemonic = "ElectronNsis",
@@ -105,6 +112,8 @@ electron_nsis = rule(
         "installer_icon": attr.label(allow_single_file = [".ico"], doc = "Declared installer ICO; empty uses the NSIS default."),
         "uninstaller_icon": attr.label(allow_single_file = [".ico"], doc = "Declared uninstaller ICO; empty uses the NSIS default."),
         "license": attr.label(allow_single_file = [".txt", ".rtf"], doc = "Declared UTF-8 text or RTF agreement. Interactive installation requires explicit acceptance; silent installs and updates skip pages."),
+        "licenses": attr.label_keyed_string_dict(allow_files = [".txt", ".rtf"], doc = "Declared license files mapped to locales. Mutually exclusive with license. Multiple locales show a language selector during interactive installation."),
+        "license_default_language": attr.string(default = "en_US", doc = "Fallback locale for licenses; must be declared. Windows UI language selects the initial locale when available."),
         "compression": attr.string(default = "7z", values = ["7z", "zlib", "bzip2", "lzma", "off"]),
         "updater_cache_name": attr.string(doc = "Stable app-update.yml cache name; seed current installer for differential updates."),
         "verify_reproducible": attr.bool(default = False, doc = "Compile twice in different directories and require identical installer bytes."),

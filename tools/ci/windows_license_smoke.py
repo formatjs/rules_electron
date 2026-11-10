@@ -82,11 +82,33 @@ def smoke_license(installer):
             time.sleep(0.1)
         raise RuntimeError('NSIS_LICENSE_STATE_TIMEOUT')
 
-    def license_window(process):
+    def select_language(process, language):
+        for window in windows(process):
+            for control in controls(window):
+                name = ctypes.create_unicode_buffer(256)
+                user.GetClassNameW(control, name, len(name))
+                if name.value != 'ComboBox':
+                    continue
+                label = ctypes.create_unicode_buffer(language)
+                count = message(control, 0x0146)
+                index = message(control, 0x0158, -1, ctypes.addressof(label))
+                if count != 2 or index >= count:
+                    continue
+                message(control, 0x014E, index)
+                if message(control, 0x0147) != index:
+                    raise RuntimeError('NSIS_LICENSE_LANGUAGE_SELECTION_FAILED')
+                button = user.GetDlgItem(window, 1)
+                if button and user.IsWindowEnabled(button):
+                    click(button)
+                    return True
+
+    def license_window(process, language):
         for window in windows(process):
             for control in controls(window):
                 body = text(control)
-                if 'Sample Desktop example license, version 1.' in body and 'Example Unicode text: 世界 😀.' in body:
+                locale = {'English': 'en_US', 'Japanese': 'ja_JP'}[language]
+                if ('Sample Desktop example license, version 1.' in body and 'Example Unicode text: 世界 😀.' in body
+                        and 'License locale: ' + locale + '.' in body):
                     return window
 
     def checked_control(window):
@@ -97,10 +119,11 @@ def smoke_license(installer):
                 return control
         raise RuntimeError('NSIS_LICENSE_CHECKBOX_MISSING')
 
-    for accept in (False, True):
+    for language, accept in ((language, accept) for language in ('English', 'Japanese') for accept in (False, True)):
         process = subprocess.Popen([str(installer)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
-            window = wait_for(process, lambda: license_window(process))
+            wait_for(process, lambda: select_language(process, language))
+            window = wait_for(process, lambda: license_window(process, language))
             next_button = user.GetDlgItem(window, 1)
             checkbox = checked_control(window)
             if not next_button or user.IsWindowEnabled(next_button) or message(checkbox, 0x00F0):
@@ -109,7 +132,7 @@ def smoke_license(installer):
                 click(checkbox)
                 wait_for(process, lambda: user.IsWindowEnabled(next_button))
                 click(next_button)
-                wait_for(process, lambda: not license_window(process))
+                wait_for(process, lambda: not license_window(process, language))
             cancel = user.GetDlgItem(window, 2)
             if not cancel:
                 raise RuntimeError('NSIS_LICENSE_CANCEL_MISSING')
@@ -127,6 +150,7 @@ def smoke_license(installer):
             wait_for(process, confirm_cancel)
             if process.wait(timeout=30) != 1:
                 raise RuntimeError('NSIS_LICENSE_CANCEL_FAILED')
+            print('NSIS_LICENSE_LANGUAGE_OK ' + language + ' ' + ('accepted' if accept else 'declined'), flush=True)
         finally:
             if process.poll() is None:
                 process.kill()

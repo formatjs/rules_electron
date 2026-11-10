@@ -17,6 +17,35 @@ from electron.private.icons import validate_ico
 from electron.private.files import read_directories
 
 
+LICENSE_LANGUAGES = {
+    'en_US': ('English', 1033), 'de_DE': ('German', 1031),
+    'es_ES': ('Spanish', 1034), 'fr_FR': ('French', 1036),
+    'it_IT': ('Italian', 1040), 'ja_JP': ('Japanese', 1041),
+    'ko_KR': ('Korean', 1042), 'nl_NL': ('Dutch', 1043),
+    'pt_BR': ('PortugueseBR', 1046), 'pt_PT': ('Portuguese', 2070),
+    'ru_RU': ('Russian', 1049), 'zh_CN': ('SimpChinese', 2052),
+    'zh_TW': ('TradChinese', 1028),
+}
+
+
+def license_entries(licenses, default_language, single=''):
+    if not isinstance(licenses, list) or len(licenses) > 32:
+        raise ValueError('NSIS licenses require at most 32 declared locales')
+    if single and licenses:
+        raise ValueError('NSIS license and licenses are mutually exclusive')
+    locales = []
+    for entry in licenses:
+        if (not isinstance(entry, dict) or set(entry) != {'source', 'locale'}
+                or not isinstance(entry['locale'], str) or entry['locale'] not in LICENSE_LANGUAGES
+                or not isinstance(entry['source'], str)
+                or Path(entry['source']).suffix not in ('.txt', '.rtf')):
+            raise ValueError('Invalid NSIS license locale or file')
+        locales.append(entry['locale'])
+    if len(locales) != len(set(locales)) or (licenses and default_language not in locales):
+        raise ValueError('NSIS license locales must be unique and include the default')
+    return sorted(licenses, key=lambda entry: (entry['locale'] != default_language, entry['locale']))
+
+
 def literal(value):
     if any(ord(c) < 32 for c in value) or "${" in value or "$%" in value:
         raise ValueError("NSIS literals cannot contain controls or preprocessor expressions")
@@ -57,7 +86,8 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
                      build_version="", build_number="", file_associations=None, app_user_model_id="",
                      installer_icon="", uninstaller_icon="", directory_manifest="", file_association_icons=None,
                      installation_scope="user", file_association_verbs=None, file_association_verb_labels=None,
-                     path_format=None, license=""):
+                     path_format=None, license="", licenses=None, license_default_language='en_US'):
+    licenses = license_entries(licenses if licenses is not None else [], license_default_language, license)
     def source_path(value, role='app'):
         path = Path(value)
         return path_format(path, role) if path_format else str(path.resolve())
@@ -186,6 +216,8 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         *(['SetCompress off'] if compression in ('7z', 'off') else ['SetCompressor /SOLID ' + compression]),
         *(['SetCompressorDictSize 8'] if compression == 'lzma' else []), 'SetDateSave off',
         '!include "FileFunc.nsh"', '!include "LogicLib.nsh"', '!include "x64.nsh"',
+        *['LoadLanguageFile "${NSISDIR}/Contrib/Language files/' + LICENSE_LANGUAGES[entry['locale']][0] + '.nlf"' for entry in licenses],
+        *['LicenseLangString rulesElectronLicense ' + str(LICENSE_LANGUAGES[entry['locale']][1]) + ' ' + q(source_path(entry['source'], 'license')) for entry in licenses],
         'Name ' + q(product_name), 'OutFile ' + q(source_path(output, 'output')),
         *(['Icon ' + q(source_path(installer_icon, 'installer_icon'))] if installer_icon else []),
         *(['UninstallIcon ' + q(source_path(uninstaller_icon, 'uninstaller_icon'))] if uninstaller_icon else []),
@@ -196,8 +228,8 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         'VIAddVersionKey "FileVersion" ' + q(file_version),
         'VIAddVersionKey "ProductVersion" ' + q(version),
         'VIAddVersionKey "LegalCopyright" ""',
-        *(['PageEx license', 'LicenseData ' + q(source_path(license, 'license')),
-           'LicenseForceSelection checkbox', 'PageExEnd'] if license else []),
+        *(['PageEx license', 'LicenseData ' + ('$(rulesElectronLicense)' if licenses else q(source_path(license, 'license'))),
+           'LicenseForceSelection checkbox', 'PageExEnd'] if license or licenses else []),
         'Page directory', 'Page instfiles', 'UninstPage uninstConfirm', 'UninstPage instfiles',
     ]
     for prefix in ['', 'un.']:
@@ -211,6 +243,10 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         ]
     lines += [
         'Function .onInit', 'SetShellVarContext ' + shell_context, 'SetRegView 64',
+        *(['IfSilent license_language_selected', 'Push ""'] +
+          [line for entry in licenses for line in ('Push ' + str(LICENSE_LANGUAGES[entry['locale']][1]), 'Push ' + q(LICENSE_LANGUAGES[entry['locale']][0]))] +
+          ['Push A', 'LangDLL::LangDialog "Installer Language" "Select installer language"',
+           'Pop $LANGUAGE', 'StrCmp $LANGUAGE "cancel" 0 +2', 'Abort', 'license_language_selected:'] if len(licenses) > 1 else []),
         '${Unless} ${' + ('IsNativeARM64' if architecture == 'arm64' else 'IsNativeAMD64') + '}',
         'SetErrorLevel 1', 'Abort "Installer requires matching native Windows architecture."', '${EndUnless}',
         '${GetParameters} $0', 'ClearErrors', '${GetOptions} $0 "/D=" $1',
@@ -425,6 +461,17 @@ def build_installer(manifest, output, script):
 
     def compile_once(options, directory, destination, script_path):
         options = dict(options)
+        entries = license_entries(options.get('licenses', []), options.get('license_default_language', 'en_US'), options.get('license', ''))
+        options['licenses'] = []
+        total = 0
+        for entry in entries:
+            body = license_payload(entry['source'])
+            total += len(body)
+            if total > 16 * 1024**2:
+                raise ValueError('NSIS licenses exceed 16 MiB total')
+            prepared = directory / ('license-' + entry['locale'] + Path(entry['source']).suffix)
+            prepared.write_bytes(body)
+            options['licenses'].append(dict(entry, source=str(prepared)))
         if options.get('license'):
             prepared = directory / ('license' + Path(options['license']).suffix)
             prepared.write_bytes(license_payload(options['license']))
@@ -456,7 +503,7 @@ def build_installer(manifest, output, script):
                 return 'app/' + path.resolve().relative_to(app).as_posix()
             return {'output': destination.name, 'installer_icon': 'installer.ico',
                     'uninstaller_icon': 'uninstaller.ico', 'payload_archive': 'payload.7z',
-                    'license': 'license' + path.suffix}[role]
+                    'license': path.name}[role]
 
         script_path.write_text(installer_script(output=destination, path_format=stable_path, **options), encoding='utf-8')
 
@@ -473,6 +520,13 @@ def build_installer(manifest, output, script):
             repeat.mkdir()
             second = repeat / output.name
             repeated = dict(manifest, app=str(mirror))
+            repeated['licenses'] = []
+            for index, entry in enumerate(manifest.get('licenses', [])):
+                moved_license = repeat / ('relocated-' + str(index) + Path(entry['source']).suffix)
+                shutil.copyfile(entry['source'], moved_license)
+                os.utime(moved_license, (1234567890, 1234567890))
+                repeated['licenses'].append(dict(entry, source=str(moved_license)))
+            repeated['licenses'].reverse()
             for field in ('installer_icon', 'uninstaller_icon'):
                 if manifest.get(field):
                     icon = repeat / (field + '.ico')

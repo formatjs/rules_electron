@@ -538,7 +538,10 @@ electron_nsis_tool(
         },
         installation_scope = scope,
         installer_icon = ":example_installer_icon",
-        license = "resources/installer-license-unicode.txt",
+        licenses = {
+            "resources/installer-license-japanese.txt": "ja_JP",
+            "resources/installer-license-unicode.txt": "en_US",
+        },
         protocols = ["sample-desktop"],
         target_compatible_with = ["@platforms//os:windows"],
         tool = ":nsis_tool",

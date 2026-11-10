@@ -7,7 +7,16 @@ RTF bytes stay unchanged. Inputs must be nonempty and at most 2 MiB. License
 paths/content do not enter script expressions. Silent `/S` installs and
 electron-updater skip interactive pages, following NSIS behavior.
 
-The example declares one agreement for both installer scopes. BB compilation
+`licenses` maps declared files to locales, with `license_default_language` as
+fallback. It is mutually exclusive with `license`. Multiple locales show NSIS's
+language selector before consent; `/S` skips the selector too. Language tables
+and LangDLL come from the declared tool tree, with no host discovery. Supported
+locales are listed in `LICENSE_LANGUAGES` in the packager. Inputs have a 16 MiB
+combined normalized limit. The implementation follows
+[NSIS multilingual licenses](https://nsis.sourceforge.io/Docs/Chapter4.html#multilanguages).
+
+The example now declares English and Japanese agreements for both scopes.
+BB compilation
 checks installer/script reproducibility with relocated license inputs. Native
 Windows smoke checks visible text, disabled Next before acceptance, enabled Next
 after checking, and cancellation without registration. The
@@ -19,7 +28,10 @@ then real per-user and machine update/uninstall lifecycles. The Unicode fixture
 also passed native consent/cancellation on both Windows CPUs at `c963d16`
 ([workflow](https://github.com/formatjs/rules_electron/actions/runs/42742398833)),
 including exact CJK and supplementary-plane text. That workflow's macOS job was
-still running when recorded. Multilingual license selection remains open.
+still running when recorded. New multilingual selection coverage is pending;
+the Windows gate selects both languages and checks each visible license before
+testing acceptance and cancellation. Single-license results above do not prove
+that new path.
 
 The NSIS `script` output group uses portable `app/`, icon and `payload.7z`
 references. Worker paths stay inside compilation. `verify_reproducible` compares
