@@ -1,6 +1,7 @@
 # MSIX
 
 App Installer update descriptors have a separate [rule and native flow](appinstaller.md).
+[Architecture bundles](msix-bundles.md) combine MSIX packages without modifying their bytes.
 
 `electron_msix` packages an assembled Windows `ElectronAppInfo` on Linux BB
 workers. No Windows executable, SDK packager or build-system wrapper runs during

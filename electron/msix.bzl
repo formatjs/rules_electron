@@ -119,3 +119,35 @@ electron_msix_appinstaller = rule(
     },
     doc = "Write deterministic 2021 App Installer XML from final MSIX identity. No publication, signing or deployment.",
 )
+
+def _bundle_impl(ctx):
+    packages = ctx.files.packages
+    if not packages or any([file.is_directory or file.extension.lower() != "msix" for file in packages]):
+        fail("electron_msix_bundle requires selected MSIX package files")
+    output = ctx.actions.declare_file(ctx.label.name + ".msixbundle")
+    manifest = ctx.actions.declare_file(ctx.label.name + ".bundle.json")
+    ctx.actions.write(manifest, json.encode({
+        "packages": [file.path for file in packages],
+        "package_names": ctx.attr.package_names,
+        "bundle_version": ctx.attr.bundle_version,
+    }))
+    ctx.actions.run(
+        executable = ctx.executable._writer,
+        arguments = [manifest.path, output.path],
+        inputs = [manifest] + packages,
+        outputs = [output],
+        mnemonic = "ElectronMsixBundle",
+        progress_message = "Bundling native MSIX packages %{label}",
+    )
+    return [DefaultInfo(files = depset([output]))]
+
+electron_msix_bundle = rule(
+    implementation = _bundle_impl,
+    attrs = {
+        "packages": attr.label_list(mandatory = True, allow_files = [".msix"], doc = "Package files or groups. One application package per CPU; matching identity/manifests required."),
+        "package_names": attr.string_dict(doc = "Optional CPU-to-filename mapping; defaults to package-<cpu>.msix."),
+        "bundle_version": attr.string(doc = "Explicit four-component version; defaults to the shared package version."),
+        "_writer": attr.label(default = Label("//electron/private:msix_bundle_writer"), executable = True, cfg = "exec"),
+    },
+    doc = "Emit an embedded deterministic MSIX bundle. Packages stay unchanged; signing is a separate release stage.",
+)

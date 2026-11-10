@@ -33,7 +33,7 @@ def uri(value, allow_http_loopback):
     return value
 
 
-def package_identity(package):
+def read_package_manifest(package):
     with ZipFile(package) as archive:
         entries = [info for info in archive.infolist() if info.filename == 'AppxManifest.xml']
         if len(entries) != 1 or entries[0].file_size > LIMIT or entries[0].flag_bits & 1:
@@ -46,6 +46,12 @@ def package_identity(package):
     identities = root.findall('{' + FOUNDATION + '}Identity')
     if root.tag != '{' + FOUNDATION + '}Package' or len(identities) != 1:
         raise ValueError('Invalid MSIX package identity')
+    return root
+
+
+def package_identity(package):
+    root = read_package_manifest(package)
+    identities = root.findall('{' + FOUNDATION + '}Identity')
     identity = identities[0].attrib
     if (not re.fullmatch(r'[A-Za-z0-9.-]{3,50}', identity.get('Name', ''))
             or not identity.get('Publisher', '').strip()

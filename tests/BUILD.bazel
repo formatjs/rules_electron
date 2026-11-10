@@ -983,6 +983,16 @@ py_test(
 )
 
 py_test(
+    name = "msix_bundle_test",
+    size = "small",
+    srcs = ["msix_bundle_test.py"],
+    deps = [
+        "//electron/private:msix",
+        "//electron/private:msix_bundle",
+    ],
+)
+
+py_test(
     name = "msix_test",
     size = "small",
     srcs = ["msix_test.py"],

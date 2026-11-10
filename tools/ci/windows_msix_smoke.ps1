@@ -7,6 +7,7 @@ $ErrorActionPreference = 'Stop'
 $identity = 'org.example.MsixProbe'
 $desktopIdentity = 'org.example.DesktopMsix'
 $appinstallerIdentity = 'org.example.DesktopAppInstaller'
+$bundleIdentity = 'org.example.DesktopBundle'
 $signed = Join-Path $Packages 'msix_signed_probe.msix'
 $unsigned = Join-Path $Packages 'msix_probe.msix'
 $changed = Join-Path $Packages 'msix_signed_probe.tampered.msix'
@@ -123,6 +124,35 @@ function Assert-AppInstallerAvailability($Package, [ValidateSet('NoUpdates','Ava
   }
   Write-Output ('MSIX_APPINSTALLER_AVAILABILITY_OK ' + $Expected)
 }
+function Assert-Bundle {
+  $family = $null
+  foreach ($release in @(@{Suffix='v1'; Version='1.0.0'}, @{Suffix='v2'; Version='2.0.0'})) {
+    $bundle = Join-Path $Packages ('msix_signed_bundle_' + $release.Suffix + '.msixbundle')
+    Assert-Trust $bundle 'valid'
+    & $reader --bundle $bundle ($release.Version + '.7')
+    if ($LASTEXITCODE -ne 0) { throw 'MSIX bundle packaging API validation failed' }
+    Add-AppxPackage -Path $bundle -ForceApplicationShutdown
+    $package = Get-AppxPackage -Name $bundleIdentity
+    if (-not $package -or $package.Version.ToString() -cne ($release.Version + '.7') -or
+        $package.Publisher -cne 'CN=Example' -or $package.Architecture.ToString() -ine $Architecture) {
+      throw 'MSIX bundle selected wrong native payload'
+    }
+    if ($family -and $family -cne $package.PackageFamilyName) { throw 'MSIX bundle upgrade changed family' }
+    $family = $package.PackageFamilyName
+    Assert-DocumentIcons $package
+    & $reader --handlers $family present
+    if ($LASTEXITCODE -ne 0) { throw 'MSIX bundle handlers missing' }
+    $executable = Join-Path $package.InstallLocation 'sample-desktop.exe'
+    & $Python 'examples/desktop/tools/smoke_test.py' $executable --installed --msix --target-os windows --target-arch $Architecture --expected-version $release.Version
+    if ($LASTEXITCODE -ne 0) { throw 'MSIX bundle Electron smoke failed' }
+    Write-Output ('MSIX_BUNDLE_NATIVE_VERSION_OK ' + $release.Version)
+  }
+  Remove-AppxPackage -Package $package.PackageFullName
+  if (Get-AppxPackage -Name $bundleIdentity) { throw 'MSIX bundle uninstall left registration' }
+  & $reader --handlers $family absent
+  if ($LASTEXITCODE -ne 0) { throw 'MSIX bundle uninstall left handlers' }
+  Write-Output 'MSIX_BUNDLE_INSTALL_UPDATE_REMOVE_OK'
+}
 function Assert-AppInstaller {
   $uri = 'http://127.0.0.1:31827/desktop.appinstaller'
   $arguments = @('-u', 'tools/ci/windows_appinstaller_server.py', '--packages', ('"' + $Packages + '"'), '--port', '31827')
@@ -179,6 +209,7 @@ if (Test-Path -LiteralPath $certificatePath) { throw 'MSIX fixture certificate a
 if (Get-AppxPackage -Name $identity) { throw 'MSIX fixture package already installed' }
 if (Get-AppxPackage -Name $desktopIdentity) { throw 'MSIX desktop package already installed' }
 if (Get-AppxPackage -Name $appinstallerIdentity) { throw 'MSIX App Installer package already installed' }
+if (Get-AppxPackage -Name $bundleIdentity) { throw 'MSIX bundle package already installed' }
 Assert-Trust $unsigned 'unsigned'
 Assert-Trust $signed 'untrusted'
 $untrusted = Get-AuthenticodeSignature -LiteralPath $signed
@@ -236,9 +267,10 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'MSIX uninstall left handlers registered' }
   Write-Output 'MSIX_DESKTOP_INSTALL_UPDATE_REMOVE_OK'
   Assert-AppInstaller
+  Assert-Bundle
 } finally {
   try {
-    foreach ($name in @($identity, $desktopIdentity, $appinstallerIdentity)) {
+    foreach ($name in @($identity, $desktopIdentity, $appinstallerIdentity, $bundleIdentity)) {
       $remaining = Get-AppxPackage -Name $name
       if ($remaining) { Remove-AppxPackage -Package $remaining.PackageFullName }
     }

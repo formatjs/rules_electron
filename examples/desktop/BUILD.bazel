@@ -8,7 +8,7 @@ load("@rules_electron//electron:dmg.bzl", "electron_dmg", "electron_dmg_license"
 load("@rules_electron//electron:files.bzl", "electron_files")
 load("@rules_electron//electron:linux.bzl", "electron_deb", "electron_rpm")
 load("@rules_electron//electron:matching.bzl", "electron_file_matcher")
-load("@rules_electron//electron:msix.bzl", "electron_msix", "electron_msix_appinstaller")
+load("@rules_electron//electron:msix.bzl", "electron_msix", "electron_msix_appinstaller", "electron_msix_bundle")
 load("@rules_electron//electron:native.bzl", "electron_cc_addon")
 load("@rules_electron//electron:npm.bzl", "electron_npm_package", "electron_npm_tree")
 load("@rules_electron//electron:nsis.bzl", "electron_nsis", "electron_nsis_tool")
@@ -19,6 +19,7 @@ load("@rules_python//python:defs.bzl", "py_test")
 load("//tools:cross_bundle.bzl", "cross_smoke_bundle")
 load("//tools:icon.bzl", "example_icon")
 load("//tools:macos_fixture.bzl", "signed_macos_fixture")
+load("//tools:msix_bundle_inputs.bzl", "msix_bundle_inputs")
 load("//tools:msix_fixture.bzl", "msix_fixture_app", "signed_msix_fixture")
 load(":desktop_app.bzl", "desktop_app")
 
@@ -618,6 +619,8 @@ filegroup(
         ":msix_appinstaller_v2",
         ":msix_probe",
         ":msix_reader",
+        ":msix_signed_bundle_v1",
+        ":msix_signed_bundle_v2",
         ":msix_signed_desktop_v1",
         ":msix_signed_desktop_v2",
         ":msix_signed_probe",
@@ -960,6 +963,7 @@ signed_msix_fixture(
     for prefix, identity in [
         ("msix", "org.example.DesktopMsix"),
         ("appinstaller", "org.example.DesktopAppInstaller"),
+        ("bundle", "org.example.DesktopBundle"),
     ]
     for suffix in [
         "v1",
@@ -977,6 +981,7 @@ signed_msix_fixture(
     for prefix in [
         "msix",
         "appinstaller",
+        "bundle",
     ]
     for suffix in [
         "v1",
@@ -1026,7 +1031,45 @@ electron_msix_appinstaller(
     for prefix in [
         "msix",
         "appinstaller",
+        "bundle",
     ]
+    for suffix in [
+        "v1",
+        "v2",
+    ]
+]
+
+[
+    msix_bundle_inputs(
+        name = "bundle_inputs_" + suffix,
+        src = ":bundle_final_" + suffix,
+        target_compatible_with = ["@platforms//os:windows"],
+    )
+    for suffix in [
+        "v1",
+        "v2",
+    ]
+]
+
+[
+    electron_msix_bundle(
+        name = "desktop_bundle_" + suffix,
+        packages = [":bundle_inputs_" + suffix],
+        target_compatible_with = ["@platforms//os:windows"],
+    )
+    for suffix in [
+        "v1",
+        "v2",
+    ]
+]
+
+[
+    signed_msix_fixture(
+        name = "msix_signed_bundle_" + suffix,
+        src = ":desktop_bundle_" + suffix,
+        tamper_file = "",
+        target_compatible_with = ["@platforms//os:windows"],
+    )
     for suffix in [
         "v1",
         "v2",

@@ -81,5 +81,6 @@ An additional native gate now checks Windows'
 [`CheckUpdateAvailabilityAsync`](https://learn.microsoft.com/en-us/uwp/api/windows.applicationmodel.package.checkupdateavailabilityasync?view=winrt-28000)
 for no updates, an available v2, then no updates after installation. It uses
 `PackageManager.FindPackageForUser` rather than the documented unsupported
-`Package.Current` path. This discovery gate is pending. The short fixture does not prove background timing, prompt UX, fallback
+`Package.Current` path. The [6d9edc2 native workflow](https://github.com/formatjs/rules_electron/actions/runs/42768748680)
+passed all three states on both Windows CPUs and passed all four hosts. The short fixture does not prove background timing, prompt UX, fallback
 server failover or production certificate trust.
