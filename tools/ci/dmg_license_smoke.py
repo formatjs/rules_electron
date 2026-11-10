@@ -124,11 +124,16 @@ end run
     if attached():
         raise RuntimeError('DMG_LICENSE_DIALOG_IMAGE_ALREADY_ATTACHED')
     try:
+        access = subprocess.run(['/usr/bin/osascript', '-e', 'tell application "System Events" to get UI elements enabled'],
+                                capture_output=True, timeout=15)
+        enabled = {b'true': True, b'false': False}.get(access.stdout.strip())
+        print('DMG_LICENSE_ACCESSIBILITY ' + json.dumps({'enabled': enabled, 'observer_exit_code': access.returncode}), flush=True)
         opened = subprocess.run(['/usr/bin/osascript', '-e', '''
 on run argv
+    set targetImage to (POSIX file (item 1 of argv)) as alias
     tell application "Finder"
         activate
-        open (POSIX file (item 1 of argv))
+        open targetImage
     end tell
 end run
 ''', str(image)],
@@ -157,7 +162,9 @@ function run() {
                 or type(candidates.get('visible')) is not int or not 0 <= candidates['visible'] <= 4096):
             raise RuntimeError('DMG_LICENSE_INVALID_WINDOW_SUMMARY')
         print('DMG_LICENSE_WINDOW_OWNERS ' + json.dumps({'candidates': len(identifiers),
-              'visible_windows': candidates['visible'], 'observer_exit_code': owners.returncode}, sort_keys=True), flush=True)
+              'visible_windows': candidates['visible'], 'observer_exit_code': owners.returncode,
+              'type_error': b'TypeError' in owners.stderr, 'reference_error': b'ReferenceError' in owners.stderr,
+              'core_graphics_symbol': b'CGWindowListCopyWindowInfo' in owners.stderr}, sort_keys=True), flush=True)
         result = subprocess.run(['/usr/bin/osascript', '-e', script, *map(str, identifiers)],
                                 capture_output=True, timeout=30)
         time.sleep(1)
@@ -166,6 +173,8 @@ function run() {
             'declined': False,
             'attached_images': len(attached()),
         }
+        open_error = re.search(br'\((-?\d{1,10})\)\s*$', opened.stderr)
+        summary['open_error_code'] = int(open_error[1]) if open_error else None
         fields = result.stdout.strip().split(b',')
         if (result.returncode == 0 and len(fields) == 6 and fields[0] in (b'declined', b'not-found')
                 and all(value.isdigit() and len(value) <= 3 for value in fields[1:3])

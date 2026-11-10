@@ -15,9 +15,11 @@ after checking, and cancellation without registration. The
 [seven cross-builds](https://formatjs.buildbuddy.io/invocation/14753b0f-60a4-4951-90a1-cb7594502ab2)
 and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42741304836)
 passed. Both Windows CPUs verified interactive per-user consent/cancellation,
-then real per-user and machine update/uninstall lifecycles. The added Unicode
-fixture's native rendering check is pending. Multilingual license selection
-remains open.
+then real per-user and machine update/uninstall lifecycles. The Unicode fixture
+also passed native consent/cancellation on both Windows CPUs at `c963d16`
+([workflow](https://github.com/formatjs/rules_electron/actions/runs/42742398833)),
+including exact CJK and supplementary-plane text. That workflow's macOS job was
+still running when recorded. Multilingual license selection remains open.
 
 The NSIS `script` output group uses portable `app/`, icon and `payload.7z`
 references. Worker paths stay inside compilation. `verify_reproducible` compares
