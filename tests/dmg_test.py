@@ -282,7 +282,7 @@ class DmgTest(unittest.TestCase):
                               if parent == 2 and name == ".background.png"]
         self.assertEqual(len(background_records), 1)
         background_date = struct.unpack_from(">I", image, background_records[0] + 12)[0]
-        self.assertEqual(struct.unpack_from(">I", data, 114)[0], background_date)
+        self.assertEqual(struct.unpack_from(">I", data, 118)[0], background_date)
         moved = self.root / "moved inputs"
         moved.mkdir()
         moved_background = moved / "different name.png"
