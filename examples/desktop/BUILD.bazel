@@ -765,6 +765,44 @@ electron_update_config(
 )
 
 electron_update_config(
+    name = "s3_update_smoke_config",
+    bucket = "sample.updates",
+    cache_name = "sample-desktop-updater",
+    path = "desktop/releases",
+    provider = "s3",
+    region = "us-west-2",
+)
+
+electron_update_config(
+    name = "s3_compatible_update_smoke_config",
+    bucket = "sample.updates",
+    cache_name = "sample-desktop-updater",
+    endpoint = "https://objects.example.invalid/storage/",
+    path = "desktop/releases",
+    provider = "s3",
+    region = "auto",
+)
+
+electron_update_config(
+    name = "s3_accelerated_update_smoke_config",
+    accelerate = True,
+    bucket = "sample-updates",
+    cache_name = "sample-desktop-updater",
+    path = "desktop/releases",
+    provider = "s3",
+    region = "us-west-2",
+)
+
+electron_update_config(
+    name = "spaces_update_smoke_config",
+    cache_name = "sample-desktop-updater",
+    path = "desktop/releases",
+    provider = "spaces",
+    region = "nyc3",
+    space_name = "sample-updates",
+)
+
+electron_update_config(
     name = "github_update_smoke_config",
     cache_name = "sample-desktop-updater",
     owner = "example-org",

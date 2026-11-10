@@ -155,11 +155,38 @@ a new channel uses `If-None-Match: *`. Concurrent changes fail publication inste
 of overwriting channel metadata. The release workflow chooses versions and must
 serialize intended promotions. Redirects and asynchronous HTTP 202 responses fail.
 HTTPS is required; `--allow-http-loopback` exists for socket-based CI tests only.
-Object-store-specific APIs and credential-provider adapters remain separate
+Object-store-specific upload APIs and credential-provider adapters remain separate
 migration work. The [GitHub publication interface](github-publication.md) stages
 multiple feeds through a verified draft release; its BB socket protocol tests
 passed. `electron_update_config(provider = "github", owner = ..., repo = ...)`
 generates client configuration without embedding credentials.
+
+`electron_update_config` also accepts `provider = "s3"` with `bucket`, or
+`provider = "spaces"` with `space_name`. Both require an explicit `region`;
+`path` selects a normalized object prefix. S3 accepts an HTTPS `endpoint`
+excluding the bucket, or `accelerate = True` for nondotted AWS buckets. These
+options follow the pinned client's
+[provider routing](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/electron-updater/src/providerFactory.ts)
+and [public download URLs](https://github.com/electron-userland/electron-builder/blob/v26.0.12/packages/builder-util-runtime/src/publishOptions.ts).
+The generated file contains public download settings only. Upload credentials,
+private bucket authentication and object publication are separate operations.
+
+```starlark
+electron_update_config(
+    name = "update_config",
+    provider = "s3",
+    bucket = "sample-updates",
+    region = "us-west-2",
+    path = "desktop/windows/arm64",
+    cache_name = "sample-desktop-updater",
+)
+```
+
+Validation is pending. Native examples consume declared S3, compatible endpoint,
+acceleration and Spaces configurations through the real provider factory. They
+check channel/asset URLs, SHA-512, size and disabled multi-range downloads, with
+only HTTP transport replaced by a loopback fixture. This does not exercise live
+bucket policy, cloud authentication or publication.
 
 The [db220dc BB suite](https://formatjs.buildbuddy.io/invocation/dcd45a49-c63b-4107-a8fb-be76a3bcb6b0)
 passed the public publisher executable against a local HTTP server: exact bytes

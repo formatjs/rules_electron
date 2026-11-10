@@ -16,10 +16,13 @@ load(":cross_build.bzl", "cross_build")
 load(":empty_tree.bzl", "empty_tree")
 load(":npm_lock_test.bzl", "npm_lock_test")
 load(":portable_feed_test.bzl", "portable_feed_test")
+load(":update_config_test.bzl", "update_config_tests")
 
 npm_lock_test(name = "npm_lock_test")
 
 portable_feed_test(name = "portable_feed_test")
+
+update_config_tests(name = "update_config_test")
 
 py_test(
     name = "platform_inputs_audit_test",

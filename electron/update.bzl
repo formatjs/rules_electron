@@ -2,8 +2,49 @@
 
 load(":portable.bzl", "ElectronPortableInfo")
 
+def _storage_config(attr):
+    if attr.url or attr.owner or attr.repo or attr.host or attr.private_repository:
+        fail("Object storage cannot use generic/GitHub options")
+    if not attr.region or any([c not in "abcdefghijklmnopqrstuvwxyz0123456789-" for c in attr.region.elems()]):
+        fail("Object storage requires an explicit region")
+    if attr.path and any([not part or part in [".", ".."] or any([c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~" for c in part.elems()]) for part in attr.path.split("/")]):
+        fail("Object storage path must contain normalized URL-safe segments")
+    name = attr.bucket if attr.provider == "s3" else attr.space_name
+    if len(name) < 3 or len(name) > 63 or any([
+        not part or part.startswith("-") or part.endswith("-") or any([c not in "abcdefghijklmnopqrstuvwxyz0123456789-" for c in part.elems()])
+        for part in name.split(".")
+    ]):
+        fail("Object storage requires a DNS-compatible bucket/space name")
+    config = {"provider": attr.provider, "region": attr.region}
+    if attr.path:
+        config["path"] = attr.path
+    if attr.provider == "spaces":
+        if attr.bucket or attr.endpoint or attr.accelerate or "." in name:
+            fail("Spaces requires space_name; S3-only options are invalid")
+        config["name"] = name
+    else:
+        if attr.space_name:
+            fail("space_name requires provider=spaces")
+        if attr.accelerate and (attr.endpoint or "." in name):
+            fail("S3 acceleration cannot use an endpoint or dotted bucket")
+        config["bucket"] = name
+        if attr.accelerate:
+            config["accelerate"] = True
+        if attr.endpoint:
+            authority = attr.endpoint[len("https://"):].split("/")[0]
+            if (not attr.endpoint.startswith("https://") or not authority or
+                any([c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-.[]:" for c in authority.elems()]) or
+                any([c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/%[]!$&'()*+,;=" for c in attr.endpoint.elems()])):
+                fail("S3 endpoint must be an HTTPS URL without credentials, query or fragment")
+            config["endpoint"] = attr.endpoint.rstrip("/")
+    return config
+
 def _config_impl(ctx):
-    if ctx.attr.provider == "generic":
+    if ctx.attr.provider in ["s3", "spaces"]:
+        config = _storage_config(ctx.attr)
+    elif ctx.attr.bucket or ctx.attr.space_name or ctx.attr.region or ctx.attr.path or ctx.attr.endpoint or ctx.attr.accelerate:
+        fail("Object storage options require provider=s3 or provider=spaces")
+    elif ctx.attr.provider == "generic":
         if not ctx.attr.url.startswith("https://") and not ctx.attr.url.startswith("http://"):
             fail("Generic feed url must use HTTP(S)")
         if ctx.attr.owner or ctx.attr.repo or ctx.attr.host or ctx.attr.private_repository:
@@ -42,12 +83,18 @@ def _config_impl(ctx):
 electron_update_config = rule(
     implementation = _config_impl,
     attrs = {
-        "provider": attr.string(default = "generic", values = ["generic", "github"]),
+        "provider": attr.string(default = "generic", values = ["generic", "github", "s3", "spaces"]),
         "url": attr.string(doc = "Required generic HTTP(S) feed base URL. Separate Windows/macOS CPU feeds by URL."),
         "owner": attr.string(doc = "GitHub repository owner; required for provider=github."),
         "repo": attr.string(doc = "GitHub repository name; required for provider=github."),
         "host": attr.string(doc = "Optional GitHub Enterprise hostname; HTTPS only."),
         "private_repository": attr.bool(doc = "GitHub private repository; runtime application supplies credentials, never rule attributes."),
+        "bucket": attr.string(doc = "Public S3 bucket; requires provider=s3."),
+        "space_name": attr.string(doc = "Public DigitalOcean Space; requires provider=spaces."),
+        "region": attr.string(doc = "Explicit object-storage region; never discovered from host credentials."),
+        "path": attr.string(doc = "Object-storage prefix, using normalized URL-safe segments."),
+        "endpoint": attr.string(doc = "Optional public S3-compatible HTTPS API endpoint, excluding the bucket."),
+        "accelerate": attr.bool(doc = "Use the S3 transfer-acceleration download endpoint."),
         "channel": attr.string(default = "latest"),
         "cache_name": attr.string(mandatory = True, doc = "Stable updater cache directory name across releases."),
         "publisher_names": attr.string_list(doc = "Windows certificate publisher names used by electron-updater verification."),

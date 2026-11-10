@@ -8,6 +8,7 @@ const { app, net } = require('electron');
 const semver = require('semver');
 const { DebUpdater, MacUpdater, NsisUpdater } = require('electron-updater');
 const { resolveFiles } = require('electron-updater/out/providers/Provider');
+const { createClient } = require('electron-updater/out/providerFactory');
 const { computeOperations, OperationKind } = require('electron-updater/out/differentialDownloader/downloadPlanBuilder');
 const yaml = require('js-yaml');
 
@@ -117,6 +118,45 @@ module.exports = async function checkUpdater() {
     const changed = structuredClone(blockmap);
     changed.files[0].checksums[0] = 'changed';
     assert.deepEqual(computeOperations(blockmap, changed, logger), [{ kind: OperationKind.DOWNLOAD, start: 0, end: bytes.length }]);
+    const s3Config = yaml.load(fs.readFileSync(path.join(process.resourcesPath, 's3-update-smoke.yml'), 'utf8'));
+    const spacesConfig = yaml.load(fs.readFileSync(path.join(process.resourcesPath, 'spaces-update-smoke.yml'), 'utf8'));
+    const acceleratedConfig = yaml.load(fs.readFileSync(path.join(process.resourcesPath, 's3-accelerated-update-smoke.yml'), 'utf8'));
+    const compatibleConfig = yaml.load(fs.readFileSync(path.join(process.resourcesPath, 's3-compatible-update-smoke.yml'), 'utf8'));
+    for (const [storage, expected] of [
+      [s3Config, 'https://s3-us-west-2.amazonaws.com/sample.updates/desktop/releases/'],
+      [{ ...s3Config, region: 'us-east-1' }, 'https://s3.amazonaws.com/sample.updates/desktop/releases/'],
+      [{ ...s3Config, bucket: 'sample-updates' }, 'https://sample-updates.s3.amazonaws.com/desktop/releases/'],
+      [{ ...s3Config, bucket: 'sample-updates', region: 'cn-north-1' }, 'https://sample-updates.s3.cn-north-1.amazonaws.com.cn/desktop/releases/'],
+      [acceleratedConfig, 'https://sample-updates.s3-accelerate.amazonaws.com/desktop/releases/'],
+      [compatibleConfig, 'https://objects.example.invalid/storage/sample.updates/desktop/releases/'],
+      [spacesConfig, 'https://sample-updates.nyc3.digitaloceanspaces.com/desktop/releases/'],
+    ]) {
+      assert.equal(storage.updaterCacheDirName, config.updaterCacheDirName);
+      assert.equal(Object.keys(storage).some(key => /token|secret|credential|accesskey/i.test(key)), false);
+      let inspected = 0;
+      const provider = createClient(storage, updater, {
+        platform: process.platform, isUseMultipleRangeRequest: true,
+        executor: { async request(options) {
+          // Verify production routing; replace only network transport with loopback.
+          const actual = new URL(options.path, `${options.protocol}//${options.hostname}`);
+          assert.equal(actual.origin + actual.pathname, expected + channel);
+          assert.equal(options.headers?.authorization ?? null, null);
+          inspected++;
+          const response = await net.fetch(new URL(channel, base).href);
+          assert.equal(response.status, 200);
+          return response.text();
+        } },
+      });
+      assert.equal(provider.isUseMultipleRangeRequest, false);
+      const latest = await provider.getLatestVersion();
+      assert.equal(latest.version, '2.0.0');
+      const [artifact] = provider.resolveFiles(latest);
+      assert.equal(artifact.url.href, new URL(file.url.pathname.slice(1), expected).href);
+      assert.equal(artifact.info.sha512, file.info.sha512);
+      assert.equal(artifact.info.size, bytes.length);
+      assert.equal(inspected, 1);
+    }
+    console.log('OBJECT_STORAGE_UPDATER_DISCOVERY_OK');
     const githubUpdater = new Updater({ ...githubConfig, host: base.host, protocol: 'http' });
     githubUpdater.logger = null;
     githubUpdater.autoDownload = false;
