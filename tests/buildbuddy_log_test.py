@@ -62,6 +62,14 @@ class BuildBuddyLogTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Profile digest or size mismatch'):
             self.source_profile(gzip.compress(b'{}'), digest='b' * 64)
 
+    def test_invalid_complete_profile_preserves_child_diagnostics_without_accepting_timings(self):
+        profile = {'traceEvents': [{'ph': 'X', 'ts': 0, 'dur': 10**20,
+                                   'name': 'private-command', 'cat': 'private-category'}]}
+        output = self.source_profile(gzip.compress(json.dumps(profile).encode()))
+        self.assertIn('"reason": "TIMING_LIMIT"', output)
+        self.assertIn('BB child builds: []', output)
+        self.assertNotIn('Verified BB profile', output)
+
     def summary(self, payload, max_bytes):
         output = io.StringIO()
         stream = io.BytesIO(payload)

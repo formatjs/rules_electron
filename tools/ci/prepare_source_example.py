@@ -68,10 +68,14 @@ electron_runtime(
     target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
 )
 '''
+    platforms = (source / "platforms/BUILD.bazel").read_text()
+    platforms = replace_once(platforms, '("linux_x86_64", "linux_x86_64"),',
+                             '("linux_x86_64", "linux_x86_64_gnu.2.31"),')
     shutil.copytree(source, output, ignore=shutil.ignore_patterns(
         "bazel-*", "__pycache__", "*.pyc", ".bazelrc.user", "MODULE.bazel.lock"))
     (output / "MODULE.bazel").write_text(module)
     (output / "BUILD.bazel").write_text(build)
+    (output / "platforms/BUILD.bazel").write_text(platforms)
     with (output / ".bazelrc").open("a") as stream:
         stream.write('''
 build --compilation_mode=opt

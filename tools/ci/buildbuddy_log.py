@@ -112,7 +112,20 @@ def profile_diagnostics(invocation, key, sha):
                 reason = 'DECODE_FAILED'
             print('Source profile unavailable:', json.dumps({'name': name, 'reason': reason, 'compressed_bytes': size}))
             continue
-        print("Verified BB profile " + name + ":", json.dumps((summarize_source if source else summarize)(decoded), sort_keys=True))
+        try:
+            summary = (summarize_source if source else summarize)(decoded)
+        except ValueError as error:
+            if not terminal_source:
+                raise
+            reason = {
+                'Invalid source profile timing': 'INVALID_TIMING',
+                'Source profile timing exceeds limits': 'TIMING_LIMIT',
+                'Source profile span exceeds limits': 'SPAN_LIMIT',
+                'Profile contains no complete timing events': 'NO_EVENTS',
+            }.get(str(error), 'INVALID_PROFILE')
+            print('Source profile unavailable:', json.dumps({'name': name, 'reason': reason}))
+            continue
+        print("Verified BB profile " + name + ":", json.dumps(summary, sort_keys=True))
     for artifact in invocation.get("artifacts", []):
         name = artifact.get("name", "").rsplit("/", 1)[-1]
         if (name in ["electron-cross-smoke.zip"] + [archive_name(shard) for shard in SHARDS]

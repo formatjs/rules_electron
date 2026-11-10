@@ -128,13 +128,22 @@ These overlap and cover only a partial trace. They do not establish a completed
 build or controlled speedup. Final cache counters were 75,479 hits and 198
 misses/uploads.
 
-The next source trial adds `--notrack_incremental_state` to the final build,
-retaining analysis discard, 16 requested CPUs, 32 GB RAM and a 24 GB heap.
+The [incremental-state trial](https://formatjs.buildbuddy.io/invocation/9900ad8d-99ac-4078-91e2-6e899f3640f2)
+adds `--notrack_incremental_state` to the final build, retaining analysis discard,
+16 requested CPUs, 32 GB RAM and a 24 GB heap. Its final build failed at linking
+after 2078.399 seconds, before the workflow deadline. The source SDK's Linux
+dependencies require `exp`, `log` and `pow` at `GLIBC_2.29`, and `gettid` at
+`GLIBC_2.30`; the example addon transition still selected the older default
+sysroot. Source-example Linux x64 targets now select the SDK's glibc 2.31 ABI.
+The ordinary bootstrap example keeps its existing target selection.
+
 [Bazel documents](https://bazel.build/advanced/performance/memory) that this avoids
 retaining dependency-graph edges at the cost of incremental state. The source pin
 and compiler settings stay fixed; newer example license fixtures add packaging
 work, so this is not an identical whole-workflow comparison. Remote action-cache
-reuse remains available.
+reuse remains available. The complete profile contains invalid timing events;
+strict diagnostics reject those metrics while retaining child failure reporting.
+This failed build does not establish a successful-build speedup.
 
 The [3fe910c source example](https://formatjs.buildbuddy.io/invocation/710b3025-44c4-4a72-abd7-8750ffc66060)
 hit BB's free-tier deadline at 3600.484 seconds. Its authenticated, SHA-verified
