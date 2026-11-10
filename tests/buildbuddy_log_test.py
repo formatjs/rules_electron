@@ -13,7 +13,7 @@ from tools.ci.buildbuddy_log import profile_diagnostics, resource_diagnostics, f
 
 class BuildBuddyLogTest(unittest.TestCase):
     def test_large_source_archive_metadata_does_not_relax_download_limit(self):
-        size = 3 * 1024**3
+        size = 4 * 1024**3
         invocation = {'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/formatjs/rules_electron',
                       'pattern': 'Source-built desktop example', 'success': True,
                       'invocationStatus': 'COMPLETE_INVOCATION_STATUS',

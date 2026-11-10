@@ -37,7 +37,12 @@ def invocation_id(url):
     return match.group(1)
 
 
-def artifact_uri(response, expected_sha, artifact_name=ARCHIVE, max_bytes=MAX_BYTES):
+def artifact_uri(response, expected_sha, artifact_name=ARCHIVE, max_bytes=None):
+    if max_bytes is None:
+        invocations = response.get('invocation', [])
+        source_linux = (len(invocations) == 1 and invocations[0].get('pattern') == 'Source-built desktop example'
+                        and artifact_name == archive_name('linux-x64'))
+        max_bytes = 3 * 1024**3 if source_linux else MAX_BYTES
     return _artifact_uri(response, expected_sha, artifact_name, max_bytes, require_success=True)
 
 

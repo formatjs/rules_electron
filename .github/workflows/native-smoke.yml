@@ -89,7 +89,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.commit_sha || github.event.sha }}
+          # Transport follows workflow revision; artifacts stay bound to BUILD_SHA.
+          ref: ${{ github.workflow_sha }}
           persist-credentials: false
       - name: Download verified BB smoke shard
         env:

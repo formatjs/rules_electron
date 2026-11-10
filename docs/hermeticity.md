@@ -642,8 +642,12 @@ hits and 21,614 uploads. The [verified lock handoff](https://github.com/formatjs
 binds the checked-in `tools/ci/source-example.MODULE.bazel.lock` to that exact
 successful repository commit and SHA-256. Source preparation copies these bytes
 and enforces `--lockfile_mode=error`; frozen-resolution validation is pending.
-Linux native handoff currently rejects the source smoke shard at its 2 GiB
-transport limit. No source desktop execution is established by the build alone.
+Linux native handoff rejected the 2,333,020,147-byte source smoke shard at its
+2 GiB transport limit. Source-Linux transport now permits up to 3 GiB; other
+shards keep 2 GiB, all extraction limits stay unchanged. Transport uses the
+workflow's code revision while native smoke checks out the exact artifact commit.
+Repository, successful commit, digest and size checks remain required. Native
+validation is pending; the build alone does not establish source desktop execution.
 
 The packaging cross-build action query now includes forbidden build-wrapper
 mnemonics alongside its required app/DMG actions. The platform-input audit rejects
