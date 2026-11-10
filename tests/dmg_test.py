@@ -362,8 +362,14 @@ class DmgTest(unittest.TestCase):
         labels = self.root / 'labels.json'
         labels.write_text('{"en_US":{"languageName":"English","agree":"Accept"},"ja_JP":{"languageName":"日本語"}}', encoding='utf-8')
         entries = [{'source': str(text), 'locale': 'en_US'}, {'source': str(rich), 'locale': 'ja_JP'}]
+        companion = self.root / 'japanese-plain.txt'
+        companion.write_text('日本語\r\nLicense\n', encoding='utf-8')
+        companions = [{'source': str(companion), 'locale': 'ja_JP'}]
+        with self.assertRaisesRegex(ValueError, 'outside its inputs'):
+            license_image(base, companion, entries, default_language='ja_JP', license_texts=companions)
+        self.assertEqual(companion.read_bytes(), '日本語\r\nLicense\n'.encode('utf-8'))
         first, second = self.root / 'licensed.dmg', self.root / 'relocated-licensed.dmg'
-        license_image(base, first, entries, default_language='ja_JP', labels=labels)
+        license_image(base, first, entries, default_language='ja_JP', labels=labels, license_texts=companions)
         data = first.read_bytes()
         xml_offset, xml_size = struct.unpack_from('>QQ', data, len(data) - 512 + 216)
         metadata = plistlib.loads(data[xml_offset:xml_offset + xml_size])['resource-fork']
@@ -373,6 +379,8 @@ class DmgTest(unittest.TestCase):
         self.assertEqual(metadata['LPic'][0]['Data'], struct.pack('>hHhhhhhh', 1, 2, 0, 0, 0, 14, 1, 1))
         bodies = {entry['ID']: entry['Data'] for entry in metadata['RTF ']}
         self.assertEqual(bodies['5001'], rich_bytes)
+        self.assertEqual([(entry['ID'], entry['Data']) for entry in metadata['TEXT']],
+                         [('5001', b'\x93\xfa\x96\x7b\x8c\xea\rLicense\r')])
         self.assertIn(b'License \\{fixture\\} \\\\ text\\par', bodies['5000'])
         self.assertIn(b'\\u19990?\\u30028?', bodies['5000'])
         self.assertIn(b'\\u-10179?\\u-8704?', bodies['5000'])
@@ -393,10 +401,34 @@ class DmgTest(unittest.TestCase):
             destination.write_bytes(source.read_bytes())
             os.utime(destination, (1234567890, 1234567890))
             relocated.append(dict(entry, source=str(destination)))
-        license_image(base, second, relocated, default_language='ja_JP', labels=labels)
+        moved_companion = moved / 'renamed-plain.txt'
+        moved_companion.write_bytes(companion.read_bytes())
+        os.utime(moved_companion, (1234567890, 1234567890))
+        license_image(base, second, relocated, default_language='ja_JP', labels=labels,
+                      license_texts=[dict(companions[0], source=str(moved_companion))])
         self.assertEqual(first.read_bytes(), second.read_bytes())
         self.assertNotEqual(data[-512 + 64:-512 + 80], original[-512 + 64:-512 + 80])
         self.assertEqual(first.stat().st_mtime, 0)
+
+    def test_companion_text_rejects_ambiguous_unrepresentable_or_non_rtf_resources(self):
+        rich = self.root / 'license.rtf'
+        rich.write_bytes(b'{\\rtf1\\ansi License}')
+        text = self.root / 'plain.txt'
+        text.write_text('Plain license', encoding='utf-8')
+        entries = [{'source': str(rich), 'locale': 'en_US'}]
+        companion = {'source': str(text), 'locale': 'en_US'}
+        for companions in ([dict(companion, locale='ja_JP')], [companion, companion],
+                           [dict(companion, source=str(rich))]):
+            with self.subTest(companions=companions), self.assertRaises(ValueError):
+                license_resources(entries, license_texts=companions)
+        with self.assertRaisesRegex(ValueError, 'RTF license'):
+            license_resources([companion], license_texts=[companion])
+        for body in ('', 'Bad\0text', 'Unrepresentable 😀'):
+            text.write_text(body, encoding='utf-8')
+            with self.subTest(body=body), self.assertRaises(ValueError):
+                license_resources(entries, license_texts=[companion])
+            self.assertEqual(text.read_text(encoding='utf-8'), body)
+        self.assertEqual(rich.read_bytes(), b'{\\rtf1\\ansi License}')
 
     def test_license_failures_preserve_inputs_and_existing_output(self):
         base = self.root / 'base.dmg'

@@ -32,10 +32,15 @@ def read_limited(path, limit):
     return data
 
 
-def text_rtf(data):
+def license_text(data):
     text = data.decode('utf-8-sig').replace('\r\n', '\n').replace('\r', '\n')
     if not text.strip() or any(ord(char) < 32 and char not in '\n\t' for char in text):
         raise ValueError('DMG license text is empty or contains controls')
+    return text
+
+
+def text_rtf(data):
+    text = license_text(data)
     result = [r'{\rtf1\ansi\ansicpg1252\uc1 ']
     for char in text:
         if char == '\n':
@@ -52,7 +57,7 @@ def text_rtf(data):
     return (''.join(result) + '}').encode('ascii')
 
 
-def license_resources(licenses, default_language='en_US', labels=''):
+def license_resources(licenses, default_language='en_US', labels='', license_texts=None):
     if not 1 <= len(licenses) <= 32:
         raise ValueError('DMG licenses require 1..32 declared languages')
     locales = [entry['locale'] for entry in licenses]
@@ -60,6 +65,12 @@ def license_resources(licenses, default_language='en_US', labels=''):
         raise ValueError('Invalid or duplicate DMG license language')
     if default_language not in locales:
         raise ValueError('Default DMG license language must have a declared license')
+    companions = {}
+    for entry in license_texts or []:
+        locale = entry['locale']
+        if locale not in locales or locale in companions or Path(entry['source']).suffix != '.txt':
+            raise ValueError('DMG license texts require unique declared locales and UTF-8 .txt files')
+        companions[locale] = entry['source']
     overrides = json.loads(read_limited(labels, 65536)) if labels else {}
     if not isinstance(overrides, dict) or set(overrides) - set(locales):
         raise ValueError('DMG license labels require declared languages')
@@ -78,7 +89,7 @@ def license_resources(licenses, default_language='en_US', labels=''):
         if path.suffix == '.txt':
             body = text_rtf(data)
             try:
-                plain = data.decode('utf-8-sig').replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\r').encode(encoding)
+                plain = license_text(data).replace('\n', '\r').encode(encoding)
             except UnicodeEncodeError:
                 pass
             else:
@@ -87,6 +98,15 @@ def license_resources(licenses, default_language='en_US', labels=''):
             body = data
         else:
             raise ValueError('DMG licenses require UTF-8 .txt or .rtf files')
+        companion = None
+        if locale in companions:
+            if kind != 'RTF ':
+                raise ValueError('DMG companion text requires an RTF license resource')
+            plain = read_limited(companions[locale], 2 * 1024**2)
+            total += len(plain)
+            if total > 16 * 1024**2:
+                raise ValueError('DMG license inputs exceed total size limit')
+            companion = license_text(plain).replace('\n', '\r').encode(encoding)
         custom = overrides.get(locale, {})
         if not isinstance(custom, dict) or set(custom) - set(LABELS):
             raise ValueError('Unknown DMG license label field')
@@ -106,18 +126,21 @@ def license_resources(licenses, default_language='en_US', labels=''):
         resources['STR#'].append({'Attributes': '0x0000', 'ID': identity, 'Name': locale,
                                   'Data': struct.pack('>H', 6) + b''.join(strings)})
         resources[kind].append({'Attributes': '0x0000', 'ID': identity, 'Name': locale + ' SLA', 'Data': body})
+        if companion is not None:
+            resources['TEXT'].append({'Attributes': '0x0000', 'ID': identity, 'Name': locale + ' SLA text', 'Data': companion})
         mappings.append(struct.pack('>hhh', language, index, int(encoding in ('shift_jis', 'euc_kr', 'gb2312', 'big5'))))
     resources['LPic'].append({'Attributes': '0x0000', 'ID': '5000', 'Name': '',
                               'Data': struct.pack('>hH', sorted(locales).index(default_language), len(mappings)) + b''.join(mappings)})
     return {kind: entries for kind, entries in resources.items() if entries}
 
 
-def license_image(source, output, licenses, default_language='en_US', labels=''):
+def license_image(source, output, licenses, default_language='en_US', labels='', license_texts=None):
     source, output = Path(source), Path(output)
-    inputs = [source, *[Path(entry['source']) for entry in licenses], *([Path(labels)] if labels else [])]
+    inputs = [source, *[Path(entry['source']) for entry in licenses],
+              *[Path(entry['source']) for entry in license_texts or []], *([Path(labels)] if labels else [])]
     if any(output.resolve() == path.resolve(strict=True) for path in inputs):
         raise ValueError('DMG license output must be outside its inputs')
-    added = license_resources(licenses, default_language, labels)
+    added = license_resources(licenses, default_language, labels, license_texts)
     size = source.stat().st_size
     if not 512 <= size <= 16 * 1024**3:
         raise ValueError('DMG license image size exceeds limits')

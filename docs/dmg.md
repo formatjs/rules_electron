@@ -91,7 +91,8 @@ Compressed disk bytes and block maps stay unchanged; image identity includes the
 new XML. Signed images, existing license resources, malformed bounds and
 output/input aliases fail. Sign/notarize only after this stage.
 
-The resource mapping follows the [dmg-license format](https://github.com/argv-minus-one/dmg-license/blob/master/src/makeLicensePlist.ts).
+Mapping entries and labels follow the [dmg-license format](https://github.com/argv-minus-one/dmg-license/blob/master/src/makeLicensePlist.ts).
+The default field uses the resource index verified by native tests below.
 BB tests decode mappings and labels independently, preserve actual disk bytes,
 cover Unicode/surrogates and compare relocated/reordered inputs. Native smoke
 requires the sample license to be displayed, refusal to prevent mounting, and
@@ -115,7 +116,8 @@ displayed CJK/emoji text and passed both consent paths. The fix encodes the
 default resource index in `LPic`; region ID 14 produced an empty dialog for the
 single Japanese license, while index 0 worked. Region IDs remain in mapping
 entries. A French text control now precedes Japanese RTF, testing nonzero default
-index 1 on the English smoke host. That new case is pending. CLI consent alone
+index 1 on the English smoke host. The [a2979bc workflow](https://github.com/formatjs/rules_electron/actions/runs/42754562887)
+passed that case and all four native hosts. CLI consent alone
 does not establish GUI consent; RTF/multilingual CLI consent remains unproven.
 The normal macOS gate now requires both GUI paths for all three example license
 variants, including visible CJK/emoji text in RTF variants.
@@ -129,8 +131,18 @@ image with the workflow's current macOS harness. Linux performs authenticated,
 commit-bound artifact retrieval; the matching Mac host only inspects the image.
 Probe results do not publish normal native-smoke commit status.
 Set `dmg_consent_mode=cli` to inspect terminal consent instead. This requires
-displayed text, explicit refusal without mounting, acceptance with a mounted
-payload, and visible Unicode for RTF fixtures; raw RTF markup fails.
+the complete decoded text, explicit refusal without mounting and acceptance with
+a mounted payload; raw RTF markup fails.
+
+`license_texts` optionally maps declared UTF-8 `.txt` companions to RTF license
+locales. It emits `TEXT` beside unchanged `RTF ` bytes at the same resource ID.
+Companion text must fit the locale's legacy encoding. Duplicate/undeclared
+locales, non-RTF primaries and invalid text fail. Companion files share the
+existing input size budget and deterministic staging. The example declares
+English and Japanese companions; native interoperability is pending. A
+RTF-only CLI probe mounted without requesting consent, so GUI success does not
+establish terminal consent. GUI tests still require the RTF Unicode body while
+CLI tests compare the declared companion text in full.
 
 `electron_dmg_license` creates another legal variant without rebuilding the
 filesystem. Its `image` accepts an `electron_dmg` target (using that target's

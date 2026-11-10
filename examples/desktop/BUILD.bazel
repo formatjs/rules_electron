@@ -129,6 +129,7 @@ electron_dmg(
 electron_dmg_license(
     name = "release_dmg_rtf",
     image = ":release_dmg",
+    license_texts = {"resources/installer-license.txt": "en_US"},
     licenses = {"resources/installer-license.rtf": "en_US"},
     target_compatible_with = ["@platforms//os:osx"],
 )
@@ -137,6 +138,7 @@ electron_dmg_license(
     name = "release_dmg_japanese",
     image = ":release_dmg",
     license_default_language = "ja_JP",
+    license_texts = {"resources/installer-license-japanese-plain.txt": "ja_JP"},
     licenses = {
         "resources/installer-license-french.txt": "fr_FR",
         "resources/installer-license.rtf": "ja_JP",

@@ -9,6 +9,7 @@ ElectronDmgInfo = provider(
 
 _LICENSE_ATTRS = {
     "licenses": attr.label_keyed_string_dict(allow_files = [".txt", ".rtf"], doc = "Declared UTF-8 text/RTF files mapped to locales, such as en_US or ja_JP."),
+    "license_texts": attr.label_keyed_string_dict(allow_files = [".txt"], doc = "Optional declared UTF-8 plain-text companions mapped to RTF license locales. Text must fit that locale's legacy encoding."),
     "license_default_language": attr.string(default = "en_US", doc = "Default license locale; must have a declared license."),
     "license_labels": attr.label(allow_single_file = [".json"], doc = "Optional per-locale languageName/agree/disagree/print/save/message labels."),
     "_license_tool": attr.label(default = Label("//electron/private:dmg_license_tool"), executable = True, cfg = "exec"),
@@ -49,6 +50,8 @@ def _impl(ctx):
     )
     if ctx.attr.license_labels and not ctx.attr.licenses:
         fail("license_labels requires licenses")
+    if ctx.attr.license_texts and not ctx.attr.licenses:
+        fail("license_texts requires licenses")
     if ctx.attr.licenses:
         _license_action(ctx, base, output)
     return [
@@ -59,17 +62,25 @@ def _impl(ctx):
 
 def _license_action(ctx, base, output):
     entries = []
+    texts = []
     inputs = [base]
     for target, locale in ctx.attr.licenses.items():
         files = target[DefaultInfo].files.to_list()
-        if len(files) != 1:
+        if len(files) != 1 or files[0].is_directory:
             fail("Each DMG license must provide one text or RTF file")
         entries.append({"source": files[0].path, "locale": locale})
+        inputs.append(files[0])
+    for target, locale in ctx.attr.license_texts.items():
+        files = target[DefaultInfo].files.to_list()
+        if len(files) != 1 or files[0].is_directory:
+            fail("Each DMG license text must provide one UTF-8 text file")
+        texts.append({"source": files[0].path, "locale": locale})
         inputs.append(files[0])
     legal = ctx.actions.declare_file(ctx.label.name + ".licenses.json")
     ctx.actions.write(legal, json.encode({
         "source": base.path,
         "licenses": entries,
+        "license_texts": texts,
         "default_language": ctx.attr.license_default_language,
         "labels": ctx.file.license_labels.path if ctx.file.license_labels else "",
     }))

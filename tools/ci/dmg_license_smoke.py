@@ -25,7 +25,7 @@ from zipfile import ZipFile
 Attachment = namedtuple('Attachment', 'returncode output answered')
 
 
-def inspect_license(image, require_unicode=False):
+def inspect_license(image, require_unicode=False, prefer_plain=False):
     with image.open('rb') as source:
         source.seek(-512, 2)
         footer = source.read(512)
@@ -44,35 +44,44 @@ def inspect_license(image, require_unicode=False):
     if not 0 <= default_index < count <= 32 or len(mapping) != 4 + count * 6:
         raise RuntimeError('DMG_LICENSE_INVALID_MAPPING')
     identity = str(5000 + default_index)
+    region = struct.unpack_from('>h', mapping, 4 + default_index * 6)[0]
     bodies = [(kind, entry['Data']) for kind in ('RTF ', 'TEXT')
               for entry in resources.get(kind, []) if entry['ID'] == identity]
-    if len(bodies) != 1 or len(bodies[0][1]) > 2 * 1024**2:
+    if (not 1 <= len(bodies) <= 2 or len({kind for kind, _ in bodies}) != len(bodies)
+            or any(len(data) > 2 * 1024**2 for _, data in bodies)):
         raise RuntimeError('DMG_LICENSE_INVALID_BODY')
+    selected = next((body for body in bodies if prefer_plain and body[0] == 'TEXT'), bodies[0])
+    if selected[0] == 'TEXT' and region not in (0, 1, 14):
+        raise RuntimeError('DMG_LICENSE_PROBE_UNSUPPORTED_TEXT_REGION')
     script = '''
 ObjC.import('AppKit');
 function run(argv) {
     const data = $.NSData.alloc.initWithBase64EncodedStringOptions($(argv[0]), 0);
     const plain = argv[1] === 'TEXT';
-    const body = plain ? $.NSString.alloc.initWithDataEncoding(data, $.NSMacOSRomanStringEncoding)
+    const encoding = argv[2] === '14' ? $.NSShiftJISStringEncoding : $.NSMacOSRomanStringEncoding;
+    const body = plain ? $.NSString.alloc.initWithDataEncoding(data, encoding)
         : $.NSAttributedString.alloc.initWithRTFDocumentAttributes(data, null);
     const text = body ? ObjC.unwrap(plain ? body : body.string) : '';
     return JSON.stringify({decoded: Boolean(body), header: text.includes('Sample Desktop example license, version 1.'),
-        unicode: text.includes('Example Unicode text: 世界 😀.'), length: text.length});
+        unicode: text.includes('Example Unicode text: 世界 😀.'), length: text.length, text});
 }
 '''
     result = subprocess.run(['/usr/bin/osascript', '-l', 'JavaScript', '-e', script,
-                             base64.b64encode(bodies[0][1]).decode('ascii'), bodies[0][0]],
+                             base64.b64encode(selected[1]).decode('ascii'), selected[0], str(region)],
                             capture_output=True, timeout=30)
     if result.returncode:
         raise RuntimeError('DMG_LICENSE_NATIVE_DECODE_FAILED')
     summary = json.loads(result.stdout)
+    text = summary.pop('text', None)
     if (set(summary) != {'decoded', 'header', 'unicode', 'length'} or type(summary['decoded']) is not bool
+            or not isinstance(text, str) or len(text) > 2 * 1024**2
             or type(summary['unicode']) is not bool
             or type(summary['header']) is not bool or type(summary['length']) is not int):
         raise RuntimeError('DMG_LICENSE_INVALID_NATIVE_SUMMARY')
-    print('DMG_LICENSE_NATIVE_BODY ' + json.dumps(dict(summary, default_index=default_index), sort_keys=True), flush=True)
+    print('DMG_LICENSE_NATIVE_BODY ' + json.dumps(dict(summary, default_index=default_index, format=selected[0]), sort_keys=True), flush=True)
     if not summary['decoded'] or not summary['header'] or (require_unicode and not summary['unicode']):
         raise RuntimeError('DMG_LICENSE_NATIVE_BODY_FAILED')
+    return text
 
 
 def inspect_dialog(image, answer='decline', require_unicode=False):
@@ -373,25 +382,26 @@ def interactive_attach(arguments, answer, timeout=120):
         os.close(terminal)
 
 
-def smoke_cli(image, mount, require_unicode=False):
+def smoke_cli(image, mount, expected_text):
     mount.mkdir()
     arguments = ['/usr/bin/hdiutil', 'attach', '-readonly', '-nobrowse', '-mountpoint', str(mount), str(image)]
     try:
         for answer in (b'n', b'y'):
             expected_mount = answer == b'y'
             result = interactive_attach(arguments, answer)
+            output = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', result.output.decode('utf-8', errors='replace'))
             summary = {
                 'phase': 'accept' if expected_mount else 'decline', 'exit_code': result.returncode,
                 'answered': result.answered,
                 'header': b'Sample Desktop example license, version 1.' in result.output,
                 'unicode': 'Example Unicode text: 世界 😀.'.encode('utf-8') in result.output,
                 'rtf_source': b'\\rtf1' in result.output,
+                'text_matched': bool(expected_text.strip()) and ' '.join(expected_text.split()) in ' '.join(output.split()),
                 'mounted': mount.is_mount(),
                 'payload': (mount / 'Sample Desktop.app' / 'Contents' / 'Info.plist').is_file(),
             }
             print('DMG_LICENSE_CLI ' + json.dumps(summary, sort_keys=True), flush=True)
-            if (not result.answered or not summary['header'] or summary['rtf_source']
-                    or (require_unicode and not summary['unicode'])
+            if (not result.answered or not summary['header'] or summary['rtf_source'] or not summary['text_matched']
                     or (result.returncode == 0) != expected_mount or summary['mounted'] != expected_mount
                     or summary['payload'] != expected_mount):
                 raise RuntimeError('DMG_LICENSE_CLI_CONSENT_FAILED')
@@ -424,8 +434,8 @@ if __name__ == '__main__':
                 target.write(data)
                 remaining -= len(data)
         subprocess.run(['/usr/bin/hdiutil', 'verify', str(image)], check=True, capture_output=True, timeout=120)
-        inspect_license(image, require_unicode=fixture != 'release_dmg.dmg')
+        expected_text = inspect_license(image, require_unicode=mode == 'gui' and fixture != 'release_dmg.dmg', prefer_plain=mode == 'cli')
         if mode == 'cli':
-            smoke_cli(image, Path(temporary) / 'mounted', require_unicode=fixture != 'release_dmg.dmg')
+            smoke_cli(image, Path(temporary) / 'mounted', expected_text)
         else:
             smoke_dialog(image, require_unicode=fixture != 'release_dmg.dmg')

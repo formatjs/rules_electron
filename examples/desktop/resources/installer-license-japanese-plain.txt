@@ -1,0 +1,3 @@
+Sample Desktop example license, version 1.
+
+このサンプルは無保証です。インストールして実行できます。
