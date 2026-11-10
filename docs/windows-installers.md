@@ -10,8 +10,14 @@ electron-updater skip interactive pages, following NSIS behavior.
 The example declares one agreement for both installer scopes. BB compilation
 checks installer/script reproducibility with relocated license inputs. Native
 Windows smoke checks visible text, disabled Next before acceptance, enabled Next
-after checking, and cancellation without registration. Native consent validation
-is pending. Multilingual license selection remains open.
+after checking, and cancellation without registration. The
+[6d7b3d6 suite](https://formatjs.buildbuddy.io/invocation/4ca2d90b-ab0f-47d9-94e8-3b36137965bd),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/14753b0f-60a4-4951-90a1-cb7594502ab2)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42741304836)
+passed. Both Windows CPUs verified interactive per-user consent/cancellation,
+then real per-user and machine update/uninstall lifecycles. The added Unicode
+fixture's native rendering check is pending. Multilingual license selection
+remains open.
 
 The NSIS `script` output group uses portable `app/`, icon and `payload.7z`
 references. Worker paths stay inside compilation. `verify_reproducible` compares

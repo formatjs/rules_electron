@@ -85,7 +85,8 @@ def smoke_license(installer):
     def license_window(process):
         for window in windows(process):
             for control in controls(window):
-                if 'Sample Desktop example license, version 1.' in text(control):
+                body = text(control)
+                if 'Sample Desktop example license, version 1.' in body and 'Example Unicode text: 世界 😀.' in body:
                     return window
 
     def checked_control(window):
