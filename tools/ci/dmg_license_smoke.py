@@ -184,16 +184,14 @@ end run
                                 capture_output=True, timeout=15)
         enabled = {b'true': True, b'false': False}.get(access.stdout.strip())
         print('DMG_LICENSE_ACCESSIBILITY ' + json.dumps({'enabled': enabled, 'observer_exit_code': access.returncode}), flush=True)
-        opened = subprocess.run(['/usr/bin/osascript', '-e', '''
-on run argv
-    set targetImage to (POSIX file (item 1 of argv)) as alias
-    tell application "Finder"
-        activate
-        open targetImage
-    end tell
-end run
-''', str(image)],
-                                capture_output=True, timeout=30)
+        print('DMG_LICENSE_FILE_ACCESS ' + json.dumps({
+            'owned_by_observer': image.stat().st_uid == os.geteuid(),
+            'parent_owned_by_observer': image.parent.stat().st_uid == os.geteuid(),
+            'console_matches_observer': Path('/dev/console').stat().st_uid == os.geteuid(),
+            'image_mode': image.stat().st_mode & 0o777,
+            'parent_mode': image.parent.stat().st_mode & 0o777,
+        }, sort_keys=True), flush=True)
+        opened = subprocess.run(['/usr/bin/open', str(image)], capture_output=True, timeout=30)
         owners = subprocess.run(['/usr/bin/osascript', '-l', 'JavaScript', '-e', '''
 ObjC.import('CoreGraphics');
 ObjC.import('Foundation');
@@ -246,6 +244,7 @@ function run() {
                   for entity in entry.get('system-entities', []) if entity.get('mount-point')]
         summary = {
             'opened': opened.returncode == 0, 'observer_exit_code': result.returncode,
+            'launcher': 'open',
             'declined': False, 'accepted': False, 'answer': answer,
             'attached_images': len(images),
             'mounted_payload': any((mount / 'Sample Desktop.app' / 'Contents' / 'Info.plist').is_file()
