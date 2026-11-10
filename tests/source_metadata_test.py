@@ -17,8 +17,25 @@ class SourceMetadataTest(unittest.TestCase):
     def response(self):
         self.payloads = {}
         records = []
+        graph = b'verified bytes for linux-arm64-graph.json.gz'
+        profiles = {}
+        roots = {'perfetto': '//third_party/perfetto:libperfetto',
+                 'protobuf': '//third_party/protobuf:protobuf_lite'}
+        for module in ('perfetto', 'v8-support', 'protobuf'):
+            for role, cpu, suffix in [('target', 'arm64', ''),
+                                     ('execution', 'x64', '(//build/toolchain/linux:clang_x64)'),
+                                     ('snapshot', 'x64', '(//build/toolchain/linux:clang_x64_v8_arm64)')]:
+                profile = {'target_arch': 'arm64', 'role': role,
+                           'graph_sha256': hashlib.sha256(graph).hexdigest(),
+                           'libraries': {'runtime': {'architecture': cpu}}}
+                if module in roots:
+                    bare = '//third_party/protobuf:protoc' if (module, role) == ('protobuf', 'execution') else roots[module]
+                    profile['root'] = bare + suffix
+                if (module, role) == ('perfetto', 'target'):
+                    profile['libraries']['generator'] = {'architecture': 'x64'}
+                profiles['linux-arm64-' + module + '-' + role + '.json'] = json.dumps(profile).encode()
         for name in ARTIFACTS:
-            data = ('verified bytes for ' + name).encode()
+            data = profiles.get(name, ('verified bytes for ' + name).encode())
             uri = 'bytestream://formatjs.buildbuddy.io/blobs/' + hashlib.sha256(data).hexdigest() + '/' + str(len(data))
             self.payloads[uri] = data
             records.append({'name': 'capture/' + name, 'uri': uri})
@@ -84,6 +101,25 @@ class SourceMetadataTest(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         download(response, 'a' * 40, 'private-read-key', output)
                 self.assertFalse((output / 'linux-arm64-graph.json.gz').exists())
+
+    def test_valid_file_digests_cannot_hide_mixed_graphs_roles_roots_or_compilers(self):
+        cases = [('graph_sha256', '0' * 64), ('role', 'target'), ('target_arch', 'x64'),
+                 ('root', '//third_party/protobuf:protoc'), ('libraries', {}),
+                 ('libraries', {'runtime': {'architecture': 'arm64'}})]
+        for field, value in cases:
+            response = self.response()
+            row = next(item for item in response['invocation'][0]['artifacts']
+                       if item['name'].endswith('linux-arm64-protobuf-execution.json'))
+            profile = json.loads(self.payloads.pop(row['uri']))
+            profile[field] = value
+            data = json.dumps(profile).encode()
+            row['uri'] = 'bytestream://formatjs.buildbuddy.io/blobs/' + hashlib.sha256(data).hexdigest() + '/' + str(len(data))
+            self.payloads[row['uri']] = data
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                with patch('tools.ci.source_metadata.api_request', side_effect=lambda method, body, key: io.BytesIO(self.payloads[body['uri']])) as api:
+                    with self.assertRaises(ValueError):
+                        download(response, 'a' * 40, 'private-read-key', Path(temporary) / 'capture')
+                    self.assertEqual(api.call_count, len(ARTIFACTS))
 
     def test_command_failure_never_echoes_private_metadata_or_credentials(self):
         response = self.response()

@@ -670,8 +670,11 @@ The [native support validation](https://formatjs.buildbuddy.io/invocation/ac6c2a
 compiled 12 ARM64 libraries, six x64 execution libraries and 12 x64 snapshot
 libraries. Each role passed its compiler action audit with zero forbidden wrappers.
 Protobuf binds captured Abseil identities explicitly to pinned native Bazel targets;
-the compiler platform determines their CPU. Its runtime/compiler cross-build
-validation remains pending.
+the compiler platform determines their CPU. The
+[Protobuf validation](https://formatjs.buildbuddy.io/invocation/76fcdcc2-5ac6-4c1f-a099-7c09c4fac4b8)
+compiled the ARM64 runtime, x64 compiler/plugins and x64 snapshot runtime with
+zero forbidden wrappers in each action audit. Handoff verification also checks
+each profile's role, compiler CPU, GN root and shared graph digest.
 Cross-family
 dependency bindings and complete ARM64 runtime cross-build validation remain open.
 

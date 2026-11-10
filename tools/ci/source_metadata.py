@@ -74,7 +74,32 @@ def download(response, sha, key, directory):
         if received != size or hasher.hexdigest() != digest:
             raise ValueError('Capture artifact digest or size mismatch')
         temporary.rename(directory / name)
+    validate_profiles(directory)
     return sum(record[2] for record in records.values())
+
+
+def validate_profiles(directory):
+    with (directory / 'linux-arm64-graph.json.gz').open('rb') as stream:
+        graph_digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+    for module in ('perfetto', 'v8-support', 'protobuf'):
+        for role in ('target', 'execution', 'snapshot'):
+            profile = json.loads((directory / ('linux-arm64-' + module + '-' + role + '.json')).read_bytes())
+            if (profile.get('target_arch') != 'arm64' or profile.get('role') != role
+                    or profile.get('graph_sha256') != graph_digest):
+                raise ValueError('Capture profile graph or role mismatch')
+            libraries = profile.get('libraries')
+            if not isinstance(libraries, dict) or not libraries:
+                raise ValueError('Missing capture profile libraries')
+            architectures = {record['architecture'] for record in libraries.values()}
+            expected = 'arm64' if role == 'target' else 'x64'
+            allowed = {'arm64', 'x64'} if module == 'perfetto' and role == 'target' else {expected}
+            if expected not in architectures or architectures - allowed:
+                raise ValueError('Capture profile compiler architecture mismatch')
+            if module != 'v8-support':
+                bare = '//third_party/perfetto:libperfetto' if module == 'perfetto' else '//third_party/protobuf:' + ('protoc' if role == 'execution' else 'protobuf_lite')
+                suffix = '' if role == 'target' else '(//build/toolchain/linux:' + ('clang_x64' if role == 'execution' else 'clang_x64_v8_arm64') + ')'
+                if profile.get('root') != bare + suffix:
+                    raise ValueError('Capture profile root mismatch')
 
 
 def main():
