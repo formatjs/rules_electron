@@ -34,8 +34,18 @@ def inspect_license(image, require_unicode=False):
             raise RuntimeError('DMG_LICENSE_INVALID_RESOURCES')
         source.seek(offset)
         resources = plistlib.loads(source.read(size))['resource-fork']
+    mappings = resources.get('LPic', [])
+    if len(mappings) != 1 or mappings[0].get('ID') != '5000':
+        raise RuntimeError('DMG_LICENSE_INVALID_MAPPING')
+    mapping = mappings[0]['Data']
+    if len(mapping) < 4:
+        raise RuntimeError('DMG_LICENSE_INVALID_MAPPING')
+    default_index, count = struct.unpack_from('>HH', mapping)
+    if not 0 <= default_index < count <= 32 or len(mapping) != 4 + count * 6:
+        raise RuntimeError('DMG_LICENSE_INVALID_MAPPING')
+    identity = str(5000 + default_index)
     bodies = [(kind, entry['Data']) for kind in ('RTF ', 'TEXT')
-              for entry in resources.get(kind, []) if entry['ID'] == '5000']
+              for entry in resources.get(kind, []) if entry['ID'] == identity]
     if len(bodies) != 1 or len(bodies[0][1]) > 2 * 1024**2:
         raise RuntimeError('DMG_LICENSE_INVALID_BODY')
     script = '''
@@ -60,7 +70,7 @@ function run(argv) {
             or type(summary['unicode']) is not bool
             or type(summary['header']) is not bool or type(summary['length']) is not int):
         raise RuntimeError('DMG_LICENSE_INVALID_NATIVE_SUMMARY')
-    print('DMG_LICENSE_NATIVE_BODY ' + json.dumps(summary, sort_keys=True), flush=True)
+    print('DMG_LICENSE_NATIVE_BODY ' + json.dumps(dict(summary, default_index=default_index), sort_keys=True), flush=True)
     if not summary['decoded'] or not summary['header'] or (require_unicode and not summary['unicode']):
         raise RuntimeError('DMG_LICENSE_NATIVE_BODY_FAILED')
 

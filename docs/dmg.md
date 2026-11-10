@@ -110,9 +110,13 @@ image unmounted; Agree mounted the same image with the app payload. It uses
 `open` to launch the system image handler. Earlier Finder AppleEvent observers
 timed out or saw a permission dialog. The same harness passed English RTF
 refusal and acceptance in [this probe](https://github.com/formatjs/rules_electron/actions/runs/42751310927).
-Visible RTF Unicode and non-English GUI consent remain unproven; the Japanese
-probe found a dialog without the expected text or controls. CLI consent alone
-does not establish GUI consent.
+The [942d677 Japanese probe](https://github.com/formatjs/rules_electron/actions/runs/42753793323)
+displayed CJK/emoji text and passed both consent paths. The fix encodes the
+default resource index in `LPic`; region ID 14 produced an empty dialog for the
+single Japanese license, while index 0 worked. Region IDs remain in mapping
+entries. A French text control now precedes Japanese RTF, testing nonzero default
+index 1 on the English smoke host. That new case is pending. CLI consent alone
+does not establish GUI consent; RTF/multilingual CLI consent remains unproven.
 The normal macOS gate now requires both GUI paths for all three example license
 variants, including visible CJK/emoji text in RTF variants.
 

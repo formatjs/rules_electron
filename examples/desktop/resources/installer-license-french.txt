@@ -1,0 +1,3 @@
+Sample Desktop example license, version 1.
+
+Cet exemple est fourni sans garantie. Vous pouvez l'installer et l'exécuter.
