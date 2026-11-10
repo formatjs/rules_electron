@@ -15,8 +15,11 @@ load("//electron:update.bzl", "electron_update_feed")
 load(":cross_build.bzl", "cross_build")
 load(":empty_tree.bzl", "empty_tree")
 load(":npm_lock_test.bzl", "npm_lock_test")
+load(":portable_feed_test.bzl", "portable_feed_test")
 
 npm_lock_test(name = "npm_lock_test")
+
+portable_feed_test(name = "portable_feed_test")
 
 py_test(
     name = "platform_inputs_audit_test",

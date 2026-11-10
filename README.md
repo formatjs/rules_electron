@@ -8,11 +8,12 @@ and Linux/Windows fuse settings. No electron-builder, package installation, netw
 GN or Ninja runs inside assembly actions. Python runs through a pinned Bazel
 execution toolchain; the target runtime is never executed during assembly.
 
-**Source runtime pending:** [formatjs/electron](https://github.com/formatjs/electron)
-builds source components but does not yet link a complete Electron executable.
-The [desktop example](examples/desktop/README.md) exercises real app behavior with
-an explicitly labeled, pinned official bootstrap runtime. No source-built Electron
-app launch is claimed. The Electron source module has not been published to BCR.
+**Source integration in progress:** [formatjs/electron](https://github.com/formatjs/electron)
+builds a complete Linux x64 runtime. Its [standalone source test](https://formatjs.buildbuddy.io/invocation/6749caca-9b09-486b-92ea-294a92b378ba)
+passed relocation, packed browser/preload/renderer, IPC, pixels and ASAR checks.
+The [desktop example](examples/desktop/README.md) still uses labeled, pinned
+bootstrap runtimes by default. Full source desktop packaging and source runtimes
+for other platforms remain open. The source module is not published to BCR.
 
 ## Usage
 
@@ -88,13 +89,18 @@ macOS bundle/helper metadata, ad hoc signing and
 [Additional Info.plist fields](docs/macos-metadata.md) declare document types,
 UTIs and other main-bundle metadata before signing.
 [Declared ICO icons](docs/windows-resources.md#windows-icons) brand Windows executables.
-macOS installers, release signing and broader OS integration remain pending. Linux DEB
-packaging supplies desktop/MIME/protocol/icon metadata and declared package hooks;
+macOS DMG packaging includes declared Finder layout/backgrounds and multilingual
+GUI/CLI license resources; see [DMG](docs/dmg.md). Explicit release signing and
+notarization interfaces exist; production identity/trust validation remains open.
+Linux DEB/RPM/AppImage packaging supplies desktop/MIME/protocol/icon metadata and declared hooks;
 see [Linux packages](docs/linux-packages.md).
-Per-user Windows NSIS packaging supplies shortcuts, URI schemes and updater cache
-seeding; see [Windows installers](docs/windows-installers.md).
+Windows user/machine NSIS packaging supplies shortcuts, URI/file registration and
+updater lifecycle support; see [Windows installers](docs/windows-installers.md).
+[Portable executables](docs/windows-portable.md) have a separate launch/cleanup
+contract; native validation is pending. [MSIX](docs/msix.md) has native
+install/update/remove coverage with explicit signing interfaces.
 Per-user file handlers: [Windows file associations](docs/windows-file-associations.md).
-`electron_archive` creates deterministic ZIP/tar.gz releases with explicit
+`electron_archive` creates deterministic ZIP, tar and compressed releases with explicit
 compression controls; see [release archives](docs/release-archives.md).
 
 ## Development
