@@ -378,7 +378,7 @@ class DmgTest(unittest.TestCase):
         relocated = []
         for entry in reversed(entries):
             source = Path(entry['source'])
-            destination = moved / source.name
+            destination = moved / ('renamed-' + source.name)
             destination.write_bytes(source.read_bytes())
             os.utime(destination, (1234567890, 1234567890))
             relocated.append(dict(entry, source=str(destination)))

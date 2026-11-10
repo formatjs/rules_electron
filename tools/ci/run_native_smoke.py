@@ -120,7 +120,7 @@ if __name__ == "__main__":
                 subprocess.run([sys.executable, "-m", "tools.ci.plain_links_smoke",
                                 str(directory / variant / "packages/plain_links.zip"), target_os, target_arch], check=True)
             if target_os == "macos":
-                from dmg_license_smoke import interactive_attach
+                from tools.ci.dmg_license_smoke import interactive_attach
 
                 image = directory / variant / "packages/release_dmg.dmg"
                 mount = directory / variant / "mounted-dmg"
