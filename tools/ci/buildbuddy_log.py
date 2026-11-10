@@ -63,7 +63,7 @@ def profile_diagnostics(invocation, key, sha):
     terminal_source = source and invocation.get('invocationStatus') == 'COMPLETE_INVOCATION_STATUS'
     for name in ["cross-build-profile.json.gz", "fixture-profile.json.gz"]:
         if (not invocation.get('success') and not terminal_source
-                or not any(a.get("name", "").endswith(name) for a in invocation.get("artifacts", [])):
+                or not any(a.get("name", "").endswith(name) for a in invocation.get("artifacts", []))):
             continue
         if terminal_source:
             uri, digest, size = source_profile_uri({'invocation': [invocation]}, sha, name)
