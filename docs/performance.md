@@ -119,6 +119,20 @@ changes need separate measurements. The 50% native transfer gate remains active.
 
 ## Source dependency baseline
 
+The [execution-ABI trial](https://formatjs.buildbuddy.io/invocation/7059b7e7-6f60-47c7-ab85-2400a25fc1a7)
+hit the free-tier deadline after 3600.613 seconds. Its final build ran for
+3007.922 seconds, reporting 18,798 cache hits, 88,739 misses and 88,663 uploads.
+The 2986.012-second recovered profile prefix contains 38,594 CppCompile events,
+10,098.649 cumulative Merkle preparation seconds, 424.578 semaphore seconds and
+65.021 GC event seconds. These overlapping, partial measurements do not establish
+build completion or a controlled speedup. Execution-tool prerequisites passed;
+the corrected ABI created substantial new cache entries.
+
+The next retry preserves that trial's source inputs, pin, platforms and flags,
+excluding newer packaging features. It saves the resolved analysis lock before
+execution as a separate diagnostic artifact. The canonical source-example lock
+still requires a successful source build; an analysis-only lock is not promoted.
+
 The [analysis-discard trial](https://formatjs.buildbuddy.io/invocation/f44b5c7c-7584-4c21-9605-78dad1973859)
 also hit the free-tier deadline at 3600.309 seconds, reaching 120,368/132,452
 reported actions. Its 2392.170-second recovered trace prefix records 41,224.656
