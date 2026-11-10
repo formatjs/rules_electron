@@ -86,6 +86,10 @@ on run argv
     set sawOK to false
     set diskError to "none"
     set sawUnicode to false
+    set sawRtfSource to false
+    set sawSampleFragment to false
+    set maxPopupControls to 0
+    set maxTextLength to 0
     tell application "System Events"
         repeat 20 times
             set targets to {}
@@ -107,6 +111,7 @@ on run argv
                     set unicodeMatches to false
                     set buttonCount to 0
                     set textCount to 0
+                    set popupCount to 0
                     set agreeControl to missing value
                     set disagreeControl to missing value
                     set elements to {}
@@ -135,6 +140,7 @@ on run argv
                                 if (name of currentElement as text) is "OK" then set sawOK to true
                             end if
                             if (role of currentElement as text) is in {"AXStaticText", "AXTextArea"} then set textCount to textCount + 1
+                            if (role of currentElement as text) is "AXPopUpButton" then set popupCount to popupCount + 1
                         end try
                         set elementText to ""
                         try
@@ -144,6 +150,9 @@ on run argv
                             set elementText to elementText & " " & (name of currentElement as text)
                         end try
                         if elementText contains "Example Unicode text: 世界 😀." then set unicodeMatches to true
+                        if elementText contains "Sample" then set sawSampleFragment to true
+                        if elementText contains "\\\\rtf1" then set sawRtfSource to true
+                        if (count characters of elementText) > maxTextLength then set maxTextLength to count characters of elementText
                         if elementText contains "couldn't be opened" or elementText contains "couldn’t be opened" or elementText contains "could not be opened" or elementText contains "can't be opened" then set sawImageError to true
                         if elementText contains "no mountable file systems" then set diskError to "filesystem"
                         if elementText contains "not recognized" then set diskError to "format"
@@ -154,6 +163,7 @@ on run argv
                     end repeat
                     if buttonCount > maxButtons then set maxButtons to buttonCount
                     if textCount > maxTexts then set maxTexts to textCount
+                    if popupCount > maxPopupControls then set maxPopupControls to popupCount
                     if bodyMatches then set sawBody to true
                     if unicodeMatches then set sawUnicode to true
                     if agreeControl is not missing value then set sawAgree to true
@@ -166,14 +176,14 @@ on run argv
                             click disagreeControl
                             set outcome to "declined"
                         end if
-                        return outcome & "," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError & "," & sawUnicode
+                        return outcome & "," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError & "," & sawUnicode & "," & sawRtfSource & "," & sawSampleFragment & "," & maxPopupControls & "," & maxTextLength
                     end if
                 end repeat
             end repeat
             delay 0.5
         end repeat
     end tell
-    return "not-found," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError & "," & sawUnicode
+    return "not-found," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError & "," & sawUnicode & "," & sawRtfSource & "," & sawSampleFragment & "," & maxPopupControls & "," & maxTextLength
 end run
 '''
 
@@ -261,16 +271,19 @@ function run() {
         observer_error = re.search(br'\((-?\d{1,10})\)\s*$', result.stderr)
         summary['observer_error_code'] = int(observer_error[1]) if observer_error else None
         fields = result.stdout.strip().split(b',')
-        if (result.returncode == 0 and len(fields) == 13 and fields[0] in (b'declined', b'accepted', b'not-found')
+        if (result.returncode == 0 and len(fields) == 17 and fields[0] in (b'declined', b'accepted', b'not-found')
                 and all(value.isdigit() and len(value) <= 3 for value in fields[1:3] + fields[6:9])
-                and all(value in (b'true', b'false') for value in fields[3:6] + fields[9:11] + fields[12:])
+                and all(value in (b'true', b'false') for value in fields[3:6] + fields[9:11] + fields[12:15])
+                and all(value.isdigit() and len(value) <= 6 for value in fields[15:])
                 and fields[11] in (b'none', b'filesystem', b'format', b'permission', b'missing', b'busy', b'corrupt')):
             summary.update(declined=fields[0] == b'declined', accepted=fields[0] == b'accepted',
                            processes=int(fields[1]), windows=int(fields[2]),
                            body=fields[3] == b'true', agree=fields[4] == b'true', disagree=fields[5] == b'true',
                            buttons=int(fields[6]), text_controls=int(fields[7]), elements=int(fields[8]),
                            image_error=fields[9] == b'true', ok=fields[10] == b'true',
-                           disk_error=fields[11].decode('ascii'), unicode=fields[12] == b'true')
+                           disk_error=fields[11].decode('ascii'), unicode=fields[12] == b'true',
+                           rtf_source=fields[13] == b'true', sample_fragment=fields[14] == b'true',
+                           popup_controls=int(fields[15]), max_text_length=int(fields[16]))
         print('DMG_LICENSE_DIALOG ' + json.dumps(summary, sort_keys=True), flush=True)
         return summary
     finally:

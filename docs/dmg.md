@@ -108,8 +108,11 @@ The [d6d0f8b GUI probe](https://github.com/formatjs/rules_electron/actions/runs/
 observed the English `TEXT` body and both consent controls. Disagree left the
 image unmounted; Agree mounted the same image with the app payload. It uses
 `open` to launch the system image handler. Earlier Finder AppleEvent observers
-timed out or saw a permission dialog. RTF/non-English GUI consent remains
-unproven; CLI consent alone does not establish GUI consent.
+timed out or saw a permission dialog. The same harness passed English RTF
+refusal and acceptance in [this probe](https://github.com/formatjs/rules_electron/actions/runs/42751310927).
+Visible RTF Unicode and non-English GUI consent remain unproven; the Japanese
+probe found a dialog without the expected text or controls. CLI consent alone
+does not establish GUI consent.
 The normal macOS gate now requires both GUI paths for all three example license
 variants, including visible CJK/emoji text in RTF variants.
 
