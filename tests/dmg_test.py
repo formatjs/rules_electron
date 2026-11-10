@@ -339,6 +339,17 @@ class DmgTest(unittest.TestCase):
         self.assertEqual(self.source.read_bytes(), self.original)
         self.assertFalse((self.bundle / "image.dmg").exists())
 
+    def test_plain_licenses_use_locale_encoding_without_utf8_or_rtf_markup(self):
+        text = self.root / 'english.txt'
+        text.write_bytes('Café\r\nLicense\n'.encode('utf-8-sig'))
+        resources = license_resources([{'source': str(text), 'locale': 'en_US'}])
+        self.assertEqual(resources['TEXT'][0]['Data'], b'Caf\x8e\rLicense\r')
+        self.assertNotIn('RTF ', resources)
+        japanese = self.root / 'japanese.txt'
+        japanese.write_text('日本語\n', encoding='utf-8')
+        resources = license_resources([{'source': str(japanese), 'locale': 'ja_JP'}], 'ja_JP')
+        self.assertEqual(resources['TEXT'][0]['Data'], b'\x93\xfa\x96\x7b\x8c\xea\r')
+
     def test_license_resources_preserve_disk_payload_and_relocate_identically(self):
         base = self.root / 'base.dmg'
         self.build(self.source, base)

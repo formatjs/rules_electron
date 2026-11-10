@@ -29,20 +29,23 @@ def inspect_license(image):
             raise RuntimeError('DMG_LICENSE_INVALID_RESOURCES')
         source.seek(offset)
         resources = plistlib.loads(source.read(size))['resource-fork']
-    bodies = [entry['Data'] for entry in resources.get('RTF ', []) if entry['ID'] == '5000']
-    if len(bodies) != 1 or len(bodies[0]) > 2 * 1024**2:
+    bodies = [(kind, entry['Data']) for kind in ('RTF ', 'TEXT')
+              for entry in resources.get(kind, []) if entry['ID'] == '5000']
+    if len(bodies) != 1 or len(bodies[0][1]) > 2 * 1024**2:
         raise RuntimeError('DMG_LICENSE_INVALID_BODY')
     script = '''
 ObjC.import('AppKit');
 function run(argv) {
     const data = $.NSData.alloc.initWithBase64EncodedStringOptions($(argv[0]), 0);
-    const body = $.NSAttributedString.alloc.initWithRTFDocumentAttributes(data, null);
-    const text = body ? ObjC.unwrap(body.string) : '';
+    const plain = argv[1] === 'TEXT';
+    const body = plain ? $.NSString.alloc.initWithDataEncoding(data, $.NSMacOSRomanStringEncoding)
+        : $.NSAttributedString.alloc.initWithRTFDocumentAttributes(data, null);
+    const text = body ? ObjC.unwrap(plain ? body : body.string) : '';
     return JSON.stringify({decoded: Boolean(body), header: text.includes('Sample Desktop example license, version 1.'), length: text.length});
 }
 '''
     result = subprocess.run(['/usr/bin/osascript', '-l', 'JavaScript', '-e', script,
-                             base64.b64encode(bodies[0]).decode('ascii')],
+                             base64.b64encode(bodies[0][1]).decode('ascii'), bodies[0][0]],
                             capture_output=True, timeout=30)
     if result.returncode:
         raise RuntimeError('DMG_LICENSE_NATIVE_DECODE_FAILED')

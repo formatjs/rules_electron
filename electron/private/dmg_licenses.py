@@ -63,7 +63,7 @@ def license_resources(licenses, default_language='en_US', labels=''):
     overrides = json.loads(read_limited(labels, 65536)) if labels else {}
     if not isinstance(overrides, dict) or set(overrides) - set(locales):
         raise ValueError('DMG license labels require declared languages')
-    resources = {'LPic': [], 'STR#': [], 'RTF ': []}
+    resources = {'LPic': [], 'STR#': [], 'RTF ': [], 'TEXT': []}
     mappings = []
     total = 0
     for index, entry in enumerate(sorted(licenses, key=lambda item: item['locale'])):
@@ -74,8 +74,15 @@ def license_resources(licenses, default_language='en_US', labels=''):
         total += len(data)
         if total > 16 * 1024**2:
             raise ValueError('DMG license inputs exceed total size limit')
+        kind = 'RTF '
         if path.suffix == '.txt':
             body = text_rtf(data)
+            try:
+                plain = data.decode('utf-8-sig').replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\r').encode(encoding)
+            except UnicodeEncodeError:
+                pass
+            else:
+                body, kind = plain, 'TEXT'
         elif path.suffix == '.rtf' and data.startswith(b'{\\rtf1') and data.rstrip().endswith(b'}'):
             body = data
         else:
@@ -98,11 +105,11 @@ def license_resources(licenses, default_language='en_US', labels=''):
         identity = str(5000 + index)
         resources['STR#'].append({'Attributes': '0x0000', 'ID': identity, 'Name': locale,
                                   'Data': struct.pack('>H', 6) + b''.join(strings)})
-        resources['RTF '].append({'Attributes': '0x0000', 'ID': identity, 'Name': locale + ' SLA', 'Data': body})
+        resources[kind].append({'Attributes': '0x0000', 'ID': identity, 'Name': locale + ' SLA', 'Data': body})
         mappings.append(struct.pack('>hhh', language, index, int(encoding in ('shift_jis', 'euc_kr', 'gb2312', 'big5'))))
     resources['LPic'].append({'Attributes': '0x0000', 'ID': '5000', 'Name': '',
                               'Data': struct.pack('>hH', LANGUAGES[default_language][0], len(mappings)) + b''.join(mappings)})
-    return resources
+    return {kind: entries for kind, entries in resources.items() if entries}
 
 
 def license_image(source, output, licenses, default_language='en_US', labels=''):

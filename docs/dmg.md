@@ -70,8 +70,9 @@ passed.
 `licenses` maps declared UTF-8 `.txt` or `.rtf` files to explicit locales.
 `license_default_language` defaults to `en_US` and must appear in that mapping.
 The [locale table](../electron/private/dmg_licenses.py) includes English, French,
-German, Japanese, Korean and Chinese regional IDs. Text becomes Unicode RTF;
-declared RTF bytes stay unchanged. No host locale or filename discovery supplies
+German, Japanese, Korean and Chinese regional IDs. Text uses that locale's legacy
+encoding when representable, otherwise Unicode RTF. Declared RTF bytes stay
+unchanged. No host locale or filename discovery supplies
 inputs.
 
 `license_labels` optionally provides a JSON object keyed by those same locales.
@@ -84,7 +85,7 @@ Each locale can override `languageName`, `agree`, `disagree`, `print`, `save` an
 {"en_US":{"languageName":"English","agree":"Agree","message":"Read license before installing."}}
 ```
 
-The separate `ElectronDmgLicense` action adds `LPic`, `STR#` and `RTF ` resources
+The separate `ElectronDmgLicense` action adds `LPic`, `STR#` and `TEXT`/`RTF ` resources
 to the unsigned image. License edits do not change filesystem-action inputs.
 Compressed disk bytes and block maps stay unchanged; image identity includes the
 new XML. Signed images, existing license resources, malformed bounds and
