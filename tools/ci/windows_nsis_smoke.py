@@ -331,7 +331,16 @@ if __name__ == "__main__":
             icon(install / "Uninstall.exe", architecture, 113)
             smoke(executable, architecture, "2.0.0")
             uninstall(install / "Uninstall.exe")
-            wait_for(lambda: registry_value(REGISTRY, "DisplayVersion") is None and not executable.exists() and not (install / "Uninstall.exe").exists())
+            try:
+                wait_for(lambda: registry_value(REGISTRY, "DisplayVersion") is None and not executable.exists()
+                         and not (install / "Uninstall.exe").exists() and all(not p.exists() for p in shortcuts))
+            except RuntimeError:
+                print('NSIS_UNINSTALL_STATE ' + json.dumps({
+                    'registered': registry_value(REGISTRY, 'DisplayVersion') is not None,
+                    'executable': executable.exists(), 'uninstaller': (install / 'Uninstall.exe').exists(),
+                    'shortcuts_remaining': sum(p.exists() for p in shortcuts),
+                }, sort_keys=True), flush=True)
+                raise
             assert registry_value(PROTOCOL, "") is None
             assert all(not p.exists() for p in shortcuts)
             assert registry_value(REGISTERED_APPS, APP_ID) is None
