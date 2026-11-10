@@ -120,6 +120,8 @@ if __name__ == "__main__":
                 subprocess.run([sys.executable, "-m", "tools.ci.plain_links_smoke",
                                 str(directory / variant / "packages/plain_links.zip"), target_os, target_arch], check=True)
             if target_os == "macos":
+                from dmg_license_smoke import interactive_attach
+
                 image = directory / variant / "packages/release_dmg.dmg"
                 mount = directory / variant / "mounted-dmg"
                 mount.mkdir()
@@ -129,24 +131,26 @@ if __name__ == "__main__":
                 properties = plistlib.loads(information.stdout).get('Properties', {})
                 agreement = properties.get('Software License Agreement')
                 print('DMG_LICENSE_IMAGEINFO ' + json.dumps({'agreement': agreement if type(agreement) is bool else None}), flush=True)
+                if agreement is not True:
+                    raise RuntimeError('DMG_LICENSE_METADATA_NOT_RECOGNIZED')
                 attach = ["/usr/bin/hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", str(mount), str(image)]
                 license_header = b'Sample Desktop example license, version 1.'
-                declined = subprocess.run(attach, input=b'n\n', capture_output=True, timeout=120)
+                declined = interactive_attach(attach, b'n')
                 print('DMG_LICENSE_RESPONSE ' + json.dumps({'phase': 'decline', 'exit_code': declined.returncode,
-                      'header': license_header in declined.stdout + declined.stderr,
+                      'header': license_header in declined.output, 'answered': declined.answered,
                       'mounted': (mount / 'Sample Desktop.app').exists()}), flush=True)
-                if not declined.returncode or license_header not in declined.stdout + declined.stderr:
+                if not declined.returncode or not declined.answered or license_header not in declined.output:
                     if not declined.returncode:
                         subprocess.run(["/usr/bin/hdiutil", "detach", str(mount)], check=True, timeout=120)
                     raise RuntimeError('DMG_LICENSE_DECLINE_FAILED')
                 if (mount / 'Sample Desktop.app').exists():
                     raise RuntimeError('DMG_LICENSE_DECLINE_MOUNTED_IMAGE')
                 print('DMG_LICENSE_DECLINED_OK', flush=True)
-                accepted = subprocess.run(attach, input=b'y\n', capture_output=True, timeout=120)
+                accepted = interactive_attach(attach, b'y')
                 print('DMG_LICENSE_RESPONSE ' + json.dumps({'phase': 'accept', 'exit_code': accepted.returncode,
-                      'header': license_header in accepted.stdout + accepted.stderr,
+                      'header': license_header in accepted.output, 'answered': accepted.answered,
                       'mounted': (mount / 'Sample Desktop.app').exists()}), flush=True)
-                if accepted.returncode or license_header not in accepted.stdout + accepted.stderr:
+                if accepted.returncode or not accepted.answered or license_header not in accepted.output:
                     if not accepted.returncode:
                         subprocess.run(["/usr/bin/hdiutil", "detach", str(mount)], check=True, timeout=120)
                     raise RuntimeError('DMG_LICENSE_ACCEPT_FAILED')
