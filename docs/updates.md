@@ -155,8 +155,9 @@ a new channel uses `If-None-Match: *`. Concurrent changes fail publication inste
 of overwriting channel metadata. The release workflow chooses versions and must
 serialize intended promotions. Redirects and asynchronous HTTP 202 responses fail.
 HTTPS is required; `--allow-http-loopback` exists for socket-based CI tests only.
-Object-store-specific upload APIs and credential-provider adapters remain separate
-migration work. The [GitHub publication interface](github-publication.md) stages
+The [S3 publication interface](s3-publication.md) signs conditional object writes;
+live cloud-policy validation and credential-provider adapters remain migration
+work. The [GitHub publication interface](github-publication.md) stages
 multiple feeds through a verified draft release; its BB socket protocol tests
 passed. `electron_update_config(provider = "github", owner = ..., repo = ...)`
 generates client configuration without embedding credentials.

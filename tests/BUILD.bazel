@@ -601,6 +601,18 @@ py_test(
 )
 
 py_test(
+    name = "s3_publication_test",
+    size = "small",
+    srcs = ["s3_publication_test.py"],
+    args = ["$(rootpath //electron/tools:publish_s3)"],
+    data = ["//electron/tools:publish_s3"],
+    deps = [
+        "//electron/private:updates",
+        "//electron/tools:s3_publication",
+    ],
+)
+
+py_test(
     name = "github_publication_test",
     size = "small",
     srcs = ["github_publication_test.py"],
