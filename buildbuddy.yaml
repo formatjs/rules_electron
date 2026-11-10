@@ -49,7 +49,7 @@ actions:
             //:cross_build_smoke_bundle
           app_inputs="$(mktemp /tmp/electron-app-inputs.XXXXXX.json)"
           bazel aquery --config=bb-workflow --downloader_config="$public_downloader" --distdir="$public_distdir" --config=msvc-license --lockfile_mode=error \
-            --output=jsonproto 'mnemonic("ElectronApp|ElectronDmg|ElectronDmgLicense", deps(//:cross_build_smoke_bundle))' > "$app_inputs"
+            --output=jsonproto 'mnemonic("(?i)^(ElectronApp|ElectronDmg|ElectronDmgLicense|.*(foreign.?cc|cmake|meson|ninja).*|g?make|runmake|gn|rungn)$", deps(//:cross_build_smoke_bundle))' > "$app_inputs"
           python3 "$source_root/tools/ci/platform_inputs_audit.py" "$app_inputs"
           rm "$app_inputs"
           cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"

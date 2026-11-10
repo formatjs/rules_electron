@@ -70,6 +70,11 @@ class PlatformInputsAuditTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "macOS-only smoke input"):
                 audit(graph, root)
 
+    def test_build_wrappers_cannot_hide_behind_platform_input_audit(self):
+        for mnemonic in ("ForeignCcMake", "CMake", "cmake", "MesonBuild", "Ninja", "Make", "GMake", "RunMake", "GN", "RunGN"):
+            with self.subTest(mnemonic=mnemonic), self.assertRaisesRegex(ValueError, "Build wrapper action forbidden"):
+                audit({"actions": [{"mnemonic": mnemonic}]}, Path("unused"))
+
     def test_empty_query_cannot_report_success(self):
         with self.assertRaisesRegex(ValueError, "Expected Linux, macOS and Windows"):
             audit({}, Path("unused"))

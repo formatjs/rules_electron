@@ -804,4 +804,9 @@ verified the BB artifact SHA and byte count. These are compressed smoke-shard
 sizes containing several fixtures, not standalone app sizes or build speedups.
 The [filtered BB suite](https://formatjs.buildbuddy.io/invocation/c5e15b8d-9636-4ac2-a7e5-297ff82c4e9c)
 and [cross-build](https://formatjs.buildbuddy.io/invocation/c3f85091-78fd-4e63-8b36-8ac412a6d61e)
-passed; native locale validation remains pending.
+passed. [All four native hosts passed](https://github.com/formatjs/rules_electron/actions/runs/42773904346)
+with locale selection; [the diagnostic follow-up](https://github.com/formatjs/rules_electron/actions/runs/42773969425)
+also passed all four hosts. The macOS updater's final ZIP fell from 285,575,214
+to 239,857,132 bytes (16.01%). Its real differential update fetched 446,182 bytes,
+reusing 99.81% of the final archive. These fixtures use bootstrap Electron;
+source-runtime integration remains separately tracked.
