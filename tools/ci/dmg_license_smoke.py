@@ -7,14 +7,19 @@ import fcntl
 import os
 import json
 import plistlib
+import platform
+from pathlib import Path
 import pty
 import re
 import select
 import signal
 import struct
 import subprocess
+import sys
+import tempfile
 import termios
 import time
+from zipfile import ZipFile
 
 
 Attachment = namedtuple('Attachment', 'returncode output answered')
@@ -61,27 +66,45 @@ function run(argv) {
 def inspect_dialog(image):
     script = '''
 on run
+    set maxProcesses to 0
+    set maxWindows to 0
+    set sawBody to false
+    set sawAgree to false
+    set sawDisagree to false
     tell application "System Events"
         repeat 40 times
-            set targets to application processes whose bundle identifier is "com.apple.DiskImageMounter"
+            set targets to application processes whose name is "DiskImageMounter" or name is "diskimages-helper" or name is "CoreServicesUIAgent"
+            if (count targets) > maxProcesses then set maxProcesses to count targets
             repeat with targetProcess in targets
+                if (count windows of targetProcess) > maxWindows then set maxWindows to count windows of targetProcess
                 repeat with targetWindow in windows of targetProcess
                     set bodyMatches to false
+                    set agreeControl to missing value
+                    set disagreeControl to missing value
                     repeat with element in entire contents of targetWindow
                         try
                             if (value of element as text) contains "Sample Desktop example license, version 1." then set bodyMatches to true
                         end try
+                        try
+                            if (role of element as text) is "AXButton" then
+                                if (name of element as text) is "Agree" then set agreeControl to element
+                                if (name of element as text) is "Disagree" then set disagreeControl to element
+                            end if
+                        end try
                     end repeat
-                    if bodyMatches and (exists button "Disagree" of targetWindow) and (exists button "Agree" of targetWindow) then
-                        click button "Disagree" of targetWindow
-                        return "declined"
+                    if bodyMatches then set sawBody to true
+                    if agreeControl is not missing value then set sawAgree to true
+                    if disagreeControl is not missing value then set sawDisagree to true
+                    if bodyMatches and agreeControl is not missing value and disagreeControl is not missing value then
+                        click disagreeControl
+                        return "declined," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree
                     end if
                 end repeat
             end repeat
             delay 0.5
         end repeat
     end tell
-    return "not-found"
+    return "not-found," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree
 end run
 '''
 
@@ -89,7 +112,7 @@ end run
         information = subprocess.run(['/usr/bin/hdiutil', 'info', '-plist'],
                                      capture_output=True, check=True, timeout=30)
         return [entry for entry in plistlib.loads(information.stdout).get('images', [])
-                if entry.get('image-path') == str(image)]
+                if entry.get('image-path') and Path(entry['image-path']).resolve() == image.resolve()]
 
     if attached():
         raise RuntimeError('DMG_LICENSE_DIALOG_IMAGE_ALREADY_ATTACHED')
@@ -98,11 +121,19 @@ end run
                                 capture_output=True, timeout=30)
         result = subprocess.run(['/usr/bin/osascript', '-e', script], capture_output=True, timeout=30)
         time.sleep(1)
-        print('DMG_LICENSE_DIALOG ' + json.dumps({
+        summary = {
             'opened': opened.returncode == 0, 'observer_exit_code': result.returncode,
-            'declined': result.returncode == 0 and result.stdout.strip() == b'declined',
+            'declined': False,
             'attached_images': len(attached()),
-        }, sort_keys=True), flush=True)
+        }
+        fields = result.stdout.strip().split(b',')
+        if (result.returncode == 0 and len(fields) == 6 and fields[0] in (b'declined', b'not-found')
+                and all(value.isdigit() and len(value) <= 3 for value in fields[1:3])
+                and all(value in (b'true', b'false') for value in fields[3:])):
+            summary.update(declined=fields[0] == b'declined', processes=int(fields[1]), windows=int(fields[2]),
+                           body=fields[3] == b'true', agree=fields[4] == b'true', disagree=fields[5] == b'true')
+        print('DMG_LICENSE_DIALOG ' + json.dumps(summary, sort_keys=True), flush=True)
+        return summary
     finally:
         for entry in attached():
             devices = [value['dev-entry'] for value in entry.get('system-entities', []) if value.get('dev-entry')]
@@ -166,3 +197,27 @@ def interactive_attach(arguments, answer, timeout=120):
                 pass
             os.waitpid(pid, 0)
         os.close(terminal)
+
+
+if __name__ == '__main__':
+    if platform.system() != 'Darwin' or platform.machine() != 'arm64':
+        raise RuntimeError('DMG license probe requires native macOS ARM64')
+    with ZipFile(sys.argv[1]) as archive, tempfile.TemporaryDirectory() as temporary:
+        members = [entry for entry in archive.infolist() if entry.filename == 'macos_aarch64/packages/release_dmg.dmg']
+        if len(members) != 1 or not 0 < members[0].file_size <= 1024**3:
+            raise RuntimeError('DMG_LICENSE_PROBE_INVALID_ARCHIVE')
+        image = Path(temporary) / 'release.dmg'
+        with archive.open(members[0]) as source, image.open('wb') as target:
+            remaining = members[0].file_size
+            while remaining:
+                data = source.read(min(remaining, 1024**2))
+                if not data:
+                    raise RuntimeError('DMG_LICENSE_PROBE_TRUNCATED_IMAGE')
+                target.write(data)
+                remaining -= len(data)
+        subprocess.run(['/usr/bin/hdiutil', 'verify', str(image)], check=True, capture_output=True, timeout=120)
+        inspect_license(image)
+        result = inspect_dialog(image)
+        if not result['declined'] or result['attached_images']:
+            raise RuntimeError('DMG_LICENSE_DIALOG_DECLINE_FAILED')
+        print('DMG_LICENSE_DIALOG_DECLINED_OK', flush=True)

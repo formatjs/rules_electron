@@ -16,6 +16,10 @@ on:
         description: Read BB logs without downloading artifacts or running smoke
         type: boolean
         default: false
+      dmg_license_probe:
+        description: Probe an existing BB-built DMG using the current workflow's macOS harness
+        type: boolean
+        default: false
       source_workflows_only:
         description: Find BB source workflows for exact commit without reading logs
         type: boolean
@@ -30,7 +34,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: native-electron-${{ inputs.logs_only && 'diagnostics' || github.event.context || 'Cross-build Electron Apps' }}-${{ inputs.commit_sha || github.event.sha }}
+  group: native-electron-${{ inputs.logs_only && 'diagnostics' || inputs.dmg_license_probe && 'dmg-probe' || github.event.context || 'Cross-build Electron Apps' }}-${{ inputs.commit_sha || github.event.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -71,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [linux-x64, macos-arm64, windows-x64, windows-arm64]
+        shard: ${{ fromJSON(inputs.dmg_license_probe && '["macos-arm64"]' || '["linux-x64", "macos-arm64", "windows-x64", "windows-arm64"]') }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -92,7 +96,7 @@ jobs:
           retention-days: 7
 
   native:
-    if: '!inputs.logs_only'
+    if: '!inputs.logs_only && !inputs.dmg_license_probe'
     needs: download
     strategy:
       fail-fast: false
@@ -139,8 +143,27 @@ jobs:
           SMOKE_SHARD: ${{ matrix.shard }}
         run: python -m tools.ci.run_native_smoke
 
+  dmg_probe:
+    if: inputs.dmg_license_probe && !inputs.logs_only
+    needs: download
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: arm64
+      - uses: actions/download-artifact@v8
+        with:
+          name: electron-smoke-macos-arm64
+          path: artifacts
+      - name: Probe BB-built license image
+        run: python -m tools.ci.dmg_license_smoke artifacts/electron-smoke-macos-arm64.zip
+
   publish_status:
-    if: always() && !inputs.logs_only && needs.download.result != 'skipped'
+    if: always() && !inputs.logs_only && !inputs.dmg_license_probe && needs.download.result != 'skipped'
     needs: [download, native]
     runs-on: ubuntu-latest
     permissions:

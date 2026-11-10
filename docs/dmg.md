@@ -95,8 +95,20 @@ The resource mapping follows the [dmg-license format](https://github.com/argv-mi
 BB tests decode mappings and labels independently, preserve actual disk bytes,
 cover Unicode/surrogates and compare relocated/reordered inputs. Native smoke
 requires the sample license to be displayed, refusal to prevent mounting, and
-acceptance to mount the same BB image. Native license interoperability remains
-pending hosted validation.
+acceptance to mount the same BB image. The
+[e2f8568 suite](https://formatjs.buildbuddy.io/invocation/b9ae499d-447b-41ed-af02-56fa945538b9)
+and [seven cross-builds](https://formatjs.buildbuddy.io/invocation/048324fe-3ebc-4e1b-b38d-9ecac53f9b1f)
+passed. Its [native macOS job](https://github.com/formatjs/rules_electron/actions/runs/42740919873)
+decoded the English `TEXT` body, refused attachment after decline (exit 1, no
+mount), then accepted and mounted (exit 0). Readonly Finder pixels, app signature,
+runtime and updater checks passed. That workflow's Windows jobs failed the
+separate NSIS consent observer. RTF-only and non-English consent remain unproven;
+native AppKit decoding alone does not prove a visible agreement.
+
+The manual `dmg_license_probe` workflow input tests a previously verified BB
+image with the workflow's current macOS harness. Linux performs authenticated,
+commit-bound artifact retrieval; the matching Mac host only inspects the image.
+Probe results do not publish normal native-smoke commit status.
 
 Metadata uses checksum-pinned MIT-licensed `ds_store` 1.3.3 and `mac_alias` 2.2.2
 Python sources. No host alias discovery, Finder, mounting or AppleScript
