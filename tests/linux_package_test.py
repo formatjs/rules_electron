@@ -1,15 +1,19 @@
 import json
 import os
 import struct
+import sys
 from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 import zlib
 import xml.etree.ElementTree as ET
 
 from electron.private.linux import create_payload
 from electron.private.archive import create_archive
+
+XZ = Path(sys.argv.pop(1)).resolve()
 
 
 class LinuxPackageTest(unittest.TestCase):
@@ -134,6 +138,7 @@ class LinuxPackageTest(unittest.TestCase):
         self.icon.write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
 
     def payload(self, name="payload", **kwargs):
+        extension = "xz" if kwargs.get("compression") == "xz" else "gz"
         options = dict(
             app=self.app, package_json=self.package, app_id="org.example.sample",
             product_name="Sample 世界\nInjected=false", executable_name="sample",
@@ -141,11 +146,30 @@ class LinuxPackageTest(unittest.TestCase):
             categories=["Utility"], protocols=["sample+test"],
             file_associations={"application/x-sample": ["*.sample", "*.test&sample"]},
             icons=[{"source": str(self.icon), "size": "scalable"}],
-            output=self.root / (name + ".tar.gz"), version_output=self.root / (name + ".version"),
+            output=self.root / (name + ".tar." + extension), version_output=self.root / (name + ".version"),
         )
         options.update(kwargs)
         create_payload(**options)
-        return self.root / (name + ".tar.gz")
+        return self.root / (name + ".tar." + extension)
+
+    def test_xz_payload_matches_gzip_contents_and_ignores_ambient_compressor_options(self):
+        gzip_payload = self.payload()
+        with patch.dict(os.environ, {"XZ_OPT": "--invalid-option", "XZ_DEFAULTS": "--invalid-option"}):
+            first = self.payload(name="xz", compression="xz", compression_level=6, xz=XZ)
+            second = self.payload(name="repeat-xz", compression="xz", compression_level=6, xz=XZ)
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        self.assertEqual(first.read_bytes()[:6], b"\xfd7zXZ\x00")
+        with tarfile.open(gzip_payload) as gzip_archive, tarfile.open(first) as xz_archive:
+            def contents(archive):
+                return [(member.name, member.mode, member.type, member.linkname,
+                         archive.extractfile(member).read() if member.isfile() else None) for member in archive]
+            self.assertEqual(contents(gzip_archive), contents(xz_archive))
+
+    def test_invalid_compression_fails_before_creating_payload(self):
+        for options in [{"compression": "invalid"}, {"compression": "xz"}, {"compression_level": -1}, {"compression_level": 10}]:
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                self.payload(name="invalid-compression", **options)
+        self.assertFalse(any(self.root.glob("invalid-compression.tar.*")))
 
     def test_declared_tree_accepts_sandbox_file_projections_without_loosening_archive_links(self):
         projected = self.root / "LICENSE"

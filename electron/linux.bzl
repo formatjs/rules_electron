@@ -7,6 +7,8 @@ def _payload_impl(ctx):
     app = ctx.attr.app[ElectronAppInfo]
     if app.platform != "linux":
         fail("electron_deb requires an assembled Linux app")
+    if ctx.attr.compression == "xz" and not ctx.executable.xz:
+        fail("XZ payloads require a declared execution tool")
     architecture = None
     for name in ["amd64", "arm64"]:
         if ctx.target_platform_has_constraint(getattr(ctx.attr, "_" + name)[platform_common.ConstraintValueInfo]):
@@ -21,6 +23,9 @@ def _payload_impl(ctx):
     ctx.actions.write(manifest, json.encode({
         "app": app.artifact.path,
         "app_is_tree": app.artifact.is_directory,
+        "compression": ctx.attr.compression,
+        "compression_level": ctx.attr.compression_level,
+        "xz": ctx.executable.xz.path if ctx.executable.xz else "",
         "directory_manifest": directories.path if directories else "",
         "setuid_sandbox": ctx.attr.setuid_sandbox,
         "package_type": ctx.attr.package_type,
@@ -46,6 +51,7 @@ def _payload_impl(ctx):
         arguments = [manifest.path, ctx.outputs.tar.path, ctx.outputs.version.path],
         inputs = [manifest, app.artifact, app.package_json] + ([directories] if directories else []) + [f for t in ctx.attr.icons.keys() + ctx.attr.file_association_icons.keys() + ctx.attr.payload_files.keys() for f in t.files.to_list()],
         outputs = [ctx.outputs.tar, ctx.outputs.version],
+        tools = [ctx.attr.xz[DefaultInfo].files_to_run] if ctx.attr.xz else [],
         mnemonic = "ElectronLinuxPayload",
         progress_message = "Packaging Electron Linux payload %{label}",
     )
@@ -54,6 +60,10 @@ _linux_payload = rule(
     implementation = _payload_impl,
     attrs = {
         "app": attr.label(mandatory = True, providers = [ElectronAppInfo]),
+        "compression": attr.string(default = "gzip", values = ["gzip", "xz"]),
+        "compression_level": attr.int(default = 9),
+        "extension": attr.string(default = "gz"),
+        "xz": attr.label(executable = True, cfg = "exec", allow_single_file = True),
         "revision": attr.string(),
         "install_directory": attr.string(),
         "desktop_id": attr.string(),
@@ -71,10 +81,10 @@ _linux_payload = rule(
         "_arm64": attr.label(default = Label("@platforms//cpu:aarch64")),
         "_payload": attr.label(default = Label("//electron/private:linux_payload"), executable = True, cfg = "exec"),
     },
-    outputs = {"tar": "%{name}.tar.gz", "version": "%{name}.version"},
+    outputs = {"tar": "%{name}.tar.%{extension}", "version": "%{name}.version"},
 )
 
-def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, setuid_sandbox = False, file_association_icons = {}, install_directory = "", payload_files = {}, desktop_id = "", startup_wm_class = "", **kwargs):
+def electron_deb(name, app, package_name, maintainer, description, depends, revision = "", icons = {}, protocols = [], file_associations = {}, categories = ["Utility"], preinst = None, postinst = None, prerm = None, postrm = None, setuid_sandbox = False, file_association_icons = {}, install_directory = "", payload_files = {}, desktop_id = "", startup_wm_class = "", compression = "gzip", compression_level = 9, xz = None, **kwargs):
     """Build a DEB with desktop integration; scripts are declared inputs, never run during packaging.
 
     Args:
@@ -99,12 +109,20 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         payload_files: Declared files mapped to package-root-relative destinations, such as service units.
         desktop_id: Desktop entry and icon identifier; defaults to app_id.
         startup_wm_class: Window class matched by the desktop shell; defaults to package name.
+        compression: gzip or xz payload compression.
+        compression_level: Compressor level from 0 through 9.
+        xz: Optional execution tool override; xz compression defaults to the native Bazel XZ CLI.
         **kwargs: Standard target attributes, including visibility.
     """
     compatible = ["@platforms//os:linux"] + kwargs.pop("target_compatible_with", [])
+    extension = "xz" if compression == "xz" else "gz"
     _linux_payload(
         name = name + "_payload",
         app = app,
+        compression = compression,
+        compression_level = compression_level,
+        extension = extension,
+        xz = (xz or Label("@xz//:xz")) if compression == "xz" else None,
         revision = revision,
         description = description,
         icons = icons,
@@ -123,7 +141,7 @@ def electron_deb(name, app, package_name, maintainer, description, depends, revi
         name = name,
         out = "_" + name + ".deb",
         package_file_name = name + ".deb",
-        data = ":" + name + "_payload.tar.gz",
+        data = ":" + name + "_payload.tar." + extension,
         version_file = ":" + name + "_payload.version",
         architecture = select({
             Label("@platforms//cpu:x86_64"): "amd64",

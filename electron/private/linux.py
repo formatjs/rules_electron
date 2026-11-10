@@ -1,12 +1,14 @@
 """Deterministic Linux application payload and freedesktop metadata."""
 
 import gzip
+from contextlib import contextmanager
 import io
 import json
 from pathlib import Path, PurePosixPath
 import re
 import shlex
 import struct
+import subprocess
 import sys
 import tarfile
 import xml.etree.ElementTree as ET
@@ -27,21 +29,49 @@ def _desktop_string(value):
     return value.replace("\\", "\\\\").replace("\n", r"\n").replace("\r", r"\r").replace("\t", r"\t")
 
 
+@contextmanager
+def _compressed_output(output, compression, level, xz):
+    with Path(output).open("wb") as raw:
+        if compression == "gzip":
+            with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0, compresslevel=level) as compressed:
+                yield compressed
+        else:
+            process = subprocess.Popen(
+                [str(Path(xz).resolve()), "--format=xz", "--threads=4", "--block-size=16MiB", "--memlimit-compress=0", "--no-adjust", "--check=crc64", "--stdout", "-" + str(level)],
+                stdin=subprocess.PIPE, stdout=raw,
+                env={"LC_ALL": "C", "TZ": "UTC", "XZ_OPT": "", "XZ_DEFAULTS": ""},
+            )
+            try:
+                yield process.stdin
+                process.stdin.close()
+                if process.wait():
+                    raise ValueError("XZ payload compression failed")
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait()
+
+
 def create_payload(app, package_json, app_id, product_name, executable_name,
                    architecture, revision, description, categories, protocols,
                    file_associations, icons, output, version_output, directory_manifest="", setuid_sandbox=False,
-                   file_association_icons=(), package_type="deb", install_directory="", payload_files=(), desktop_id="", startup_wm_class="", app_is_tree=False):
+                   file_association_icons=(), package_type="deb", install_directory="", payload_files=(), desktop_id="", startup_wm_class="", app_is_tree=False,
+                   compression="gzip", compression_level=9, xz=""):
+    if compression not in ("gzip", "xz") or not isinstance(compression_level, int) or not 0 <= compression_level <= 9:
+        raise ValueError("Invalid Linux payload compression")
+    if compression == "xz" and not xz:
+        raise ValueError("XZ payloads require a declared execution tool")
     with inventory(Path(app), "linux", declared_tree=app_is_tree) as (app_entries, open_app):
         _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
                         architecture, revision, description, categories, protocols, file_associations,
                         icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons, package_type,
-                        install_directory, payload_files, desktop_id, startup_wm_class)
+                        install_directory, payload_files, desktop_id, startup_wm_class, compression, compression_level, xz)
 
 
 def _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
                     architecture, revision, description, categories, protocols,
                     file_associations, icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons, package_type,
-                    install_directory, payload_files, desktop_id, startup_wm_class):
+                    install_directory, payload_files, desktop_id, startup_wm_class, compression, compression_level, xz):
     if package_type not in ("deb", "rpm"):
         raise ValueError("Unsupported Linux package type")
     _identifier(app_id, "app_id")
@@ -170,7 +200,7 @@ def _create_payload(app_entries, open_app, package_json, app_id, product_name, e
     directories = empty | {str(parent) for name in [*entries, *generated, *empty] for parent in PurePosixPath(name).parents if str(parent) != "."}
     if directories & (entries.keys() | generated.keys()):
         raise ValueError("Linux payload file/directory collision")
-    with Path(output).open("wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed:
+    with _compressed_output(output, compression, compression_level, xz) as compressed:
         with tarfile.open(fileobj=compressed, mode="w|", format=tarfile.PAX_FORMAT) as archive:
             for name in sorted(directories | set(entries) | set(generated)):
                 info = tarfile.TarInfo(name)

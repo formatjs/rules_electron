@@ -590,6 +590,8 @@ py_test(
     name = "linux_package_test",
     size = "small",
     srcs = ["linux_package_test.py"],
+    args = ["$(rootpath @xz//:xz)"],
+    data = ["@xz"],
     deps = ["//electron/private:linux_packaging"],
 )
 
