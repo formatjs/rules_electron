@@ -84,11 +84,13 @@ platform(
     shutil.copytree(source, output, ignore=shutil.ignore_patterns(
         "bazel-*", "__pycache__", "*.pyc", ".bazelrc.user", "MODULE.bazel.lock"))
     (output / "MODULE.bazel").write_text(module)
+    shutil.copyfile(Path(__file__).with_name('source-example.MODULE.bazel.lock'), output / 'MODULE.bazel.lock')
     (output / "BUILD.bazel").write_text(build)
     (output / "platforms/BUILD.bazel").write_text(platforms)
     (output / ".bazelrc").write_text(bazelrc)
     with (output / ".bazelrc").open("a") as stream:
         stream.write('''
+build --lockfile_mode=error
 build --compilation_mode=opt
 build --@rules_rust//rust/toolchain/channel=nightly
 build:buildbuddy --config=bb-workflow

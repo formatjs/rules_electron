@@ -636,6 +636,15 @@ staging integrity tests: Bazel's file-registry path uses
 Remote registry/extension locking and local registry source integrity are separate
 checks; both must remain enforced.
 
+The [1361ab source integration build](https://formatjs.buildbuddy.io/invocation/b6c026bb-e5be-469c-a797-1c190931e9df)
+passed. Its full-build child completed in 3,250.474 seconds with 79,357 action-cache
+hits and 21,614 uploads. The [verified lock handoff](https://github.com/formatjs/rules_electron/actions/runs/42789397175)
+binds the checked-in `tools/ci/source-example.MODULE.bazel.lock` to that exact
+successful repository commit and SHA-256. Source preparation copies these bytes
+and enforces `--lockfile_mode=error`; frozen-resolution validation is pending.
+Linux native handoff currently rejects the source smoke shard at its 2 GiB
+transport limit. No source desktop execution is established by the build alone.
+
 The packaging cross-build action query now includes forbidden build-wrapper
 mnemonics alongside its required app/DMG actions. The platform-input audit rejects
 foreign-cc, CMake, Meson, Ninja, Make and direct GN actions. This covers packaging

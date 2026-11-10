@@ -155,7 +155,9 @@ def profile_diagnostics(invocation, key, sha):
         name = artifact.get("name", "").rsplit("/", 1)[-1]
         if (name in ["electron-cross-smoke.zip"] + [archive_name(shard) for shard in SHARDS]
                 and invocation.get("success") and invocation.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS"):
-            _, digest, size = artifact_uri({"invocation": [invocation]}, sha, artifact_name=name)
+            # Metadata inspection does not download or extract the archive.
+            limit = 16 * 1024**3 if source else 2 * 1024**3
+            _, digest, size = artifact_uri({"invocation": [invocation]}, sha, artifact_name=name, max_bytes=limit)
             print("Smoke archive digest:", json.dumps({"name": name, "sha256": digest, "size": size}, sort_keys=True))
     builds = []
     for child in invocation.get("childInvocations", []):
