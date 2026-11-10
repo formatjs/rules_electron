@@ -75,6 +75,27 @@ class SmokeBundleTest(unittest.TestCase):
         directory.mkdir()
         return {shard: str(directory / archive_name(shard)) for shard in SHARDS}
 
+    def test_dmg_handoff_is_data_even_when_remote_materialization_marks_it_executable(self):
+        image = self.inputs / 'release_dmg.dmg'
+        image.write_bytes(b'unchanged disk image bytes')
+        image.chmod(0o755)
+        entries = self.entries + [{'variant': 'macos_aarch64', 'source': str(image), 'directory': False, 'package': True}]
+        outputs = self.outputs(self.root / 'executable-input')
+        build_bundles(entries, outputs)
+        baseline = Path(outputs['macos-arm64']).read_bytes()
+        with ZipFile(outputs['macos-arm64']) as archive:
+            member = archive.getinfo('macos_aarch64/packages/release_dmg.dmg')
+            self.assertEqual(member.external_attr >> 16, stat.S_IFREG | 0o644)
+            destination = self.root / 'native'
+            extract_variant(archive, destination, 'macos_aarch64')
+            extracted = destination / member.filename
+            self.assertEqual(extracted.stat().st_mode & 0o777, 0o644)
+            self.assertEqual(extracted.read_bytes(), image.read_bytes())
+        image.chmod(0o644)
+        changed = self.outputs(self.root / 'data-input')
+        build_bundles(entries, changed)
+        self.assertEqual(Path(changed['macos-arm64']).read_bytes(), baseline)
+
     def test_linux_zip_apps_keep_architecture_gate_and_native_filesystem_links(self):
         for entry in self.entries:
             if entry.get("package") or not entry["variant"].startswith("linux_"):
