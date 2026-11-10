@@ -43,7 +43,8 @@ volume layout. License dialogs remain separate work.
 `background_image` accepts a declared PNG, up to 64 MiB and 8192 pixels per axis.
 It requires `finder_window`, overrides the background color and copies unchanged
 bytes to `.background.png`. Its Carbon alias uses the explicit volume name/date
-and a path inside that volume, without build paths or host file IDs. The writer
+and a path inside that volume, without build paths, assumed mount points or host
+file IDs. The writer
 reads the background's catalog ID/date from its first generated HFS+ image,
 finalizes the alias, then rebuilds and verifies unchanged catalog identity before
 UDIF conversion. No mounting or target execution is involved. A path-based form also appears in

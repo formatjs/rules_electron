@@ -6,7 +6,7 @@ import struct
 from datetime import datetime, timezone
 
 from ds_store import DSStore
-from mac_alias import (Alias, TargetInfo, VolumeInfo, ALIAS_FIXED_DISK,
+from mac_alias import (Alias, TargetInfo, VolumeInfo, ALIAS_EJECTABLE_DISK,
                        ALIAS_HFS_VOLUME_SIGNATURE, ALIAS_KIND_FILE, ALIAS_NO_CNID)
 
 
@@ -79,12 +79,12 @@ def background_identity(image):
 def background_alias(volume_name, source_date_epoch, file_identity=ALIAS_NO_CNID, file_date=None):
     date = datetime.fromtimestamp(source_date_epoch, timezone.utc)
     volume = VolumeInfo(name=volume_name, creation_date=date,
-                        fs_type=ALIAS_HFS_VOLUME_SIGNATURE, disk_type=ALIAS_FIXED_DISK,
-                        attribute_flags=0, fs_id=b"\0\0", posix_path="/Volumes/" + volume_name)
+                        fs_type=ALIAS_HFS_VOLUME_SIGNATURE, disk_type=ALIAS_EJECTABLE_DISK,
+                        attribute_flags=0, fs_id=b"\0\0")
     target = TargetInfo(kind=ALIAS_KIND_FILE, filename=".background.png", folder_cnid=2,
                         cnid=file_identity, creation_date=datetime.fromtimestamp(file_date, timezone.utc) if file_date is not None else date,
                         creator_code=b"\0" * 4,
-                        type_code=b"\0" * 4, folder_name=volume_name,
+                        type_code=b"\0" * 4,
                         posix_path="/.background.png", carbon_path=volume_name + ":.background.png")
     return Alias(volume=volume, target=target).to_bytes()
 

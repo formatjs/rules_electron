@@ -96,10 +96,28 @@ def report_native_alias(path):
     observed = {"descriptor_type": record.get("type", 0), "bytes": len(data)}
     if record.get("type") == 0x616c6973 and len(data) >= 150 and struct.unpack_from(">H", data, 6)[0] == 2:
         observed.update(version=2, volume_date=struct.unpack_from(">I", data, 38)[0],
+                        filesystem_type=struct.unpack_from(">H", data, 42)[0],
                         disk_type=struct.unpack_from(">H", data, 44)[0],
                         folder_id=struct.unpack_from(">I", data, 46)[0],
                         file_id=struct.unpack_from(">I", data, 114)[0],
-                        file_date=struct.unpack_from(">I", data, 118)[0])
+                        file_date=struct.unpack_from(">I", data, 118)[0],
+                        levels_from=struct.unpack_from(">h", data, 130)[0],
+                        levels_to=struct.unpack_from(">h", data, 132)[0],
+                        volume_flags=struct.unpack_from(">I", data, 134)[0],
+                        filesystem_id=struct.unpack_from(">H", data, 138)[0])
+        offset, tags = 150, []
+        while offset + 4 <= len(data):
+            tag, length = struct.unpack_from(">hH", data, offset)
+            offset += 4
+            if tag == -1 or offset + length > len(data):
+                break
+            tags.append([tag, length])
+            if tag == 15 and length >= 2:
+                observed['volume_name_matches'] = data[offset + 2:offset + length].decode('utf-16be') == 'Sample Desktop'
+            if tag == 18:
+                observed['relative_path_matches'] = data[offset:offset + length] == b'/.background.png'
+            offset += length + (length & 1)
+        observed['tag_lengths'] = tags
     print("DMG_NATIVE_ALIAS_OBSERVED " + json.dumps(observed, sort_keys=True), flush=True)
 
 
