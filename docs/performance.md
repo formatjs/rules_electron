@@ -107,6 +107,22 @@ changes need separate measurements. The 50% native transfer gate remains active.
 
 ## Source dependency baseline
 
+The [3fe910c source example](https://formatjs.buildbuddy.io/invocation/710b3025-44c4-4a72-abd7-8750ffc66060)
+hit BB's free-tier deadline at 3600.484 seconds. Its authenticated, SHA-verified
+truncated profile contains 2769.954 seconds of recoverable trace. Complete events
+record 27,317.719 cumulative seconds in `MerkleTreeComputer.buildForSpawn`,
+55,018.082 waiting on its preparation/upload semaphore, and 1026.622 in worker
+execution. GC events record 611.077 seconds. These overlap; they are neither
+additive wall time nor a complete critical path. Cache warming alone did not
+finish the graph.
+
+The next trial requests 16 CPUs/64 GB for the BB frontend and a 48 GB Java heap,
+up from 8 CPUs/32 GB and 24 GB. Worker platform, compiler options and source pin
+stay unchanged so existing action-cache entries remain usable. This tests a
+frontend CPU/memory hypothesis; no speedup or completed source desktop is claimed.
+Failed-run profile recovery is bounded to 128 MiB expanded data, retains only
+complete JSON events, and reports fixed public operation names without paths.
+
 The Electron overlay's [4cdf425 BCR consumer build](https://formatjs.buildbuddy.io/invocation/70b2e6ab-afea-43f1-9eeb-4b68b00000b5)
 validated eight newly declared Node dependencies (133 C/C++ units) and their
 linked behavior probe. BB recorded 135 completed remote executions, 35.390
