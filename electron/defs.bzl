@@ -123,7 +123,7 @@ def _app_impl(ctx):
     if "/" in executable_name:
         fail("executable_name must be a filename")
     app_entries = _entries(ctx.attr.srcs, allow_directories = True, allow_root = True)
-    resource_entries = _entries(ctx.attr.extra_resources, allow_directories = True)
+    resource_entries = _entries(ctx.attr.extra_resources, allow_directories = True, allow_root = True)
     extra_entries = _entries(ctx.attr.extra_files, allow_directories = True)
     extra_asars, asar_inputs = [], []
     for target, destination in ctx.attr.extra_asars.items():
@@ -136,7 +136,7 @@ def _app_impl(ctx):
     resources = "Contents/Resources" if platform == "macos" else "resources"
     entries = [{"source": e.source.path, "path": e.path, "executable": e.executable, "runtime": True} for e in runtime.entries]
     entries += [{"source": e.source.path, "path": resources + "/app" + ("/" + e.path if e.path else ""), "executable": False, "directory": e.source.is_directory, "directory_manifest": e.directory_manifest.path if e.directory_manifest else "", "symlink_manifest": e.symlink_manifest.path if e.symlink_manifest else ""} for e in app_entries]
-    entries += [{"source": e.source.path, "path": resources + "/" + e.path, "executable": e.executable, "directory": e.source.is_directory, "directory_manifest": e.directory_manifest.path if e.directory_manifest else "", "symlink_manifest": e.symlink_manifest.path if e.symlink_manifest else ""} for e in resource_entries]
+    entries += [{"source": e.source.path, "path": resources + ("/" + e.path if e.path else ""), "executable": e.executable, "directory": e.source.is_directory, "directory_manifest": e.directory_manifest.path if e.directory_manifest else "", "symlink_manifest": e.symlink_manifest.path if e.symlink_manifest else ""} for e in resource_entries]
     entries.append({"source": ctx.file.package_json.path, "path": resources + "/app/package.json", "executable": False})
     manifest = ctx.actions.declare_file(ctx.label.name + ".manifest.json")
     filesystem_entries = resource_entries + extra_entries + ([] if ctx.attr.asar else app_entries)
@@ -215,7 +215,7 @@ electron_app = rule(
         "asar_unpacked_patterns": attr.string_list(doc = "Ordered minimatch inclusion/exclusion patterns; selected files join explicit unpacked paths. Requires asar=True and file_matcher."),
         "file_matcher": attr.label(providers = [ElectronFileMatcherInfo], cfg = "exec"),
         "asar_symlinks": attr.string_dict(doc = "ASAR link paths mapped to archive-root-relative targets; empty target denotes archive root. Requires asar=True."),
-        "extra_resources": attr.label_keyed_string_dict(allow_files = True, doc = "Files or tree artifacts mapped relative to resources/, outside ASAR."),
+        "extra_resources": attr.label_keyed_string_dict(allow_files = True, doc = "Files or tree artifacts mapped relative to resources/, outside ASAR; empty destination mounts a tree at the resource root."),
         "resource_symlinks": attr.string_dict(doc = "Linux/macOS resource link paths mapped to resource-root-relative targets. Targets must be declared; Linux returns an app ZIP to preserve links outside Bazel tree artifacts."),
         "extra_files": attr.label_keyed_string_dict(allow_files = True, doc = "Files or tree artifacts mapped to Contents/ on macOS, distribution root elsewhere; outside ASAR."),
         "extra_asars": attr.label_keyed_string_dict(providers = [ElectronAsarInfo], doc = "Standalone ASAR targets mapped to resource-relative .asar paths; stages sidecars and embeds header integrity."),

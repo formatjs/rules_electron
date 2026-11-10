@@ -226,6 +226,14 @@ electron_asar(
     srcs = {":linked_tree_nested_view": "assets"},
 )
 
+electron_files(
+    name = "root_resources",
+    srcs = {
+        "fixtures/notice.txt": "data/v1/notice.txt",
+        ":linked_tree_nested_view": "generated",
+    },
+)
+
 electron_app(
     name = "resource_links_app",
     srcs = {
@@ -236,10 +244,7 @@ electron_app(
     asar = True,
     executable_name = "sample",
     extra_files = {":linked_tree_nested_view": "licenses/generated"},
-    extra_resources = {
-        "fixtures/notice.txt": "data/v1/notice.txt",
-        ":linked_tree_nested_view": "generated",
-    },
+    extra_resources = {":root_resources": ""},
     package_json = "fixtures/package.json",
     product_name = "Sample",
     resource_symlinks = {
