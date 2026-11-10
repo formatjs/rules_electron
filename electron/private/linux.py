@@ -30,8 +30,8 @@ def _desktop_string(value):
 def create_payload(app, package_json, app_id, product_name, executable_name,
                    architecture, revision, description, categories, protocols,
                    file_associations, icons, output, version_output, directory_manifest="", setuid_sandbox=False,
-                   file_association_icons=(), package_type="deb", install_directory="", payload_files=(), desktop_id="", startup_wm_class=""):
-    with inventory(Path(app), "linux") as (app_entries, open_app):
+                   file_association_icons=(), package_type="deb", install_directory="", payload_files=(), desktop_id="", startup_wm_class="", app_is_tree=False):
+    with inventory(Path(app), "linux", declared_tree=app_is_tree) as (app_entries, open_app):
         _create_payload(app_entries, open_app, package_json, app_id, product_name, executable_name,
                         architecture, revision, description, categories, protocols, file_associations,
                         icons, output, version_output, directory_manifest, setuid_sandbox, file_association_icons, package_type,

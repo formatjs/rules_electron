@@ -20,6 +20,7 @@ def _payload_impl(ctx):
     directories = getattr(app, "directory_manifest", None)
     ctx.actions.write(manifest, json.encode({
         "app": app.artifact.path,
+        "app_is_tree": app.artifact.is_directory,
         "directory_manifest": directories.path if directories else "",
         "setuid_sandbox": ctx.attr.setuid_sandbox,
         "package_type": ctx.attr.package_type,

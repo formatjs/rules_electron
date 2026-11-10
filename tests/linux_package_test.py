@@ -147,6 +147,20 @@ class LinuxPackageTest(unittest.TestCase):
         create_payload(**options)
         return self.root / (name + ".tar.gz")
 
+    def test_declared_tree_accepts_sandbox_file_projections_without_loosening_archive_links(self):
+        projected = self.root / "LICENSE"
+        projected.write_bytes(b"license payload")
+        (self.app / "LICENSE").symlink_to(projected)
+        with self.assertRaisesRegex(ValueError, "Invalid archive symlink"):
+            self.payload(name="untrusted-links")
+        output = self.payload(app_is_tree=True)
+        with tarfile.open(output) as archive:
+            member = archive.getmember("opt/org.example.sample/LICENSE")
+            self.assertTrue(member.isfile())
+            self.assertEqual(archive.extractfile(member).read(), b"license payload")
+            self.assertEqual(archive.getmember("opt/org.example.sample/resource-link").linkname, "resource")
+        self.assertFalse((self.root / "untrusted-links.tar.gz").exists())
+
     def test_custom_install_directory_and_service_payload_keep_launch_paths_consistent(self):
         service = self.root / "sample.service"
         service.write_bytes(b"[Service]\nExecStart=/opt/Sample/sample\n")

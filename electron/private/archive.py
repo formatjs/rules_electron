@@ -83,7 +83,7 @@ def resolve(entries, name):
 
 
 @contextmanager
-def inventory(source, platform):
+def inventory(source, platform, declared_tree=False):
     entries = {}
     if source.is_dir():
         for directory, directories, files in os.walk(source, followlinks=False):
@@ -92,7 +92,13 @@ def inventory(source, platform):
                 mode = path.lstat().st_mode
                 key = path.relative_to(source).as_posix()
                 if stat.S_ISLNK(mode):
-                    entries[key] = Entry("symlink", 0o777, target=os.readlink(path))
+                    target = os.readlink(path)
+                    if declared_tree and os.path.isabs(target) and path.is_file():
+                        # Local Bazel sandboxes project declared tree leaves as absolute file links.
+                        metadata = path.stat()
+                        entries[key] = Entry("file", 0o755 if metadata.st_mode & 0o111 else 0o644, metadata.st_size, path)
+                    else:
+                        entries[key] = Entry("symlink", 0o777, target=target)
                 elif stat.S_ISDIR(mode):
                     entries[key] = Entry("directory", 0o755)
                 elif stat.S_ISREG(mode):
