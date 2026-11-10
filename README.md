@@ -125,7 +125,11 @@ BB Linux workers compile all variants and emit four native-host smoke archives; 
 macOS ARM64 and Windows x64/ARM64 jobs execute native smoke without building.
 Linux ARM64 is cross-build only. macOS uses a pinned execution-platform rcodesign
 for ad hoc signing and deterministic ZIP transport of framework symlinks. Runtime
-ZIP adapters accept `archive`, optional `exclude_files`, and non-macOS `languages`.
+adapters accept ZIP or declared-file inputs, exact `exclude_files`, and `languages`.
+Locale selection covers Linux/Windows `.pak` files and macOS app/framework
+`.lproj` resources; names ignore case and `_` versus `-`. Bare and regional names
+match each other (`en`/`en-US`). Empty selection keeps every locale. A nonempty
+selection that removes every locale from a runtime resource directory fails.
 See the [parity checklist](docs/packaging-parity.md) for remaining release work.
 
 See [design](docs/architecture.md) for source integration and next milestones.

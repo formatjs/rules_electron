@@ -347,6 +347,40 @@ py_binary(
 )
 
 py_library(
+    name = "appinstaller",
+    srcs = ["appinstaller.py"],
+    visibility = [
+        "//electron/tools:__pkg__",
+        "//tests:__pkg__",
+    ],
+)
+
+py_binary(
+    name = "appinstaller_writer",
+    srcs = ["appinstaller.py"],
+    main = "appinstaller.py",
+    visibility = ["//electron:__pkg__"],
+)
+
+py_library(
+    name = "msix_bundle",
+    srcs = ["msix_bundle.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        ":appinstaller",
+        ":msix",
+    ],
+)
+
+py_binary(
+    name = "msix_bundle_writer",
+    srcs = ["msix_bundle.py"],
+    main = "msix_bundle.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":msix_bundle"],
+)
+
+py_library(
     name = "msix",
     srcs = ["msix.py"],
     visibility = ["//tests:__pkg__"],

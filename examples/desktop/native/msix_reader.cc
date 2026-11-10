@@ -12,6 +12,9 @@
 #include <cwchar>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <cstring>
+#include <set>
 
 using Microsoft::WRL::ComPtr;
 
@@ -166,7 +169,109 @@ static void validate(IAppxFile* file, IAppxBlockMapReader* blockmap,
   }
 }
 
+static void validate_bundle(const wchar_t* path, const wchar_t* expected_version) {
+  unsigned a, b, c, d;
+  require(std::swscanf(expected_version, L"%u.%u.%u.%u", &a, &b, &c, &d) == 4 &&
+              a <= 65535 && b <= 65535 && c <= 65535 && d <= 65535,
+          "bundle_expected_version");
+  const UINT64 expected = (UINT64{a} << 48) | (UINT64{b} << 32) | (UINT64{c} << 16) | d;
+  check(CoInitializeEx(nullptr, COINIT_MULTITHREADED), "bundle_com_initialize");
+  ComPtr<IStream> stream;
+  check(SHCreateStreamOnFileEx(path, STGM_READ | STGM_SHARE_DENY_WRITE, 0, FALSE, nullptr, &stream), "bundle_stream");
+  ComPtr<IAppxBundleFactory> factory;
+  check(CoCreateInstance(__uuidof(AppxBundleFactory), nullptr, CLSCTX_INPROC_SERVER,
+                         IID_PPV_ARGS(&factory)), "bundle_factory");
+  ComPtr<IAppxBundleReader> reader;
+  check(factory->CreateBundleReader(stream.Get(), &reader), "bundle_reader");
+  ComPtr<IAppxBundleManifestReader> manifest;
+  check(reader->GetManifest(&manifest), "bundle_manifest");
+  ComPtr<IAppxManifestPackageId> identity;
+  check(manifest->GetPackageId(&identity), "bundle_identity");
+  UINT64 version;
+  check(identity->GetVersion(&version), "bundle_version");
+  require(version == expected, "bundle_version_matches");
+  ComPtr<IAppxFactory> package_factory;
+  check(CoCreateInstance(__uuidof(AppxFactory), nullptr, CLSCTX_INPROC_SERVER,
+                         IID_PPV_ARGS(&package_factory)), "bundle_package_factory");
+  ComPtr<IAppxBundleManifestPackageInfoEnumerator> packages;
+  check(manifest->GetPackageInfoItems(&packages), "bundle_package_items");
+  BOOL current = FALSE;
+  check(packages->GetHasCurrent(&current), "bundle_enumeration");
+  std::set<APPX_PACKAGE_ARCHITECTURE> architectures;
+  while (current) {
+    ComPtr<IAppxBundleManifestPackageInfo> info;
+    check(packages->GetCurrent(&info), "bundle_package_info");
+    ComPtr<IAppxManifestPackageId> package_id;
+    check(info->GetPackageId(&package_id), "bundle_package_identity");
+    APPX_PACKAGE_ARCHITECTURE architecture;
+    check(package_id->GetArchitecture(&architecture), "bundle_package_architecture");
+    require(architectures.insert(architecture).second, "bundle_unique_architecture");
+    check(package_id->GetVersion(&version), "bundle_package_version");
+    require(version == expected, "bundle_package_version_matches");
+    LPWSTR name = nullptr;
+    check(info->GetFileName(&name), "bundle_package_name");
+    ComPtr<IAppxFile> file;
+    check(reader->GetPayloadPackage(name, &file), "bundle_package_file");
+    CoTaskMemFree(name);
+    APPX_COMPRESSION_OPTION compression;
+    check(file->GetCompressionOption(&compression), "bundle_compression");
+    require(compression == APPX_COMPRESSION_OPTION_NONE, "bundle_payload_stored");
+    UINT64 offset, size, actual_size;
+    check(info->GetOffset(&offset), "bundle_offset");
+    check(info->GetSize(&size), "bundle_size");
+    check(file->GetSize(&actual_size), "bundle_actual_size");
+    require(size == actual_size && offset != 0, "bundle_embedded_size");
+    ComPtr<IStream> payload;
+    check(file->GetStream(&payload), "bundle_payload_stream");
+    const ULONG length = static_cast<ULONG>(std::min<UINT64>(size, 65536));
+    std::vector<unsigned char> nested(length), raw(length);
+    ULONG read;
+    check(payload->Read(nested.data(), length, &read), "bundle_payload_read");
+    require(read == length, "bundle_payload_length");
+    LARGE_INTEGER position;
+    position.QuadPart = static_cast<LONGLONG>(offset);
+    check(stream->Seek(position, STREAM_SEEK_SET, nullptr), "bundle_offset_seek");
+    check(stream->Read(raw.data(), length, &read), "bundle_offset_read");
+    require(read == length && raw == nested, "bundle_offset_bytes_match");
+    check(payload->Seek({}, STREAM_SEEK_SET, nullptr), "bundle_payload_rewind");
+    ComPtr<IAppxPackageReader> package;
+    check(package_factory->CreatePackageReader(payload.Get(), &package), "bundle_inner_reader");
+    ComPtr<IAppxManifestReader> inner_manifest;
+    check(package->GetManifest(&inner_manifest), "bundle_inner_manifest");
+    ComPtr<IAppxManifestPackageId> inner_id;
+    check(inner_manifest->GetPackageId(&inner_id), "bundle_inner_identity");
+    APPX_PACKAGE_ARCHITECTURE inner_architecture;
+    check(inner_id->GetArchitecture(&inner_architecture), "bundle_inner_architecture");
+    require(inner_architecture == architecture, "bundle_inner_architecture_matches");
+    check(packages->MoveNext(&current), "bundle_enumeration_next");
+  }
+  require(architectures == std::set<APPX_PACKAGE_ARCHITECTURE>{APPX_PACKAGE_ARCHITECTURE_X64, APPX_PACKAGE_ARCHITECTURE_ARM64},
+          "bundle_both_native_cpus");
+  ComPtr<IAppxBlockMapReader> blockmap;
+  check(reader->GetBlockMap(&blockmap), "bundle_blockmap");
+  ComPtr<IAppxBlockMapFilesEnumerator> entries;
+  check(blockmap->GetFiles(&entries), "bundle_blockmap_files");
+  check(entries->GetHasCurrent(&current), "bundle_blockmap_start");
+  require(current, "bundle_manifest_in_blockmap");
+  check(entries->MoveNext(&current), "bundle_blockmap_next");
+  require(!current, "bundle_only_manifest_hashed");
+  ComPtr<IAppxBlockMapFile> blocks;
+  check(blockmap->GetFile(L"AppxMetadata\\AppxBundleManifest.xml", &blocks), "bundle_manifest_blocks");
+  ComPtr<IAppxFile> footprint;
+  check(reader->GetFootprintFile(APPX_BUNDLE_FOOTPRINT_FILE_TYPE_MANIFEST, &footprint), "bundle_manifest_file");
+  ComPtr<IStream> manifest_stream;
+  check(footprint->GetStream(&manifest_stream), "bundle_manifest_stream");
+  BOOL valid = FALSE;
+  check(blocks->ValidateFileHash(manifest_stream.Get(), &valid), "bundle_manifest_hash");
+  require(valid, "bundle_manifest_hash_matches");
+  std::puts("MSIX_BUNDLE_PACKAGING_API_OK");
+}
+
 int wmain(int argc, wchar_t** argv) {
+  if (argc == 4 && std::wcscmp(argv[1], L"--bundle") == 0) {
+    validate_bundle(argv[2], argv[3]);
+    return 0;
+  }
   if (argc == 5 && std::wcscmp(argv[1], L"--activate") == 0) {
     activate(argv[2], argv[3], argv[4]);
     return 0;

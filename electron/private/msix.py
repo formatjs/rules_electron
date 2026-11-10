@@ -101,6 +101,7 @@ class PackageZip:
             self.blockmap.append(node)
         if content_type:
             ET.SubElement(self.content, "Override", PartName="/" + encoded.decode("ascii"), ContentType=content_type)
+        return offset + len(header) + len(encoded) + len(extra), size
 
     def close(self):
         self.add("AppxBlockMap.xml", io.BytesIO(xml(self.blockmap)), "application/vnd.ms-appx.blockmap+xml", hashed=False)

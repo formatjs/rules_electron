@@ -25,9 +25,9 @@ ElectronRuntimeInfo = provider(
     fields = {
         "entries": "List of structs with source, path and executable fields.",
         "archive": "Optional ZIP distribution artifact.",
-        "exclude_files": "Exact archive-relative paths to omit.",
+        "exclude_files": "Exact input-relative runtime paths to omit; ZIP paths retain their .app root.",
         "platform": "linux, macos or windows.",
-        "languages": "Non-macOS ZIP locale stems to retain; empty keeps all.",
+        "languages": "Runtime locale names to retain; empty keeps all.",
     },
 )
 
@@ -80,8 +80,8 @@ electron_runtime = rule(
     attrs = {
         "binary": attr.label(allow_single_file = True, doc = "Target Electron executable; mutually exclusive with archive."),
         "archive": attr.label(allow_single_file = [".zip"], doc = "Declared runtime ZIP, including macOS framework symlinks."),
-        "exclude_files": attr.string_list(doc = "Exact ZIP-relative file paths to omit."),
-        "languages": attr.string_list(doc = "Non-macOS ZIP locales to retain; empty retains all."),
+        "exclude_files": attr.string_list(doc = "Exact input-relative runtime file paths to omit; ZIP paths retain their .app root."),
+        "languages": attr.string_list(doc = "Runtime locales to retain in ZIP or declared-file inputs; empty retains all."),
         "files": attr.label_keyed_string_dict(allow_files = True, doc = "Runtime file labels mapped to distribution-relative paths."),
         "_linux": attr.label(default = Label("@platforms//os:linux")),
         "_macos": attr.label(default = Label("@platforms//os:osx")),
@@ -134,7 +134,7 @@ def _app_impl(ctx):
         if entry.path.split("/")[0] in ["app", "app.asar", "app.asar.unpacked"]:
             fail("Extra resource occupies app destination: %s" % entry.path)
     resources = "Contents/Resources" if platform == "macos" else "resources"
-    entries = [{"source": e.source.path, "path": e.path, "executable": e.executable} for e in runtime.entries]
+    entries = [{"source": e.source.path, "path": e.path, "executable": e.executable, "runtime": True} for e in runtime.entries]
     entries += [{"source": e.source.path, "path": resources + "/app" + ("/" + e.path if e.path else ""), "executable": False, "directory": e.source.is_directory, "directory_manifest": e.directory_manifest.path if e.directory_manifest else "", "symlink_manifest": e.symlink_manifest.path if e.symlink_manifest else ""} for e in app_entries]
     entries += [{"source": e.source.path, "path": resources + "/" + e.path, "executable": e.executable, "directory": e.source.is_directory, "directory_manifest": e.directory_manifest.path if e.directory_manifest else "", "symlink_manifest": e.symlink_manifest.path if e.symlink_manifest else ""} for e in resource_entries]
     entries.append({"source": ctx.file.package_json.path, "path": resources + "/app/package.json", "executable": False})

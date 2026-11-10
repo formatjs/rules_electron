@@ -6,6 +6,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $identity = 'org.example.MsixProbe'
 $desktopIdentity = 'org.example.DesktopMsix'
+$appinstallerIdentity = 'org.example.DesktopAppInstaller'
+$bundleIdentity = 'org.example.DesktopBundle'
 $signed = Join-Path $Packages 'msix_signed_probe.msix'
 $unsigned = Join-Path $Packages 'msix_probe.msix'
 $changed = Join-Path $Packages 'msix_signed_probe.tampered.msix'
@@ -97,11 +99,120 @@ function Assert-DocumentIcons($Package) {
   }
   Write-Output 'MSIX_DOCUMENT_ICONS_OK'
 }
+function Assert-AppInstallerAvailability($Package, [ValidateSet('NoUpdates','Available')][string]$Expected) {
+  # Load Windows' async projection; no source compilation.
+  Add-Type -AssemblyName System.Runtime.WindowsRuntime
+  $resultType = [Windows.ApplicationModel.PackageUpdateAvailabilityResult,Windows.ApplicationModel,ContentType=WindowsRuntime]
+  $methods = @([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
+    $_.Name -ceq 'AsTask' -and $_.IsGenericMethodDefinition -and
+    $_.GetGenericArguments().Count -eq 1 -and $_.GetParameters().Count -eq 1 -and
+    $_.GetParameters()[0].ParameterType.Name -ceq 'IAsyncOperation`1'
+  })
+  if ($methods.Count -ne 1) { throw 'MSIX WinRT async projection unavailable' }
+  $operation = $Package.CheckUpdateAvailabilityAsync()
+  $conversion = $methods[0].MakeGenericMethod([Type[]]@($resultType))
+  $task = $conversion.Invoke($null, [object[]]@($operation))
+  if (-not $task.Wait(60000)) { $operation.Cancel(); throw 'MSIX update availability timeout' }
+  $availability = $task.Result.Availability.ToString()
+  if (@('Unknown','NoUpdates','Available','Required','Error') -cnotcontains $availability) {
+    throw 'MSIX update availability returned unknown value'
+  }
+  if ($availability -cne $Expected) {
+    $code = if ($task.Result.ExtendedError) { $task.Result.ExtendedError.HResult } else { 0 }
+    Write-Output ('MSIX_APPINSTALLER_AVAILABILITY_MISMATCH expected=' + $Expected + ' actual=' + $availability + ' hresult=' + $code)
+    throw 'MSIX update availability mismatch'
+  }
+  Write-Output ('MSIX_APPINSTALLER_AVAILABILITY_OK ' + $Expected)
+}
+function Assert-Bundle {
+  $family = $null
+  foreach ($release in @(@{Suffix='v1'; Version='1.0.0'}, @{Suffix='v2'; Version='2.0.0'})) {
+    $bundle = Join-Path $Packages ('msix_signed_bundle_' + $release.Suffix + '.msixbundle')
+    Assert-Trust $bundle 'valid'
+    & $reader --bundle $bundle ($release.Version + '.7')
+    if ($LASTEXITCODE -ne 0) { throw 'MSIX bundle packaging API validation failed' }
+    Add-AppxPackage -Path $bundle -ForceApplicationShutdown
+    $package = Get-AppxPackage -Name $bundleIdentity
+    if (-not $package -or $package.Version.ToString() -cne ($release.Version + '.7') -or
+        $package.Publisher -cne 'CN=Example' -or $package.Architecture.ToString() -ine $Architecture) {
+      throw 'MSIX bundle selected wrong native payload'
+    }
+    if ($family -and $family -cne $package.PackageFamilyName) { throw 'MSIX bundle upgrade changed family' }
+    $family = $package.PackageFamilyName
+    Assert-DocumentIcons $package
+    & $reader --handlers $family present
+    if ($LASTEXITCODE -ne 0) { throw 'MSIX bundle handlers missing' }
+    $executable = Join-Path $package.InstallLocation 'sample-desktop.exe'
+    & $Python 'examples/desktop/tools/smoke_test.py' $executable --installed --msix --target-os windows --target-arch $Architecture --expected-version $release.Version
+    if ($LASTEXITCODE -ne 0) { throw 'MSIX bundle Electron smoke failed' }
+    Write-Output ('MSIX_BUNDLE_NATIVE_VERSION_OK ' + $release.Version)
+  }
+  Remove-AppxPackage -Package $package.PackageFullName
+  if (Get-AppxPackage -Name $bundleIdentity) { throw 'MSIX bundle uninstall left registration' }
+  & $reader --handlers $family absent
+  if ($LASTEXITCODE -ne 0) { throw 'MSIX bundle uninstall left handlers' }
+  Write-Output 'MSIX_BUNDLE_INSTALL_UPDATE_REMOVE_OK'
+}
+function Assert-AppInstaller([switch]$Bundle) {
+  $identity = if ($Bundle) { $bundleIdentity } else { $appinstallerIdentity }
+  $marker = if ($Bundle) { 'MSIX_BUNDLE_APPINSTALLER' } else { 'MSIX_APPINSTALLER' }
+  $uri = if ($Bundle) { 'http://127.0.0.1:31827/bundle.appinstaller' } else { 'http://127.0.0.1:31827/desktop.appinstaller' }
+  $arguments = @('-u', 'tools/ci/windows_appinstaller_server.py', '--packages', ('"' + $Packages + '"'), '--port', '31827')
+  if ($Bundle) { $arguments += '--bundle' }
+  $server = Start-Process -FilePath $Python -ArgumentList $arguments -PassThru -NoNewWindow
+  try {
+    $ready = $false
+    foreach ($attempt in 1..100) {
+      if ($server.HasExited) { throw 'MSIX App Installer server exited' }
+      try {
+        $response = Invoke-WebRequest -Uri 'http://127.0.0.1:31827/ready' -UseBasicParsing -TimeoutSec 2
+        if ($response.Content -ceq 'MSIX_APPINSTALLER_READY') { $ready = $true; break }
+      } catch { Start-Sleep -Milliseconds 100 }
+    }
+    if (-not $ready) { throw 'MSIX App Installer server startup timeout' }
+    $manager = [Windows.Management.Deployment.PackageManager,Windows.Management.Deployment,ContentType=WindowsRuntime]::new()
+    $family = $null
+    foreach ($release in @(@{Suffix='v1'; Version='1.0.0'}, @{Suffix='v2'; Version='2.0.0'})) {
+      if ($release.Suffix -eq 'v2') {
+        Invoke-WebRequest -Uri 'http://127.0.0.1:31827/use-v2' -Method Post -UseBasicParsing -TimeoutSec 5 | Out-Null
+        Assert-AppInstallerAvailability $native 'Available'
+      }
+      Add-AppxPackage -Path $uri -AppInstallerFile -ForceTargetApplicationShutdown
+      $package = Get-AppxPackage -Name $identity
+      if (-not $package -or $package.Version.ToString() -cne ($release.Version + '.7') -or
+          $package.Publisher -cne 'CN=Example' -or $package.Architecture.ToString() -ine $Architecture) {
+        throw 'MSIX App Installer package identity mismatch'
+      }
+      if ($family -and $family -cne $package.PackageFamilyName) { throw 'MSIX App Installer changed package family' }
+      $family = $package.PackageFamilyName
+      $native = $manager.FindPackageForUser('', $package.PackageFullName)
+      $info = $native.GetAppInstallerInfo()
+      if (-not $info -or $info.Uri.AbsoluteUri -cne $uri) { throw 'MSIX App Installer URI was not adopted' }
+      Assert-AppInstallerAvailability $native 'NoUpdates'
+      Assert-DocumentIcons $package
+      & $reader --handlers $family present
+      if ($LASTEXITCODE -ne 0) { throw 'MSIX App Installer handlers missing' }
+      $executable = Join-Path $package.InstallLocation 'sample-desktop.exe'
+      & $Python 'examples/desktop/tools/smoke_test.py' $executable --installed --msix --target-os windows --target-arch $Architecture --expected-version $release.Version
+      if ($LASTEXITCODE -ne 0) { throw 'MSIX App Installer Electron smoke failed' }
+      Write-Output ($marker + '_VERSION_OK ' + $release.Version)
+    }
+    Remove-AppxPackage -Package $package.PackageFullName
+    if (Get-AppxPackage -Name $identity) { throw 'MSIX App Installer uninstall left registration' }
+    & $reader --handlers $family absent
+    if ($LASTEXITCODE -ne 0) { throw 'MSIX App Installer uninstall left handlers' }
+    Write-Output ($marker + '_INSTALL_UPDATE_REMOVE_OK')
+  } finally {
+    if (-not $server.HasExited) { $server.Kill(); $server.WaitForExit() }
+  }
+}
 $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($certificateFile)
 $certificatePath = 'Cert:\LocalMachine\TrustedPeople\' + $certificate.Thumbprint
 if (Test-Path -LiteralPath $certificatePath) { throw 'MSIX fixture certificate already trusted' }
 if (Get-AppxPackage -Name $identity) { throw 'MSIX fixture package already installed' }
 if (Get-AppxPackage -Name $desktopIdentity) { throw 'MSIX desktop package already installed' }
+if (Get-AppxPackage -Name $appinstallerIdentity) { throw 'MSIX App Installer package already installed' }
+if (Get-AppxPackage -Name $bundleIdentity) { throw 'MSIX bundle package already installed' }
 Assert-Trust $unsigned 'unsigned'
 Assert-Trust $signed 'untrusted'
 $untrusted = Get-AuthenticodeSignature -LiteralPath $signed
@@ -158,9 +269,12 @@ try {
   & $reader --handlers $family absent
   if ($LASTEXITCODE -ne 0) { throw 'MSIX uninstall left handlers registered' }
   Write-Output 'MSIX_DESKTOP_INSTALL_UPDATE_REMOVE_OK'
+  Assert-AppInstaller
+  Assert-Bundle
+  Assert-AppInstaller -Bundle
 } finally {
   try {
-    foreach ($name in @($identity, $desktopIdentity)) {
+    foreach ($name in @($identity, $desktopIdentity, $appinstallerIdentity, $bundleIdentity)) {
       $remaining = Get-AppxPackage -Name $name
       if ($remaining) { Remove-AppxPackage -Package $remaining.PackageFullName }
     }

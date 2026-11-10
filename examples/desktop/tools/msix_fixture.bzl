@@ -34,10 +34,11 @@ msix_fixture_app = rule(
 )
 
 def _signed_impl(ctx):
+    extension = ctx.file.src.extension
     certificate = ctx.actions.declare_file(ctx.label.name + ".pem")
     public_certificate = ctx.actions.declare_file(ctx.label.name + ".cer")
-    signed = ctx.actions.declare_file(ctx.label.name + ".msix")
-    tampered = ctx.actions.declare_file(ctx.label.name + ".tampered.msix") if ctx.attr.tamper_file else None
+    signed = ctx.actions.declare_file(ctx.label.name + "." + extension)
+    tampered = ctx.actions.declare_file(ctx.label.name + ".tampered." + extension) if ctx.attr.tamper_file else None
     config = ctx.actions.declare_file(ctx.label.name + ".openssl.cnf")
     ctx.actions.write(config, "")
     ctx.actions.run(
@@ -55,12 +56,15 @@ def _signed_impl(ctx):
         outputs = [signed] + ([tampered] if tampered else []),
         mnemonic = "ElectronPublicTestSign",
     )
-    return [DefaultInfo(files = depset([signed, public_certificate] + ([tampered] if tampered else [])))]
+    return [
+        DefaultInfo(files = depset([signed, public_certificate] + ([tampered] if tampered else []))),
+        OutputGroupInfo(signed = depset([signed])),
+    ]
 
 signed_msix_fixture = rule(
     implementation = _signed_impl,
     attrs = {
-        "src": attr.label(mandatory = True, allow_single_file = [".msix"]),
+        "src": attr.label(mandatory = True, allow_single_file = [".msix", ".msixbundle"]),
         "tamper_file": attr.string(default = "helper.exe"),
         "_key": attr.label(default = Label("@rules_electron//tests:public_fixture_key"), allow_single_file = True),
         "_certificate": attr.label(default = Label("@rules_electron//tests:public_test_certificate"), executable = True, cfg = "exec"),

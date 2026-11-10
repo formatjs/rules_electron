@@ -635,3 +635,11 @@ staging integrity tests: Bazel's file-registry path uses
 [`KnownFileHashesMode.IGNORE`](https://github.com/bazelbuild/bazel/blob/9.3.1/src/main/java/com/google/devtools/build/lib/bazel/bzlmod/RegistryFactoryImpl.java).
 Remote registry/extension locking and local registry source integrity are separate
 checks; both must remain enforced.
+
+The packaging cross-build action query now includes forbidden build-wrapper
+mnemonics alongside its required app/DMG actions. The platform-input audit rejects
+foreign-cc, CMake, Meson, Ninja, Make and direct GN actions. This covers packaging
+dependencies as well as the separate source-overlay audit. Captured GN metadata
+and source filenames are not executable-action claims. This mnemonic check does
+not inspect arbitrary script contents; declared tool closures and reviewed native
+rules remain part of the hermeticity contract.

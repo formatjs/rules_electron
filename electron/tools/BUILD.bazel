@@ -109,8 +109,40 @@ py_library(
 )
 
 py_library(
+    name = "appinstaller_publication",
+    srcs = ["publish_appinstaller.py"],
+    deps = [
+        ":publication",
+        ":s3_publication",
+        "//electron/private:appinstaller",
+    ],
+)
+
+py_binary(
+    name = "publish_appinstaller",
+    srcs = ["publish_appinstaller.py"],
+    main = "publish_appinstaller.py",
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [":appinstaller_publication"],
+)
+
+py_library(
     name = "github_publication",
     srcs = ["publish_github.py"],
+    deps = [":publication"],
+)
+
+py_binary(
+    name = "publish_s3",
+    srcs = ["publish_s3.py"],
+    main = "publish_s3.py",
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [":publication"],
+)
+
+py_library(
+    name = "s3_publication",
+    srcs = ["publish_s3.py"],
     deps = [":publication"],
 )
 

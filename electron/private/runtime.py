@@ -18,7 +18,66 @@ def _relative(name):
     return path
 
 
+def runtime_languages(values):
+    result = set()
+    for value in values:
+        if not isinstance(value, str):
+            raise ValueError("Runtime languages require locale names")
+        value = value.strip().lower().replace("_", "-")
+        if value and not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", value):
+            raise ValueError("Invalid runtime language")
+        if value:
+            result.add(value)
+    return result
+
+
+def runtime_locale(path, platform):
+    path = PurePosixPath(path)
+    if platform != "macos":
+        if len(path.parts) == 2 and path.parts[0] == "locales" and path.suffix == ".pak":
+            return str(path.parent), path.stem.lower().replace("_", "-")
+    else:
+        roots = ["Contents/Resources"]
+        framework = "Contents/Frameworks/Electron Framework.framework"
+        roots.append(framework + "/Resources")
+        if path.is_relative_to(framework + "/Versions"):
+            parts = path.relative_to(framework + "/Versions").parts
+            if len(parts) >= 3:
+                roots.append(framework + "/Versions/" + parts[0] + "/Resources")
+        for root in roots:
+            if path.is_relative_to(root):
+                first = path.relative_to(root).parts
+                if first and first[0].endswith(".lproj"):
+                    return root, first[0][:-6].lower().replace("_", "-")
+    return None
+
+
+def keep_runtime_locale(path, platform, languages):
+    if not languages:
+        return True
+    locale = runtime_locale(path, platform)
+    if locale is None:
+        return True
+    language = locale[1]
+    return any(wanted == language or language.startswith(wanted + "-") or wanted.startswith(language + "-")
+               for wanted in languages)
+
+
+def validate_runtime_locales(paths, platform, languages):
+    if not languages:
+        return
+    groups = {}
+    for path in paths:
+        locale = runtime_locale(path, platform)
+        if locale is not None:
+            group = locale[0]
+            groups[group] = groups.get(group, False) or keep_runtime_locale(path, platform, languages)
+    if any(not matched for matched in groups.values()):
+        raise ValueError("Runtime language selection removes every locale from a resource directory")
+
+
 def extract_runtime(archive, output, platform, exclude_files, occupied, languages=()):
+    languages = runtime_languages(languages)
     with ZipFile(archive) as source:
         roots = {i.filename.split("/")[0] for i in source.infolist() if ".app/" in i.filename}
         if platform == "macos" and len(roots) != 1:
@@ -27,6 +86,7 @@ def extract_runtime(archive, output, platform, exclude_files, occupied, language
         resources = "Contents/Resources" if platform == "macos" else "resources"
         entries = {}
         links = {}
+        locale_paths = []
         for info in source.infolist():
             original = str(_relative(info.filename.rstrip("/")))
             if info.is_dir() or original in exclude_files:
@@ -36,7 +96,8 @@ def extract_runtime(archive, output, platform, exclude_files, occupied, language
             else:
                 name = original
             path = _relative(name)
-            if platform != "macos" and languages and path.parts[0] == "locales" and path.suffix == ".pak" and path.stem not in languages:
+            locale_paths.append(path)
+            if not keep_runtime_locale(path, platform, languages):
                 continue
             if path in entries:
                 raise ValueError(f"Duplicate runtime archive path: {path}")
@@ -50,6 +111,7 @@ def extract_runtime(archive, output, platform, exclude_files, occupied, language
                 _relative(posixpath.normpath(str(path.parent / target)))
                 links[path] = target
 
+        validate_runtime_locales(locale_paths, platform, languages)
         combined = set(entries) | set(occupied)
         if len(combined) != len(entries) + len(occupied):
             raise ValueError("Runtime and app destinations overlap")

@@ -119,6 +119,20 @@ changes need separate measurements. The 50% native transfer gate remains active.
 
 ## Source dependency baseline
 
+The [execution-ABI trial](https://formatjs.buildbuddy.io/invocation/7059b7e7-6f60-47c7-ab85-2400a25fc1a7)
+hit the free-tier deadline after 3600.613 seconds. Its final build ran for
+3007.922 seconds, reporting 18,798 cache hits, 88,739 misses and 88,663 uploads.
+The 2986.012-second recovered profile prefix contains 38,594 CppCompile events,
+10,098.649 cumulative Merkle preparation seconds, 424.578 semaphore seconds and
+65.021 GC event seconds. These overlapping, partial measurements do not establish
+build completion or a controlled speedup. Execution-tool prerequisites passed;
+the corrected ABI created substantial new cache entries.
+
+The next retry preserves that trial's source inputs, pin, platforms and flags,
+excluding newer packaging features. It saves the resolved analysis lock before
+execution as a separate diagnostic artifact. The canonical source-example lock
+still requires a successful source build; an analysis-only lock is not promoted.
+
 The [analysis-discard trial](https://formatjs.buildbuddy.io/invocation/f44b5c7c-7584-4c21-9605-78dad1973859)
 also hit the free-tier deadline at 3600.309 seconds, reaching 120,368/132,452
 reported actions. Its 2392.170-second recovered trace prefix records 41,224.656
@@ -777,3 +791,41 @@ reached the same hosted limit at 3,600.472 seconds. Its full-build child recorde
 shared no normalized target/output group with the previous run's executed
 compilations. This establishes new compilation work retained in cache, not a
 completed source desktop build or a timing improvement.
+
+## Runtime locale selection
+
+The example already requested `en-US`, but macOS ZIP assembly previously ignored
+that setting. Applying it to the main app and Electron framework `.lproj`
+resources reduced the verified macOS smoke shard from 951,954,206 bytes at
+`84c7f91` to 846,504,557 bytes at `bcd1dcf`: 105,449,649 bytes, or 11.08%.
+The download jobs in [the baseline workflow](https://github.com/formatjs/rules_electron/actions/runs/42772882916)
+and [the filtered workflow](https://github.com/formatjs/rules_electron/actions/runs/42773904346)
+verified the BB artifact SHA and byte count. These are compressed smoke-shard
+sizes containing several fixtures, not standalone app sizes or build speedups.
+The [filtered BB suite](https://formatjs.buildbuddy.io/invocation/c5e15b8d-9636-4ac2-a7e5-297ff82c4e9c)
+and [cross-build](https://formatjs.buildbuddy.io/invocation/c3f85091-78fd-4e63-8b36-8ac412a6d61e)
+passed. [All four native hosts passed](https://github.com/formatjs/rules_electron/actions/runs/42773904346)
+with locale selection; [the diagnostic follow-up](https://github.com/formatjs/rules_electron/actions/runs/42773969425)
+also passed all four hosts. The macOS updater's final ZIP fell from 285,575,214
+to 239,857,132 bytes (16.01%). Its real differential update fetched 446,182 bytes,
+reusing 99.81% of the final archive. These fixtures use bootstrap Electron;
+source-runtime integration remains separately tracked.
+
+## Source example with resolved analysis lock
+
+The [7738a3a source run](https://formatjs.buildbuddy.io/invocation/e4825c4b-b3df-4764-ab53-ec9591ec93da)
+ended at the hosted free-tier deadline after 3,600.420 seconds. No compiler error
+was observed. Its full-build child ran 3,360.268 seconds and reported 107,211
+actions: 62,825 action-cache hits, 34,810 misses and 34,763 uploads. The resolved
+analysis lock was archived separately. The canonical success-only lock remains
+absent; source desktop integration remains unverified.
+
+The [diagnostic observer](https://github.com/formatjs/rules_electron/actions/runs/42779215855)
+recovered a 3,319.449-second profile prefix: 36,911 CppCompile events, 91.815
+cumulative GC seconds and 19,073.236 cumulative Merkle-tree construction seconds.
+Tracked remote executions reported 87,845.183 CPU seconds and a maximum action
+peak of 3,305,877,504 bytes. Profile spans overlap and the gzip is truncated;
+these metrics establish retained compilation work, not completion or a controlled
+speedup. The next integration run includes current bundle/update and locale
+contracts while retaining the Electron runtime pin, ABI selection and compiler
+flags.

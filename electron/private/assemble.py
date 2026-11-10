@@ -13,7 +13,7 @@ from electron.private.fuses import set_fuses
 from electron.private.identity import build_identity
 from electron.private.icons import validate_icns, validate_ico
 from electron.private.matching import select_files
-from electron.private.runtime import brand_macos, extract_runtime, normalize
+from electron.private.runtime import brand_macos, extract_runtime, keep_runtime_locale, normalize, runtime_languages as normalize_languages, validate_runtime_locales
 
 
 def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
@@ -58,7 +58,12 @@ def assemble(entries, output, asar=False, asar_unpacked=(), fuses=None,
         raise ValueError("asar_symlinks requires asar=True")
     if not asar and (fuses or {}).get("onlyLoadAppFromAsar") == "on":
         raise ValueError("onlyLoadAppFromAsar requires asar=True")
-    expanded = list(_expand(entries))
+    languages = normalize_languages(runtime_languages)
+    entries = list(entries)
+    validate_runtime_locales([entry["path"] for entry in entries if entry.get("runtime") and entry["path"] not in exclude_files],
+                             platform, languages)
+    expanded = list(_expand(entry for entry in entries if not entry.get("runtime") or
+                            (entry["path"] not in exclude_files and keep_runtime_locale(entry["path"], platform, languages))))
     if macos_icon:
         expanded.append({"source": macos_icon, "path": "Contents/Resources/app.icns"})
     extra_hashes = {}

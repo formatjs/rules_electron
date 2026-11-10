@@ -13,7 +13,7 @@ electron-builder replacement.
 | Extra resources/files | Declared file/tree mappings outside ASAR; Linux/macOS resource links; separate generated-tree link metadata through filtering, ASAR, plain apps, extra resources/files; native generated ASAR/plain-app/resource/extra-file aliases pass | Windows filesystem links |
 | File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories, including prepackaged imports | — |
 | Manifest metadata | Deep-merge overlays, source/generated dependency-manifest version rewrites, top-level field/script removal; shared app/update identity | Provider-specific metadata adapters |
-| Runtime locales | Explicit file mappings or non-macOS ZIP locale selection | Broader runtime-provider integration |
+| Runtime locales | ZIP and declared-file locale selection; Linux/Windows `.pak`, macOS main/Electron framework `.lproj`, normalized bare/regional matching; all four native hosts pass | — |
 | Fuses | Named v1 settings, including macOS framework mutation before ad hoc signing | Universal macOS binaries; availability depends on runtime wire |
 | Linux app | Relocatable directory, DEB desktop/MIME/protocol/icon metadata, explicit dependencies/hooks, opt-in root-owned setuid sandbox helper verified on Linux x64 | Distribution-specific confinement |
 | macOS app | Branded bundle/helper metadata and ICNS icons, declared main Info.plist extensions, framework links, scoped main/inherited entitlements, hardened runtime, ad hoc signing, deterministic ZIP; explicit Developer ID signing and notarization/stapling release clients | Live Developer ID/TSA/Apple interoperability, native Gatekeeper acceptance, production entitlement policy |
@@ -24,7 +24,7 @@ electron-builder replacement.
 | Prepackaged release stages | Public immutable app import for archives/installers; layout, CPU, packaged manifest and macOS identity validation; seven cross-build variants and four native hosts pass | Release signing APIs and signature trust policy |
 | Distribution archives | Public ZIP/tar/tar.gz/tar.xz/tar.bz2/tar.lz/tar.7z/7z rule, declared compressors, executable modes and relative symlinks; native macOS ZIP and Linux x64 tar.gz/tar.lz/tar.7z/7z launch | — |
 | Windows portable executables | Declared NSIS/7zip tools, exact argument/environment forwarding, child exit status and junction-safe temporary cleanup; both compiler variants pass on native x64/ARM64 | — |
-| electron-updater | Generic config/manifests, SHA-512/size, content-defined external blockmaps, real client discovery/planning; Linux DEB/RPM/AppImage, Windows user/machine NSIS and macOS ARM64 Squirrel lifecycle smoke; over 99% per-user sample NSIS reuse on both CPUs, 99.7% AppImage reuse on Linux x64 and 99.83% Mac ZIP reuse on ARM64 | Other update targets, provider/publishing adapters and machine cache seeding across users |
+| electron-updater | Generic/GitHub/S3/Spaces client configuration and native discovery; SHA-512/size, content-defined external blockmaps, real client planning; Linux DEB/RPM/AppImage, Windows user/machine NSIS and macOS ARM64 Squirrel lifecycle smoke; over 99% per-user sample NSIS reuse on both CPUs, 99.7% AppImage reuse on Linux x64 and 99.83% Mac ZIP reuse on ARM64 | Other update targets, provider/publishing adapters and machine cache seeding across users |
 | Native smoke | Scripts/workflows for four native host types | Hosted results establish actual execution coverage |
 
 All compilation, generators, assembly and ad hoc signing run on BB Linux
@@ -74,8 +74,9 @@ install/helper launch/removal on both Windows CPUs; see [signing proof](signing.
 The [full-app MSIX gate](msix.md) subsequently passed bootstrap Electron
 install/launch/upgrade/removal on both Windows CPUs, with package identity,
 sandboxed renderer, native addon/helper and integrity metadata checks. The full
-source runtime, production signing and MSIX updater behavior
-remain unverified. Empty directory leaves and symlinks fail
+source runtime and production signing remain unverified. App Installer
+package/bundle metadata, publication and native update gates are tracked in
+[App Installer updates](appinstaller.md). Empty directory leaves and symlinks fail
 explicitly. See [MSIX](msix.md).
 
 MSIX URI/file handler registration also passed native Shell enumeration after

@@ -69,3 +69,85 @@ electron_msix = rule(
     },
     doc = "Emit unsigned deterministic ZIP64 MSIX. Signing, deployment and OS registrations remain separate release stages. Empty directory leaves and symlinks currently fail explicitly.",
 )
+
+def _appinstaller_impl(ctx):
+    output = ctx.actions.declare_file(ctx.label.name + ".appinstaller")
+    manifest = ctx.actions.declare_file(ctx.label.name + ".appinstaller.json")
+    options = {name: getattr(ctx.attr, name) for name in [
+        "appinstaller_uri",
+        "package_uri",
+        "appinstaller_version",
+        "check_on_launch",
+        "hours_between_update_checks",
+        "show_prompt",
+        "update_blocks_activation",
+        "automatic_background_task",
+        "force_update_from_any_version",
+        "update_uris",
+        "repair_uris",
+        "allow_http_loopback",
+    ]}
+    options["package"] = ctx.file.package.path
+    ctx.actions.write(manifest, json.encode(options))
+    ctx.actions.run(
+        executable = ctx.executable._writer,
+        arguments = [manifest.path, output.path],
+        inputs = [manifest, ctx.file.package],
+        outputs = [output],
+        mnemonic = "ElectronAppInstaller",
+        progress_message = "Writing MSIX update metadata %{label}",
+    )
+    return [DefaultInfo(files = depset([output]))]
+
+electron_msix_appinstaller = rule(
+    implementation = _appinstaller_impl,
+    attrs = {
+        "package": attr.label(mandatory = True, allow_single_file = [".msix", ".msixbundle"]),
+        "appinstaller_uri": attr.string(mandatory = True, doc = "Public URL of this update descriptor."),
+        "package_uri": attr.string(mandatory = True, doc = "Public URL of the final MSIX package or bundle."),
+        "appinstaller_version": attr.string(doc = "Four-component descriptor version; defaults to MSIX identity version."),
+        "check_on_launch": attr.bool(default = True),
+        "hours_between_update_checks": attr.int(default = 24),
+        "show_prompt": attr.bool(),
+        "update_blocks_activation": attr.bool(),
+        "automatic_background_task": attr.bool(),
+        "force_update_from_any_version": attr.bool(doc = "Explicitly permit version downgrades."),
+        "update_uris": attr.string_list(),
+        "repair_uris": attr.string_list(),
+        "allow_http_loopback": attr.bool(doc = "Permit explicit HTTP loopback fixtures; production URLs require HTTPS."),
+        "_writer": attr.label(default = Label("//electron/private:appinstaller_writer"), executable = True, cfg = "exec"),
+    },
+    doc = "Write deterministic 2021 App Installer XML from final MSIX package or bundle identity. No publication, signing or deployment.",
+)
+
+def _bundle_impl(ctx):
+    packages = ctx.files.packages
+    if not packages or any([file.is_directory or file.extension.lower() != "msix" for file in packages]):
+        fail("electron_msix_bundle requires selected MSIX package files")
+    output = ctx.actions.declare_file(ctx.label.name + ".msixbundle")
+    manifest = ctx.actions.declare_file(ctx.label.name + ".bundle.json")
+    ctx.actions.write(manifest, json.encode({
+        "packages": [file.path for file in packages],
+        "package_names": ctx.attr.package_names,
+        "bundle_version": ctx.attr.bundle_version,
+    }))
+    ctx.actions.run(
+        executable = ctx.executable._writer,
+        arguments = [manifest.path, output.path],
+        inputs = [manifest] + packages,
+        outputs = [output],
+        mnemonic = "ElectronMsixBundle",
+        progress_message = "Bundling native MSIX packages %{label}",
+    )
+    return [DefaultInfo(files = depset([output]))]
+
+electron_msix_bundle = rule(
+    implementation = _bundle_impl,
+    attrs = {
+        "packages": attr.label_list(mandatory = True, allow_files = [".msix"], doc = "Package files or groups. One application package per CPU; matching identity/manifests required."),
+        "package_names": attr.string_dict(doc = "Optional CPU-to-filename mapping; defaults to package-<cpu>.msix."),
+        "bundle_version": attr.string(doc = "Explicit four-component version; defaults to the shared package version."),
+        "_writer": attr.label(default = Label("//electron/private:msix_bundle_writer"), executable = True, cfg = "exec"),
+    },
+    doc = "Emit an embedded deterministic MSIX bundle. Packages stay unchanged; signing is a separate release stage.",
+)

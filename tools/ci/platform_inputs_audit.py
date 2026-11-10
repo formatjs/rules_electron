@@ -2,10 +2,16 @@
 
 import json
 from pathlib import Path
+import re
 import sys
 
 
+FORBIDDEN_WRAPPER = re.compile(r"^(?:.*(?:foreign.?cc|cmake|meson|ninja).*|g?make|runmake|gn|rungn)$", re.IGNORECASE)
+
+
 def audit(graph, workspace):
+    if any(FORBIDDEN_WRAPPER.fullmatch(action.get("mnemonic", "")) for action in graph.get("actions", [])):
+        raise ValueError("Build wrapper action forbidden")
     targets = {item["id"]: item["label"] for item in graph.get("targets", [])}
     fragments = {item["id"]: item["label"] for item in graph.get("pathFragments", [])}
     names = {item["id"]: fragments[item["pathFragmentId"]] for item in graph.get("artifacts", [])}

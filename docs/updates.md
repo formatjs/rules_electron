@@ -155,8 +155,9 @@ a new channel uses `If-None-Match: *`. Concurrent changes fail publication inste
 of overwriting channel metadata. The release workflow chooses versions and must
 serialize intended promotions. Redirects and asynchronous HTTP 202 responses fail.
 HTTPS is required; `--allow-http-loopback` exists for socket-based CI tests only.
-Object-store-specific upload APIs and credential-provider adapters remain separate
-migration work. The [GitHub publication interface](github-publication.md) stages
+The [S3 publication interface](s3-publication.md) signs conditional object writes;
+live cloud-policy validation and credential-provider adapters remain migration
+work. The [GitHub publication interface](github-publication.md) stages
 multiple feeds through a verified draft release; its BB socket protocol tests
 passed. `electron_update_config(provider = "github", owner = ..., repo = ...)`
 generates client configuration without embedding credentials.
@@ -182,7 +183,10 @@ electron_update_config(
 )
 ```
 
-Validation is pending. Native examples consume declared S3, compatible endpoint,
+The [c94044b BB suite](https://formatjs.buildbuddy.io/invocation/5ca9cfc2-c528-41b9-9a2c-381383bdea27),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/9e4137d4-adc3-40e8-aa55-2ffc9aedc9c0)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42763581513)
+passed. Native examples consume declared S3, compatible endpoint,
 acceleration and Spaces configurations through the real provider factory. They
 check channel/asset URLs, SHA-512, size and disabled multi-range downloads, with
 only HTTP transport replaced by a loopback fixture. This does not exercise live
