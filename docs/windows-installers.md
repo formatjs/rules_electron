@@ -35,8 +35,10 @@ and both Windows CPUs in [native smoke](https://github.com/formatjs/rules_electr
 Each selected English and Japanese, checked the matching visible license and
 Unicode text, required acceptance, then canceled before installation. Per-user
 and machine install/update/uninstall also passed. The macOS consent gate in
-that workflow failed separately. Selector cancellation has an additional native
-check; that new check is pending.
+that workflow failed separately. Selector cancellation now sets user-cancel exit
+status 1 explicitly. Both Windows CPUs verified that status in the
+[4151ef3 native workflow](https://github.com/formatjs/rules_electron/actions/runs/42754107953),
+which passed all four hosts, including the separate macOS gate.
 
 The NSIS `script` output group uses portable `app/`, icon and `payload.7z`
 references. Worker paths stay inside compilation. `verify_reproducible` compares

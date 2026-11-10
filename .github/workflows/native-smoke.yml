@@ -20,6 +20,11 @@ on:
         description: Probe an existing BB-built DMG using the current workflow's macOS harness
         type: boolean
         default: false
+      dmg_consent_mode:
+        description: License consent interface for manual DMG probe
+        type: choice
+        default: gui
+        options: [gui, cli]
       dmg_fixture:
         description: Declared DMG fixture to inspect
         type: choice
@@ -167,7 +172,8 @@ jobs:
       - name: Probe BB-built license image
         env:
           DMG_FIXTURE: ${{ inputs.dmg_fixture || 'release_dmg.dmg' }}
-        run: python -m tools.ci.dmg_license_smoke artifacts/electron-smoke-macos-arm64.zip "$DMG_FIXTURE"
+          DMG_CONSENT_MODE: ${{ inputs.dmg_consent_mode || 'gui' }}
+        run: python -m tools.ci.dmg_license_smoke artifacts/electron-smoke-macos-arm64.zip "$DMG_FIXTURE" "$DMG_CONSENT_MODE"
 
   publish_status:
     if: always() && !inputs.logs_only && !inputs.dmg_license_probe && needs.download.result != 'skipped'

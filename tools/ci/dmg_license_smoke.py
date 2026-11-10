@@ -373,12 +373,43 @@ def interactive_attach(arguments, answer, timeout=120):
         os.close(terminal)
 
 
+def smoke_cli(image, mount, require_unicode=False):
+    mount.mkdir()
+    arguments = ['/usr/bin/hdiutil', 'attach', '-readonly', '-nobrowse', '-mountpoint', str(mount), str(image)]
+    try:
+        for answer in (b'n', b'y'):
+            expected_mount = answer == b'y'
+            result = interactive_attach(arguments, answer)
+            summary = {
+                'phase': 'accept' if expected_mount else 'decline', 'exit_code': result.returncode,
+                'answered': result.answered,
+                'header': b'Sample Desktop example license, version 1.' in result.output,
+                'unicode': 'Example Unicode text: 世界 😀.'.encode('utf-8') in result.output,
+                'rtf_source': b'\\rtf1' in result.output,
+                'mounted': mount.is_mount(),
+                'payload': (mount / 'Sample Desktop.app' / 'Contents' / 'Info.plist').is_file(),
+            }
+            print('DMG_LICENSE_CLI ' + json.dumps(summary, sort_keys=True), flush=True)
+            if (not result.answered or not summary['header'] or summary['rtf_source']
+                    or (require_unicode and not summary['unicode'])
+                    or (result.returncode == 0) != expected_mount or summary['mounted'] != expected_mount
+                    or summary['payload'] != expected_mount):
+                raise RuntimeError('DMG_LICENSE_CLI_CONSENT_FAILED')
+        print('DMG_LICENSE_CLI_CONSENT_OK', flush=True)
+    finally:
+        if mount.is_mount():
+            subprocess.run(['/usr/bin/hdiutil', 'detach', str(mount)], capture_output=True, check=True, timeout=120)
+
+
 if __name__ == '__main__':
     if platform.system() != 'Darwin' or platform.machine() != 'arm64':
         raise RuntimeError('DMG license probe requires native macOS ARM64')
     fixture = sys.argv[2] if len(sys.argv) > 2 else 'release_dmg.dmg'
     if fixture not in ('release_dmg.dmg', 'release_dmg_rtf.dmg', 'release_dmg_japanese.dmg'):
         raise RuntimeError('DMG_LICENSE_PROBE_INVALID_FIXTURE')
+    mode = sys.argv[3] if len(sys.argv) > 3 else 'gui'
+    if mode not in ('gui', 'cli'):
+        raise RuntimeError('DMG_LICENSE_PROBE_INVALID_MODE')
     with ZipFile(sys.argv[1]) as archive, tempfile.TemporaryDirectory() as temporary:
         members = [entry for entry in archive.infolist() if entry.filename == 'macos_aarch64/packages/' + fixture]
         if len(members) != 1 or not 0 < members[0].file_size <= 1024**3:
@@ -394,4 +425,7 @@ if __name__ == '__main__':
                 remaining -= len(data)
         subprocess.run(['/usr/bin/hdiutil', 'verify', str(image)], check=True, capture_output=True, timeout=120)
         inspect_license(image, require_unicode=fixture != 'release_dmg.dmg')
-        smoke_dialog(image, require_unicode=fixture != 'release_dmg.dmg')
+        if mode == 'cli':
+            smoke_cli(image, Path(temporary) / 'mounted', require_unicode=fixture != 'release_dmg.dmg')
+        else:
+            smoke_dialog(image, require_unicode=fixture != 'release_dmg.dmg')

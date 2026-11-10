@@ -119,11 +119,18 @@ index 1 on the English smoke host. That new case is pending. CLI consent alone
 does not establish GUI consent; RTF/multilingual CLI consent remains unproven.
 The normal macOS gate now requires both GUI paths for all three example license
 variants, including visible CJK/emoji text in RTF variants.
+The [4151ef3 native workflow](https://github.com/formatjs/rules_electron/actions/runs/42754107953)
+passed all three GUI variants, TEXT CLI consent, app/Finder/updater checks and
+the other three native hosts. Its Japanese fixture had one license at index 0;
+the nonzero fallback case remains separate.
 
 The manual `dmg_license_probe` workflow input tests a previously verified BB
 image with the workflow's current macOS harness. Linux performs authenticated,
 commit-bound artifact retrieval; the matching Mac host only inspects the image.
 Probe results do not publish normal native-smoke commit status.
+Set `dmg_consent_mode=cli` to inspect terminal consent instead. This requires
+displayed text, explicit refusal without mounting, acceptance with a mounted
+payload, and visible Unicode for RTF fixtures; raw RTF markup fails.
 
 `electron_dmg_license` creates another legal variant without rebuilding the
 filesystem. Its `image` accepts an `electron_dmg` target (using that target's
