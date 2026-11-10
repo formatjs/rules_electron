@@ -127,6 +127,11 @@ def interactive_attach(arguments, answer, timeout=120):
     try:
         while True:
             if time.monotonic() >= deadline:
+                print('DMG_LICENSE_TIMEOUT_STATE ' + json.dumps({
+                    'output_bytes': len(output), 'header': b'Sample Desktop example license, version 1.' in output,
+                    'answered': answered, 'pager_quit': pager_quit,
+                    'answer_prompt': bool(re.search(br'\b[yY]/[nN]\b', output)),
+                }, sort_keys=True), flush=True)
                 raise RuntimeError('DMG_LICENSE_INTERACTIVE_TIMEOUT')
             if not closed and select.select([terminal], [], [], 0.1)[0]:
                 try:
@@ -139,7 +144,7 @@ def interactive_attach(arguments, answer, timeout=120):
                     output.extend(block)
                     if len(output) > 2 * 1024**2:
                         raise RuntimeError('DMG_LICENSE_RESPONSE_TOO_LARGE')
-                    if not answered and re.search(br'\[[yY]/[nN]\]', output):
+                    if not answered and re.search(br'\b[yY]/[nN]\b', output):
                         os.write(terminal, answer + b'\n')
                         answered = True
                     elif not pager_quit and (b'(END)' in output or b'--More--' in output):
