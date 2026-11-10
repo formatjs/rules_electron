@@ -1,6 +1,6 @@
 # Release archives
 
-`electron_archive` produces ZIP, tar, tar.gz, tar.xz, tar.bz2 or 7z from an `electron_app`. Compilation,
+`electron_archive` produces ZIP, tar, tar.gz, tar.xz, tar.bz2, tar.lz, tar.7z or 7z from an `electron_app`. Compilation,
 assembly and signing finish before archival. The action uses the declared Python
 execution toolchain; it never runs target binaries or discovers host utilities.
 
@@ -23,6 +23,28 @@ not change the bundle's internal identity.
 Compression levels range from 0 through 9; tar.bz2 requires 1 through 9. ZIP level
 0 stores entries; tar.gz level 0 retains gzip framing without compression. XZ uses
 the matching LZMA preset and CRC64. Plain tar ignores the compression level.
+
+`tar.lz` requires a declared `lzip` execution tool. The repository provides
+`@rules_electron//third_party:lzip`, built from checksum-pinned GNU lzip 1.25
+with native `cc_binary`; configure, Make and CMake never run. Levels 0 through 9
+select lzip's corresponding modes; level 0 still compresses. `tar.7z` requires
+the same declared `sevenzip` tool as `7z`, with level 0 selecting Copy.
+Both formats wrap the deterministic PAX tar in one compressed member, retaining
+signed bytes, relative links, executable modes and tracked empty directories.
+
+```starlark
+electron_archive(
+    name = "release_lzip",
+    app = ":app",
+    format = "tar.lz",
+    lzip = "@rules_electron//third_party:lzip",
+)
+```
+
+BB interoperability checks cover native lzip compression with independent
+LZMA/header/trailer decoding, declared 7zip extraction, relocation/mtime
+reproducibility, Unicode paths and macOS signature bytes. Hosted validation for
+these two added formats is pending.
 ZIP/tar compressors come from the declared Python toolchain. Level 1 favors packaging
 time; level 9 favors size. Choose from measured costs for the consuming application.
 

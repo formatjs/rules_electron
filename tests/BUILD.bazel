@@ -500,6 +500,43 @@ py_test(
     deps = ["//electron/private:archives"],
 )
 
+electron_archive(
+    name = "release_lzip",
+    app = ":app",
+    format = "tar.lz",
+    lzip = "//third_party:lzip",
+)
+
+electron_archive(
+    name = "release_tar7z",
+    app = ":app",
+    format = "tar.7z",
+    sevenzip = "@sevenzip_linux_x64//:bin/7zz",
+)
+
+py_test(
+    name = "compressed_tar_test",
+    size = "small",
+    srcs = ["compressed_tar_test.py"],
+    args = [
+        "$(rootpath //third_party:lzip)",
+        "$(rootpath @sevenzip_linux_x64//:bin/7zz)",
+        "$(rootpath :release_lzip)",
+        "$(rootpath :release_tar7z)",
+    ],
+    data = [
+        ":release_lzip",
+        ":release_tar7z",
+        "//third_party:lzip",
+        "@sevenzip_linux_x64//:bin/7zz",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    deps = ["//electron/private:archives"],
+)
+
 cross_build(
     name = "cross_build_fixtures",
     app = ":app",

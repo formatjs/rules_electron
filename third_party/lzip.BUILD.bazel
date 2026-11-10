@@ -1,0 +1,17 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "lzip",
+    srcs = [
+        "arg_parser.cc",
+        "decoder.cc",
+        "encoder.cc",
+        "encoder_base.cc",
+        "fast_encoder.cc",
+        "list.cc",
+        "lzip_index.cc",
+        "main.cc",
+    ] + glob(["*.h"]),
+    defines = ['PROGVERSION="1.25"'],
+    visibility = ["//visibility:public"],
+)

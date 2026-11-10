@@ -1,6 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary")
 
 exports_files([
+    "lzip.BUILD.bazel",
     "ds_store.BUILD.bazel",
     "mac_alias.BUILD.bazel",
     "udif.BUILD.bazel",
@@ -22,6 +23,12 @@ exports_files([
     "appimage_runtime.BUILD.bazel",
     "appimage_runtime.patch",
 ])
+
+alias(
+    name = "lzip",
+    actual = "@lzip_sources//:lzip",
+    visibility = ["//visibility:public"],
+)
 
 alias(
     name = "node_delay_import",

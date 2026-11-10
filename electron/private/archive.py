@@ -176,13 +176,53 @@ def sevenzip_archive(members, open_entry, tool, level, output):
                        env={"PATH": "", "LC_ALL": "C.UTF-8", "TZ": "UTC", "SOURCE_DATE_EPOCH": "0"}, check=True)
 
 
-def create_archive(source, platform, root_name, format, compression_level, output, directory_manifest="", sevenzip=""):
+def write_tar(members, open_entry, stream):
+    with tarfile.open(fileobj=stream, mode="w|", format=tarfile.PAX_FORMAT) as archive:
+        for name, entry in members:
+            info = tarfile.TarInfo(name)
+            info.mode = entry.mode
+            info.type = {"file": tarfile.REGTYPE, "directory": tarfile.DIRTYPE, "symlink": tarfile.SYMTYPE}[entry.kind]
+            info.linkname = entry.target
+            info.size = entry.size if entry.kind == "file" else 0
+            if entry.kind == "file":
+                with open_entry(entry) as content:
+                    archive.addfile(info, content)
+            else:
+                archive.addfile(info)
+
+
+def compressed_tar(members, open_entry, format, tool, level, output):
+    if not tool:
+        raise ValueError(format + " archives require a declared execution tool")
+    tool, output = str(Path(tool).resolve()), Path(output).resolve()
+    environment = {"PATH": "", "LC_ALL": "C.UTF-8", "TZ": "UTC", "SOURCE_DATE_EPOCH": "0"}
+    with tempfile.TemporaryDirectory(prefix="electron-tar-", dir=output.parent) as temporary:
+        directory = Path(temporary)
+        tar = directory / (members[0][0] + ".tar")
+        with tar.open('wb') as destination:
+            write_tar(members, open_entry, destination)
+        tar.chmod(0o644)
+        os.utime(tar, (0, 0))
+        compressed = directory / ("release." + format)
+        if format == 'tar.lz':
+            with compressed.open('wb') as destination:
+                subprocess.run([tool, '-c', '-' + str(level), './' + tar.name], cwd=directory,
+                               env=environment, stdout=destination, check=True)
+        else:
+            subprocess.run([tool, 'a', '-t7z', '-mx=' + str(level),
+                            '-m0=Copy' if not level else '-m0=LZMA2:d1m', '-mmt=2', '-ms=off',
+                            '-mtc=off', '-mta=off', '-mtm=off', '-bd', '-bso0', '-bsp0',
+                            str(compressed), './' + tar.name], cwd=directory, env=environment, check=True)
+        os.replace(compressed, output)
+
+
+def create_archive(source, platform, root_name, format, compression_level, output, directory_manifest="", sevenzip="", lzip=""):
     relative(root_name)
     if "/" in root_name or platform not in ("linux", "windows", "macos"):
         raise ValueError("Expected one archive root and a supported platform")
     if platform == "macos" and not root_name.endswith(".app"):
         raise ValueError("macOS archive root must end in .app")
-    if format not in ("zip", "tar", "tar.gz", "tar.xz", "tar.bz2", "7z") or not 0 <= compression_level <= 9:
+    if format not in ("zip", "tar", "tar.gz", "tar.xz", "tar.bz2", "7z", "tar.lz", "tar.7z") or not 0 <= compression_level <= 9:
         raise ValueError("Invalid archive format or compression level")
     if format == "tar.bz2" and compression_level == 0:
         raise ValueError("tar.bz2 compression level must be between 1 and 9")
@@ -197,6 +237,8 @@ def create_archive(source, platform, root_name, format, compression_level, outpu
         members = [(root_name, Entry("directory", 0o755))] + [(root_name + "/" + name, entry) for name, entry in sorted(entries.items())]
         if format == "7z":
             sevenzip_archive(members, open_entry, sevenzip, compression_level, output)
+        elif format in ('tar.lz', 'tar.7z'):
+            compressed_tar(members, open_entry, format, lzip if format == 'tar.lz' else sevenzip, compression_level, output)
         elif format == "zip":
             with ZipFile(output, "w") as archive:
                 for name, entry in members:
@@ -221,18 +263,8 @@ def create_archive(source, platform, root_name, format, compression_level, outpu
                     stream = bz2.BZ2File(raw, mode="w", compresslevel=compression_level)
                 else:
                     stream = nullcontext(raw)
-                with stream as compressed, tarfile.open(fileobj=compressed, mode="w|", format=tarfile.PAX_FORMAT) as archive:
-                    for name, entry in members:
-                        info = tarfile.TarInfo(name)
-                        info.mode = entry.mode
-                        info.type = {"file": tarfile.REGTYPE, "directory": tarfile.DIRTYPE, "symlink": tarfile.SYMTYPE}[entry.kind]
-                        info.linkname = entry.target
-                        info.size = entry.size if entry.kind == "file" else 0
-                        if entry.kind == "file":
-                            with open_entry(entry) as content:
-                                archive.addfile(info, content)
-                        else:
-                            archive.addfile(info)
+                with stream as compressed:
+                    write_tar(members, open_entry, compressed)
 
 
 if __name__ == "__main__":
