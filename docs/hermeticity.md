@@ -664,8 +664,14 @@ component capture and native compilation run on BB. The
 [ARM64 capture](https://formatjs.buildbuddy.io/invocation/9612c9fe-fa5f-4519-a40e-243e4f652385)
 passed with frozen metadata-tool resolution. Its graph retains separate ARM64,
 x64 generator, x64 ARM64 V8 snapshot and Rust host toolchains. The handoff also
-requires separate Perfetto and V8 support target, execution and snapshot profiles.
+requires separate Perfetto, V8 support and Protobuf target, execution and snapshot profiles.
 Support capture retains ARM64's CRC implementation and x64 host SIMD closure.
+The [native support validation](https://formatjs.buildbuddy.io/invocation/ac6c2aa9-ac7e-436e-a408-cf989656ba34)
+compiled 12 ARM64 libraries, six x64 execution libraries and 12 x64 snapshot
+libraries. Each role passed its compiler action audit with zero forbidden wrappers.
+Protobuf binds captured Abseil identities explicitly to pinned native Bazel targets;
+the compiler platform determines their CPU. Its runtime/compiler cross-build
+validation remains pending.
 Cross-family
 dependency bindings and complete ARM64 runtime cross-build validation remain open.
 

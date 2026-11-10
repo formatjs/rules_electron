@@ -27,6 +27,9 @@ ARTIFACTS = {
     'linux-arm64-v8-support-target.json': 16 * 1024**2,
     'linux-arm64-v8-support-execution.json': 16 * 1024**2,
     'linux-arm64-v8-support-snapshot.json': 16 * 1024**2,
+    'linux-arm64-protobuf-target.json': 16 * 1024**2,
+    'linux-arm64-protobuf-execution.json': 16 * 1024**2,
+    'linux-arm64-protobuf-snapshot.json': 16 * 1024**2,
 }
 
 
