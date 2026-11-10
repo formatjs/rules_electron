@@ -128,7 +128,8 @@ for ad hoc signing and deterministic ZIP transport of framework symlinks. Runtim
 adapters accept ZIP or declared-file inputs, exact `exclude_files`, and `languages`.
 Locale selection covers Linux/Windows `.pak` files and macOS app/framework
 `.lproj` resources; names ignore case and `_` versus `-`. Bare and regional names
-match each other (`en`/`en-US`). Empty selection keeps every locale.
+match each other (`en`/`en-US`). Empty selection keeps every locale. A nonempty
+selection that removes every locale from a runtime resource directory fails.
 See the [parity checklist](docs/packaging-parity.md) for remaining release work.
 
 See [design](docs/architecture.md) for source integration and next milestones.

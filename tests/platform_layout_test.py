@@ -65,6 +65,10 @@ class PlatformLayoutTest(unittest.TestCase):
                 self.assertFalse((output / "locales/fr.pak").exists())
                 self.assertFalse((output / "runtime-notice").exists())
                 self.assertEqual((output / "resources/app/locales/fr.pak").read_bytes(), self.main.read_bytes())
+                invalid = self.root / (platform + "-invalid")
+                with self.assertRaisesRegex(ValueError, "removes every locale"):
+                    assemble(entries, invalid, platform=platform, runtime_languages=["xx"])
+                self.assertFalse(invalid.exists())
 
     def test_macos_locale_selection_covers_versioned_framework_and_main_resources(self):
         runtime = self.root / "locales.zip"
@@ -86,6 +90,10 @@ class PlatformLayoutTest(unittest.TestCase):
         all_output = self.root / "all"
         extract_runtime(runtime, all_output, "macos", [], {})
         self.assertEqual((all_output / roots[1] / "fr_CA.lproj/locale.pak").read_bytes(), b"fr_CA")
+        invalid = self.root / "missing-locale"
+        with self.assertRaisesRegex(ValueError, "removes every locale"):
+            extract_runtime(runtime, invalid, "macos", [], {}, ["xx"])
+        self.assertFalse(invalid.exists())
 
     def macos_runtime(self, icon_metadata=False):
         runtime = self.root / "macos.zip"

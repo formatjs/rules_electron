@@ -791,3 +791,17 @@ reached the same hosted limit at 3,600.472 seconds. Its full-build child recorde
 shared no normalized target/output group with the previous run's executed
 compilations. This establishes new compilation work retained in cache, not a
 completed source desktop build or a timing improvement.
+
+## Runtime locale selection
+
+The example already requested `en-US`, but macOS ZIP assembly previously ignored
+that setting. Applying it to the main app and Electron framework `.lproj`
+resources reduced the verified macOS smoke shard from 951,954,206 bytes at
+`84c7f91` to 846,504,557 bytes at `bcd1dcf`: 105,449,649 bytes, or 11.08%.
+The download jobs in [the baseline workflow](https://github.com/formatjs/rules_electron/actions/runs/42772882916)
+and [the filtered workflow](https://github.com/formatjs/rules_electron/actions/runs/42773904346)
+verified the BB artifact SHA and byte count. These are compressed smoke-shard
+sizes containing several fixtures, not standalone app sizes or build speedups.
+The [filtered BB suite](https://formatjs.buildbuddy.io/invocation/c5e15b8d-9636-4ac2-a7e5-297ff82c4e9c)
+and [cross-build](https://formatjs.buildbuddy.io/invocation/c3f85091-78fd-4e63-8b36-8ac412a6d61e)
+passed; native locale validation remains pending.

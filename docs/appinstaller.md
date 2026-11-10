@@ -87,7 +87,10 @@ for no updates, an available v2, then no updates after installation. It uses
 passed all three states on both Windows CPUs and passed all four hosts. The short fixture does not prove background timing, prompt UX, fallback
 server failover or production certificate trust.
 
-Bundle descriptor/publication validation is pending. The fixture reuses the same
+The [84c7f91 BB suite](https://formatjs.buildbuddy.io/invocation/c67ceb15-8fad-42cb-8dfc-1e473fdbb0e2)
+and [cross-build](https://formatjs.buildbuddy.io/invocation/885a6a41-2172-4eae-a5c9-0a37265a4f42) passed bundle descriptor/publication tests.
+[All four native hosts passed](https://github.com/formatjs/rules_electron/actions/runs/42772882916),
+including the complete MainBundle handoff on Windows x64/ARM64. The fixture reuses the same
 BB-built signed v1/v2 bundles for direct deployment and a separate App Installer
 handoff, checking native CPU selection, adopted URI, update availability, real
 Electron execution and uninstall. It serves unchanged descriptor/bundle bytes.
