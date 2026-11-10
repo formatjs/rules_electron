@@ -89,10 +89,18 @@ def smoke_license(installer):
                 user.GetClassNameW(control, name, len(name))
                 if name.value != 'ComboBox':
                     continue
-                label = ctypes.create_unicode_buffer(language)
                 count = message(control, 0x0146)
+                if count != 2:
+                    continue
+                if language is None:
+                    button = user.GetDlgItem(window, 2)
+                    if button and user.IsWindowEnabled(button):
+                        click(button)
+                        return True
+                    continue
+                label = ctypes.create_unicode_buffer(language)
                 index = message(control, 0x0158, -1, ctypes.addressof(label))
-                if count != 2 or index >= count:
+                if index >= count:
                     continue
                 message(control, 0x014E, index)
                 if message(control, 0x0147) != index:
@@ -155,4 +163,14 @@ def smoke_license(installer):
             if process.poll() is None:
                 process.kill()
                 process.wait(timeout=10)
+    process = subprocess.Popen([str(installer)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        wait_for(process, lambda: select_language(process, None))
+        if process.wait(timeout=30) != 1:
+            raise RuntimeError('NSIS_LICENSE_LANGUAGE_CANCEL_FAILED')
+        print('NSIS_LICENSE_LANGUAGE_CANCEL_OK', flush=True)
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=10)
     print('NSIS_LICENSE_CONSENT_OK', flush=True)

@@ -28,10 +28,15 @@ then real per-user and machine update/uninstall lifecycles. The Unicode fixture
 also passed native consent/cancellation on both Windows CPUs at `c963d16`
 ([workflow](https://github.com/formatjs/rules_electron/actions/runs/42742398833)),
 including exact CJK and supplementary-plane text. That workflow's macOS job was
-still running when recorded. New multilingual selection coverage is pending;
-the Windows gate selects both languages and checks each visible license before
-testing acceptance and cancellation. Single-license results above do not prove
-that new path.
+still running when recorded. Multilingual selection passed the
+[9d4684f BB suite](https://formatjs.buildbuddy.io/invocation/e966208b-ad0f-4e30-9ce3-85b7b9b46101),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/b7906ff3-4d92-4ba6-b2dd-9138c852ca42)
+and both Windows CPUs in [native smoke](https://github.com/formatjs/rules_electron/actions/runs/42752501554).
+Each selected English and Japanese, checked the matching visible license and
+Unicode text, required acceptance, then canceled before installation. Per-user
+and machine install/update/uninstall also passed. The macOS consent gate in
+that workflow failed separately. Selector cancellation has an additional native
+check; that new check is pending.
 
 The NSIS `script` output group uses portable `app/`, icon and `payload.7z`
 references. Worker paths stay inside compilation. `verify_reproducible` compares
