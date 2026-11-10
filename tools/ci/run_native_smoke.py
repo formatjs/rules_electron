@@ -135,7 +135,7 @@ if __name__ == "__main__":
                 subprocess.run([sys.executable, "-m", "tools.ci.plain_links_smoke",
                                 str(directory / variant / "packages/plain_links.zip"), target_os, target_arch], check=True)
             if target_os == "macos":
-                from tools.ci.dmg_license_smoke import inspect_dialog, inspect_license, interactive_attach
+                from tools.ci.dmg_license_smoke import inspect_dialog, inspect_license, interactive_attach, smoke_dialog
 
                 image = directory / variant / "packages/release_dmg.dmg"
                 mount = directory / variant / "mounted-dmg"
@@ -148,7 +148,12 @@ if __name__ == "__main__":
                 print('DMG_LICENSE_IMAGEINFO ' + json.dumps({'agreement': agreement if type(agreement) is bool else None}), flush=True)
                 if agreement is not True:
                     raise RuntimeError('DMG_LICENSE_METADATA_NOT_RECOGNIZED')
-                inspect_license(image)
+                for fixture in ('release_dmg.dmg', 'release_dmg_rtf.dmg', 'release_dmg_japanese.dmg'):
+                    print('DMG_LICENSE_GUI_FIXTURE ' + fixture, flush=True)
+                    licensed = image.parent / fixture
+                    require_unicode = fixture != 'release_dmg.dmg'
+                    inspect_license(licensed, require_unicode=require_unicode)
+                    smoke_dialog(licensed, require_unicode=require_unicode)
                 attach = ["/usr/bin/hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", str(mount), str(image)]
                 license_header = b'Sample Desktop example license, version 1.'
                 declined = interactive_attach(attach, b'n')

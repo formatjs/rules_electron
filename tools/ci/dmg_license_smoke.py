@@ -65,12 +65,14 @@ function run(argv) {
         raise RuntimeError('DMG_LICENSE_NATIVE_BODY_FAILED')
 
 
-def inspect_dialog(image, answer='decline'):
+def inspect_dialog(image, answer='decline', require_unicode=False):
     if answer not in ('decline', 'accept'):
         raise ValueError('Expected one explicit license answer')
     script = '''
 on run argv
     set decision to item 1 of argv
+    set argv to rest of argv
+    set requireUnicode to (item 1 of argv is "true")
     set argv to rest of argv
     set maxProcesses to 0
     set maxWindows to 0
@@ -83,6 +85,7 @@ on run argv
     set sawImageError to false
     set sawOK to false
     set diskError to "none"
+    set sawUnicode to false
     tell application "System Events"
         repeat 20 times
             set targets to {}
@@ -101,6 +104,7 @@ on run argv
                 if (count processWindows) > maxWindows then set maxWindows to count processWindows
                 repeat with targetWindow in processWindows
                     set bodyMatches to false
+                    set unicodeMatches to false
                     set buttonCount to 0
                     set textCount to 0
                     set agreeControl to missing value
@@ -139,6 +143,7 @@ on run argv
                         try
                             set elementText to elementText & " " & (name of currentElement as text)
                         end try
+                        if elementText contains "Example Unicode text: 世界 😀." then set unicodeMatches to true
                         if elementText contains "couldn't be opened" or elementText contains "couldn’t be opened" or elementText contains "could not be opened" or elementText contains "can't be opened" then set sawImageError to true
                         if elementText contains "no mountable file systems" then set diskError to "filesystem"
                         if elementText contains "not recognized" then set diskError to "format"
@@ -150,9 +155,10 @@ on run argv
                     if buttonCount > maxButtons then set maxButtons to buttonCount
                     if textCount > maxTexts then set maxTexts to textCount
                     if bodyMatches then set sawBody to true
+                    if unicodeMatches then set sawUnicode to true
                     if agreeControl is not missing value then set sawAgree to true
                     if disagreeControl is not missing value then set sawDisagree to true
-                    if bodyMatches and agreeControl is not missing value and disagreeControl is not missing value then
+                    if bodyMatches and (not requireUnicode or unicodeMatches) and agreeControl is not missing value and disagreeControl is not missing value then
                         if decision is "accept" then
                             click agreeControl
                             set outcome to "accepted"
@@ -160,14 +166,14 @@ on run argv
                             click disagreeControl
                             set outcome to "declined"
                         end if
-                        return outcome & "," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError
+                        return outcome & "," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError & "," & sawUnicode
                     end if
                 end repeat
             end repeat
             delay 0.5
         end repeat
     end tell
-    return "not-found," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError
+    return "not-found," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK & "," & diskError & "," & sawUnicode
 end run
 '''
 
@@ -231,7 +237,7 @@ function run() {
               'error_stage': candidates.get('error_stage') if candidates.get('error_stage') in range(1, 6) else None,
               'type_error': b'TypeError' in owners.stderr, 'reference_error': b'ReferenceError' in owners.stderr,
               'core_graphics_symbol': b'CGWindowListCopyWindowInfo' in owners.stderr}, sort_keys=True), flush=True)
-        result = subprocess.run(['/usr/bin/osascript', '-e', script, answer, *map(str, identifiers)],
+        result = subprocess.run(['/usr/bin/osascript', '-e', script, answer, str(require_unicode).lower(), *map(str, identifiers)],
                                 capture_output=True, timeout=120)
         time.sleep(1)
         images = attached()
@@ -255,16 +261,16 @@ function run() {
         observer_error = re.search(br'\((-?\d{1,10})\)\s*$', result.stderr)
         summary['observer_error_code'] = int(observer_error[1]) if observer_error else None
         fields = result.stdout.strip().split(b',')
-        if (result.returncode == 0 and len(fields) == 12 and fields[0] in (b'declined', b'accepted', b'not-found')
+        if (result.returncode == 0 and len(fields) == 13 and fields[0] in (b'declined', b'accepted', b'not-found')
                 and all(value.isdigit() and len(value) <= 3 for value in fields[1:3] + fields[6:9])
-                and all(value in (b'true', b'false') for value in fields[3:6] + fields[9:11])
+                and all(value in (b'true', b'false') for value in fields[3:6] + fields[9:11] + fields[12:])
                 and fields[11] in (b'none', b'filesystem', b'format', b'permission', b'missing', b'busy', b'corrupt')):
             summary.update(declined=fields[0] == b'declined', accepted=fields[0] == b'accepted',
                            processes=int(fields[1]), windows=int(fields[2]),
                            body=fields[3] == b'true', agree=fields[4] == b'true', disagree=fields[5] == b'true',
                            buttons=int(fields[6]), text_controls=int(fields[7]), elements=int(fields[8]),
                            image_error=fields[9] == b'true', ok=fields[10] == b'true',
-                           disk_error=fields[11].decode('ascii'))
+                           disk_error=fields[11].decode('ascii'), unicode=fields[12] == b'true')
         print('DMG_LICENSE_DIALOG ' + json.dumps(summary, sort_keys=True), flush=True)
         return summary
     finally:
@@ -273,6 +279,17 @@ function run() {
             if not devices:
                 raise RuntimeError('DMG_LICENSE_DIALOG_CLEANUP_FAILED')
             subprocess.run(['/usr/bin/hdiutil', 'detach', devices[0]], capture_output=True, check=True, timeout=120)
+
+
+def smoke_dialog(image, require_unicode=False):
+    result = inspect_dialog(image, require_unicode=require_unicode)
+    if not result['declined'] or result['attached_images']:
+        raise RuntimeError('DMG_LICENSE_DIALOG_DECLINE_FAILED')
+    print('DMG_LICENSE_DIALOG_DECLINED_OK', flush=True)
+    result = inspect_dialog(image, answer='accept', require_unicode=require_unicode)
+    if not result['accepted'] or result['attached_images'] != 1 or not result['mounted_payload']:
+        raise RuntimeError('DMG_LICENSE_DIALOG_ACCEPT_FAILED')
+    print('DMG_LICENSE_DIALOG_ACCEPTED_OK', flush=True)
 
 
 def interactive_attach(arguments, answer, timeout=120):
@@ -353,11 +370,4 @@ if __name__ == '__main__':
                 remaining -= len(data)
         subprocess.run(['/usr/bin/hdiutil', 'verify', str(image)], check=True, capture_output=True, timeout=120)
         inspect_license(image, require_unicode=fixture != 'release_dmg.dmg')
-        result = inspect_dialog(image)
-        if not result['declined'] or result['attached_images']:
-            raise RuntimeError('DMG_LICENSE_DIALOG_DECLINE_FAILED')
-        print('DMG_LICENSE_DIALOG_DECLINED_OK', flush=True)
-        result = inspect_dialog(image, answer='accept')
-        if not result['accepted'] or result['attached_images'] != 1 or not result['mounted_payload']:
-            raise RuntimeError('DMG_LICENSE_DIALOG_ACCEPT_FAILED')
-        print('DMG_LICENSE_DIALOG_ACCEPTED_OK', flush=True)
+        smoke_dialog(image, require_unicode=fixture != 'release_dmg.dmg')

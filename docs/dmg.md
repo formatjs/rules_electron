@@ -104,11 +104,14 @@ mount), then accepted and mounted (exit 0). Readonly Finder pixels, app signatur
 runtime and updater checks passed. That workflow's Windows jobs failed the
 separate NSIS consent observer. RTF-only and non-English consent remain unproven;
 native AppKit decoding alone does not prove a visible agreement.
-The [00d43af GUI probe](https://github.com/formatjs/rules_electron/actions/runs/42750312942)
-observed the English `TEXT` body and both consent controls. Clicking Disagree
-left the image unmounted. Finder acceptance and RTF/non-English GUI consent
-remain unproven. Earlier observers timed out or saw an unrelated dialog;
-CLI consent alone does not establish Finder consent.
+The [d6d0f8b GUI probe](https://github.com/formatjs/rules_electron/actions/runs/42751084980)
+observed the English `TEXT` body and both consent controls. Disagree left the
+image unmounted; Agree mounted the same image with the app payload. It uses
+`open` to launch the system image handler. Earlier Finder AppleEvent observers
+timed out or saw a permission dialog. RTF/non-English GUI consent remains
+unproven; CLI consent alone does not establish GUI consent.
+The normal macOS gate now requires both GUI paths for all three example license
+variants, including visible CJK/emoji text in RTF variants.
 
 The manual `dmg_license_probe` workflow input tests a previously verified BB
 image with the workflow's current macOS harness. Linux performs authenticated,
