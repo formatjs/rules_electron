@@ -829,3 +829,28 @@ these metrics establish retained compilation work, not completion or a controlle
 speedup. The next integration run includes current bundle/update and locale
 contracts while retaining the Electron runtime pin, ABI selection and compiler
 flags.
+
+
+## Source frontend samples
+
+The source workflow now samples its existing Bazel server every five seconds.
+Only numeric CPU, RSS, thread and page-fault counters from
+[Linux procfs](https://docs.kernel.org/filesystems/proc.html) enter
+`source-frontend-metrics.jsonl`. The sampler stops when the server exits or its
+PID is reused. Owned sampler cleanup preserves the original build command and
+exit status. Failure to collect diagnostics does not change build success.
+
+This complements Bazel's existing profile counters. Its
+[resource collector](https://github.com/bazelbuild/bazel/blob/9.2.0/src/main/java/com/google/devtools/build/lib/profiler/CollectLocalResourceUsage.java)
+flushes CPU/memory series at profiler shutdown, which a deadline can interrupt.
+Line-flushed samples retain a usable prefix. The observer verifies repository,
+commit, terminal source workflow, digest and bounded size before reporting
+weighted CPU usage and sampled peak RSS. It drops an incomplete final record;
+unknown fields, invalid numbers and nonmonotonic times fail without echoing data.
+RSS is sampled process memory, not JVM heap or remote-worker memory. Timing data
+stays in diagnostic artifacts. No product action reads it.
+
+The [BB suite](https://formatjs.buildbuddy.io/invocation/cd0eb802-798a-4c1d-83d6-ca07016333d3)
+and [cross-build](https://formatjs.buildbuddy.io/invocation/a7ee9807-370f-421b-8a1e-0f2152b74b9e)
+passed. Sampler, artifact handoff and observer tests passed on BB. The first
+source measurement remains pending.

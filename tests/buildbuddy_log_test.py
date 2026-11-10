@@ -8,10 +8,38 @@ import json
 import unittest
 from unittest.mock import Mock, patch
 
-from tools.ci.buildbuddy_log import profile_diagnostics, resource_diagnostics
+from tools.ci.buildbuddy_log import profile_diagnostics, resource_diagnostics, frontend_diagnostics
 
 
 class BuildBuddyLogTest(unittest.TestCase):
+    def test_frontend_metrics_verify_bytes_and_never_forward_unknown_fields(self):
+        sample = {'elapsed_seconds': 2, 'cpu_cores': 2, 'rss_bytes': 4096, 'threads': 3,
+                  'minor_faults': 4, 'major_faults': 1}
+        for private in (False, True):
+            payload = {**sample, **({'private-command': 'private-secret'} if private else {})}
+            data = json.dumps(payload).encode() + b'\n'
+            uri = 'bytestream://formatjs.buildbuddy.io/blobs/' + hashlib.sha256(data).hexdigest() + '/' + str(len(data))
+            invocation = {'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/formatjs/rules_electron',
+                          'pattern': 'Source-built desktop example', 'success': False,
+                          'invocationStatus': 'COMPLETE_INVOCATION_STATUS',
+                          'artifacts': [{'name': 'source-frontend-metrics.jsonl', 'uri': uri}]}
+            output = io.StringIO()
+            with patch('tools.ci.buildbuddy_log.api_request', return_value=nullcontext(io.BytesIO(data))) as request:
+                with redirect_stdout(output):
+                    frontend_diagnostics(invocation, 'private-read-key', 'a' * 40)
+            request.assert_called_once_with('GetFile', {'uri': uri}, 'private-read-key')
+            self.assertNotIn('private', output.getvalue())
+            if private:
+                self.assertEqual(output.getvalue(), 'Source frontend metrics unavailable: INVALID_METRICS\n')
+            else:
+                summary = json.loads(output.getvalue().split(': ', 1)[1])
+                self.assertEqual(summary['sampled_cpu_seconds'], 4)
+                self.assertEqual(summary['sampled_peak_rss_bytes'], 4096)
+                invocation['artifacts'][0]['uri'] = 'bytestream://formatjs.buildbuddy.io/blobs/' + '0' * 64 + '/' + str(len(data))
+                with patch('tools.ci.buildbuddy_log.api_request', return_value=nullcontext(io.BytesIO(data))):
+                    with self.assertRaisesRegex(ValueError, 'digest or size mismatch'):
+                        frontend_diagnostics(invocation, 'private-read-key', 'a' * 40)
+
     def source_profile(self, data, digest=None):
         invocation = {
             'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/formatjs/rules_electron',

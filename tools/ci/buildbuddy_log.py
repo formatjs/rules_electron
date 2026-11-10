@@ -11,12 +11,14 @@ import urllib.error
 from collections import Counter
 
 try:
-    from .buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id, source_profile_uri
+    from .buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id, source_profile_uri, source_frontend_metrics_uri
     from .profile_summary import decode_profile, recover_source_profile, summarize, summarize_source
+    from .source_frontend_metrics import summarize as summarize_frontend
     from .smoke_shards import SHARDS, archive_name
 except ImportError:
-    from buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id, source_profile_uri
+    from buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id, source_profile_uri, source_frontend_metrics_uri
     from profile_summary import decode_profile, recover_source_profile, summarize, summarize_source
+    from source_frontend_metrics import summarize as summarize_frontend
     from smoke_shards import SHARDS, archive_name
 
 
@@ -59,9 +61,32 @@ def resource_diagnostics(identifier, key, max_bytes=64 * 1024**2):
     }, sort_keys=True))
 
 
+def frontend_diagnostics(invocation, key, sha):
+    uri, digest, size = source_frontend_metrics_uri({'invocation': [invocation]}, sha)
+    try:
+        with api_request('GetFile', {'uri': uri}, key) as response:
+            data = response.read(size + 1)
+    except urllib.error.HTTPError as error:
+        if error.code != 404:
+            raise
+        print('Source frontend metrics unavailable: NOT_FOUND')
+        return
+    if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
+        raise ValueError('Frontend metrics digest or size mismatch')
+    try:
+        summary = summarize_frontend(data)
+    except ValueError:
+        print('Source frontend metrics unavailable: INVALID_METRICS')
+        return
+    print('Verified BB source frontend metrics:', json.dumps(summary, sort_keys=True))
+
+
 def profile_diagnostics(invocation, key, sha):
     source = invocation.get('pattern') == 'Source-built desktop example'
     terminal_source = source and invocation.get('invocationStatus') == 'COMPLETE_INVOCATION_STATUS'
+    if terminal_source and any(artifact.get('name', '').rsplit('/', 1)[-1] == 'source-frontend-metrics.jsonl'
+                               for artifact in invocation.get('artifacts', [])):
+        frontend_diagnostics(invocation, key, sha)
     for name in ["cross-build-profile.json.gz", "fixture-profile.json.gz"]:
         if (not invocation.get('success') and not terminal_source
                 or not any(a.get("name", "").endswith(name) for a in invocation.get("artifacts", []))):

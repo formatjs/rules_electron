@@ -1113,3 +1113,10 @@ py_test(
     ],
     target_compatible_with = ["@platforms//os:linux"],
 )
+
+py_test(
+    name = "source_frontend_metrics_test",
+    srcs = ["source_frontend_metrics_test.py"],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = ["//tools/ci:source_frontend_metrics"],
+)

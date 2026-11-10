@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from zipfile import ZipFile, ZipInfo
 
-from tools.ci.buildbuddy_artifacts import artifact_uri, invocation_id, source_profile_uri
+from tools.ci.buildbuddy_artifacts import artifact_uri, invocation_id, source_profile_uri, source_frontend_metrics_uri
 from tools.ci.run_native_smoke import extract_variant
 from tools.ci.smoke_shards import SHARDS, archive_name
 
@@ -68,6 +68,21 @@ class ArtifactHandoffTest(unittest.TestCase):
             invalid['invocation'][0]['artifacts'][0]['uri'] = uri
             with self.subTest(uri=uri), self.assertRaises(ValueError):
                 source_profile_uri(invalid, 'a' * 40, 'cross-build-profile.json.gz')
+
+    def test_frontend_metrics_allow_only_exact_terminal_source_invocation(self):
+        response = self.response()
+        response['invocation'][0].update(pattern='Source-built desktop example', success=False)
+        response['invocation'][0]['artifacts'][0]['name'] = 'source-frontend-metrics.jsonl'
+        self.assertEqual(source_frontend_metrics_uri(response, 'a' * 40)[1:], ('b' * 64, 12))
+        for field, value in [('commitSha', 'c' * 40), ('repoUrl', 'https://example.invalid/private'),
+                             ('pattern', 'Cross-build Electron Apps'), ('invocationStatus', 'PARTIAL_INVOCATION_STATUS')]:
+            changed = copy.deepcopy(response)
+            changed['invocation'][0][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                source_frontend_metrics_uri(changed, 'a' * 40)
+        response['invocation'][0]['artifacts'][0]['uri'] = 'bytestream://formatjs.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(1024**2 + 1)
+        with self.assertRaises(ValueError):
+            source_frontend_metrics_uri(response, 'a' * 40)
 
     def test_invocation_host_is_fixed_before_using_credentials(self):
         identifier = "12345678-1234-1234-1234-123456789abc"
