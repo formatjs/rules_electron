@@ -6,8 +6,17 @@ $ErrorActionPreference = 'Stop'
 $names = @('sample-desktop.exe', 'Sample-2.0.0.exe', 'installer.exe', 'Uninstall.exe')
 $script:nsisTraceCount = 0
 $script:resolvedStarts = 0
+$script:truncatedStarts = 0
 function Resolve-NsisName([uint32]$Identifier, [string]$EventName) {
   if ($names -contains $EventName) { return ($names | Where-Object { $_ -ieq $EventName } | Select-Object -First 1) }
+  if ($EventName.Length -eq 15) {
+    $matches = @($names | Where-Object { $_.Length -gt 15 -and $_.Substring(0, 15) -ieq $EventName })
+    if ($matches.Count -eq 1) {
+      $script:truncatedStarts += 1
+      [System.IO.File]::WriteAllText(($Output + '.truncated'), [string]$script:truncatedStarts)
+      return $matches[0]
+    }
+  }
   if ($EventName -inotmatch '^(sample|instal|uninstal)') { return $null }
   $process = $null
   try {
