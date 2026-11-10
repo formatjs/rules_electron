@@ -39,8 +39,11 @@ are rejected by `electron_update_feed`; installed NSIS update contracts remain
 separate. Publishing/signing a portable file uses the ordinary final-artifact
 release interfaces.
 
-Validation is pending. The generic example builds all four Windows CPU/compiler
-variants. Matching x64/ARM64 hosts will launch renamed executables from Unicode
-paths, exercise the real Electron renderer/native addons, check exact argument
-and environment forwarding, exit status 42, concurrent extraction and cleanup,
-and unchanged application registrations/parent environment.
+The [3e1f348 BB suite](https://formatjs.buildbuddy.io/invocation/685bd6b7-b347-4b25-b69b-f42e2ce0bd9f)
+and [cross-build](https://formatjs.buildbuddy.io/invocation/c9f774ab-83e1-4ba4-b34f-e3e7aa552002)
+passed. [All four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42762400895)
+passed, testing those artifacts. Windows x64/ARM64 each launched both compiler
+variants from renamed Unicode paths, exercising real renderer/native addons,
+exact argument/environment forwarding, exit status 42 and concurrent extraction.
+Cleanup removed owned files and roots while preserving an external junction
+target. Application registrations and parent environment stayed unchanged.

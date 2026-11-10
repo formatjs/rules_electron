@@ -12,7 +12,7 @@ def _impl(ctx):
     ])
     return [AnalysisTestResultInfo(success = rejected, message = "Expected provider configuration rejection: " + ctx.attr.message)]
 
-_rejection = rule(
+_rejection_test = rule(
     implementation = _impl,
     attrs = {
         "subject": attr.label(mandatory = True, cfg = analysis_test_transition(settings = {"//command_line_option:allow_analysis_failures": "True"})),
@@ -39,4 +39,4 @@ def update_config_tests(name):
         options = dict(provider = "s3", bucket = "sample-updates", region = "us-west-2", cache_name = "sample-updater")
         options.update(overrides)
         electron_update_config(name = subject, tags = ["manual"], **options)
-        _rejection(name = name + "_" + suffix, subject = ":" + subject, message = message)
+        _rejection_test(name = name + "_" + suffix, subject = ":" + subject, message = message)

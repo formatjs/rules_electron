@@ -18,8 +18,9 @@ combined normalized limit. The implementation follows
 [NSIS multilingual licenses](https://nsis.sourceforge.io/Docs/Chapter4.html#multilanguages).
 
 The example declares English text and Japanese RTF agreements for both scopes.
-The new RTF native case is pending; the results below used text for both locales.
-BB compilation
+The [6051414 native workflow](https://github.com/formatjs/rules_electron/actions/runs/42757825797)
+passed all four hosts, including English text/Japanese RTF selection, Unicode
+consent, cancellation and both Windows installer scopes. BB compilation
 checks installer/script reproducibility with relocated license inputs. Native
 Windows smoke checks visible text, disabled Next before acceptance, enabled Next
 after checking, and cancellation without registration. The
