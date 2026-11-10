@@ -71,11 +71,22 @@ electron_runtime(
     platforms = (source / "platforms/BUILD.bazel").read_text()
     platforms = replace_once(platforms, '("linux_x86_64", "linux_x86_64"),',
                              '("linux_x86_64", "linux_x86_64_gnu.2.31"),')
+    platforms += '''
+platform(
+    name = "source_buildbuddy_linux_x86_64",
+    parents = ["@rules_electron//platforms:buildbuddy_linux_x86_64"],
+    constraint_values = ["@llvm//constraints/libc:gnu.2.31"],
+)
+'''
+    bazelrc = replace_once((source / ".bazelrc").read_text(),
+                           'build:rbe --extra_execution_platforms=@rules_electron//platforms:buildbuddy_linux_x86_64',
+                           'build:rbe --extra_execution_platforms=//platforms:source_buildbuddy_linux_x86_64')
     shutil.copytree(source, output, ignore=shutil.ignore_patterns(
         "bazel-*", "__pycache__", "*.pyc", ".bazelrc.user", "MODULE.bazel.lock"))
     (output / "MODULE.bazel").write_text(module)
     (output / "BUILD.bazel").write_text(build)
     (output / "platforms/BUILD.bazel").write_text(platforms)
+    (output / ".bazelrc").write_text(bazelrc)
     with (output / ".bazelrc").open("a") as stream:
         stream.write('''
 build --compilation_mode=opt

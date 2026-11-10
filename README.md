@@ -97,7 +97,7 @@ see [Linux packages](docs/linux-packages.md).
 Windows user/machine NSIS packaging supplies shortcuts, URI/file registration and
 updater lifecycle support; see [Windows installers](docs/windows-installers.md).
 [Portable executables](docs/windows-portable.md) have a separate launch/cleanup
-contract; native validation is pending. [MSIX](docs/msix.md) has native
+contract; both compilers pass native x64/ARM64 checks. [MSIX](docs/msix.md) has native
 install/update/remove coverage with explicit signing interfaces.
 Per-user file handlers: [Windows file associations](docs/windows-file-associations.md).
 `electron_archive` creates deterministic ZIP, tar and compressed releases with explicit

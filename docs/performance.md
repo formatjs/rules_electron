@@ -133,8 +133,12 @@ adds `--notrack_incremental_state` to the final build, retaining analysis discar
 16 requested CPUs, 32 GB RAM and a 24 GB heap. Its final build failed at linking
 after 2078.399 seconds, before the workflow deadline. The source SDK's Linux
 dependencies require `exp`, `log` and `pow` at `GLIBC_2.29`, and `gettid` at
-`GLIBC_2.30`; the example addon transition still selected the older default
-sysroot. Source-example Linux x64 targets now select the SDK's glibc 2.31 ABI.
+`GLIBC_2.30`; the example's target and execution platforms allowed older default
+sysroots. Selecting glibc 2.31 for targets alone left the same source link
+failure in the [7549050 retry](https://formatjs.buildbuddy.io/invocation/4004a969-1c5f-49df-b475-ec178bab37a2),
+whose final build stopped after 159.039 seconds. Source-example Linux x64 targets
+and execution tools now select the SDK's glibc 2.31 ABI. The execution platform
+inherits the same pinned BB image and disabled network from the ordinary example.
 The ordinary bootstrap example keeps its existing target selection.
 
 [Bazel documents](https://bazel.build/advanced/performance/memory) that this avoids
