@@ -75,6 +75,7 @@ on run argv
     set sawDisagree to false
     set maxButtons to 0
     set maxTexts to 0
+    set maxElements to 0
     set sawImageError to false
     set sawOK to false
     tell application "System Events"
@@ -99,25 +100,28 @@ on run argv
                     set textCount to 0
                     set agreeControl to missing value
                     set disagreeControl to missing value
-                    repeat with element in entire contents of targetWindow
+                    set elements to (get entire contents of targetWindow)
+                    if (count elements) > maxElements then set maxElements to count elements
+                    repeat with elementReference in elements
+                        set currentElement to contents of elementReference
                         try
-                            if (value of element as text) contains "Sample Desktop example license, version 1." then set bodyMatches to true
+                            if (value of currentElement as text) contains "Sample Desktop example license, version 1." then set bodyMatches to true
                         end try
                         try
-                            if (name of element as text) contains "Sample Desktop example license, version 1." then set bodyMatches to true
+                            if (name of currentElement as text) contains "Sample Desktop example license, version 1." then set bodyMatches to true
                         end try
                         try
-                            if (description of element as text) contains "Sample Desktop example license, version 1." then set bodyMatches to true
+                            if (description of currentElement as text) contains "Sample Desktop example license, version 1." then set bodyMatches to true
                         end try
                         try
-                            if (role of element as text) is "AXButton" then
+                            if (role of currentElement as text) is "AXButton" then
                                 set buttonCount to buttonCount + 1
-                                if (name of element as text) is "Agree" then set agreeControl to element
-                                if (name of element as text) is "Disagree" then set disagreeControl to element
-                                if (name of element as text) is "OK" then set sawOK to true
+                                if (name of currentElement as text) is "Agree" then set agreeControl to element
+                                if (name of currentElement as text) is "Disagree" then set disagreeControl to element
+                                if (name of currentElement as text) is "OK" then set sawOK to true
                             end if
-                            if (role of element as text) is in {"AXStaticText", "AXTextArea"} then set textCount to textCount + 1
-                            set elementText to (value of element as text) & " " & (name of element as text)
+                            if (role of currentElement as text) is in {"AXStaticText", "AXTextArea"} then set textCount to textCount + 1
+                            set elementText to (value of currentElement as text) & " " & (name of currentElement as text)
                             if elementText contains "couldn't be opened" or elementText contains "couldn’t be opened" then set sawImageError to true
                         end try
                     end repeat
@@ -128,14 +132,14 @@ on run argv
                     if disagreeControl is not missing value then set sawDisagree to true
                     if bodyMatches and agreeControl is not missing value and disagreeControl is not missing value then
                         click disagreeControl
-                        return "declined," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & sawImageError & "," & sawOK
+                        return "declined," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK
                     end if
                 end repeat
             end repeat
             delay 0.5
         end repeat
     end tell
-    return "not-found," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & sawImageError & "," & sawOK
+    return "not-found," & maxProcesses & "," & maxWindows & "," & sawBody & "," & sawAgree & "," & sawDisagree & "," & maxButtons & "," & maxTexts & "," & maxElements & "," & sawImageError & "," & sawOK
 end run
 '''
 
@@ -212,12 +216,13 @@ function run() {
         open_error = re.search(br'\((-?\d{1,10})\)\s*$', opened.stderr)
         summary['open_error_code'] = int(open_error[1]) if open_error else None
         fields = result.stdout.strip().split(b',')
-        if (result.returncode == 0 and len(fields) == 10 and fields[0] in (b'declined', b'not-found')
-                and all(value.isdigit() and len(value) <= 3 for value in fields[1:3] + fields[6:8])
-                and all(value in (b'true', b'false') for value in fields[3:6] + fields[8:])):
+        if (result.returncode == 0 and len(fields) == 11 and fields[0] in (b'declined', b'not-found')
+                and all(value.isdigit() and len(value) <= 3 for value in fields[1:3] + fields[6:9])
+                and all(value in (b'true', b'false') for value in fields[3:6] + fields[9:])):
             summary.update(declined=fields[0] == b'declined', processes=int(fields[1]), windows=int(fields[2]),
                            body=fields[3] == b'true', agree=fields[4] == b'true', disagree=fields[5] == b'true',
-                           buttons=int(fields[6]), text_controls=int(fields[7]), image_error=fields[8] == b'true', ok=fields[9] == b'true')
+                           buttons=int(fields[6]), text_controls=int(fields[7]), elements=int(fields[8]),
+                           image_error=fields[9] == b'true', ok=fields[10] == b'true')
         print('DMG_LICENSE_DIALOG ' + json.dumps(summary, sort_keys=True), flush=True)
         return summary
     finally:
