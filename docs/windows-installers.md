@@ -10,6 +10,13 @@ passed. Both Windows CPU jobs also passed installer/update/removal in the
 [native workflow](https://github.com/formatjs/rules_electron/actions/runs/42729102533);
 that workflow's macOS job failed the separate Finder background getter check.
 
+The per-user uninstall smoke waits for the default uninstaller's complete process
+tree before checking owned files, shortcuts and registrations. NSIS copies its
+uninstaller to a temporary child; waiting only for the launcher can observe partial
+cleanup. Shortcut/ownership assertions remain required. This follows
+[NSIS's documented self-copy behavior](https://nsis.sourceforge.io/Docs/AppendixD.html)
+and [PowerShell's process-tree wait](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/start-process?view=powershell-5.1).
+
 `@rules_electron//electron/tools:windows_elevate` builds a native elevation bridge
 for the selected Windows CPU/compiler. Map it to `resources/elevate.exe` for the
 pinned electron-updater NSIS elevation contract. It accepts an absolute executable

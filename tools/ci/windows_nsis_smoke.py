@@ -140,6 +140,16 @@ def wait_for(predicate, timeout=120):
         time.sleep(0.25)
 
 
+def uninstall(executable):
+    environment = {key: value for key, value in os.environ.items() if key.upper() != 'PSMODULEPATH'}
+    output = command('powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
+                     str(Path(__file__).with_name('windows_uninstall_wait.ps1').resolve()),
+                     '-Executable', str(executable), env=environment)
+    if output.strip() != 'NSIS_UNINSTALL_TREE_EXIT 0':
+        raise RuntimeError('NSIS_UNINSTALL_TREE_EXIT_INVALID')
+    print(output.strip(), flush=True)
+
+
 def update_failure_state(install, cache):
     processes = {}
     tasklist = Path(os.environ["SystemRoot"]) / "System32/tasklist.exe"
@@ -317,7 +327,7 @@ if __name__ == "__main__":
             assert file_handlers(executable, architecture) == handlers
             icon(install / "Uninstall.exe", architecture, 113)
             smoke(executable, architecture, "2.0.0")
-            command(str(install / "Uninstall.exe"), "/S")
+            uninstall(install / "Uninstall.exe")
             wait_for(lambda: registry_value(REGISTRY, "DisplayVersion") is None and not executable.exists() and not (install / "Uninstall.exe").exists())
             assert registry_value(PROTOCOL, "") is None
             assert all(not p.exists() for p in shortcuts)
@@ -333,7 +343,7 @@ if __name__ == "__main__":
             server.shutdown()
             server.server_close()
             if (install / "Uninstall.exe").exists():
-                command(str(install / "Uninstall.exe"), "/S")
+                uninstall(install / "Uninstall.exe")
                 wait_for(lambda: not (install / "Uninstall.exe").exists())
             for path in [cache, user_data]:
                 if path.exists():
