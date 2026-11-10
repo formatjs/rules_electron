@@ -135,6 +135,8 @@ stay unchanged so existing action-cache entries remain usable. This tests a
 frontend CPU/memory hypothesis; no speedup or completed source desktop is claimed.
 Failed-run profile recovery is bounded to 128 MiB expanded data, retains only
 complete JSON events, and reports fixed public operation names without paths.
+Recovery counts and discards invalid timing records; complete profiles retain
+strict timing validation. Recovered timings remain partial observations.
 
 The [16-CPU trial](https://formatjs.buildbuddy.io/invocation/8a01b8d6-6c78-4df9-9b63-2f3bc4f413fc)
 also hit the free-tier deadline (3600.252 seconds), reaching a reported

@@ -7,6 +7,21 @@ from tools.ci.profile_summary import decode_profile, recover_source_profile, sum
 
 
 class ProfileTest(unittest.TestCase):
+    def test_recovered_source_metrics_count_bad_clock_events_without_forwarding_labels(self):
+        profile = {'traceEvents': [
+            {'ph': 'X', 'ts': 0, 'dur': 2000000, 'name': 'MerkleTreeComputer.buildForSpawn', 'cat': 'general information'},
+            {'ph': 'X', 'ts': 0, 'dur': -10, 'name': 'private-event'},
+            {'ph': 'X', 'ts': 2**62, 'dur': 100, 'name': 'private-event'},
+            {'ph': 'X', 'ts': 0, 'dur': float('nan'), 'name': 'private-event'},
+        ]}
+        with self.assertRaises(ValueError):
+            summarize_source(profile)
+        summary = summarize_source(profile, allow_invalid_timings=True)
+        self.assertEqual(summary['trace_span_seconds'], 2)
+        self.assertEqual(summary['discarded_timing_events'], {'OUT_OF_RANGE': 2, 'NON_FINITE': 1})
+        self.assertEqual(summary['operations']['MerkleTreeComputer.buildForSpawn']['count'], 1)
+        self.assertNotIn('private-', json.dumps(summary))
+
     def test_truncated_source_profile_recovers_only_complete_events(self):
         event = {'ph': 'X', 'cat': 'action processing', 'name': 'private-path',
                  'ts': 0, 'dur': 2000000, 'args': {'mnemonic': 'CppCompile'}}

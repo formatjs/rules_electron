@@ -88,7 +88,7 @@ def profile_diagnostics(invocation, key, sha):
             if isinstance(error, EOFError):
                 reason = 'TRUNCATED_GZIP'
                 try:
-                    summary = summarize_source(recover_source_profile(data))
+                    summary = summarize_source(recover_source_profile(data), allow_invalid_timings=True)
                 except (ValueError, zlib.error) as recovery_error:
                     recovery_reason = {
                         'Profile exceeds expanded size limit': 'EXPANDED_SIZE_LIMIT',

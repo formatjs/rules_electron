@@ -9,7 +9,7 @@ import codecs
 import zlib
 
 
-def summarize_source(profile):
+def summarize_source(profile, allow_invalid_timings=False):
     categories = {
         "action processing", "remote action cache check", "remote output download",
         "general information", "skyframe evaluator", "critical path component",
@@ -29,6 +29,7 @@ def summarize_source(profile):
     phases = {"runAnalysisPhase", "runLoadingPhase", "evaluateTargetPatterns", "runExecutorMainPhase"}
     operations = {'MerkleTreeComputer.buildForSpawn', 'MerkleTreeComputer.buildForFiles', 'acquiring semaphore'}
     events = []
+    discarded = defaultdict(int)
     for event in profile["traceEvents"]:
         args = event.get("args", {})
         if event.get("ph") == "M" and event.get("name") == "thread_name" and args.get("name") == "Critical Path":
@@ -36,10 +37,18 @@ def summarize_source(profile):
         if event.get("ph") != "X":
             continue
         timestamp, duration = event.get("ts"), event.get("dur")
+        problem = None
         if not all(isinstance(value, (int, float)) and math.isfinite(value) for value in [timestamp, duration]):
-            raise ValueError("Invalid source profile timing")
-        if abs(timestamp) > 2**63 or not 0 <= duration <= 7 * 86400 * 1000000:
-            raise ValueError("Source profile timing exceeds limits")
+            problem = 'NON_FINITE'
+        elif abs(timestamp) > 2**63 or not 0 <= duration <= 7 * 86400 * 1000000:
+            problem = 'OUT_OF_RANGE'
+        elif allow_invalid_timings and abs(timestamp) > 7 * 86400 * 1000000:
+            problem = 'OUT_OF_RANGE'
+        if problem:
+            if not allow_invalid_timings:
+                raise ValueError("Invalid source profile timing" if problem == 'NON_FINITE' else "Source profile timing exceeds limits")
+            discarded[problem] += 1
+            continue
         mnemonic = args.get("mnemonic")
         events.append({
             "ph": "X", "pid": event.get("pid"), "tid": event.get("tid"),
@@ -49,6 +58,8 @@ def summarize_source(profile):
             "args": {"mnemonic": mnemonic if mnemonic in mnemonics else "other"} if mnemonic else {},
         })
     result = summarize({"traceEvents": events})
+    if discarded:
+        result['discarded_timing_events'] = dict(discarded)
     result['operations'] = {}
     for name in sorted(operations):
         durations = [event['dur'] / 1000000 for event in events if event.get('ph') == 'X' and event.get('name') == name]
