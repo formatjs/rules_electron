@@ -669,7 +669,14 @@ cc_binary(
 electron_runtime(
     name = "runtime",
     binary = ":runtime_probe",
-    files = {"fixtures/icudtl.dat": "icudtl.dat"},
+    exclude_files = ["runtime-notice.txt"],
+    files = {
+        "fixtures/icudtl.dat": "icudtl.dat",
+        "fixtures/main.js": "locales/fr.pak",
+        "fixtures/notice.txt": "runtime-notice.txt",
+        "fixtures/workspace-package.json": "locales/en-US.pak",
+    },
+    languages = ["en"],
 )
 
 electron_app(

@@ -48,6 +48,45 @@ class PlatformLayoutTest(unittest.TestCase):
         self.assertEqual((output / "locales/en-US.pak").read_bytes(), b"english")
         self.assertFalse((output / "locales/fr.pak").exists())
 
+    def test_declared_runtime_selection_preserves_app_owned_files(self):
+        for platform, binary in (("linux", "electron"), ("windows", "electron.exe")):
+            with self.subTest(platform=platform):
+                entries = self.manifest("resources") + [
+                    {"source": str(self.main), "path": binary, "runtime": True},
+                    {"source": str(self.main), "path": "locales/en-US.pak", "runtime": True},
+                    {"source": str(self.main), "path": "locales/fr.pak", "runtime": True},
+                    {"source": str(self.main), "path": "runtime-notice", "runtime": True},
+                    {"source": str(self.main), "path": "resources/app/locales/fr.pak"},
+                ]
+                output = self.root / platform
+                assemble(entries, output, platform=platform, runtime_languages=["EN_us"],
+                         exclude_files=["runtime-notice", "resources/app/locales/fr.pak"])
+                self.assertEqual((output / "locales/en-US.pak").read_bytes(), self.main.read_bytes())
+                self.assertFalse((output / "locales/fr.pak").exists())
+                self.assertFalse((output / "runtime-notice").exists())
+                self.assertEqual((output / "resources/app/locales/fr.pak").read_bytes(), self.main.read_bytes())
+
+    def test_macos_locale_selection_covers_versioned_framework_and_main_resources(self):
+        runtime = self.root / "locales.zip"
+        roots = ("Contents/Resources", "Contents/Frameworks/Electron Framework.framework/Versions/A/Resources")
+        with ZipFile(runtime, "w") as archive:
+            for root in roots:
+                for language in ("en", "zh_CN", "fr_CA"):
+                    archive.writestr("Electron.app/" + root + "/" + language + ".lproj/locale.pak", language.encode())
+            archive.writestr("Electron.app/Contents/Resources/application/fr.lproj/keep.txt", b"app owned")
+            archive.writestr("Electron.app/Contents/Frameworks/Other.framework/Resources/fr.lproj/keep.txt", b"other framework")
+        output = self.root / "selected"
+        extract_runtime(runtime, output, "macos", [], {}, ["EN-us", "zh-CN"])
+        for root in roots:
+            self.assertEqual((output / root / "en.lproj/locale.pak").read_bytes(), b"en")
+            self.assertEqual((output / root / "zh_CN.lproj/locale.pak").read_bytes(), b"zh_CN")
+            self.assertFalse((output / root / "fr_CA.lproj").exists())
+        self.assertEqual((output / "Contents/Resources/application/fr.lproj/keep.txt").read_bytes(), b"app owned")
+        self.assertEqual((output / "Contents/Frameworks/Other.framework/Resources/fr.lproj/keep.txt").read_bytes(), b"other framework")
+        all_output = self.root / "all"
+        extract_runtime(runtime, all_output, "macos", [], {})
+        self.assertEqual((all_output / roots[1] / "fr_CA.lproj/locale.pak").read_bytes(), b"fr_CA")
+
     def macos_runtime(self, icon_metadata=False):
         runtime = self.root / "macos.zip"
         with ZipFile(runtime, "w") as archive:

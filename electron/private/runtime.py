@@ -18,7 +18,50 @@ def _relative(name):
     return path
 
 
+def runtime_languages(values):
+    result = set()
+    for value in values:
+        if not isinstance(value, str):
+            raise ValueError("Runtime languages require locale names")
+        value = value.strip().lower().replace("_", "-")
+        if value and not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", value):
+            raise ValueError("Invalid runtime language")
+        if value:
+            result.add(value)
+    return result
+
+
+def keep_runtime_locale(path, platform, languages):
+    if not languages:
+        return True
+    path = PurePosixPath(path)
+    language = None
+    if platform != "macos":
+        if len(path.parts) == 2 and path.parts[0] == "locales" and path.suffix == ".pak":
+            language = path.stem
+    else:
+        roots = ["Contents/Resources"]
+        framework = "Contents/Frameworks/Electron Framework.framework"
+        roots.append(framework + "/Resources")
+        if path.is_relative_to(framework + "/Versions"):
+            parts = path.relative_to(framework + "/Versions").parts
+            if len(parts) >= 3:
+                roots.append(framework + "/Versions/" + parts[0] + "/Resources")
+        for root in roots:
+            if path.is_relative_to(root):
+                first = path.relative_to(root).parts
+                if first and first[0].endswith(".lproj"):
+                    language = first[0][:-6]
+                    break
+    if language is None:
+        return True
+    language = language.lower().replace("_", "-")
+    return any(wanted == language or language.startswith(wanted + "-") or wanted.startswith(language + "-")
+               for wanted in languages)
+
+
 def extract_runtime(archive, output, platform, exclude_files, occupied, languages=()):
+    languages = runtime_languages(languages)
     with ZipFile(archive) as source:
         roots = {i.filename.split("/")[0] for i in source.infolist() if ".app/" in i.filename}
         if platform == "macos" and len(roots) != 1:
@@ -36,7 +79,7 @@ def extract_runtime(archive, output, platform, exclude_files, occupied, language
             else:
                 name = original
             path = _relative(name)
-            if platform != "macos" and languages and path.parts[0] == "locales" and path.suffix == ".pak" and path.stem not in languages:
+            if not keep_runtime_locale(path, platform, languages):
                 continue
             if path in entries:
                 raise ValueError(f"Duplicate runtime archive path: {path}")
