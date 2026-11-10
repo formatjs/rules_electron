@@ -73,11 +73,15 @@ on run
     set sawDisagree to false
     tell application "System Events"
         repeat 40 times
-            set targets to application processes whose name is "DiskImageMounter" or name is "diskimages-helper" or name is "CoreServicesUIAgent"
+            set targets to application processes
             if (count targets) > maxProcesses then set maxProcesses to count targets
             repeat with targetProcess in targets
-                if (count windows of targetProcess) > maxWindows then set maxWindows to count windows of targetProcess
-                repeat with targetWindow in windows of targetProcess
+                set processWindows to {}
+                try
+                    set processWindows to windows of targetProcess
+                end try
+                if (count processWindows) > maxWindows then set maxWindows to count processWindows
+                repeat with targetWindow in processWindows
                     set bodyMatches to false
                     set agreeControl to missing value
                     set disagreeControl to missing value
@@ -117,7 +121,14 @@ end run
     if attached():
         raise RuntimeError('DMG_LICENSE_DIALOG_IMAGE_ALREADY_ATTACHED')
     try:
-        opened = subprocess.run(['/usr/bin/open', '-a', 'DiskImageMounter', str(image)],
+        opened = subprocess.run(['/usr/bin/osascript', '-e', '''
+on run argv
+    tell application "Finder"
+        activate
+        open (POSIX file (item 1 of argv))
+    end tell
+end run
+''', str(image)],
                                 capture_output=True, timeout=30)
         result = subprocess.run(['/usr/bin/osascript', '-e', script], capture_output=True, timeout=30)
         time.sleep(1)
