@@ -90,4 +90,18 @@ def installer_trace(directory):
                     report[field] = int(value)
                 else:
                     report["invalid_start_summary"] = True
+        state = Path(str(output) + '.state')
+        if state.is_file():
+            try:
+                with state.open(encoding="ascii") as source:
+                    snapshot = json.loads(source.read(4097))
+                counts = {"tracked", "running", "unknown", "handle_misses", "queued_events"}
+                if (not isinstance(snapshot, dict) or set(snapshot) != counts | {"exit_codes"}
+                        or any(type(snapshot[key]) is not int or not 0 <= snapshot[key] <= 100000 for key in counts)
+                        or not isinstance(snapshot["exit_codes"], list) or len(snapshot["exit_codes"]) > 128
+                        or any(type(code) is not int or not 0 <= code <= 0xffffffff for code in snapshot["exit_codes"])):
+                    raise ValueError("Invalid installer process state")
+                report["installer_state"] = snapshot
+            except (OSError, UnicodeError, ValueError):
+                report["invalid_installer_state"] = True
         print("NSIS_PROCESS_TRACE " + json.dumps(report, sort_keys=True), flush=True)

@@ -7,6 +7,8 @@ $names = @('sample-desktop.exe', 'Sample-2.0.0.exe', 'installer.exe', 'Uninstall
 $script:nsisTraceCount = 0
 $script:resolvedStarts = 0
 $script:truncatedStarts = 0
+$script:installerHandles = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
+$script:installerHandleMisses = 0
 function Resolve-NsisName([uint32]$Identifier, [string]$EventName) {
   if ($names -contains $EventName) { return ($names | Where-Object { $_ -ieq $EventName } | Select-Object -First 1) }
   if ($EventName.Length -eq 15) {
@@ -33,6 +35,36 @@ function Resolve-NsisName([uint32]$Identifier, [string]$EventName) {
   }
   return $null
 }
+function Track-Installer([uint32]$Identifier, [uint64]$TraceTime) {
+  $process = $null
+  try {
+    $process = [System.Diagnostics.Process]::GetProcessById($Identifier)
+    $null = $process.Handle
+    $started = [uint64]$process.StartTime.ToUniversalTime().ToFileTimeUtc()
+    if ($process.ProcessName -ine 'Sample-2.0.0' -or $started -gt $TraceTime -or
+        $TraceTime - $started -gt 50000000) { throw 'Installer PID lifetime mismatch' }
+    $script:installerHandles.Add($process)
+    $process = $null
+  } catch {
+    $script:installerHandleMisses += 1
+  } finally {
+    if ($process) { $process.Dispose() }
+  }
+}
+function Write-InstallerState {
+  $running = 0
+  $unknown = 0
+  $codes = @()
+  foreach ($process in $script:installerHandles) {
+    try {
+      if ($process.HasExited) { $codes += [uint32]([int64]$process.ExitCode -band [int64]4294967295) } else { $running += 1 }
+    } catch { $unknown += 1 }
+  }
+  $state = @{tracked=$script:installerHandles.Count; running=$running; unknown=$unknown;
+             handle_misses=$script:installerHandleMisses; exit_codes=@($codes);
+             queued_events=@(Get-Event -ErrorAction SilentlyContinue).Count}
+  [System.IO.File]::WriteAllText(($Output + '.state'), ($state | ConvertTo-Json -Compress))
+}
 function Write-NsisEvent([string]$Name, [string]$Stage, $ExitCode) {
   if ($script:nsisTraceCount -ge 128) { return }
   $record = @{name=$Name; stage=$Stage; exit_code=$ExitCode}
@@ -57,6 +89,7 @@ try {
           Remove-Event -EventIdentifier $notice.EventIdentifier
           continue
         }
+        if ($name -ieq 'Sample-2.0.0.exe') { Track-Installer $traceProcessId $traceTime }
         $owned[$traceProcessId] = @{Name=$name; Started=$traceTime}
         Write-NsisEvent $owned[$traceProcessId].Name 'start' $null
         if ($pending.ContainsKey($traceProcessId)) {
@@ -79,8 +112,10 @@ try {
       }
       Remove-Event -EventIdentifier $notice.EventIdentifier
     }
+    Write-InstallerState
   }
 } finally {
+  foreach ($process in $script:installerHandles) { $process.Dispose() }
   Unregister-Event -SourceIdentifier 'nsis-start' -ErrorAction SilentlyContinue
   Unregister-Event -SourceIdentifier 'nsis-stop' -ErrorAction SilentlyContinue
 }
