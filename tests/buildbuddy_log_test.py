@@ -12,6 +12,25 @@ from tools.ci.buildbuddy_log import profile_diagnostics, resource_diagnostics, f
 
 
 class BuildBuddyLogTest(unittest.TestCase):
+    def test_large_source_archive_metadata_does_not_relax_download_limit(self):
+        size = 4 * 1024**3
+        invocation = {'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/formatjs/rules_electron',
+                      'pattern': 'Source-built desktop example', 'success': True,
+                      'invocationStatus': 'COMPLETE_INVOCATION_STATUS',
+                      'artifacts': [{'name': 'electron-smoke-linux-x64.zip',
+                                     'uri': 'bytestream://formatjs.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(size)}]}
+        output = io.StringIO()
+        with patch('tools.ci.buildbuddy_log.api_request') as request, redirect_stdout(output):
+            profile_diagnostics(invocation, 'private-read-key', 'a' * 40)
+        request.assert_not_called()
+        self.assertIn('"size": ' + str(size), output.getvalue())
+        from tools.ci.buildbuddy_artifacts import artifact_uri
+        with self.assertRaisesRegex(ValueError, 'Invalid artifact digest or size'):
+            artifact_uri({'invocation': [invocation]}, 'a' * 40, artifact_name='electron-smoke-linux-x64.zip')
+        invocation['pattern'] = 'Cross-build Electron Apps'
+        with self.assertRaisesRegex(ValueError, 'Invalid artifact digest or size'):
+            profile_diagnostics(invocation, 'private-read-key', 'a' * 40)
+
     def test_frontend_metrics_verify_bytes_and_never_forward_unknown_fields(self):
         sample = {'elapsed_seconds': 2, 'cpu_cores': 2, 'rss_bytes': 4096, 'threads': 3,
                   'minor_faults': 4, 'major_faults': 1}

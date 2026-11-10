@@ -46,6 +46,33 @@ class ArtifactHandoffTest(unittest.TestCase):
             with self.subTest(field=field), self.assertRaises(ValueError):
                 artifact_uri(invalid, "a" * 40)
 
+    def test_source_linux_transport_cap_is_bounded_and_not_shared_by_other_shards(self):
+        response = self.response()
+        invocation = response['invocation'][0]
+        invocation['pattern'] = 'Source-built desktop example'
+        artifact = invocation['artifacts'][0]
+        artifact['name'] = 'electron-smoke-linux-x64.zip'
+
+        def sized(size):
+            artifact['uri'] = 'bytestream://formatjs.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(size)
+
+        sized(2333020147)
+        self.assertEqual(artifact_uri(response, 'a' * 40, artifact_name=artifact['name'])[2], 2333020147)
+        sized(3 * 1024**3)
+        self.assertEqual(artifact_uri(response, 'a' * 40, artifact_name=artifact['name'])[2], 3 * 1024**3)
+        sized(3 * 1024**3 + 1)
+        with self.assertRaises(ValueError):
+            artifact_uri(response, 'a' * 40, artifact_name=artifact['name'])
+        sized(2 * 1024**3 + 1)
+        for name in ('electron-smoke-macos-arm64.zip', 'electron-smoke-windows-x64.zip', 'electron-cross-smoke.zip'):
+            artifact['name'] = name
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                artifact_uri(response, 'a' * 40, artifact_name=name)
+        artifact['name'] = 'electron-smoke-linux-x64.zip'
+        invocation['pattern'] = 'Cross-build Electron Apps'
+        with self.assertRaises(ValueError):
+            artifact_uri(response, 'a' * 40, artifact_name=artifact['name'])
+
     def test_failed_source_profile_is_data_only_and_still_bound_to_terminal_commit(self):
         response = self.response()
         invocation = response['invocation'][0]
