@@ -47,8 +47,12 @@ reproducibility, Unicode paths and macOS signature bytes. The
 [1772ee8 suite](https://formatjs.buildbuddy.io/invocation/1951142b-2935-4178-8b33-0457d06b54a8)
 passed those checks and the public rules' actual app-fixture outputs. Desktop
 `release_lzip` and `release_tar7z` targets now enter both Linux cross-builds;
-Linux x64 smoke decodes each and launches the packaged Electron app. Native
-desktop validation for the added formats is pending.
+Linux x64 smoke decodes each and launches the packaged Electron app. The
+[8ec226b suite](https://formatjs.buildbuddy.io/invocation/db320be9-7576-4458-a8e4-1df2fac8973a),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/769e347f-4145-49e0-8e55-2b9734638a2e)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42744591879)
+passed. Linux x64 executed the BB-built GNU lzip decoder, then launched Electron
+from both extracted formats. Linux ARM64 remains build-only.
 ZIP/tar compressors come from the declared Python toolchain. Level 1 favors packaging
 time; level 9 favors size. Choose from measured costs for the consuming application.
 

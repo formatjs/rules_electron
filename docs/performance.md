@@ -15,6 +15,9 @@ Current changes:
   `compression-level: 0`, avoiding another deflate pass. This follows the
   [artifact action's guidance](https://github.com/actions/upload-artifact#altering-compressions-level-speed-v-size)
   for large incompressible files; product bytes remain unchanged.
+- Smoke ZIPs store `.7z` and `.lz` packages directly, alongside existing stored
+  DEB/NSIS/AppImage members. This avoids deflating the examples' compressed
+  payloads again. Product archives remain unchanged; no latency delta measured yet.
 
 ## Recorded observations
 
