@@ -107,7 +107,7 @@ actions:
             --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
             //tools:file_matcher_test
           bazel --host_jvm_args=-Xmx24g build --config=bb-workflow --config=msvc-license --remote_download_toplevel \
-            --discard_analysis_cache \
+            --discard_analysis_cache --notrack_incremental_state \
             --registry="file://$source_registry" --registry=https://bcr.bazel.build \
             --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
             --profile="$BUILDBUDDY_ARTIFACTS_DIRECTORY/cross-build-profile.json.gz" \

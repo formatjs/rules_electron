@@ -119,6 +119,23 @@ changes need separate measurements. The 50% native transfer gate remains active.
 
 ## Source dependency baseline
 
+The [analysis-discard trial](https://formatjs.buildbuddy.io/invocation/f44b5c7c-7584-4c21-9605-78dad1973859)
+also hit the free-tier deadline at 3600.309 seconds, reaching 120,368/132,452
+reported actions. Its 2392.170-second recovered trace prefix records 41,224.656
+cumulative Merkle preparation seconds, 11,758.740 semaphore seconds, 1215.430 GC
+seconds and 825.183 worker seconds. Three invalid timing events were discarded.
+These overlap and cover only a partial trace. They do not establish a completed
+build or controlled speedup. Final cache counters were 75,479 hits and 198
+misses/uploads.
+
+The next source trial adds `--notrack_incremental_state` to the final build,
+retaining analysis discard, 16 requested CPUs, 32 GB RAM and a 24 GB heap.
+[Bazel documents](https://bazel.build/advanced/performance/memory) that this avoids
+retaining dependency-graph edges at the cost of incremental state. The source pin
+and compiler settings stay fixed; newer example license fixtures add packaging
+work, so this is not an identical whole-workflow comparison. Remote action-cache
+reuse remains available.
+
 The [3fe910c source example](https://formatjs.buildbuddy.io/invocation/710b3025-44c4-4a72-abd7-8750ffc66060)
 hit BB's free-tier deadline at 3600.484 seconds. Its authenticated, SHA-verified
 truncated profile contains 2769.954 seconds of recoverable trace. Complete events
