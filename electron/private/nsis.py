@@ -246,7 +246,8 @@ def installer_script(app, package_json, app_id, product_name, executable_name,
         *(['IfSilent license_language_selected', 'Push ""'] +
           [line for entry in licenses for line in ('Push ' + str(LICENSE_LANGUAGES[entry['locale']][1]), 'Push ' + q(LICENSE_LANGUAGES[entry['locale']][0]))] +
           ['Push A', 'LangDLL::LangDialog "Installer Language" "Select installer language"',
-           'Pop $LANGUAGE', 'StrCmp $LANGUAGE "cancel" 0 +2', 'Abort', 'license_language_selected:'] if len(licenses) > 1 else []),
+           'Pop $LANGUAGE', 'StrCmp $LANGUAGE "cancel" 0 license_language_selected',
+           'SetErrorLevel 1', 'Abort', 'license_language_selected:'] if len(licenses) > 1 else []),
         '${Unless} ${' + ('IsNativeARM64' if architecture == 'arm64' else 'IsNativeAMD64') + '}',
         'SetErrorLevel 1', 'Abort "Installer requires matching native Windows architecture."', '${EndUnless}',
         '${GetParameters} $0', 'ClearErrors', '${GetOptions} $0 "/D=" $1',

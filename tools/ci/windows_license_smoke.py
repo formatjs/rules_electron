@@ -166,7 +166,9 @@ def smoke_license(installer):
     process = subprocess.Popen([str(installer)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         wait_for(process, lambda: select_language(process, None))
-        if process.wait(timeout=30) != 1:
+        exit_code = process.wait(timeout=30)
+        print('NSIS_LICENSE_LANGUAGE_CANCEL_EXIT ' + str(exit_code), flush=True)
+        if exit_code != 1:
             raise RuntimeError('NSIS_LICENSE_LANGUAGE_CANCEL_FAILED')
         print('NSIS_LICENSE_LANGUAGE_CANCEL_OK', flush=True)
     finally:
