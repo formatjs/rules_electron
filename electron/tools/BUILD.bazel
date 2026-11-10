@@ -25,6 +25,7 @@ exports_files([
 py_library(
     name = "dmg_notarization",
     srcs = ["notarize_dmg.py"],
+    imports = ["../.."],
     deps = [
         ":notarization",
         "//electron/private:udif",
@@ -34,6 +35,7 @@ py_library(
 py_library(
     name = "dmg_release",
     srcs = ["release_dmg.py"],
+    imports = ["../.."],
     deps = [
         ":dmg_notarization",
         ":macos_release",
@@ -45,6 +47,7 @@ py_library(
 py_library(
     name = "macos_release",
     srcs = ["sign_macos.py"],
+    imports = ["../.."],
     deps = [
         ":notarization",
         "//electron/private:assembly",
@@ -54,6 +57,7 @@ py_library(
 py_library(
     name = "notarization",
     srcs = ["notarize_macos.py"],
+    imports = ["../.."],
     deps = [
         "//electron/private:archives",
         "//electron/private:assembly",
@@ -105,12 +109,14 @@ py_binary(
 py_library(
     name = "publication",
     srcs = ["publish_update.py"],
+    imports = ["../.."],
     deps = ["//electron/private:updates"],
 )
 
 py_library(
     name = "appinstaller_publication",
     srcs = ["publish_appinstaller.py"],
+    imports = ["../.."],
     deps = [
         ":publication",
         ":s3_publication",
@@ -129,6 +135,7 @@ py_binary(
 py_library(
     name = "github_publication",
     srcs = ["publish_github.py"],
+    imports = ["../.."],
     deps = [":publication"],
 )
 
@@ -143,6 +150,7 @@ py_binary(
 py_library(
     name = "s3_publication",
     srcs = ["publish_s3.py"],
+    imports = ["../.."],
     deps = [":publication"],
 )
 

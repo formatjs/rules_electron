@@ -3,6 +3,7 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 py_library(
     name = "dmg_licenses",
     srcs = ["dmg_licenses.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
 )
 
@@ -17,6 +18,7 @@ py_binary(
 py_library(
     name = "udif",
     srcs = ["udif.py"],
+    imports = ["../.."],
     visibility = [
         "//electron/tools:__pkg__",
         "//tests:__pkg__",
@@ -26,6 +28,7 @@ py_library(
 py_library(
     name = "finder",
     srcs = ["finder.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         "@ds_store_sources//:ds_store",
@@ -36,6 +39,7 @@ py_library(
 py_library(
     name = "dmg",
     srcs = ["dmg.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":archives",
@@ -56,6 +60,7 @@ py_binary(
 py_library(
     name = "archives",
     srcs = ["archive.py"],
+    imports = ["../.."],
     visibility = [
         "//electron/tools:__pkg__",
         "//tests:__pkg__",
@@ -89,6 +94,7 @@ py_library(
         "asar.py",
         "asar_paths.py",
     ],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [":file_mappings"],
 )
@@ -96,16 +102,19 @@ py_library(
 py_library(
     name = "file_mappings",
     srcs = ["files.py"],
+    imports = ["../.."],
 )
 
 py_library(
     name = "matching",
     srcs = ["matching.py"],
+    imports = ["../.."],
 )
 
 py_library(
     name = "file_collection",
     srcs = ["collect_files.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":asar",
@@ -125,6 +134,7 @@ py_binary(
 py_library(
     name = "asar_sources",
     srcs = ["asar_sources.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":asar",
@@ -144,6 +154,7 @@ py_binary(
 py_library(
     name = "icons",
     srcs = ["icons.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
 )
 
@@ -155,6 +166,7 @@ py_library(
         "mac_sign.py",
         "runtime.py",
     ],
+    imports = ["../.."],
     visibility = [
         "//electron/tools:__pkg__",
         "//tests:__pkg__",
@@ -182,6 +194,7 @@ py_binary(
 py_library(
     name = "nsis",
     srcs = ["nsis.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":file_mappings",
@@ -202,6 +215,7 @@ py_binary(
 py_library(
     name = "portable",
     srcs = ["portable.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":icons",
@@ -222,6 +236,7 @@ py_binary(
 py_library(
     name = "updates",
     srcs = ["update.py"],
+    imports = ["../.."],
     visibility = [
         "//electron/tools:__pkg__",
         "//tests:__pkg__",
@@ -238,6 +253,7 @@ py_binary(
 py_library(
     name = "linux_packaging",
     srcs = ["linux.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":archives",
@@ -258,6 +274,7 @@ py_binary(
 py_library(
     name = "npm_packages",
     srcs = ["npm_package.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":file_collection",
@@ -276,6 +293,7 @@ py_binary(
 py_library(
     name = "identity",
     srcs = ["identity.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [":updates"],
 )
@@ -291,6 +309,7 @@ py_binary(
 py_library(
     name = "prepackaged",
     srcs = ["prepackaged.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":archives",
@@ -311,6 +330,7 @@ py_binary(
 py_library(
     name = "rpm_packaging",
     srcs = ["rpm.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [":updates"],
 )
@@ -328,6 +348,7 @@ exports_files(["rpm-maintainer.sh"])
 py_library(
     name = "appimage",
     srcs = ["appimage.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":archives",
@@ -349,6 +370,7 @@ py_binary(
 py_library(
     name = "appinstaller",
     srcs = ["appinstaller.py"],
+    imports = ["../.."],
     visibility = [
         "//electron/tools:__pkg__",
         "//tests:__pkg__",
@@ -365,6 +387,7 @@ py_binary(
 py_library(
     name = "msix_bundle",
     srcs = ["msix_bundle.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":appinstaller",
@@ -383,6 +406,7 @@ py_binary(
 py_library(
     name = "msix",
     srcs = ["msix.py"],
+    imports = ["../.."],
     visibility = ["//tests:__pkg__"],
     deps = [
         ":archives",
