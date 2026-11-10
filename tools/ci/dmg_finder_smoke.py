@@ -25,15 +25,20 @@ on run argv
             set viewSettings to icon view options of targetWindow
             set stage to 2
             set pictureMatches to false
+            set pictureError to 0
             if expectedBackground is not "" then
-                set pictureFile to background picture of viewSettings
-                set stage to 3
-                set pictureAlias to pictureFile as alias
-                set stage to 4
-                set pictureMatches to (POSIX path of pictureAlias) is expectedBackground
+                try
+                    set pictureFile to background picture of viewSettings
+                    set stage to 3
+                    set pictureAlias to pictureFile as alias
+                    set stage to 4
+                    set pictureMatches to (POSIX path of pictureAlias) is expectedBackground
+                on error messageText number messageNumber
+                    set pictureError to messageNumber
+                end try
             end if
             set stage to 5
-            set snapshot to {(current view of targetWindow is icon view), bounds of targetWindow, toolbar visible of targetWindow, statusbar visible of targetWindow, icon size of viewSettings, text size of viewSettings, position of item "Sample Desktop.app" of targetFolder, position of item "Applications" of targetFolder, pictureMatches, bounds of window of desktop}
+            set snapshot to {(current view of targetWindow is icon view), bounds of targetWindow, toolbar visible of targetWindow, statusbar visible of targetWindow, icon size of viewSettings, text size of viewSettings, position of item "Sample Desktop.app" of targetFolder, position of item "Applications" of targetFolder, pictureMatches, pictureError, bounds of window of desktop}
             close targetWindow
             return snapshot
         on error messageText number messageNumber
@@ -75,14 +80,42 @@ function run(argv) {
     const error = Ref();
     const descriptor = script.executeAndReturnError(error);
     if (!descriptor || descriptor.isNil()) return JSON.stringify({status: 0});
+    const generatedData = $.NSData.alloc.initWithBase64EncodedStringOptions($(argv[1]), 0);
+    const generated = $.NSAppleEventDescriptor.descriptorWithDescriptorTypeData(0x616c6973, generatedData);
+    const expected = $.NSURL.fileURLWithPath($(argv[0])).URLByResolvingSymlinksInPath;
+    function matches(value) {
+        return !!value && !value.isNil()
+            && ObjC.unwrap(value.URLByResolvingSymlinksInPath.path) === ObjC.unwrap(expected.path);
+    }
     return JSON.stringify({status: 1, type: Number(descriptor.descriptorType),
+        generated_resolved: matches(generated.fileURLValue), native_resolved: matches(descriptor.fileURLValue),
         data: ObjC.unwrap(descriptor.data.base64EncodedStringWithOptions(0))});
 }
 '''
 
 
-def report_native_alias(path):
-    result = subprocess.run(["/usr/bin/osascript", "-l", "JavaScript", "-e", NATIVE_ALIAS_SCRIPT, str(path)],
+def background_record(path):
+    data = Path(path).read_bytes()
+    marker = struct.pack('>I', 1) + '.'.encode('utf-16be') + b'icvpblob'
+    offset = data.find(marker)
+    if len(data) > 1024**2 or offset < 0 or data.find(marker, offset + 1) >= 0:
+        raise RuntimeError('DMG_FINDER_METADATA_INVALID')
+    offset += len(marker)
+    if offset + 4 > len(data):
+        raise RuntimeError('DMG_FINDER_METADATA_INVALID')
+    length = struct.unpack_from('>I', data, offset)[0]
+    if not 0 < length <= len(data) - offset - 4:
+        raise RuntimeError('DMG_FINDER_METADATA_INVALID')
+    settings = plistlib.loads(data[offset + 4:offset + 4 + length])
+    alias = settings.get('backgroundImageAlias')
+    if settings.get('backgroundType') != 2 or not isinstance(alias, bytes) or not 150 <= len(alias) <= 65535:
+        raise RuntimeError('DMG_FINDER_BACKGROUND_METADATA_INVALID')
+    return alias
+
+
+def report_native_alias(path, alias):
+    result = subprocess.run(["/usr/bin/osascript", "-l", "JavaScript", "-e", NATIVE_ALIAS_SCRIPT,
+                             str(path), base64.b64encode(alias).decode('ascii')],
                             capture_output=True, text=True, timeout=30)
     if result.returncode or len(result.stdout) > 1024**2:
         print("DMG_NATIVE_ALIAS_UNAVAILABLE", flush=True)
@@ -94,6 +127,9 @@ def report_native_alias(path):
         print("DMG_NATIVE_ALIAS_RESPONSE_INVALID", flush=True)
         return
     observed = {"descriptor_type": record.get("type", 0), "bytes": len(data)}
+    for field in ('generated_resolved', 'native_resolved'):
+        if type(record.get(field)) is bool:
+            observed[field] = record[field]
     if record.get("type") == 0x616c6973 and len(data) >= 150 and struct.unpack_from(">H", data, 6)[0] == 2:
         observed.update(version=2, volume_date=struct.unpack_from(">I", data, 38)[0],
                         filesystem_type=struct.unpack_from(">H", data, 42)[0],
@@ -130,7 +166,7 @@ def check_layout(mount):
     background = mount / ".background.png"
     if not background.is_file():
         raise ValueError("Missing BB-generated Finder background")
-    report_native_alias(background)
+    report_native_alias(background, background_record(mount / '.DS_Store'))
     result = subprocess.run(["/usr/bin/osascript", "-s", "s", "-e", SCRIPT, str(mount), str(background)],
                             capture_output=True, text=True, timeout=30)
     if result.returncode:
@@ -149,6 +185,7 @@ def check_layout(mount):
         "app_position": [140, 160],
         "applications_position": [460, 160],
         "background_picture": True,
+        "background_error": 0,
     }
     if (not isinstance(values, list) or len(values) != len(expected) + 1
             or any(type(value) not in (int, float, bool) for item in values for value in (item if isinstance(item, list) else [item]))):
