@@ -55,7 +55,7 @@ class S3Publisher(Publisher):
                 raise ValueError('Invalid S3 credential')
         if secret_key is None:
             raise ValueError('S3 secret key required')
-        parts = urlsplit(self.destination)
+        parts = urlsplit(destination if destination.endswith('/') else destination + '/')
         self.destination = urlunsplit((parts.scheme, parts.netloc,
                                        quote(unquote(parts.path, errors='strict'), safe='/-._~'), '', ''))
         self.region, self.access_key, self.secret_key, self.session_token = region, access_key, secret_key, session_token

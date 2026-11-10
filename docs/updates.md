@@ -183,7 +183,10 @@ electron_update_config(
 )
 ```
 
-Validation is pending. Native examples consume declared S3, compatible endpoint,
+The [c94044b BB suite](https://formatjs.buildbuddy.io/invocation/5ca9cfc2-c528-41b9-9a2c-381383bdea27),
+[seven cross-builds](https://formatjs.buildbuddy.io/invocation/9e4137d4-adc3-40e8-aa55-2ffc9aedc9c0)
+and [all four native hosts](https://github.com/formatjs/rules_electron/actions/runs/42763581513)
+passed. Native examples consume declared S3, compatible endpoint,
 acceleration and Spaces configurations through the real provider factory. They
 check channel/asset URLs, SHA-512, size and disabled multi-range downloads, with
 only HTTP transport replaced by a loopback fixture. This does not exercise live
