@@ -64,7 +64,7 @@ actions:
         branches: ["codex/source-example-ci"]
     resource_requests:
       cpu: 16
-      memory: 64GB
+      memory: 32GB
       disk: 100GB
     steps:
       - run: |
@@ -83,7 +83,7 @@ actions:
           cd examples/source-desktop
           python3 "$source_setup/source_audit" --registry="file://$source_registry" \
             --downloader-config="$source_setup/downloader.cfg" --distdir="$source_distdir"
-          bazel --host_jvm_args=-Xmx48g cquery --config=bb-workflow --config=msvc-license \
+          bazel --host_jvm_args=-Xmx24g cquery --config=bb-workflow --config=msvc-license \
             --registry="file://$source_registry" --registry=https://bcr.bazel.build \
             --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
             'filter("bootstrap_electron_linux_x64|//source/distribution:runtime$", deps(//:cross_build_smoke_bundle))' \
@@ -97,11 +97,11 @@ actions:
           assert any(re.search(r"//source/distribution:runtime(?:\s|$)", label) for label in labels), "Source runtime missing from example"
           PY
           echo SOURCE_DESKTOP_DEPENDENCY_AUDIT_PASSED
-          bazel --host_jvm_args=-Xmx48g test --config=bb-workflow \
+          bazel --host_jvm_args=-Xmx24g test --config=bb-workflow \
             --registry="file://$source_registry" --registry=https://bcr.bazel.build \
             --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
             //tools:file_matcher_test
-          bazel --host_jvm_args=-Xmx48g build --config=bb-workflow --config=msvc-license --remote_download_toplevel \
+          bazel --host_jvm_args=-Xmx24g build --config=bb-workflow --config=msvc-license --remote_download_toplevel \
             --registry="file://$source_registry" --registry=https://bcr.bazel.build \
             --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
             --profile="$BUILDBUDDY_ARTIFACTS_DIRECTORY/cross-build-profile.json.gz" \

@@ -116,8 +116,9 @@ execution. GC events record 611.077 seconds. These overlap; they are neither
 additive wall time nor a complete critical path. Cache warming alone did not
 finish the graph.
 
-The next trial requests 16 CPUs/64 GB for the BB frontend and a 48 GB Java heap,
-up from 8 CPUs/32 GB and 24 GB. Worker platform, compiler options and source pin
+BB rejected the 64 GB frontend trial before startup: this organization permits
+at most 32 GiB per runner. The next trial requests 16 CPUs, retaining 32 GB RAM
+and the 24 GB heap used by the 8-CPU baseline. Worker platform, compiler options and source pin
 stay unchanged so existing action-cache entries remain usable. This tests a
 frontend CPU/memory hypothesis; no speedup or completed source desktop is claimed.
 Failed-run profile recovery is bounded to 128 MiB expanded data, retains only
