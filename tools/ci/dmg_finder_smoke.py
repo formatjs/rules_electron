@@ -9,6 +9,7 @@ import plistlib
 import subprocess
 import struct
 import sys
+import tempfile
 
 
 SCRIPT = '''
@@ -19,6 +20,7 @@ on run argv
     set stage to 1
     tell application "Finder"
         try
+            activate
             open targetFolder
             set targetWindow to container window of targetFolder
             delay 1
@@ -39,6 +41,8 @@ on run argv
             end if
             set stage to 5
             set snapshot to {(current view of targetWindow is icon view), bounds of targetWindow, toolbar visible of targetWindow, statusbar visible of targetWindow, icon size of viewSettings, text size of viewSettings, position of item "Sample Desktop.app" of targetFolder, position of item "Applications" of targetFolder, pictureMatches, pictureError, bounds of window of desktop}
+            set stage to 6
+            do shell script "/usr/sbin/screencapture -x -o -l " & (id of targetWindow) & " " & quoted form of (item 3 of argv)
             close targetWindow
             return snapshot
         on error messageText number messageNumber
@@ -68,6 +72,27 @@ function sample(path) {
 }
 function run(argv) {
     return JSON.stringify({volume: sample(argv[0]), application: sample(argv[1])});
+}
+'''
+
+
+BACKGROUND_SCRIPT = '''
+ObjC.import('AppKit');
+function sample(path) {
+    const image = $.NSImage.alloc.initWithContentsOfFile($(path));
+    const bitmap = $.NSBitmapImageRep.imageRepWithData(image.TIFFRepresentation);
+    const width = Number(bitmap.pixelsWide), height = Number(bitmap.pixelsHigh);
+    const samples = [];
+    for (const y of [0.25, 0.5, 0.75]) {
+        const color = bitmap.colorAtXY(Math.floor(width * 0.5), Math.floor(height * y))
+            .colorUsingColorSpace($.NSColorSpace.sRGBColorSpace);
+        samples.push([color.redComponent, color.greenComponent, color.blueComponent, color.alphaComponent]
+            .map(value => Math.round(Number(value) * 255)));
+    }
+    return {width, height, samples};
+}
+function run(argv) {
+    return JSON.stringify({screenshot: sample(argv[0]), reference: sample(argv[1])});
 }
 '''
 
@@ -155,6 +180,7 @@ def report_native_alias(path, alias):
             offset += length + (length & 1)
         observed['tag_lengths'] = tags
     print("DMG_NATIVE_ALIAS_OBSERVED " + json.dumps(observed, sort_keys=True), flush=True)
+    return record.get('generated_resolved') is True and record.get('native_resolved') is True
 
 
 def check_layout(mount):
@@ -166,9 +192,16 @@ def check_layout(mount):
     background = mount / ".background.png"
     if not background.is_file():
         raise ValueError("Missing BB-generated Finder background")
-    report_native_alias(background, background_record(mount / '.DS_Store'))
-    result = subprocess.run(["/usr/bin/osascript", "-s", "s", "-e", SCRIPT, str(mount), str(background)],
-                            capture_output=True, text=True, timeout=30)
+    if not report_native_alias(background, background_record(mount / '.DS_Store')):
+        raise RuntimeError('DMG_BACKGROUND_ALIAS_UNRESOLVED')
+    with tempfile.TemporaryDirectory(prefix='rules-electron-finder-') as temporary:
+        screenshot = Path(temporary) / 'finder.png'
+        result = subprocess.run(["/usr/bin/osascript", "-s", "s", "-e", SCRIPT, str(mount), str(background), str(screenshot)],
+                                capture_output=True, text=True, timeout=30)
+        rendered = None
+        if not result.returncode:
+            rendered = subprocess.run(["/usr/bin/osascript", "-l", "JavaScript", "-e", BACKGROUND_SCRIPT,
+                                       str(screenshot), str(background)], capture_output=True, text=True, timeout=30)
     if result.returncode:
         if "-1743" in result.stderr:
             raise RuntimeError("FINDER_AUTOMATION_DENIED")
@@ -184,10 +217,9 @@ def check_layout(mount):
         "statusbar": False, "icon_size": 112, "text_size": 12,
         "app_position": [140, 160],
         "applications_position": [460, 160],
-        "background_picture": True,
-        "background_error": 0,
     }
-    if (not isinstance(values, list) or len(values) != len(expected) + 1
+    columns = [*expected, 'background_picture', 'background_error']
+    if (not isinstance(values, list) or len(values) != len(columns) + 1
             or any(type(value) not in (int, float, bool) for item in values for value in (item if isinstance(item, list) else [item]))):
         raise RuntimeError("FINDER_LAYOUT_RESPONSE_INVALID")
     display = values[-1]
@@ -195,13 +227,29 @@ def check_layout(mount):
         raise RuntimeError("FINDER_LAYOUT_DISPLAY_INVALID")
     # Finder stores Cocoa coordinates; AppleScript reports top-left bounds.
     expected["bounds"] = [120, display[3] - 140 - 360, 720, display[3] - 140]
-    observed = dict(zip(expected, values[:-1]))
+    observed = dict(zip(columns, values[:-1]))
     observed["display_bounds"] = display
     print("DMG_FINDER_OBSERVED " + json.dumps(observed, sort_keys=True), flush=True)
     failures = [name for name, value in expected.items() if observed[name] != value]
     if failures:
         raise RuntimeError("FINDER_LAYOUT_FAILED " + ",".join(failures))
     print("DMG_FINDER_LAYOUT_OK", flush=True)
+    if rendered.returncode:
+        raise RuntimeError('DMG_BACKGROUND_RENDER_READ_FAILED')
+    images = json.loads(rendered.stdout)
+    if set(images) != {'screenshot', 'reference'}:
+        raise RuntimeError('DMG_BACKGROUND_RENDER_RESPONSE_INVALID')
+    for image in images.values():
+        if (set(image) != {'width', 'height', 'samples'}
+                or any(type(image[key]) is not int or not 1 <= image[key] <= 4096 for key in ('width', 'height'))
+                or not isinstance(image['samples'], list) or len(image['samples']) != 3
+                or any(not isinstance(row, list) or len(row) != 4
+                       or any(type(value) is not int or not 0 <= value <= 255 for value in row)
+                       for row in image['samples'])):
+            raise RuntimeError('DMG_BACKGROUND_RENDER_RESPONSE_INVALID')
+    print('DMG_BACKGROUND_RENDER_OBSERVED ' + json.dumps(images, sort_keys=True), flush=True)
+    if images['screenshot']['samples'] != images['reference']['samples']:
+        raise RuntimeError('DMG_BACKGROUND_RENDER_PIXELS_MISMATCH')
     print("DMG_FINDER_BACKGROUND_OK", flush=True)
     if not (mount / ".VolumeIcon.icns").is_file():
         raise ValueError("Missing BB-generated volume icon")

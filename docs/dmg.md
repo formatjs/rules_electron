@@ -51,8 +51,10 @@ UDIF conversion. No mounting or target execution is involved. A path-based form 
 [Chromium's Linux-compatible generator](https://chromium.googlesource.com/chromium/src/+/9c363bb2863cd723978a8a245719389a7bf1c20e/chrome/installer/mac/generate_dsstore.py).
 BB tests decode the packaged alias and image bytes, check actual catalog IDs/dates and
 compare relocated builds. Native smoke reads Finder's resolved background
-picture and requires the mounted image's exact file. Background-image support
-awaits hosted validation.
+alias through macOS descriptors and compares captured Finder-window pixels with
+the declared PNG through native color management. The picture getter is recorded
+as a diagnostic; it throws `-10000` on the hosted Finder even when the generated
+alias resolves. Background-image support awaits rendered-pixel validation.
 
 Metadata uses checksum-pinned MIT-licensed `ds_store` 1.3.3 and `mac_alias` 2.2.2
 Python sources. No host alias discovery, Finder, mounting or AppleScript
