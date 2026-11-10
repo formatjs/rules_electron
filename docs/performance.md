@@ -830,4 +830,20 @@ unknown fields, invalid numbers and nonmonotonic times fail without echoing data
 RSS is sampled process memory, not JVM heap or remote-worker memory. Timing data
 stays in diagnostic artifacts. No product action reads it.
 
-BB validation and the first source measurement are pending.
+The [BB suite](https://formatjs.buildbuddy.io/invocation/cd0eb802-798a-4c1d-83d6-ca07016333d3)
+and [cross-build](https://formatjs.buildbuddy.io/invocation/a7ee9807-370f-421b-8a1e-0f2152b74b9e)
+passed sampler, artifact handoff and observer validation.
+
+The [frozen source run](https://formatjs.buildbuddy.io/invocation/d2d5f8ea-9ba7-44e4-9893-dc41213d2914)
+passed in 1,848.784 seconds; its full build took 1,634.898 seconds with 87,538
+action-cache hits and no reported misses. The
+[verified observer](https://github.com/formatjs/rules_electron/actions/runs/42795440520)
+reports 327 samples over 1,635.361 seconds: 28,582.110 sampled CPU seconds,
+17.478 average cores, 18.648 maximum cores and 18,765,148,160 bytes sampled peak
+RSS. All four smoke shard digests match the previous successful source build.
+
+The complete profile records 45,786 Merkle-tree operations with 26,637.132
+cumulative seconds, 7,325.135 cumulative semaphore seconds and 61.423 GC seconds.
+These spans overlap; they are not CPU attribution. The earlier run populated
+compilation cache, so elapsed-time differences do not establish a controlled
+speedup. Repeated input/Merkle processing is the next performance investigation.

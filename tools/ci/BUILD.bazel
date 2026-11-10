@@ -40,6 +40,13 @@ py_library(
 )
 
 py_library(
+    name = "source_metadata",
+    srcs = ["source_metadata.py"],
+    visibility = ["//tests:__pkg__"],
+    deps = [":artifacts"],
+)
+
+py_library(
     name = "source_registry",
     srcs = ["stage_source_registry.py"],
     data = [

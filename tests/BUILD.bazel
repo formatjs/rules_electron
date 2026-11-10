@@ -1120,3 +1120,9 @@ py_test(
     target_compatible_with = ["@platforms//os:linux"],
     deps = ["//tools/ci:source_frontend_metrics"],
 )
+
+py_test(
+    name = "source_metadata_test",
+    srcs = ["source_metadata_test.py"],
+    deps = ["//tools/ci:source_metadata"],
+)

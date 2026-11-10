@@ -651,7 +651,17 @@ The [handoff retry](https://github.com/formatjs/rules_electron/actions/runs/4279
 passed all four hosts. Linux x64 uses the source runtime and SDK, including
 desktop, archive, DEB/RPM/AppImage and updater checks. Nine successful app reports
 include Node/V8 ABI 140. Other platforms in this run still use bootstrap runtimes.
-Frozen-lock validation and complete source profiles for those platforms remain open.
+The [b3c9034 run](https://formatjs.buildbuddy.io/invocation/d2d5f8ea-9ba7-44e4-9893-dc41213d2914)
+also passed frozen resolution and the complete build. Complete source profiles
+for other platforms remain open.
+
+ARM64 metadata has a separate BB maintainer workflow in the Electron overlay.
+The [metadata handoff](../.github/workflows/source-metadata.yml) fetches its graph,
+tool pins, fuse metadata and module locks only from an exact successful
+`formatjs/electron` capture commit. Fixed filenames, bounded sizes, trusted
+bytestream hosts and SHA-256 verification gate every file. GH downloads data;
+component capture and native compilation run on BB. Actual ARM64 capture and
+cross-build validation remain pending.
 
 The packaging cross-build action query now includes forbidden build-wrapper
 mnemonics alongside its required app/DMG actions. The platform-input audit rejects
