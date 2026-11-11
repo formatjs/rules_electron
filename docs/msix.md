@@ -5,6 +5,18 @@ CPU/wall time, output size and cProfile function costs to its `profile` output
 group; the action log includes the top 15 functions. Package bytes stay unchanged.
 Profiling adds measurement overhead. Disable it for normal builds.
 
+`compression_level` defaults to 9; levels 0..9 trade size for CPU time.
+`compression_threads` accepts 1 (default), 2, 4 or 8. Parallel workers compress
+independent 64 KiB blocks with bounded buffers; final assembly stays ordered.
+Bazel reserves the requested CPU resources. cProfile function costs cover only
+the main thread; process CPU time includes compression workers.
+
+Set `benchmark = True` to compare levels 1/3/6/9 and four threads sequentially
+on identical inputs in one diagnostic action. Each trial independently reads all
+ZIP members, checks uncompressed block hashes and compares payload digests.
+The final MSIX keeps the requested settings. Trial files are temporary; reports
+stay in the `profile` output group and action log. Benchmarking bypasses cache.
+
 App Installer update descriptors have a separate [rule and native flow](appinstaller.md).
 [Architecture bundles](msix-bundles.md) combine MSIX packages without modifying their bytes.
 

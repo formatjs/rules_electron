@@ -2,6 +2,8 @@
 
 import base64
 import cProfile
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
 import hashlib
 import io
@@ -14,9 +16,10 @@ import struct
 import sys
 import tempfile
 import time
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 import xml.etree.ElementTree as ET
 import zlib
+from zipfile import ZipFile
 
 from electron.private.archive import inventory
 from electron.private.files import read_directories
@@ -55,11 +58,36 @@ def payload_name(name):
         raise ValueError("MSIX payload occupies reserved footprint path")
 
 
+def compressed_block(block, level):
+    compressor = zlib.compressobj(level, zlib.DEFLATED, -15, 9)
+    return compressor.compress(block) + compressor.flush(zlib.Z_FULL_FLUSH)
+
+
+def packed_blocks(source, compressor, executor, level):
+    blocks = iter(lambda: source.read(65536), b"")
+    if executor is None or compressor is None:
+        for block in blocks:
+            yield block, compressor.compress(block) + compressor.flush(zlib.Z_FULL_FLUSH) if compressor else block
+        return
+    pending = deque()
+    for block in blocks:
+        pending.append((block, executor.submit(compressed_block, block, level)))
+        # Bound input and completed output buffers independently of payload size.
+        if len(pending) == 16:
+            original, future = pending.popleft()
+            yield original, future.result()
+    while pending:
+        original, future = pending.popleft()
+        yield original, future.result()
+
+
 class PackageZip:
     """ZIP64 records with known lengths; no host archiver or target execution."""
 
-    def __init__(self, output):
+    def __init__(self, output, compression_level=9, executor=None):
         self.output = output
+        self.compression_level = compression_level
+        self.executor = executor
         self.records = []
         self.blockmap = ET.Element("BlockMap", xmlns=BLOCK, HashMethod="http://www.w3.org/2001/04/xmlenc#sha256")
         self.content = ET.Element("Types", xmlns=CONTENT)
@@ -72,16 +100,12 @@ class PackageZip:
         if len(encoded) > 65535:
             raise ValueError("MSIX ZIP name exceeds header capacity")
         node = ET.Element("File", Name=name.replace("/", "\\"), Size="0", LfhSize=str(50 + len(encoded)))
-        compressor = zlib.compressobj(9, zlib.DEFLATED, -15, 9) if compressed else None
+        compressor = zlib.compressobj(self.compression_level, zlib.DEFLATED, -15, 9) if compressed else None
         crc, size = 0, 0
         with tempfile.TemporaryFile() as packed:
-            while True:
-                block = source.read(65536)
-                if not block:
-                    break
+            for block, chunk in packed_blocks(source, compressor, self.executor, self.compression_level):
                 size += len(block)
                 crc = zlib.crc32(block, crc)
-                chunk = compressor.compress(block) + compressor.flush(zlib.Z_FULL_FLUSH) if compressor else block
                 packed.write(chunk)
                 if hashed:
                     attributes = dict(Hash=base64.b64encode(hashlib.sha256(block).digest()).decode("ascii"))
@@ -201,7 +225,10 @@ def supplied_manifest(path, identity_name, publisher, publisher_display_name, ex
 def create_msix(app, package_json, output, identity_name, publisher, publisher_display_name,
                 product_name, executable_name, architecture, logo_44="", logo_150="", store_logo="",
                 description="Electron desktop application", build_version="", build_number="", directory_manifest="",
-                protocols=(), file_associations=None, file_association_icons=(), manifest_file="", payload_prefix="", app_is_tree=False, resources_pri="", package_version=""):
+                protocols=(), file_associations=None, file_association_icons=(), manifest_file="", payload_prefix="", app_is_tree=False, resources_pri="", package_version="",
+                compression_level=9, compression_threads=1):
+    if compression_level not in range(10) or compression_threads not in (1, 2, 4, 8):
+        raise ValueError("MSIX requires compression level 0..9 and 1, 2, 4 or 8 compression threads")
     package = json.loads(Path(package_json).read_text(encoding="utf-8"))
     native_version = package_version or build_identity(package["version"], build_version, build_number, "windows")
     if not re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,3}", native_version):
@@ -265,7 +292,8 @@ def create_msix(app, package_json, output, identity_name, publisher, publisher_d
             manifest_data = supplied_manifest(manifest_file, identity_name, publisher, publisher_display_name, executable, architecture, version,
                                               {name for name, entry in entries.items() if entry.kind == "file"} | set(assets))
         output_stream = stack.enter_context(Path(output).open("wb"))
-        writer = PackageZip(output_stream)
+        executor = stack.enter_context(ThreadPoolExecutor(max_workers=compression_threads)) if compression_threads > 1 else None
+        writer = PackageZip(output_stream, compression_level, executor)
         for name, entry in sorted(entries.items()):
             if entry.kind == "file":
                 with open_file(entry) as source:
@@ -291,14 +319,65 @@ def profile_msix(options, output, report_path):
                  for (filename, line, name), (primitive, calls, own, total, _) in pstats.Stats(profiler).stats.items()]
     functions.sort(key=lambda row: row["self_seconds"], reverse=True)
     report = dict(wall_seconds=wall, cpu_seconds=cpu, output_bytes=Path(output).stat().st_size,
-                  compression_level=9, block_bytes=65536, functions=functions)
+                  compression_level=options.get("compression_level", 9), compression_threads=options.get("compression_threads", 1),
+                  block_bytes=65536, functions_scope="main_thread", functions=functions)
     Path(report_path).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print("MSIX_PROFILE " + json.dumps(dict(report, functions=functions[:15])), file=sys.stderr)
+    return report
+
+
+def verify_payload(path):
+    """Read every ZIP member and check its uncompressed block hashes."""
+    digest = hashlib.sha256()
+    with ZipFile(path) as archive:
+        blockmap = ET.fromstring(archive.read("AppxBlockMap.xml"))
+        files = {node.attrib["Name"].replace("\\", "/"): node for node in blockmap}
+        for entry in archive.infolist():
+            name = unquote(entry.filename)
+            if name == "AppxBlockMap.xml":
+                continue
+            digest.update(name.encode("utf-8") + b"\0")
+            node = files.pop(name, None)
+            blocks = list(node) if node is not None else None
+            count, size = 0, 0
+            with archive.open(entry) as source:
+                for block in iter(lambda: source.read(65536), b""):
+                    digest.update(block)
+                    if blocks is not None and (count >= len(blocks) or blocks[count].get("Hash") != base64.b64encode(hashlib.sha256(block).digest()).decode("ascii")):
+                        raise ValueError("MSIX benchmark block hash mismatch")
+                    count += 1
+                    size += len(block)
+            if node is not None and (count != len(blocks) or size != int(node.get("Size"))):
+                raise ValueError("MSIX benchmark blockmap size mismatch")
+            if node is None and name != "[Content_Types].xml":
+                raise ValueError("MSIX benchmark payload missing from blockmap")
+        if files:
+            raise ValueError("MSIX benchmark blockmap references missing payload")
+    return digest.hexdigest()
+
+
+def benchmark_msix(options, output, report_path):
+    """Compare compression settings sequentially on exactly the same inputs."""
+    baseline = profile_msix(options, output, report_path)
+    expected = verify_payload(output)
+    reports = [dict(baseline, verified_payload_sha256=expected)]
+    with tempfile.TemporaryDirectory(prefix="msix-benchmark-", dir=Path(output).parent) as temporary:
+        for level, threads in [(1, 1), (3, 1), (6, 1), (9, 4), (3, 4), (6, 4)]:
+            trial = Path(temporary) / "trial.msix"
+            settings = dict(options, compression_level=level, compression_threads=threads)
+            report = profile_msix(settings, trial, Path(temporary) / "trial.json")
+            actual = verify_payload(trial)
+            if actual != expected:
+                raise ValueError("MSIX benchmark changed payload")
+            reports.append(dict(report, verified_payload_sha256=actual))
+    Path(report_path).write_text(json.dumps(dict(runs=reports), indent=2) + "\n", encoding="utf-8")
+    print("MSIX_BENCHMARK " + json.dumps([dict(row, functions=[]) for row in reports]), file=sys.stderr)
 
 
 if __name__ == "__main__":
     options = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+    benchmark = options.pop("benchmark", False)
     if len(sys.argv) == 4:
-        profile_msix(options, sys.argv[2], sys.argv[3])
+        (benchmark_msix if benchmark else profile_msix)(options, sys.argv[2], sys.argv[3])
     else:
         create_msix(output=sys.argv[2], **options)

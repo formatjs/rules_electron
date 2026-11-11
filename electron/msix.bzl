@@ -2,6 +2,18 @@
 
 load(":defs.bzl", "ElectronAppInfo")
 
+def _resources_1(_os, _inputs):
+    return {"cpu": 1, "memory": 256}
+
+def _resources_2(_os, _inputs):
+    return {"cpu": 2, "memory": 256}
+
+def _resources_4(_os, _inputs):
+    return {"cpu": 4, "memory": 256}
+
+def _resources_8(_os, _inputs):
+    return {"cpu": 8, "memory": 256}
+
 def _impl(ctx):
     app = ctx.attr.app[ElectronAppInfo]
     if app.platform != "windows":
@@ -15,7 +27,7 @@ def _impl(ctx):
     directories = getattr(app, "directory_manifest", None)
     output = ctx.actions.declare_file(ctx.label.name + ".msix")
     manifest = ctx.actions.declare_file(ctx.label.name + ".msix.json")
-    profile = ctx.actions.declare_file(ctx.label.name + ".msix.profile.json") if ctx.attr.profile else None
+    profile = ctx.actions.declare_file(ctx.label.name + ".msix.profile.json") if ctx.attr.profile or ctx.attr.benchmark else None
     logos = {name: getattr(ctx.file, name) for name in ["logo_44", "logo_150", "store_logo"]}
     association_icons = []
     for target, extension in ctx.attr.file_association_icons.items():
@@ -41,6 +53,9 @@ def _impl(ctx):
         "file_associations": ctx.attr.file_associations,
         "file_association_icons": association_icons,
         "package_version": ctx.attr.package_version,
+        "compression_level": ctx.attr.compression_level,
+        "compression_threads": ctx.attr.compression_threads,
+        "benchmark": ctx.attr.benchmark,
         "build_version": getattr(app, "build_version", ""),
         "build_number": getattr(app, "build_number", ""),
         "directory_manifest": directories.path if directories else "",
@@ -51,6 +66,7 @@ def _impl(ctx):
         inputs = [manifest, app.artifact, app.package_json] + [file for file in logos.values() if file] + ([ctx.file.manifest] if ctx.file.manifest else []) + ([ctx.file.resources_pri] if ctx.file.resources_pri else []) + ([directories] if directories else []) + [file for target in ctx.attr.file_association_icons for file in target.files.to_list()],
         outputs = [output] + ([profile] if profile else []),
         execution_requirements = {"no-cache": "1"} if profile else {},
+        resource_set = {1: _resources_1, 2: _resources_2, 4: _resources_4, 8: _resources_8}[max(ctx.attr.compression_threads, 4 if ctx.attr.benchmark else 1)],
         mnemonic = "ElectronMsix",
         progress_message = "Packaging unsigned Electron MSIX %{label}",
     )
@@ -61,6 +77,9 @@ electron_msix = rule(
     attrs = {
         "app": attr.label(mandatory = True, providers = [ElectronAppInfo]),
         "profile": attr.bool(doc = "Record CPU/wall time and cProfile function costs in the profile output group and action log. Diagnostic action bypasses cache; MSIX bytes stay unchanged."),
+        "benchmark": attr.bool(doc = "Compare levels 1/3/6/9 and four threads sequentially with identical inputs; verify payload hashes. Implies profile. Keeps the requested package settings for the final output."),
+        "compression_level": attr.int(default = 9, values = range(10), doc = "DEFLATE level, trading package size for CPU time."),
+        "compression_threads": attr.int(default = 1, values = [1, 2, 4, 8], doc = "Bounded parallel compression of independent 64 KiB blocks. Final assembly remains ordered."),
         "manifest": attr.label(allow_single_file = [".xml"], doc = "Optional complete manifest, preserved verbatim after identity, executable and asset validation."),
         "package_version": attr.string(doc = "Explicit Windows package identity version; defaults to app native version."),
         "payload_prefix": attr.string(doc = "Optional package-relative directory containing the app, such as app."),

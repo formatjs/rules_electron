@@ -1,10 +1,12 @@
 """Decode MSIX records independently; verify ranges, hashes and reproducibility."""
 
 import base64
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import io
 import os
 from pathlib import Path
+import random
 import struct
 import tempfile
 import unittest
@@ -60,15 +62,22 @@ class MsixTest(unittest.TestCase):
                     self.assertEqual(cursor, info.header_offset + length + info.compress_size)
 
     def test_block_ranges_empty_files_unicode_and_stored_payloads(self):
-        payloads = {"big data/世界.bin": bytes(range(256)) * 1024 + b"tail", "empty": b"", "exact.bin": b"x" * 65536}
+        payloads = {"big data/世界.bin": bytes(range(256)) * 1024 + b"tail", "empty": b"", "exact.bin": b"x" * 65536,
+                    "random.bin": random.Random(0).randbytes(2 * 65536 + 17)}
         for compressed in (False, True):
-            with self.subTest(compressed=compressed):
-                output = io.BytesIO()
-                writer = PackageZip(output)
-                for name, data in payloads.items():
-                    writer.add(name, io.BytesIO(data), "application/octet-stream", compressed=compressed)
-                writer.close()
-                self.assert_blockmap(output.getvalue(), payloads)
+            for level in (0, 1, 3, 6, 9):
+                with self.subTest(compressed=compressed, level=level):
+                    outputs = []
+                    for threads in (1, 4):
+                        with ThreadPoolExecutor(max_workers=threads) as executor:
+                            output = io.BytesIO()
+                            writer = PackageZip(output, level, executor if threads > 1 else None)
+                            for name, data in payloads.items():
+                                writer.add(name, io.BytesIO(data), "application/octet-stream", compressed=compressed)
+                            writer.close()
+                            self.assert_blockmap(output.getvalue(), payloads)
+                            outputs.append(output.getvalue())
+                    self.assertEqual(*outputs)
 
     def test_app_identity_cpu_assets_and_reproducibility(self):
         with tempfile.TemporaryDirectory() as directory:
