@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from pathlib import Path
 import sys
 import tempfile
@@ -22,6 +23,8 @@ if __name__ == "__main__":
             assemble(output=unsigned, **manifest)
             sign_bundle(sys.argv[4], unsigned, signed, **signing)
             archive_bundle(signed, sys.argv[2], manifest["product_name"] + ".app")
+            if len(sys.argv) > 5:
+                shutil.copytree(signed, Path(sys.argv[5]) / (manifest["product_name"] + ".app"), symlinks=True)
             Path(sys.argv[3]).write_text("[]\n")
     elif zip_output:
         with tempfile.TemporaryDirectory() as directory:

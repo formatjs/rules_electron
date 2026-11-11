@@ -46,7 +46,7 @@ def _impl(ctx):
     ctx.actions.run(
         executable = ctx.executable._writer,
         arguments = [manifest.path, output.path, directories.path, links.path],
-        inputs = inputs + [manifest] + ([matcher.modules, matcher.script] if matcher else []),
+        inputs = depset(inputs + [manifest], transitive = [ctx.attr.file_matcher[DefaultInfo].files] if matcher else []),
         tools = [matcher.node] if matcher else [],
         outputs = [output, directories, links],
         mnemonic = "ElectronFiles",

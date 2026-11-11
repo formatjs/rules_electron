@@ -142,6 +142,9 @@ def _app_impl(ctx):
     filesystem_entries = resource_entries + extra_entries + ([] if ctx.attr.asar else app_entries)
     zip_output = platform == "macos" or bool(ctx.attr.resource_symlinks) or any([e.symlink_manifest != None for e in filesystem_entries])
     output = ctx.actions.declare_file(ctx.label.name + ".zip") if zip_output else ctx.actions.declare_directory(ctx.label.name)
+    unpacked = ctx.actions.declare_directory(ctx.label.name + "_unpacked") if ctx.attr.unpacked_output else None
+    if unpacked and platform != "macos":
+        fail("unpacked_output requires a macOS target")
     directories = ctx.actions.declare_file(ctx.label.name + ".directories.json")
     ctx.actions.write(manifest, json.encode({
         "entries": entries,
@@ -182,10 +185,10 @@ def _app_impl(ctx):
     }))
     ctx.actions.run(
         executable = ctx.executable._assembler,
-        arguments = [manifest.path, output.path, directories.path] + ([ctx.executable.macos_signer.path] if platform == "macos" else []),
-        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + [e.directory_manifest for e in app_entries + resource_entries + extra_entries if e.directory_manifest] + [e.symlink_manifest for e in app_entries + resource_entries + extra_entries if e.symlink_manifest] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([ctx.file.macos_extra_plist] if ctx.file.macos_extra_plist else []) + ([ctx.file.macos_entitlements] if ctx.file.macos_entitlements else []) + ([ctx.file.macos_entitlements_inherit] if ctx.file.macos_entitlements_inherit else []) + ([ctx.file.windows_icon] if ctx.file.windows_icon else []) + ([windows_tool.modules, windows_tool.script] if windows_tool else []) + ([matcher.modules, matcher.script] if matcher else [])),
+        arguments = [manifest.path, output.path, directories.path] + ([ctx.executable.macos_signer.path] if platform == "macos" else []) + ([unpacked.path] if unpacked else []),
+        inputs = depset([manifest, ctx.file.package_json] + ([runtime.archive] if runtime.archive else []) + [e.source for e in runtime.entries] + [e.source for e in app_entries] + [e.source for e in resource_entries] + [e.source for e in extra_entries] + [e.directory_manifest for e in app_entries + resource_entries + extra_entries if e.directory_manifest] + [e.symlink_manifest for e in app_entries + resource_entries + extra_entries if e.symlink_manifest] + asar_inputs + ([ctx.file.macos_icon] if ctx.file.macos_icon else []) + ([ctx.file.macos_extra_plist] if ctx.file.macos_extra_plist else []) + ([ctx.file.macos_entitlements] if ctx.file.macos_entitlements else []) + ([ctx.file.macos_entitlements_inherit] if ctx.file.macos_entitlements_inherit else []) + ([ctx.file.windows_icon] if ctx.file.windows_icon else []), transitive = ([ctx.attr.windows_resource_tool[DefaultInfo].files] if windows_tool else []) + ([ctx.attr.file_matcher[DefaultInfo].files] if matcher else [])),
         tools = ([signer if signer.executable else ctx.executable.macos_signer] if signer else []) + ([windows_tool.node] if windows_tool else []) + ([matcher.node] if matcher else []),
-        outputs = [output, directories],
+        outputs = [output, directories] + ([unpacked] if unpacked else []),
         mnemonic = "ElectronApp",
         progress_message = "Assembling Electron app %{label}",
     )
@@ -202,6 +205,7 @@ def _app_impl(ctx):
             build_number = ctx.attr.build_number,
         ),
         DefaultInfo(files = depset([output])),
+        OutputGroupInfo(unpacked = depset([unpacked] if unpacked else [])),
     ]
 
 electron_app = rule(
@@ -235,6 +239,7 @@ electron_app = rule(
         "windows_resource_tool": attr.label(providers = [ElectronWindowsResourceToolInfo], cfg = "exec", doc = "Declared PE resource editor; required for Windows embedded ASAR validation, metadata or icons."),
         "windows_metadata": attr.string_dict(doc = "Windows version strings: CompanyName, FileDescription, InternalName, LegalCopyright, OriginalFilename, ProductName."),
         "windows_icon": attr.label(allow_single_file = [".ico"], doc = "Declared ICO asset replacing executable icon groups through windows_resource_tool."),
+        "unpacked_output": attr.bool(default = False, doc = "Also expose the signed macOS bundle through the unpacked output group; avoids extracting the canonical ZIP for directory consumers."),
         "remove_package_scripts": attr.bool(default = False),
         "fuses": attr.string_dict(doc = "Electron v1 fuse names mapped to on/off; macOS edits its framework before signing. See README."),
         "_assembler": attr.label(default = Label("//electron/private:assemble"), executable = True, cfg = "exec"),

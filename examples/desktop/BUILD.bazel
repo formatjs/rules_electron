@@ -449,6 +449,10 @@ electron_app(
         ":windows": ["@platforms//:incompatible"],
         "//conditions:default": [],
     }),
+    unpacked_output = select({
+        ":macos": True,
+        "//conditions:default": False,
+    }),
 )
 
 electron_archive(

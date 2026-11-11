@@ -1,6 +1,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { Minimatch } = require(path.join(path.resolve(process.argv[2]), 'node_modules/minimatch'));
+const { createRequire } = require('node:module');
+const load = createRequire(path.join(path.resolve(process.argv[2]), 'package.json'));
+const { Minimatch } = load('minimatch');
 const { files, patterns } = JSON.parse(fs.readFileSync(0, 'utf8'));
 if (!Array.isArray(files) || !Array.isArray(patterns) ||
     [...files, ...patterns].some((value) => typeof value !== 'string' || value.includes('\0'))) {
