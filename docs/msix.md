@@ -5,11 +5,13 @@ CPU/wall time, output size and cProfile function costs to its `profile` output
 group; the action log includes the top 15 functions. Package bytes stay unchanged.
 Profiling adds measurement overhead. Disable it for normal builds.
 
-`compression_level` defaults to 9; levels 0..9 trade size for CPU time.
-`compression_threads` accepts 1 (default), 2, 4 or 8. Parallel workers compress
+`compression_level` defaults to 6; levels 0..9 trade size for CPU time.
+`compression_threads` accepts 1, 2, 4 (default) or 8. Parallel workers compress
 independent 64 KiB blocks with bounded buffers; final assembly stays ordered.
 Bazel reserves the requested CPU resources. cProfile function costs cover only
 the main thread; process CPU time includes compression workers.
+Use level 9 for smaller packages, or level 3 for faster builds at greater size.
+Set one thread for execution environments with a single available CPU.
 
 Set `benchmark = True` to compare levels 1/3/6/9 and four threads sequentially
 on identical inputs in one diagnostic action. Each trial independently reads all

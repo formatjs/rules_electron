@@ -226,7 +226,7 @@ def create_msix(app, package_json, output, identity_name, publisher, publisher_d
                 product_name, executable_name, architecture, logo_44="", logo_150="", store_logo="",
                 description="Electron desktop application", build_version="", build_number="", directory_manifest="",
                 protocols=(), file_associations=None, file_association_icons=(), manifest_file="", payload_prefix="", app_is_tree=False, resources_pri="", package_version="",
-                compression_level=9, compression_threads=1):
+                compression_level=6, compression_threads=4):
     if compression_level not in range(10) or compression_threads not in (1, 2, 4, 8):
         raise ValueError("MSIX requires compression level 0..9 and 1, 2, 4 or 8 compression threads")
     package = json.loads(Path(package_json).read_text(encoding="utf-8"))
@@ -319,7 +319,7 @@ def profile_msix(options, output, report_path):
                  for (filename, line, name), (primitive, calls, own, total, _) in pstats.Stats(profiler).stats.items()]
     functions.sort(key=lambda row: row["self_seconds"], reverse=True)
     report = dict(wall_seconds=wall, cpu_seconds=cpu, output_bytes=Path(output).stat().st_size,
-                  compression_level=options.get("compression_level", 9), compression_threads=options.get("compression_threads", 1),
+                  compression_level=options.get("compression_level", 6), compression_threads=options.get("compression_threads", 4),
                   block_bytes=65536, functions_scope="main_thread", functions=functions)
     Path(report_path).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print("MSIX_PROFILE " + json.dumps(dict(report, functions=functions[:15])), file=sys.stderr)
@@ -362,7 +362,9 @@ def benchmark_msix(options, output, report_path):
     expected = verify_payload(output)
     reports = [dict(baseline, verified_payload_sha256=expected)]
     with tempfile.TemporaryDirectory(prefix="msix-benchmark-", dir=Path(output).parent) as temporary:
-        for level, threads in [(1, 1), (3, 1), (6, 1), (9, 4), (3, 4), (6, 4)]:
+        for level, threads in [(9, 1), (1, 1), (3, 1), (6, 1), (9, 4), (3, 4), (6, 4)]:
+            if (level, threads) == (baseline["compression_level"], baseline["compression_threads"]):
+                continue
             trial = Path(temporary) / "trial.msix"
             settings = dict(options, compression_level=level, compression_threads=threads)
             report = profile_msix(settings, trial, Path(temporary) / "trial.json")
