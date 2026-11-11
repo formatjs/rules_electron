@@ -1,16 +1,19 @@
 """Declared MSIX manifest, ZIP64 container and independently hashed 64 KiB blocks."""
 
 import base64
+import cProfile
 from contextlib import ExitStack
 import hashlib
 import io
 import json
 from pathlib import Path
+import pstats
 import re
 import shutil
 import struct
 import sys
 import tempfile
+import time
 from urllib.parse import quote
 import xml.etree.ElementTree as ET
 import zlib
@@ -277,5 +280,25 @@ def create_msix(app, package_json, output, identity_name, publisher, publisher_d
         writer.close()
 
 
+def profile_msix(options, output, report_path):
+    """Record one real packaging action without changing its output bytes."""
+    profiler = cProfile.Profile()
+    wall, cpu = time.perf_counter(), time.process_time()
+    profiler.runcall(create_msix, output=output, **options)
+    cpu, wall = time.process_time() - cpu, time.perf_counter() - wall
+    functions = [dict(file=Path(filename).name, line=line, function=name,
+                      primitive_calls=primitive, calls=calls, self_seconds=own, cumulative_seconds=total)
+                 for (filename, line, name), (primitive, calls, own, total, _) in pstats.Stats(profiler).stats.items()]
+    functions.sort(key=lambda row: row["self_seconds"], reverse=True)
+    report = dict(wall_seconds=wall, cpu_seconds=cpu, output_bytes=Path(output).stat().st_size,
+                  compression_level=9, block_bytes=65536, functions=functions)
+    Path(report_path).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print("MSIX_PROFILE " + json.dumps(dict(report, functions=functions[:15])), file=sys.stderr)
+
+
 if __name__ == "__main__":
-    create_msix(output=sys.argv[2], **json.loads(Path(sys.argv[1]).read_text(encoding="utf-8")))
+    options = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+    if len(sys.argv) == 4:
+        profile_msix(options, sys.argv[2], sys.argv[3])
+    else:
+        create_msix(output=sys.argv[2], **options)

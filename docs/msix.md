@@ -1,5 +1,10 @@
 # MSIX
 
+Set `profile = True` for a diagnostic build. The action bypasses cache and writes
+CPU/wall time, output size and cProfile function costs to its `profile` output
+group; the action log includes the top 15 functions. Package bytes stay unchanged.
+Profiling adds measurement overhead. Disable it for normal builds.
+
 App Installer update descriptors have a separate [rule and native flow](appinstaller.md).
 [Architecture bundles](msix-bundles.md) combine MSIX packages without modifying their bytes.
 

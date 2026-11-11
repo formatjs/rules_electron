@@ -15,6 +15,7 @@ def _impl(ctx):
     directories = getattr(app, "directory_manifest", None)
     output = ctx.actions.declare_file(ctx.label.name + ".msix")
     manifest = ctx.actions.declare_file(ctx.label.name + ".msix.json")
+    profile = ctx.actions.declare_file(ctx.label.name + ".msix.profile.json") if ctx.attr.profile else None
     logos = {name: getattr(ctx.file, name) for name in ["logo_44", "logo_150", "store_logo"]}
     association_icons = []
     for target, extension in ctx.attr.file_association_icons.items():
@@ -46,18 +47,20 @@ def _impl(ctx):
     }, **{name: file.path if file else "" for name, file in logos.items()})))
     ctx.actions.run(
         executable = ctx.executable._packager,
-        arguments = [manifest.path, output.path],
+        arguments = [manifest.path, output.path] + ([profile.path] if profile else []),
         inputs = [manifest, app.artifact, app.package_json] + [file for file in logos.values() if file] + ([ctx.file.manifest] if ctx.file.manifest else []) + ([ctx.file.resources_pri] if ctx.file.resources_pri else []) + ([directories] if directories else []) + [file for target in ctx.attr.file_association_icons for file in target.files.to_list()],
-        outputs = [output],
+        outputs = [output] + ([profile] if profile else []),
+        execution_requirements = {"no-cache": "1"} if profile else {},
         mnemonic = "ElectronMsix",
         progress_message = "Packaging unsigned Electron MSIX %{label}",
     )
-    return [DefaultInfo(files = depset([output]))]
+    return [DefaultInfo(files = depset([output])), OutputGroupInfo(profile = depset([profile] if profile else []))]
 
 electron_msix = rule(
     implementation = _impl,
     attrs = {
         "app": attr.label(mandatory = True, providers = [ElectronAppInfo]),
+        "profile": attr.bool(doc = "Record CPU/wall time and cProfile function costs in the profile output group and action log. Diagnostic action bypasses cache; MSIX bytes stay unchanged."),
         "manifest": attr.label(allow_single_file = [".xml"], doc = "Optional complete manifest, preserved verbatim after identity, executable and asset validation."),
         "package_version": attr.string(doc = "Explicit Windows package identity version; defaults to app native version."),
         "payload_prefix": attr.string(doc = "Optional package-relative directory containing the app, such as app."),
