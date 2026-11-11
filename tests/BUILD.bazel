@@ -54,6 +54,8 @@ electron_macos_dmg_notarization_tool(
 electron_macos_distribution_tool(
     name = "dmg_distribution_cli",
     app = None,
+    entitlements = "fixtures/release-entitlements.plist",
+    entitlements_inherit = ":fixtures/release-entitlements.plist",
     signer = "@rcodesign_linux_x64//:rcodesign",
 )
 
