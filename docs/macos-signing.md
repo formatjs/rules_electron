@@ -141,3 +141,14 @@ failure isolation, final feed hashes and the real declared backend's invalid-
 credential rejection. They do not contact Apple. Live Apple interoperability,
 ticket trust and native Gatekeeper acceptance remain unverified. DMG/PKG
 notarization remains a separate gap.
+
+## App and DMG release
+
+`electron_macos_distribution_tool(name = "release", app = ":app_zip", signer = ":rcodesign")` binds an immutable app ZIP and the declared signing, OpenSSL, Xorriso and DMG conversion tools.
+Run the generated client with the same explicit certificate, key, trust, timestamp and notary arguments documented above.
+It signs the app before creating its DMG, signs the final image, then notarizes and staples it.
+`notarize = False` declares a signing-only client.
+No output is committed when an intermediate step fails.
+
+`electron_macos_signing_tool` also accepts optional `app`, `entitlements` and `entitlements_inherit` labels.
+Those files resolve through runfiles rather than the working directory; credential paths remain runtime environment inputs.

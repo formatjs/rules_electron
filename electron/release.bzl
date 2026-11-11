@@ -29,9 +29,9 @@ def electron_macos_release_tool(name, signer, openssl = Label("@openssl//:openss
     """Declare Developer ID signing followed by mandatory notarization/stapling."""
     _macos_signing_client(name, signer, openssl, visibility, [], Label("//electron/tools:sign_macos.py"), Label("//electron/tools:macos_release"))
 
-def electron_macos_signing_tool(name, signer, openssl = Label("@openssl//:openssl"), visibility = None):
+def electron_macos_signing_tool(name, signer, openssl = Label("@openssl//:openssl"), visibility = None, app = None, entitlements = None, entitlements_inherit = None):
     """Declare Developer ID signing without contacting Apple's notary service."""
-    _macos_signing_client(name, signer, openssl, visibility, ["--sign-only"], Label("//electron/tools:sign_macos.py"), Label("//electron/tools:macos_release"))
+    _macos_signing_client(name, signer, openssl, visibility, ["--sign-only"], Label("//electron/tools:sign_macos.py"), Label("//electron/tools:macos_release"), app, entitlements, entitlements_inherit)
 
 def electron_macos_dmg_release_tool(name, signer, openssl = Label("@openssl//:openssl"), visibility = None):
     """Declare Developer ID DMG signing followed by mandatory notarization/stapling."""
@@ -41,18 +41,43 @@ def electron_macos_dmg_signing_tool(name, signer, openssl = Label("@openssl//:op
     """Declare Developer ID DMG signing without notarization."""
     _macos_signing_client(name, signer, openssl, visibility, ["--sign-only"], Label("//electron/tools:release_dmg.py"), Label("//electron/tools:dmg_release"))
 
-def _macos_signing_client(name, signer, openssl, visibility, arguments, source, library):
+def _macos_signing_client(name, signer, openssl, visibility, arguments, source, library, app = None, entitlements = None, entitlements_inherit = None, data_extra = []):
     backend = name + "_backend"
     crypto = name + "_crypto"
     release_backend(name = backend, tool = signer)
     release_backend(name = crypto, tool = openssl)
+    data = [":" + backend, ":" + crypto] + data_extra
+    for flag, target in [("--input-runfile", app), ("--entitlements-runfile", entitlements), ("--entitlements-inherit-runfile", entitlements_inherit)]:
+        if target:
+            arguments = arguments + [flag, "$(rlocationpath %s)" % target]
+            data.append(target)
     py_binary(
         name = name,
         srcs = [source],
         main = source,
         args = ["--backend", "$(rlocationpath :" + backend + ")", "--crypto", "$(rlocationpath :" + crypto + ")"] + arguments,
-        data = [":" + backend, ":" + crypto],
+        data = data,
         deps = [library],
         target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:x86_64"],
         visibility = visibility,
+    )
+
+def electron_macos_distribution_tool(name, app, signer, notarize = True, entitlements = None, entitlements_inherit = None, openssl = Label("@openssl//:openssl"), visibility = None):
+    """Sign an app, build its DMG with declared tools, then sign and optionally notarize the image."""
+    arguments = [] if notarize else ["--sign-only"]
+    for suffix, tool in [("xorriso", Label("//electron/tools:xorriso")), ("converter", Label("//electron/tools:dmg"))]:
+        release_backend(name = name + "_" + suffix, tool = tool)
+        arguments += ["--" + suffix, "$(rlocationpath :" + name + "_" + suffix + ")"]
+    _macos_signing_client(
+        name,
+        signer,
+        openssl,
+        visibility,
+        arguments,
+        Label("//electron/tools:distribute_macos.py"),
+        Label("//electron/tools:macos_distribution"),
+        app,
+        entitlements,
+        entitlements_inherit,
+        [":" + name + "_xorriso", ":" + name + "_converter"],
     )

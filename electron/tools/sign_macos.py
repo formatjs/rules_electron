@@ -121,11 +121,13 @@ def release(args):
                                        backend=args.backend, max_wait_seconds=args.max_wait_seconds))
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+def argument_parser(description=__doc__):
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--backend", required=True)
     parser.add_argument("--crypto", required=True)
-    parser.add_argument("--input", type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--input", type=Path)
+    source.add_argument("--input-runfile")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--certificate-env", required=True)
     parser.add_argument("--key-env", required=True)
@@ -137,11 +139,29 @@ def main(argv=None):
     parser.add_argument("--timestamp-url", required=True)
     parser.add_argument("--entitlements")
     parser.add_argument("--entitlements-inherit")
+    parser.add_argument("--entitlements-runfile")
+    parser.add_argument("--entitlements-inherit-runfile")
     parser.add_argument("--api-key-env")
     parser.add_argument("--sign-only", action="store_true")
     parser.add_argument("--max-wait-seconds", type=int, default=600)
-    args = parser.parse_args(argv)
+    return parser
+
+
+def resolve_runfiles(args):
+    if args.input_runfile:
+        args.input = Path(backend(args.input_runfile))
+    for name in ("entitlements", "entitlements_inherit"):
+        key = getattr(args, name + "_runfile")
+        if key:
+            if getattr(args, name):
+                raise ValueError("Conflicting entitlement inputs")
+            setattr(args, name, backend(key))
+
+
+def main(argv=None):
+    args = argument_parser().parse_args(argv)
     try:
+        resolve_runfiles(args)
         release(args)
     except Exception:
         print("MACOS_RELEASE_FAILED", file=sys.stderr)

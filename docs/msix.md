@@ -119,3 +119,11 @@ to these inputs too. Native smoke checks the deployed manifest and exact image
 bytes after install and upgrade; those checks passed on both Windows CPUs in
 the same matrix. Explorer visual rendering remains outside these checks. See
 [`uap:Logo`](https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-uap-logo).
+
+## Caller manifests
+
+`electron_msix(manifest = ":AppxManifest.xml", payload_prefix = "app")` preserves a complete declared manifest, including capabilities and application extensions.
+Identity, publisher, package version, target CPU, executable and referenced image paths must match the declared payload.
+`package_version` can explicitly separate the Windows package identity version from the Electron app version.
+The three generated-logo inputs are optional when a complete manifest supplies its own packaged assets.
+An optional `resources_pri` label supplies an already-built MRT resource index; the container rule does not discover or invoke an SDK.

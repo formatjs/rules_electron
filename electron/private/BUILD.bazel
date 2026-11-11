@@ -40,7 +40,10 @@ py_library(
     name = "dmg",
     srcs = ["dmg.py"],
     imports = ["../.."],
-    visibility = ["//tests:__pkg__"],
+    visibility = [
+        "//electron/tools:__pkg__",
+        "//tests:__pkg__",
+    ],
     deps = [
         ":archives",
         ":file_mappings",

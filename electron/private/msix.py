@@ -164,15 +164,48 @@ def manifest(identity_name, publisher, publisher_display_name, product_name, exe
     return xml(root)
 
 
+def supplied_manifest(path, identity_name, publisher, publisher_display_name, executable, architecture, version, files):
+    data = Path(path).read_bytes()
+    if len(data) > 1024**2 or b"\0" in data or b"<!DOCTYPE" in data.upper() or b"<!ENTITY" in data.upper():
+        raise ValueError("MSIX manifest exceeds limits or declares entities")
+    root = ET.fromstring(data)
+    if root.tag != "{" + FOUNDATION + "}Package":
+        raise ValueError("Expected Windows package manifest")
+    identities = root.findall("{" + FOUNDATION + "}Identity")
+    expected = dict(Name=identity_name, Publisher=publisher, Version=version, ProcessorArchitecture=architecture)
+    if len(identities) != 1 or any(identities[0].get(key) != value for key, value in expected.items()):
+        raise ValueError("MSIX manifest identity differs from declared package")
+    publishers = root.findall("{" + FOUNDATION + "}Properties/{" + FOUNDATION + "}PublisherDisplayName")
+    if len(publishers) != 1 or publishers[0].text != publisher_display_name:
+        raise ValueError("MSIX publisher display name differs from declared package")
+    applications = root.findall("{" + FOUNDATION + "}Applications/{" + FOUNDATION + "}Application")
+    if len(applications) != 1 or applications[0].get("Executable", "").replace("\\", "/") != executable or applications[0].get("EntryPoint") != "Windows.FullTrustApplication":
+        raise ValueError("MSIX manifest executable differs from app")
+    if not any(node.get("Name") == "runFullTrust" for node in root.findall("{" + FOUNDATION + "}Capabilities/{" + RESCAP + "}Capability")):
+        raise ValueError("MSIX desktop app requires runFullTrust")
+    for node in root.iter():
+        references = [value for key, value in node.attrib.items() if key in ("Logo", "Square44x44Logo", "Square150x150Logo", "Wide310x150Logo", "Square310x310Logo", "Square71x71Logo")]
+        if node.tag == "{" + FOUNDATION + "}Logo" or node.tag.endswith("}Logo"):
+            references.append(node.text or "")
+        for value in references:
+            name = value.replace("\\", "/")
+            payload_name(name)
+            if name not in files:
+                raise ValueError("MSIX manifest asset missing from payload: " + name)
+    return data
+
+
 def create_msix(app, package_json, output, identity_name, publisher, publisher_display_name,
-                product_name, executable_name, architecture, logo_44, logo_150, store_logo,
+                product_name, executable_name, architecture, logo_44="", logo_150="", store_logo="",
                 description="Electron desktop application", build_version="", build_number="", directory_manifest="",
-                protocols=(), file_associations=None, file_association_icons=()):
+                protocols=(), file_associations=None, file_association_icons=(), manifest_file="", payload_prefix="", app_is_tree=False, resources_pri="", package_version=""):
     package = json.loads(Path(package_json).read_text(encoding="utf-8"))
-    native_version = build_identity(package["version"], build_version, build_number, "windows")
+    native_version = package_version or build_identity(package["version"], build_version, build_number, "windows")
     if not re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,3}", native_version):
         raise ValueError("MSIX prerelease versions require an explicit numeric build_version")
     components = native_version.split(".")
+    if any(int(value) > 65535 for value in components):
+        raise ValueError("MSIX version components exceed 65535")
     version = ".".join(components + ["0"] * (4 - len(components)))
     executable = executable_name if executable_name.endswith(".exe") else executable_name + ".exe"
     payload_name(executable)
@@ -182,20 +215,28 @@ def create_msix(app, package_json, output, identity_name, publisher, publisher_d
         if extension in icons:
             raise ValueError("Duplicate MSIX document icon extension")
         icons[extension] = icon["source"]
-    manifest_data = manifest(identity_name, publisher, publisher_display_name, product_name, executable, architecture, version, description,
+    if payload_prefix:
+        payload_name(payload_prefix)
+        executable = payload_prefix + "/" + executable
+    manifest_data = None if manifest_file else manifest(identity_name, publisher, publisher_display_name, product_name, executable, architecture, version, description,
                              protocols, file_associations, icons)
     assets = {"Assets/Square44x44Logo.png": (logo_44, 44), "Assets/Square150x150Logo.png": (logo_150, 150), "Assets/StoreLogo.png": (store_logo, 50)}
+    assets = {name: value for name, value in assets.items() if value[0]}
+    if not manifest_file and len(assets) != 3:
+        raise ValueError("Generated MSIX manifests require all three logos")
     for extension, source in icons.items():
         assets["Assets/FileType" + hashlib.sha256(extension.encode()).hexdigest()[:16] + ".png"] = (source, None)
     for path, dimension in assets.values():
         dimensions = png_dimensions(path)
         if dimension is not None and dimensions != (dimension, dimension):
             raise ValueError("MSIX logo dimensions must match declared asset slot")
-    with inventory(Path(app), "windows") as (entries, open_file), ExitStack() as stack:
+    with inventory(Path(app), "windows", declared_tree=app_is_tree) as (entries, open_file), ExitStack() as stack:
         if directory_manifest:
             declared = read_directories(directory_manifest)
             if any(not any(name.startswith(str(directory) + "/") for name in entries) for directory in declared):
                 raise ValueError("MSIX empty directory payloads are not supported yet")
+        if payload_prefix:
+            entries = {payload_prefix + "/" + name: entry for name, entry in entries.items()}
         names = {name.casefold() for name in entries}
         if any(name.casefold() in names for name in assets) or "assets" in names and entries[next(name for name in entries if name.casefold() == "assets")].kind != "directory":
             raise ValueError("MSIX asset path collision")
@@ -215,6 +256,11 @@ def create_msix(app, package_json, output, identity_name, publisher, publisher_d
             pe = binary.read(6)
             if pe != b"PE\0\0" + struct.pack("<H", {"x64": 0x8664, "arm64": 0xaa64}[architecture]):
                 raise ValueError("MSIX executable CPU differs from target")
+        if resources_pri and "resources.pri" in names:
+            raise ValueError("MSIX resource index collides with app payload")
+        if manifest_file:
+            manifest_data = supplied_manifest(manifest_file, identity_name, publisher, publisher_display_name, executable, architecture, version,
+                                              {name for name, entry in entries.items() if entry.kind == "file"} | set(assets))
         output_stream = stack.enter_context(Path(output).open("wb"))
         writer = PackageZip(output_stream)
         for name, entry in sorted(entries.items()):
@@ -224,6 +270,9 @@ def create_msix(app, package_json, output, identity_name, publisher, publisher_d
         for name, (path, _) in sorted(assets.items()):
             with Path(path).open("rb") as source:
                 writer.add(name, source, "image/png")
+        if resources_pri:
+            with Path(resources_pri).open("rb") as source:
+                writer.add("resources.pri", source, "application/octet-stream")
         writer.add("AppxManifest.xml", io.BytesIO(manifest_data), "application/vnd.ms-appx.manifest+xml")
         writer.close()
 

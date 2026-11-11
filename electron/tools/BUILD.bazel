@@ -16,6 +16,7 @@ alias(
 )
 
 exports_files([
+    "distribute_macos.py",
     "notarize_dmg.py",
     "release_dmg.py",
     "notarize_macos.py",
@@ -199,4 +200,16 @@ static_pie_runtime(
 alias(
     name = "osslsigncode",
     actual = "@osslsigncode_sources//:osslsigncode",
+)
+
+py_library(
+    name = "macos_distribution",
+    srcs = ["distribute_macos.py"],
+    imports = ["../.."],
+    deps = [
+        ":dmg_release",
+        ":macos_release",
+        ":notarization",
+        "//electron/private:dmg",
+    ],
 )

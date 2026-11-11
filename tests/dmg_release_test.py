@@ -16,14 +16,17 @@ import unittest
 from unittest.mock import patch
 
 from electron.private.dmg import create_dmg
+from electron.private.mac_sign import archive_bundle
 from electron.private.udif import CMS, CODE_DIRECTORY, TICKET, snapshot
-from electron.tools import notarize_dmg, release_dmg
+from electron.tools import distribute_macos, notarize_dmg, release_dmg
 
 CLI = str(Path(sys.argv.pop(1)).resolve())
 SIGNER_KEY, CRYPTO_KEY = sys.argv[1:3]
 del sys.argv[1:3]
 XORRISO, CONVERTER = [str(Path(value).resolve()) for value in sys.argv[1:3]]
 del sys.argv[1:3]
+DISTRIBUTION_CLI, XORRISO_KEY, CONVERTER_KEY = sys.argv[1:4]
+del sys.argv[1:4]
 SIGNER, CRYPTO = release_dmg.backend(SIGNER_KEY), release_dmg.backend(CRYPTO_KEY)
 REAL_RUN = subprocess.run
 
@@ -67,8 +70,9 @@ class DmgReleaseTest(unittest.TestCase):
         self.environment = {"DMG_CERT": str(self.cert), "DMG_KEY": str(self.key),
                             "DMG_PASSWORD": "never-log-password", "DMG_API": str(api)}
         bundle = self.root / "Sample.app"
+        self.bundle = bundle
         (bundle / "Contents/MacOS").mkdir(parents=True)
-        (bundle / "Contents/Info.plist").write_bytes(plistlib.dumps({"CFBundlePackageType": "APPL", "CFBundleExecutable": "sample"}))
+        (bundle / "Contents/Info.plist").write_bytes(plistlib.dumps({"CFBundlePackageType": "APPL", "CFBundleExecutable": "sample", "CFBundleIdentifier": "org.example.release"}))
         main = bundle / "Contents/MacOS/sample"
         main.write_bytes(b"immutable executable fixture")
         main.chmod(0o755)
@@ -129,6 +133,43 @@ class DmgReleaseTest(unittest.TestCase):
         self.assertEqual(self.source.read_bytes(), self.original)
         self.assertFalse(list(self.root.glob(".electron-dmg-*")))
         return output
+
+    def test_distribution_signs_app_before_real_dmg_and_never_commits_failed_release(self):
+        source = self.root / "app.zip"
+        archive_bundle(self.bundle, source, self.bundle.name)
+        original = source.read_bytes()
+        for failure in (None, "app", "image"):
+            with self.subTest(failure=failure):
+                output = self.root / (str(failure) + ".dmg")
+                calls = []
+
+                def services(command, **options):
+                    if command[0] == SIGNER and command[1] == "sign":
+                        target = Path(command[-1])
+                        stage = "app" if target.is_dir() else "image"
+                        calls.append(stage)
+                        if stage == failure:
+                            raise subprocess.CalledProcessError(1, command)
+                        if stage == "app":
+                            self.assertIn("@main:runtime", command)
+                            (target / "Contents/MacOS/sample").write_bytes(b"signed app")
+                            return
+                    return self.service(command, **options)
+
+                arguments = self.arguments(output)
+                arguments[arguments.index("--input") + 1] = str(source)
+                arguments += ["--xorriso", XORRISO_KEY, "--converter", CONVERTER_KEY]
+                stdout, stderr = io.StringIO(), io.StringIO()
+                with patch.dict(os.environ, self.environment), patch.object(subprocess, "run", side_effect=services), redirect_stdout(stdout), redirect_stderr(stderr):
+                    status = distribute_macos.main(arguments)
+                self.assertEqual(status, 0 if failure is None else 1)
+                self.assertEqual(calls, ["app"] if failure == "app" else ["app", "image"])
+                self.assertEqual(output.exists(), failure is None)
+                if failure is None:
+                    snapshot(output, require_signature=True, require_ticket=True)
+                self.assertEqual(source.read_bytes(), original)
+                self.assertFalse(list(self.root.glob(".electron-distribution-*")))
+                self.assertNotIn("never-log-password", stdout.getvalue() + stderr.getvalue())
 
     def test_release_signs_then_staples_without_changing_image_payload(self):
         output = self.invoke()

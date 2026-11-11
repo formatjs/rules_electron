@@ -142,6 +142,42 @@ class MsixTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "empty directory"):
                 create_msix(output=output, **arguments)
 
+    def test_custom_manifest_preserves_extensions_and_rejects_identity_or_missing_assets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = root / "app"
+            app.mkdir()
+            binary = bytearray(256)
+            binary[:2] = b"MZ"
+            struct.pack_into("<I", binary, 60, 128)
+            binary[128:134] = b"PE\0\0" + struct.pack("<H", 0x8664)
+            (root / "binary").write_bytes(binary)
+            (app / "sample.exe").symlink_to(root / "binary")
+            (app / "icon.png").write_bytes(png(44))
+            package = root / "package.json"
+            package.write_text('{"version":"1.2.3"}')
+            supplied = root / "manifest.xml"
+            supplied.write_text('''<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"><Identity Name="org.example.Custom" Publisher="CN=Example" Version="1.2.3.0" ProcessorArchitecture="x64"/><Properties><PublisherDisplayName>Example</PublisherDisplayName><Logo>app\\icon.png</Logo></Properties><Applications><Application Id="Custom" Executable="app\\sample.exe" EntryPoint="Windows.FullTrustApplication"><Extensions><uap:Extension Category="windows.protocol"><uap:Protocol Name="sample-custom"/></uap:Extension></Extensions></Application></Applications><Capabilities><rescap:Capability Name="runFullTrust"/><DeviceCapability Name="microphone"/></Capabilities></Package>''')
+            pri = root / "resources.pri"
+            pri.write_bytes(b"declared resource index")
+            arguments = dict(app=app, package_json=package, identity_name="org.example.Custom", publisher="CN=Example",
+                             publisher_display_name="Example", product_name="Custom", executable_name="sample", architecture="x64",
+                             manifest_file=supplied, payload_prefix="app", app_is_tree=True, resources_pri=pri)
+            output = root / "custom.msix"
+            create_msix(output=output, **arguments)
+            with ZipFile(output) as archive:
+                self.assertEqual(archive.read("AppxManifest.xml"), supplied.read_bytes())
+                self.assertEqual(archive.read("app/sample.exe"), binary)
+                self.assertEqual(archive.read("resources.pri"), pri.read_bytes())
+            for overrides, message in [({"publisher": "CN=Other"}, "identity"), ({"payload_prefix": "other"}, "executable")]:
+                rejected = root / "rejected.msix"
+                with self.assertRaisesRegex(ValueError, message):
+                    create_msix(output=rejected, **dict(arguments, **overrides))
+                self.assertFalse(rejected.exists())
+            (app / "icon.png").unlink()
+            with self.assertRaisesRegex(ValueError, "asset missing"):
+                create_msix(output=root / "missing.msix", **arguments)
+
     def test_rejects_windows_reserved_paths_and_footprints(self):
         for name in ["AppxManifest.xml", "APPXMETADATA/file", "AppxSignature.p7x", "NUL.txt", "dir/COM1", "a./file", "a /file", "a\\b", "a:b", "../file", "/file", "a/", "x" * 261]:
             with self.subTest(name=name), self.assertRaises(ValueError):
