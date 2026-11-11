@@ -73,19 +73,9 @@ http_archive(
     urls = ["https://github.com/fanquake/libdmg-hfsplus/archive/1cc791e4173da9cb0b0cc16c5a1aaa25d5eb5efa.tar.gz"],
 )
 
-http_archive(
-    name = "xorriso_sources",
-    build_file = "//third_party:xorriso.BUILD.bazel",
-    patch_args = ["-p1"],
-    patches = [
-        "//third_party:xorriso-finder-info.patch",
-        "//third_party:xorriso-root-blessing.patch",
-        "//third_party:xorriso-volume-icon.patch",
-    ],
-    sha256 = "b1455ecafbf0692ddafe1d71002a96f2ce2d77f4deae602678261ce033f97bc8",
-    strip_prefix = "xorriso-1.5.8",
-    urls = ["https://ftp.gnu.org/gnu/xorriso/xorriso-1.5.8.pl02.tar.gz"],
-)
+xorriso_repository = use_repo_rule("//third_party:xorriso_repository.bzl", "xorriso_repository")
+
+xorriso_repository(name = "xorriso_sources")
 
 http_archive(
     name = "rcodesign_linux_x64",
