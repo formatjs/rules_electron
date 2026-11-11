@@ -239,7 +239,7 @@ electron_app = rule(
         "windows_resource_tool": attr.label(providers = [ElectronWindowsResourceToolInfo], cfg = "exec", doc = "Declared PE resource editor; required for Windows embedded ASAR validation, metadata or icons."),
         "windows_metadata": attr.string_dict(doc = "Windows version strings: CompanyName, FileDescription, InternalName, LegalCopyright, OriginalFilename, ProductName."),
         "windows_icon": attr.label(allow_single_file = [".ico"], doc = "Declared ICO asset replacing executable icon groups through windows_resource_tool."),
-        "unpacked_output": attr.bool(default = False, doc = "Also expose the signed macOS bundle through the unpacked output group; avoids extracting the canonical ZIP for directory consumers."),
+        "unpacked_output": attr.bool(default = False, doc = "Also expose the signed macOS bundle through the unpacked output group; avoids extracting the canonical ZIP for directory consumers. Filesystem links must be acyclic."),
         "remove_package_scripts": attr.bool(default = False),
         "fuses": attr.string_dict(doc = "Electron v1 fuse names mapped to on/off; macOS edits its framework before signing. See README."),
         "_assembler": attr.label(default = Label("//electron/private:assemble"), executable = True, cfg = "exec"),

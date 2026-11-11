@@ -159,6 +159,7 @@ filegroup(
         ":release_dmg",
         ":release_dmg_japanese",
         ":release_dmg_rtf",
+        ":unpacked_probe",
     ],
     target_compatible_with = ["@platforms//os:osx"],
 )
@@ -448,10 +449,6 @@ electron_app(
     target_compatible_with = select({
         ":windows": ["@platforms//:incompatible"],
         "//conditions:default": [],
-    }),
-    unpacked_output = select({
-        ":macos": True,
-        "//conditions:default": False,
     }),
 )
 
@@ -1110,3 +1107,18 @@ electron_msix_appinstaller(
         "v2",
     ]
 ]
+
+# Recursive resource links stay in ZIPs; this probe checks Bazel's directory output.
+electron_app(
+    name = "unpacked_probe",
+    srcs = {"unpacked-probe.cjs": "main.cjs"},
+    app_id = "org.example.unpacked-probe",
+    asar = True,
+    executable_name = "unpacked-probe",
+    macos_signer = "@rcodesign_linux_x64//:rcodesign",
+    package_json = "plain-package.json",
+    product_name = "Unpacked Probe",
+    runtime = ":runtime",
+    target_compatible_with = ["@platforms//os:osx"],
+    unpacked_output = True,
+)
