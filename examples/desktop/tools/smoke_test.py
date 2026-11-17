@@ -466,6 +466,12 @@ if __name__ == "__main__":
                 app = bundles[0]
             subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
             check_macos_signing(app)
+            subprocess.run([
+                "node", str(Path(__file__).resolve().parents[3] / "electron/tools/keychain_sign.mjs"),
+                "--app", str(app), "--identity", "-", "--entitlements",
+                str(Path(__file__).resolve().parents[1] / "entitlements.plist"),
+            ], check=True)
+            check_macos_signing(app)
             executable = app / "Contents/MacOS/sample-desktop"
         else:
             shutil.copytree(source, app, symlinks=True)

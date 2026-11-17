@@ -16,6 +16,8 @@ alias(
 )
 
 exports_files([
+    "keychain_sign.mjs",
+    "keychain_sign_test.mjs",
     "distribute_macos.py",
     "notarize_dmg.py",
     "release_dmg.py",
