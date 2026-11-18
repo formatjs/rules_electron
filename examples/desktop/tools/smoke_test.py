@@ -205,6 +205,8 @@ def check_macos_signing(app):
         flags = subprocess.run(["/usr/bin/codesign", "--display", "--verbose=4", str(target)],
                                capture_output=True, text=True, check=True)
         assert re.search(r"flags=.*\bruntime\b", flags.stderr), flags.stderr
+        if target != app and target not in helpers:
+            continue
         result = subprocess.run(["/usr/bin/codesign", "--display", "--entitlements", "-", "--xml", str(target)],
                                 capture_output=True, check=True)
         data = result.stdout

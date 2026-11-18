@@ -9,14 +9,22 @@ const execute = promisify(execFile);
 async function executableType(path) {
   const file = await open(path, 'r');
   try {
-    const header = Buffer.alloc(16);
-    const { bytesRead } = await file.read(header, 0, 16, 0);
+    const header = Buffer.alloc(32);
+    const { bytesRead } = await file.read(header, 0, 32, 0);
     if (bytesRead < 16) return 0;
-    const magic = header.readUInt32BE(0);
+    let magic = header.readUInt32BE(0);
     if ([0xcafebabe, 0xcafebabf, 0xbebafeca, 0xbfbafeca].includes(magic)) {
-      const count = magic === 0xbebafeca || magic === 0xbfbafeca
-        ? header.readUInt32LE(4) : header.readUInt32BE(4);
-      return count > 0 && count <= 16 ? 2 : 0;
+      const little = magic === 0xbebafeca || magic === 0xbfbafeca;
+      const wide = magic === 0xcafebabf || magic === 0xbfbafeca;
+      const count = little ? header.readUInt32LE(4) : header.readUInt32BE(4);
+      if (!count || count > 16 || bytesRead < (wide ? 24 : 20)) return 0;
+      const offset = wide
+        ? Number(little ? header.readBigUInt64LE(16) : header.readBigUInt64BE(16))
+        : (little ? header.readUInt32LE(16) : header.readUInt32BE(16));
+      if (!Number.isSafeInteger(offset) || offset < 8 + count * (wide ? 32 : 20)) return 0;
+      const slice = await file.read(header, 0, 32, offset);
+      if (slice.bytesRead < 16) return 0;
+      magic = header.readUInt32BE(0);
     }
     if (![0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe].includes(magic)) return 0;
     const kind = magic === 0xcefaedfe || magic === 0xcffaedfe
@@ -43,21 +51,21 @@ export async function signApp({ app, identity, keychain, entitlements, entitleme
       if (entry.isDirectory()) {
         await visit(path);
         if (['.app', '.framework', '.xpc', '.appex'].includes(extname(path))) {
-          targets.push(path);
+          targets.push({ path, executable: extname(path) !== '.framework' });
         }
       } else if (entry.isFile()) {
         const kind = await executableType(path);
-        if (kind) targets.push(path);
+        if (kind) targets.push({ path, executable: kind === 2 });
       }
     }
   }
   await visit(app);
-  targets.push(app);
-  for (const path of targets) {
+  targets.push({ path: app, executable: true });
+  for (const { path, executable } of targets) {
     const args = ['--force', '--sign', identity, '--options', 'runtime'];
     if (identity !== '-') args.push('--timestamp', '--keychain', resolve(keychain));
     const settings = path === app ? entitlements : (entitlementsInherit || entitlements);
-    if (settings) args.push('--entitlements', resolve(settings));
+    if (settings && executable) args.push('--entitlements', resolve(settings));
     await run('/usr/bin/codesign', [...args, path]);
   }
   await run('/usr/bin/codesign', ['--verify', '--deep', '--strict', '--verbose=4', app]);
