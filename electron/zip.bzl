@@ -26,7 +26,7 @@ def _map_members(template_ctx, *, input_directories, output_directories, tools, 
     for key, directory in input_directories.items():
         prefix = additional_params["prefix_" + key]
         root = additional_params["path_" + key] + "/"
-        for file in sorted(directory.files, key = _path):
+        for file in sorted(directory.children, key = _path):
             path = file.path.removeprefix(root)
             source = {"source": file.path, "prefix": prefix + "/" + path, "directory": False}
             if file.extension.lower() in ["exe", "dll", "pak", "asar", "bin", "dat", "node"]:
