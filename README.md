@@ -108,6 +108,9 @@ compression controls; see [release archives](docs/release-archives.md).
 `electron_zip` archives declared files/trees under their basenames. Compression
 outputs 64MiB pieces for remote caches with blob limits; final ZIP assembly only
 copies those pieces. Configure `srcs`, `platform`, `out` and `compression_level`.
+For Windows trees, `incremental = True` uses native Bazel directory mapping to
+cache large members separately and group small files. Each compressed member or
+small-file batch must fit 240MiB. Final ZIP merges compressed bytes directly.
 
 ## Development
 

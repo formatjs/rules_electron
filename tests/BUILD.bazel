@@ -23,8 +23,14 @@ py_test(
     name = "zip_parts_test",
     size = "small",
     srcs = ["zip_parts_test.py"],
-    args = ["$(rootpath :zip_parts_fixture)"],
-    data = [":zip_parts_fixture"],
+    args = [
+        "$(rootpath :zip_parts_fixture)",
+        "$(rootpath :zip_members_fixture)",
+    ],
+    data = [
+        ":zip_members_fixture",
+        ":zip_parts_fixture",
+    ],
     deps = ["//electron/private:zip_parts"],
 )
 
@@ -32,6 +38,13 @@ electron_zip(
     name = "zip_parts_fixture",
     srcs = ["fixtures/package.json"],
     platform = "linux",
+)
+
+electron_zip(
+    name = "zip_members_fixture",
+    srcs = [":app"],
+    incremental = True,
+    platform = "windows",
 )
 
 npm_lock_test(name = "npm_lock_test")

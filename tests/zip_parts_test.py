@@ -4,11 +4,13 @@ import stat
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from zipfile import ZipFile
 
-from electron.private.zip_parts import assemble, compress
+from electron.private.zip_parts import assemble, compress, layout, member, merge
 
 FIXTURE = Path(sys.argv.pop(1))
+MEMBERS_FIXTURE = Path(sys.argv.pop(1))
 
 
 class ZipPartsTest(unittest.TestCase):
@@ -17,6 +19,48 @@ class ZipPartsTest(unittest.TestCase):
             self.assertIsNone(archive.testzip())
             self.assertEqual(archive.namelist(), ["package.json"])
             self.assertIn("name", json.loads(archive.read("package.json")))
+        with ZipFile(MEMBERS_FIXTURE) as archive:
+            self.assertIsNone(archive.testzip())
+            self.assertIn("app/resources/app/main.js", archive.namelist())
+
+    def test_merge_preserves_cached_members_unicode_empty_directories_and_zip64(self):
+        with tempfile.TemporaryDirectory() as work, patch("zipfile.ZIP64_LIMIT", 64):
+            root = Path(work)
+            app = root / "app"
+            (app / "empty").mkdir(parents=True)
+            runtime = app / "runtime.exe"
+            runtime.write_bytes(bytes(range(256)) * 4)
+            runtime.chmod(0o755)
+            sidecar = app / "sidecar.exe"
+            sidecar.write_bytes(b"first")
+            text = app / "文.txt"
+            text.write_bytes(b"hello")
+            parts = root / "members"
+            parts.mkdir()
+            for path in [runtime, sidecar, text]:
+                member([{"source": str(path), "prefix": "app/" + path.name, "directory": False}], parts / (path.name + ".zip"), 6)
+            stable = (parts / "runtime.exe.zip").read_bytes()
+            description = root / "layout.json"
+            sources = [{"source": str(app), "prefix": "app", "directory": True}]
+            layout(sources, "windows", description)
+            output = root / "output.zip"
+            merge(parts, description, output)
+            with ZipFile(output) as archive:
+                self.assertIsNone(archive.testzip())
+                self.assertEqual(archive.read("app/runtime.exe"), runtime.read_bytes())
+                self.assertEqual(archive.read("app/文.txt"), b"hello")
+                self.assertTrue(archive.getinfo("app/empty/").is_dir())
+                self.assertEqual(archive.getinfo("app/runtime.exe").external_attr >> 16, stat.S_IFREG | 0o755)
+            sidecar.write_bytes(b"second")
+            member([{"source": str(sidecar), "prefix": "app/sidecar.exe", "directory": False}], parts / "sidecar.exe.zip", 6)
+            merge(parts, description, output)
+            self.assertEqual((parts / "runtime.exe.zip").read_bytes(), stable)
+            with ZipFile(output) as archive:
+                self.assertIsNone(archive.testzip())
+                self.assertEqual(archive.read("app/sidecar.exe"), b"second")
+            (parts / "sidecar.exe.zip").unlink()
+            with self.assertRaisesRegex(ValueError, "do not match layout"):
+                merge(parts, description, output)
 
     def test_bounded_parts_round_trip_metadata_links_and_deterministic_bytes(self):
         with tempfile.TemporaryDirectory() as work:
