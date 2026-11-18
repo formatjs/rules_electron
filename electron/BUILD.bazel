@@ -18,4 +18,5 @@ exports_files([
     "nsis.bzl",
     "update.bzl",
     "windows.bzl",
+    "zip.bzl",
 ])

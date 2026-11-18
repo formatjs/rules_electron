@@ -205,6 +205,8 @@ def check_macos_signing(app):
         flags = subprocess.run(["/usr/bin/codesign", "--display", "--verbose=4", str(target)],
                                capture_output=True, text=True, check=True)
         assert re.search(r"flags=.*\bruntime\b", flags.stderr), flags.stderr
+        if target != app and target not in helpers:
+            continue
         result = subprocess.run(["/usr/bin/codesign", "--display", "--entitlements", "-", "--xml", str(target)],
                                 capture_output=True, check=True)
         data = result.stdout
@@ -465,6 +467,12 @@ if __name__ == "__main__":
                     raise RuntimeError("Expected one packaged .app")
                 app = bundles[0]
             subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
+            check_macos_signing(app)
+            subprocess.run([
+                "node", str(Path(__file__).resolve().parents[3] / "electron/tools/keychain_sign.mjs"),
+                "--app", str(app), "--identity", "-", "--entitlements",
+                str(Path(__file__).resolve().parents[1] / "entitlements.plist"),
+            ], check=True)
             check_macos_signing(app)
             executable = app / "Contents/MacOS/sample-desktop"
         else:

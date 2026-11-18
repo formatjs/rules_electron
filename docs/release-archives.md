@@ -4,6 +4,10 @@
 assembly and signing finish before archival. The action uses the declared Python
 execution toolchain; it never runs target binaries or discovers host utilities.
 
+ZIP compression outputs 64MiB pieces into a tree artifact. A separate action
+concatenates them without recompression. Unchanged releases can reuse compressed
+pieces even when the final ZIP exceeds a remote cache's blob limit.
+
 ```starlark
 load("@rules_electron//electron:archive.bzl", "electron_archive")
 

@@ -1,6 +1,22 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 py_library(
+    name = "zip_parts",
+    srcs = ["zip_parts.py"],
+    imports = ["../.."],
+    visibility = ["//tests:__pkg__"],
+    deps = [":archives"],
+)
+
+py_binary(
+    name = "zip_parts_tool",
+    srcs = ["zip_parts.py"],
+    main = "zip_parts.py",
+    visibility = ["//electron:__pkg__"],
+    deps = [":zip_parts"],
+)
+
+py_library(
     name = "dmg_licenses",
     srcs = ["dmg_licenses.py"],
     imports = ["../.."],

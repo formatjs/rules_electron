@@ -153,6 +153,9 @@ jobs:
           SMOKE_VARIANTS: ${{ toJSON(matrix.variants) }}
           SMOKE_SHARD: ${{ matrix.shard }}
         run: python -m tools.ci.run_native_smoke
+      - name: Check native signing traversal
+        if: runner.os == 'macOS'
+        run: node --test electron/tools/keychain_sign_test.mjs
 
   dmg_probe:
     if: inputs.dmg_license_probe && !inputs.logs_only

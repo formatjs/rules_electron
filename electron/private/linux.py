@@ -37,7 +37,7 @@ def _compressed_output(output, compression, level, xz):
                 yield compressed
         else:
             process = subprocess.Popen(
-                [str(Path(xz).resolve()), "--format=xz", "--threads=4", "--block-size=16MiB", "--memlimit-compress=0", "--no-adjust", "--check=crc64", "--stdout", "-" + str(level)],
+                [str(Path(xz).resolve()), "--format=xz", "--threads=8", "--block-size=16MiB", "--memlimit-compress=0", "--no-adjust", "--check=crc64", "--stdout", "-" + str(level)],
                 stdin=subprocess.PIPE, stdout=raw,
                 env={"LC_ALL": "C", "TZ": "UTC", "XZ_OPT": "", "XZ_DEFAULTS": ""},
             )

@@ -3,6 +3,12 @@
 load("@rules_pkg//pkg:deb.bzl", "pkg_deb")
 load(":defs.bzl", "ElectronAppInfo")
 
+def _xz_resources(_os, _inputs):
+    return {"cpu": 8, "memory": 2048}
+
+def _xz_large_resources(_os, _inputs):
+    return {"cpu": 8, "memory": 8192}
+
 def _payload_impl(ctx):
     app = ctx.attr.app[ElectronAppInfo]
     if app.platform != "linux":
@@ -52,6 +58,7 @@ def _payload_impl(ctx):
         inputs = [manifest, app.artifact, app.package_json] + ([directories] if directories else []) + [f for t in ctx.attr.icons.keys() + ctx.attr.file_association_icons.keys() + ctx.attr.payload_files.keys() for f in t.files.to_list()],
         outputs = [ctx.outputs.tar, ctx.outputs.version],
         tools = [ctx.attr.xz[DefaultInfo].files_to_run] if ctx.attr.xz else [],
+        resource_set = (_xz_resources if ctx.attr.compression_level <= 6 else _xz_large_resources) if ctx.attr.compression == "xz" else None,
         mnemonic = "ElectronLinuxPayload",
         progress_message = "Packaging Electron Linux payload %{label}",
     )
