@@ -12,11 +12,27 @@ load("//electron:npm.bzl", "electron_npm_package", "electron_npm_tree")
 load("//electron:prepackaged.bzl", "electron_prepackaged_app")
 load("//electron:release.bzl", "electron_macos_distribution_tool", "electron_macos_dmg_notarization_tool", "electron_macos_dmg_release_tool", "electron_macos_dmg_signing_tool", "electron_macos_notarization_tool", "electron_macos_release_tool", "electron_macos_signing_tool")
 load("//electron:update.bzl", "electron_update_feed")
+load("//electron:zip.bzl", "electron_zip")
 load(":cross_build.bzl", "cross_build")
 load(":empty_tree.bzl", "empty_tree")
 load(":npm_lock_test.bzl", "npm_lock_test")
 load(":portable_feed_test.bzl", "portable_feed_test")
 load(":update_config_test.bzl", "update_config_tests")
+
+py_test(
+    name = "zip_parts_test",
+    size = "small",
+    srcs = ["zip_parts_test.py"],
+    args = ["$(rootpath :zip_parts_fixture)"],
+    data = [":zip_parts_fixture"],
+    deps = ["//electron/private:zip_parts"],
+)
+
+electron_zip(
+    name = "zip_parts_fixture",
+    srcs = ["fixtures/package.json"],
+    platform = "linux",
+)
 
 npm_lock_test(name = "npm_lock_test")
 
