@@ -34,7 +34,10 @@ py_test(
         ":zip_members_fixture",
         ":zip_parts_fixture",
     ],
-    deps = ["//electron/private:zip_parts"],
+    deps = [
+        "//electron/private:archives",
+        "//electron/private:zip_parts",
+    ],
 )
 
 electron_zip(

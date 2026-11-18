@@ -6,6 +6,7 @@ def _impl(ctx):
     app = ctx.attr.app[ElectronAppInfo]
     extension = "." + ctx.attr.format
     output = ctx.actions.declare_file(ctx.label.name + extension)
+    compressed = ctx.actions.declare_directory(ctx.label.name + ".parts") if ctx.attr.format == "zip" else output
     root = ctx.attr.root_name or (app.product_name + ".app" if app.platform == "macos" else app.executable_name)
     if app.platform == "macos" and not root.endswith(".app"):
         fail("macOS archive root_name must end in .app")
@@ -28,6 +29,7 @@ def _impl(ctx):
         "directory_manifest": directories.path if directories else "",
         "sevenzip": ctx.executable.sevenzip.path if ctx.executable.sevenzip else "",
         "lzip": ctx.executable.lzip.path if ctx.executable.lzip else "",
+        "split_zip_output": ctx.attr.format == "zip",
     }))
     runner = ctx.attr.sevenzip[DefaultInfo].files_to_run if ctx.attr.sevenzip else None
     tools = [runner if runner and runner.executable else ctx.executable.sevenzip] if ctx.attr.sevenzip else []
@@ -35,13 +37,22 @@ def _impl(ctx):
         tools.append(ctx.attr.lzip[DefaultInfo].files_to_run)
     ctx.actions.run(
         executable = ctx.executable._archive,
-        arguments = [manifest.path, output.path],
+        arguments = [manifest.path, compressed.path],
         inputs = [manifest, app.artifact] + ([directories] if directories else []),
         tools = tools,
-        outputs = [output],
+        outputs = [compressed],
         mnemonic = "ElectronReleaseArchive",
         progress_message = "Archiving Electron app %{label}",
     )
+    if ctx.attr.format == "zip":
+        ctx.actions.run(
+            executable = ctx.executable._zip,
+            arguments = ["assemble", compressed.path, output.path],
+            inputs = [compressed],
+            outputs = [output],
+            mnemonic = "ElectronZipAssemble",
+            progress_message = "Assembling ZIP %{label}",
+        )
     return [DefaultInfo(files = depset([output]))]
 
 electron_archive = rule(
@@ -54,6 +65,7 @@ electron_archive = rule(
         "sevenzip": attr.label(executable = True, cfg = "exec", allow_single_file = True, doc = "Required execution 7zip for 7z and tar.7z; no host tool discovery."),
         "lzip": attr.label(executable = True, cfg = "exec", allow_single_file = True, doc = "Required execution lzip for tar.lz. Source-built tool: @rules_electron//third_party:lzip."),
         "_archive": attr.label(default = Label("//electron/private:release_archive"), executable = True, cfg = "exec"),
+        "_zip": attr.label(default = Label("//electron/private:zip_parts_tool"), executable = True, cfg = "exec"),
     },
     doc = "Archive app bytes without executing target code; retain executable modes and relative symlinks.",
 )

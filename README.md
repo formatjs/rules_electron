@@ -104,7 +104,8 @@ contract; both compilers pass native x64/ARM64 checks. [MSIX](docs/msix.md) has 
 install/update/remove coverage with explicit signing interfaces.
 Per-user file handlers: [Windows file associations](docs/windows-file-associations.md).
 `electron_archive` creates deterministic ZIP, tar and compressed releases with explicit
-compression controls; see [release archives](docs/release-archives.md).
+compression controls; ZIP compression caches 64MiB pieces before final assembly.
+See [release archives](docs/release-archives.md).
 `electron_zip` archives declared files/trees under their basenames. Compression
 outputs 64MiB pieces for remote caches with blob limits; final ZIP assembly only
 copies those pieces. Configure `srcs`, `platform`, `out` and `compression_level`.

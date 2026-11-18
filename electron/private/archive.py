@@ -238,7 +238,18 @@ def write_zip(members, open_entry, output, compression_level):
                 archive.writestr(info, entry.target.encode("utf-8") if entry.kind == "symlink" else b"")
 
 
-def create_archive(source, platform, root_name, format, compression_level, output, directory_manifest="", sevenzip="", lzip=""):
+def split_archive(source, output, part_size=64 * 1024**2):
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=True)
+    count = 0
+    with Path(source).open("rb") as content:
+        while block := content.read(part_size):
+            (output / f"{count:08d}").write_bytes(block)
+            count += 1
+    (output / "index.json").write_text(json.dumps({"parts": count, "size": Path(source).stat().st_size}) + "\n")
+
+
+def create_archive(source, platform, root_name, format, compression_level, output, directory_manifest="", sevenzip="", lzip="", split_zip_output=False):
     relative(root_name)
     if "/" in root_name or platform not in ("linux", "windows", "macos"):
         raise ValueError("Expected one archive root and a supported platform")
@@ -262,7 +273,13 @@ def create_archive(source, platform, root_name, format, compression_level, outpu
         elif format in ('tar.lz', 'tar.7z'):
             compressed_tar(members, open_entry, format, lzip if format == 'tar.lz' else sevenzip, compression_level, output)
         elif format == "zip":
-            write_zip(members, open_entry, output, compression_level)
+            if split_zip_output:
+                with tempfile.TemporaryDirectory() as work:
+                    archive = Path(work) / "archive.zip"
+                    write_zip(members, open_entry, archive, compression_level)
+                    split_archive(archive, output)
+            else:
+                write_zip(members, open_entry, output, compression_level)
         else:
             with Path(output).open("wb") as raw:
                 if format == "tar.gz":

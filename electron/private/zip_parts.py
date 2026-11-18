@@ -10,7 +10,7 @@ import tempfile
 import zipfile
 from zipfile import ZipFile, ZipInfo
 
-from electron.private.archive import Entry, inventory, relative, validate, write_zip
+from electron.private.archive import Entry, inventory, relative, split_archive, validate, write_zip
 
 
 def source_entries(sources, platform):
@@ -41,12 +41,7 @@ def compress(sources, platform, compression_level, output, part_size=64 * 1024**
     with tempfile.TemporaryDirectory() as work:
         archive = Path(work) / "archive.zip"
         write_zip(sorted(entries.items()), lambda entry: entry.source.open("rb"), archive, compression_level)
-        count = 0
-        with archive.open("rb") as content:
-            while block := content.read(part_size):
-                (output / f"{count:08d}").write_bytes(block)
-                count += 1
-        (output / "index.json").write_text(json.dumps({"parts": count, "size": archive.stat().st_size}) + "\n")
+        split_archive(archive, output, part_size)
 
 
 def assemble(source, output):

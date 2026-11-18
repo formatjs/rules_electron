@@ -8,6 +8,7 @@ from unittest.mock import patch
 from zipfile import ZipFile
 
 from electron.private.zip_parts import assemble, compress, layout, member, merge
+from electron.private.archive import create_archive, split_archive
 
 FIXTURE = Path(sys.argv.pop(1))
 MEMBERS_FIXTURE = Path(sys.argv.pop(1))
@@ -15,6 +16,33 @@ LARGE_TREE_FIXTURE = Path(sys.argv.pop(1))
 
 
 class ZipPartsTest(unittest.TestCase):
+    def test_release_archive_parts_preserve_signed_bundle_bytes(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            app = root / "Example.app"
+            (app / "Contents/MacOS").mkdir(parents=True)
+            binary = app / "Contents/MacOS/Example"
+            binary.write_bytes(bytes(range(256)) * 4)
+            binary.chmod(0o755)
+            (app / "Contents/Current").symlink_to("MacOS")
+            (app / "Contents/empty").mkdir()
+            stored = root / "signed.zip"
+            create_archive(app, "macos", "Example.app", "zip", 0, stored)
+            expected = root / "expected.zip"
+            create_archive(stored, "macos", "Example.app", "zip", 5, expected)
+            parts = root / "parts"
+            with patch("electron.private.archive.split_archive", side_effect=lambda source, output: split_archive(source, output, 64)):
+                create_archive(stored, "macos", "Example.app", "zip", 5, parts, split_zip_output=True)
+            self.assertGreater(json.loads((parts / "index.json").read_text())["parts"], 1)
+            self.assertTrue(all(path.stat().st_size <= 64 for path in parts.iterdir() if path.name != "index.json"))
+            output = root / "handoff.zip"
+            assemble(parts, output)
+            self.assertEqual(output.read_bytes(), expected.read_bytes())
+            with ZipFile(output) as archive:
+                self.assertIsNone(archive.testzip())
+                self.assertEqual(archive.read("Example.app/Contents/MacOS/Example"), binary.read_bytes())
+                self.assertEqual(archive.read("Example.app/Contents/Current"), b"MacOS")
+
     def test_bazel_actions_produce_standard_zip(self):
         with ZipFile(FIXTURE) as archive:
             self.assertIsNone(archive.testzip())
