@@ -18,6 +18,7 @@ load(":empty_tree.bzl", "empty_tree")
 load(":npm_lock_test.bzl", "npm_lock_test")
 load(":portable_feed_test.bzl", "portable_feed_test")
 load(":update_config_test.bzl", "update_config_tests")
+load(":zip_tree_fixture.bzl", "zip_tree_fixture")
 
 py_test(
     name = "zip_parts_test",
@@ -26,8 +27,10 @@ py_test(
     args = [
         "$(rootpath :zip_parts_fixture)",
         "$(rootpath :zip_members_fixture)",
+        "$(rootpath :zip_large_tree_fixture)",
     ],
     data = [
+        ":zip_large_tree_fixture",
         ":zip_members_fixture",
         ":zip_parts_fixture",
     ],
@@ -48,6 +51,20 @@ electron_zip(
 )
 
 npm_lock_test(name = "npm_lock_test")
+
+py_binary(
+    name = "zip_tree_fixture_tool",
+    srcs = ["zip_tree_fixture.py"],
+)
+
+zip_tree_fixture(name = "zip_large_tree")
+
+electron_zip(
+    name = "zip_large_tree_fixture",
+    srcs = [":zip_large_tree"],
+    incremental = True,
+    platform = "windows",
+)
 
 portable_feed_test(name = "portable_feed_test")
 

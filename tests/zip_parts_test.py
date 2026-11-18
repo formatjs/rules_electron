@@ -11,6 +11,7 @@ from electron.private.zip_parts import assemble, compress, layout, member, merge
 
 FIXTURE = Path(sys.argv.pop(1))
 MEMBERS_FIXTURE = Path(sys.argv.pop(1))
+LARGE_TREE_FIXTURE = Path(sys.argv.pop(1))
 
 
 class ZipPartsTest(unittest.TestCase):
@@ -22,6 +23,13 @@ class ZipPartsTest(unittest.TestCase):
         with ZipFile(MEMBERS_FIXTURE) as archive:
             self.assertIsNone(archive.testzip())
             self.assertIn("app/resources/app/main.js", archive.namelist())
+
+    def test_large_tree_batches_fit_execution_argument_limits(self):
+        with ZipFile(LARGE_TREE_FIXTURE) as archive:
+            self.assertIsNone(archive.testzip())
+            members = [info for info in archive.infolist() if not info.is_dir()]
+            self.assertEqual(len(members), 1000)
+            self.assertTrue(all(archive.read(info) == b"x" for info in members))
 
     def test_merge_preserves_cached_members_unicode_empty_directories_and_zip64(self):
         with tempfile.TemporaryDirectory() as work, patch("zipfile.ZIP64_LIMIT", 64):

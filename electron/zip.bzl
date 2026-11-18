@@ -6,14 +6,10 @@ def _path(file):
     return file.path
 
 def _member_action(template_ctx, tool, output, sources, inputs, level):
-    arguments = template_ctx.args()
-    arguments.add_all(["member", json.encode(sources), output.path, str(level)])
-    arguments.set_param_file_format("multiline")
-    arguments.use_param_file("@%s", use_always = True)
     template_ctx.run(
         executable = tool,
         tools = [tool],
-        arguments = [arguments],
+        arguments = ["member", json.encode(sources), output.path, str(level)],
         inputs = inputs,
         outputs = [output],
         progress_message = "Compressing ZIP members " + output.short_path,
@@ -38,8 +34,24 @@ def _map_members(template_ctx, *, input_directories, output_directories, tools, 
     for file in additional_inputs.values():
         small.append({"source": file.path, "prefix": file.basename, "directory": False})
         small_inputs.append(file)
-    small_output = template_ctx.declare_file("small.zip", directory = output)
-    _member_action(template_ctx, tools["zip"], small_output, small, small_inputs, additional_params["level"])
+    batch = []
+    batch_inputs = []
+    length = 2
+    count = 0
+    for source, file in zip(small, small_inputs):
+        size = len(json.encode(source)) + 1
+        if batch and length + size > 16000:
+            small_output = template_ctx.declare_file("small/" + str(count) + ".zip", directory = output)
+            _member_action(template_ctx, tools["zip"], small_output, batch, batch_inputs, additional_params["level"])
+            count += 1
+            batch = []
+            batch_inputs = []
+            length = 2
+        batch.append(source)
+        batch_inputs.append(file)
+        length += size
+    small_output = template_ctx.declare_file("small/" + str(count) + ".zip", directory = output)
+    _member_action(template_ctx, tools["zip"], small_output, batch, batch_inputs, additional_params["level"])
 
 def _compress_impl(ctx):
     output = ctx.actions.declare_directory(ctx.label.name + ".parts")
