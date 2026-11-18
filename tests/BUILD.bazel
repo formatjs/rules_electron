@@ -55,6 +55,7 @@ npm_lock_test(name = "npm_lock_test")
 py_binary(
     name = "zip_tree_fixture_tool",
     srcs = ["zip_tree_fixture.py"],
+    main = "zip_tree_fixture.py",
 )
 
 zip_tree_fixture(name = "zip_large_tree")
