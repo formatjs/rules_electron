@@ -15,6 +15,9 @@ _LICENSE_ATTRS = {
     "_license_tool": attr.label(default = Label("//electron/private:dmg_license_tool"), executable = True, cfg = "exec"),
 }
 
+def _compression_resources(_os, _inputs):
+    return {"cpu": 4, "memory": 512}
+
 def _impl(ctx):
     app = ctx.attr.app[ElectronAppInfo]
     if app.platform != "macos":
@@ -45,6 +48,7 @@ def _impl(ctx):
         inputs = [manifest, app.artifact] + [file for file in [ctx.file.volume_icon, ctx.file.background_image] if file],
         tools = [ctx.attr._xorriso[DefaultInfo].files_to_run, ctx.attr._converter[DefaultInfo].files_to_run],
         outputs = [base],
+        resource_set = _compression_resources,
         mnemonic = "ElectronDmg",
         progress_message = "Packaging Electron DMG %{label}",
     )

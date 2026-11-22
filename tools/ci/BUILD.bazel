@@ -150,3 +150,15 @@ py_library(
     srcs = ["source_frontend_metrics.py"],
     visibility = ["//tests:__pkg__"],
 )
+
+py_binary(
+    name = "udif_compression_benchmark",
+    srcs = ["udif_compression_benchmark.py"],
+    data = [
+        "@udif_reference_sources//:dmg",
+        "@udif_sources//:dmg",
+    ],
+    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = ["@rules_python//python/runfiles"],
+)

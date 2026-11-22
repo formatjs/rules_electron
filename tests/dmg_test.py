@@ -2,8 +2,8 @@
 
 import hashlib
 import os
-from pathlib import Path
 import plistlib
+import random
 import shutil
 import struct
 import subprocess
@@ -11,16 +11,16 @@ import sys
 import tempfile
 import unittest
 import zlib
+from pathlib import Path
 
 from ds_store import DSStore
-from mac_alias import Alias
-
 from electron.private.dmg import create_dmg
 from electron.private.dmg_licenses import license_image, license_resources
 from electron.private.mac_sign import archive_bundle
+from mac_alias import Alias
 
-XORRISO, CONVERTER = [str(Path(value).resolve()) for value in sys.argv[1:3]]
-del sys.argv[1:3]
+XORRISO, CONVERTER, REFERENCE_CONVERTER = [str(Path(value).resolve()) for value in sys.argv[1:4]]
+del sys.argv[1:4]
 
 
 def png(width, height, gray):
@@ -133,6 +133,24 @@ class DmgTest(unittest.TestCase):
     def build(self, source, output, **overrides):
         create_dmg(**dict({"source": source, "app_name": "Sample.app", "volume_name": "Sample", "source_date_epoch": 1577836800,
                            "applications_link": True, "xorriso": XORRISO, "converter": CONVERTER, "output": output}, **overrides))
+
+    def test_converter_matches_serial_bytes_across_block_and_batch_boundaries(self):
+        # Mixed blocks exercise compressed/raw runs, ordering, and a short tail.
+        random_block = random.Random(0).randbytes(256 * 1024)
+        blocks = [bytes(256 * 1024), random_block, bytes(range(256)) * 1024]
+        payload = b"".join(blocks[index % len(blocks)] for index in range(13))
+        source = self.root / "filesystem.iso"
+        for sectors in [0, 1, 511, 512, 513, 2048, 2049, 6147]:
+            with self.subTest(sectors=sectors):
+                contents = payload[:sectors * 512]
+                source.write_bytes(contents)
+                outputs = []
+                for index, converter in enumerate([REFERENCE_CONVERTER, CONVERTER]):
+                    output = self.root / f"converted-{index}.dmg"
+                    subprocess.run([converter, str(source), str(output)], check=True, capture_output=True)
+                    outputs.append(output.read_bytes())
+                self.assertEqual(outputs[0], outputs[1])
+                self.assertEqual(decode_dmg(outputs[1]), contents)
 
     def test_dmg_roundtrip_modes_links_unicode_empty_directories_and_existing_seal(self):
         output = self.root / "release.dmg"
