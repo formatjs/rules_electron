@@ -134,4 +134,3 @@ actions:
           stop_source_metrics
           cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"
           cp MODULE.bazel.lock "$BUILDBUDDY_ARTIFACTS_DIRECTORY/source-example-MODULE.bazel.lock"
-
