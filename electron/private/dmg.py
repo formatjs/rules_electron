@@ -104,7 +104,9 @@ def create_dmg(source, app_name, volume_name, source_date_epoch, applications_li
         def write_filesystem(identity):
             subprocess.run([xorriso, "-no_rc", "-local_charset", "UTF-8", "-as", "mkisofs", "-hfsplus", "-R",
                             "-uid", "0", "-gid", "0", "-apm-block-size", "512", "-input-charset", "UTF-8", "-output-charset", "UTF-8",
-                            "-hfsplus-serial-no", identity.hexdigest()[:16], "--set_all_file_dates", date,
+                            "-hfsplus-serial-no", identity.hexdigest()[:16],
+                            # xorriso treats epoch zero as disabling an explicit date override.
+                            "--set_all_file_dates", "set_to_mtime" if source_date_epoch == 0 else date,
                             "--modification-date=" + date, "-V", volume_name,
                             *(["-hfs-bless-by", "show_folder", "/"] if finder_window else []),
                             "-o", str(iso), str(staging)],

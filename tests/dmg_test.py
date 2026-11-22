@@ -179,19 +179,21 @@ class DmgTest(unittest.TestCase):
             decode_dmg(damaged)
 
     def test_dmg_is_identical_for_zip_and_relocated_tree_with_different_times(self):
-        first, second = self.root / "one.dmg", self.root / "two.dmg"
-        self.build(self.source, first)
-        # Cross a wall-clock second so HFS+ creation times cannot match by chance.
-        time.sleep(1.1)
         moved = self.root / "relocated payload.app"
         shutil.copytree(self.bundle, moved, symlinks=True)
         for path in [moved, *moved.rglob("*")]:
             os.utime(path, (1234567890, 1234567890), follow_symlinks=False)
-        self.build(moved, second)
-        first_bytes, second_bytes = first.read_bytes(), second.read_bytes()
-        first_image, second_image = decode_dmg(first_bytes), decode_dmg(second_bytes)
-        differences = [(i, a, b) for i, (a, b) in enumerate(zip(first_image, second_image)) if a != b]
-        self.assertEqual(first_bytes, second_bytes, "Filesystem differences: " + repr(differences[:32]))
+        for epoch in [0, 1577836800]:
+            with self.subTest(epoch=epoch):
+                first, second = self.root / "one.dmg", self.root / "two.dmg"
+                self.build(self.source, first, source_date_epoch=epoch)
+                # Cross a wall-clock second so creation times cannot match by chance.
+                time.sleep(1.1)
+                self.build(moved, second, source_date_epoch=epoch)
+                first_bytes, second_bytes = first.read_bytes(), second.read_bytes()
+                first_image, second_image = decode_dmg(first_bytes), decode_dmg(second_bytes)
+                differences = [(i, a, b) for i, (a, b) in enumerate(zip(first_image, second_image)) if a != b]
+                self.assertEqual(first_bytes, second_bytes, "Filesystem differences: " + repr(differences[:32]))
 
     def test_invalid_labels_dates_or_bundle_fail_without_output(self):
         for index, options in enumerate([{"volume_name": "a" * 33}, {"app_name": "../Sample.app"},
