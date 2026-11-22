@@ -25,6 +25,15 @@ The rule cross-packages a macOS `ElectronAppInfo` on BB Linux. Pinned xorriso an
 UDIF converter sources compile with native Bazel C actions and declared zlib.
 No configure, Make, CMake, mounted image or target executable runs during builds.
 
+UDIF conversion compresses four independent 256 KiB blocks concurrently, then
+writes blocks and checksums in their original order. Output remains byte-identical
+to the serial converter. The action reserves four CPUs; buffer memory stays
+bounded to four input/output pairs.
+
+`//tools/ci:udif_compression_benchmark` compares both converters on a fixed
+synthetic image. Run it on hosted BB with `--output` pointing to the artifacts
+directory; it records timings and verifies identical image hashes.
+
 Output is a read-only, zlib-compressed UDIF disk image containing an HFS+ volume,
 the app bundle and a standard `/Applications` link. `applications_link = False`
 omits that link. Volume labels allow up to 32 UTF-8 bytes. Dates and ownership

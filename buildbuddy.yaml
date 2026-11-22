@@ -135,17 +135,3 @@ actions:
           cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"
           cp MODULE.bazel.lock "$BUILDBUDDY_ARTIFACTS_DIRECTORY/source-example-MODULE.bazel.lock"
 
-  - name: "Benchmark UDIF compression"
-    container_image: "ubuntu-20.04"
-    triggers:
-      push:
-        branches: ["codex/parallel-archive-compression"]
-    resource_requests:
-      memory: 4GB
-      disk: 16GB
-    steps:
-      - run: |
-          set -euo pipefail
-          bazel test --config=bb-workflow --test_output=errors //tests:dmg_test
-          bazel run --config=bb-workflow //tools/ci:udif_compression_benchmark -- \
-            --output="$BUILDBUDDY_ARTIFACTS_DIRECTORY/udif-compression-benchmark.json"
