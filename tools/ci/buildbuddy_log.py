@@ -211,12 +211,12 @@ if __name__ == "__main__":
     invocation = invocations[0]
     if (invocation.get("commitSha") != os.environ["BUILD_SHA"]
             or invocation.get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron"
-            or invocation.get("pattern") not in (*SMOKE_WORKFLOWS, "Test Linux assembly")):
+            or invocation.get("pattern") not in (*SMOKE_WORKFLOWS, "Test Linux assembly", "Benchmark UDIF compression")):
         raise ValueError("Invocation does not match this repository's CI commit")
     tail = read_log(selector, key)
     print(tail)
     print("Recent Bazel elapsed seconds:", re.findall(r"Elapsed time: ([0-9.]+)s", tail))
     if invocation.get("pattern") == "Test Linux assembly":
         execution_diagnostics(tail, key, os.environ["BUILD_SHA"])
-    else:
+    elif invocation.get("pattern") != "Benchmark UDIF compression":
         profile_diagnostics(invocation, key, os.environ["BUILD_SHA"])

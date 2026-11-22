@@ -6,6 +6,7 @@ exports_files([
     "mac_alias.BUILD.bazel",
     "udif.BUILD.bazel",
     "udif-identity.patch",
+    "udif-parallel.patch",
     "xorriso.BUILD.bazel",
     "xorriso-finder-info.patch",
     "xorriso-root-blessing.patch",

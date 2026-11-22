@@ -1,0 +1,217 @@
+diff --git a/dmg/io.c b/dmg/io.c
+--- a/dmg/io.c
++++ b/dmg/io.c
+@@ -1,3 +1,4 @@
++#include <pthread.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -11,24 +12,46 @@
+ #define SECTORS_AT_A_TIME 0x200 // 512
+ #define SECTOR_SIZE 512
+ 
++#define COMPRESSION_WORKERS 4
++
++typedef struct {
++  unsigned char *input;
++  unsigned char *output;
++  size_t bufferSize;
++  size_t outputSize;
++  uint32_t sectors;
++  int result;
++  int started;
++  pthread_t thread;
++} CompressionJob;
++
++static void *compressRun(void *argument) {
++  CompressionJob *job = (CompressionJob *)argument;
++  z_stream stream;
++  memset(&stream, 0, sizeof(stream));
++  job->result = deflateInit(&stream, Z_DEFAULT_COMPRESSION);
++  if (job->result != Z_OK)
++    return NULL;
++  stream.avail_in = job->sectors * SECTOR_SIZE;
++  stream.next_in = job->input;
++  stream.avail_out = job->bufferSize;
++  stream.next_out = job->output;
++  job->result = deflate(&stream, Z_FINISH);
++  job->outputSize = job->bufferSize - stream.avail_out;
++  deflateEnd(&stream);
++  return NULL;
++}
++
+ BLKXTable *insertBLKX(AbstractFile *out, AbstractFile *in,
+                       ChecksumFunc uncompressedChk, void *uncompressedChkToken,
+                       ChecksumFunc compressedChk, void *compressedChkToken) {
+   BLKXTable *blkx;
+-
+   uint32_t roomForRuns = 2;
+   uint32_t curRun = 0;
+   uint64_t curSector = 0;
+-
+-  unsigned char *inBuffer;
+-  unsigned char *outBuffer;
++  uint32_t numSectors = in->getLength(in) / SECTOR_SIZE;
++  CompressionJob jobs[COMPRESSION_WORKERS];
+   size_t bufferSize;
+-  size_t have;
+-  int ret;
+-
+-  uint32_t numSectors = in->getLength(in) / SECTOR_SIZE;
+-
+-  z_stream strm;
+ 
+   blkx = (BLKXTable *)malloc(sizeof(BLKXTable) + (roomForRuns * sizeof(BLKXRun)));
+   memset(blkx, 0, sizeof(BLKXTable) + (roomForRuns * sizeof(BLKXRun)));
+@@ -53,82 +76,60 @@
+ 
+   bufferSize = SECTOR_SIZE * blkx->decompressBufferRequested;
+ 
+-  ASSERT(inBuffer = (unsigned char *)malloc(bufferSize), "malloc");
+-  ASSERT(outBuffer = (unsigned char *)malloc(bufferSize), "malloc");
++  memset(jobs, 0, sizeof(jobs));
++  for (unsigned i = 0; i < COMPRESSION_WORKERS; i++) {
++    jobs[i].bufferSize = bufferSize;
++    ASSERT(jobs[i].input = (unsigned char *)malloc(bufferSize), "malloc");
++    ASSERT(jobs[i].output = (unsigned char *)malloc(bufferSize), "malloc");
++  }
+ 
+   while (numSectors > 0) {
+-    if (curRun >= roomForRuns) {
+-      roomForRuns <<= 1;
+-      blkx = (BLKXTable *)realloc(blkx, sizeof(BLKXTable) +
+-                                            (roomForRuns * sizeof(BLKXRun)));
++    unsigned count = 0;
++    for (; count < COMPRESSION_WORKERS && numSectors > 0; count++) {
++      CompressionJob *job = &jobs[count];
++      job->sectors = (numSectors > SECTORS_AT_A_TIME) ? SECTORS_AT_A_TIME : numSectors;
++      size_t length = job->sectors * SECTOR_SIZE;
++      ASSERT(in->read(in, job->input, length) == length, "mRead");
++      numSectors -= job->sectors;
++      job->started = pthread_create(&job->thread, NULL, compressRun, job) == 0;
++      if (!job->started)
++        compressRun(job);
+     }
+ 
+-    blkx->runs[curRun].type = BLOCK_ZLIB;
+-    blkx->runs[curRun].reserved = 0;
+-    blkx->runs[curRun].sectorStart = curSector;
+-    blkx->runs[curRun].sectorCount =
+-        (numSectors > SECTORS_AT_A_TIME) ? SECTORS_AT_A_TIME : numSectors;
++    // Only independent compression runs concurrently. Checksums and writes stay ordered.
++    for (unsigned i = 0; i < count; i++) {
++      CompressionJob *job = &jobs[i];
++      if (job->started)
++        ASSERT(pthread_join(job->thread, NULL) == 0, "pthread_join");
++      ASSERT(job->result == Z_STREAM_END, "deflate");
++      if (curRun >= roomForRuns) {
++        roomForRuns <<= 1;
++        blkx = (BLKXTable *)realloc(blkx, sizeof(BLKXTable) +
++                                              (roomForRuns * sizeof(BLKXRun)));
++      }
++      BLKXRun *run = &blkx->runs[curRun];
++      run->type = BLOCK_ZLIB;
++      run->reserved = 0;
++      run->sectorStart = curSector;
++      run->sectorCount = job->sectors;
++      run->compOffset = out->tell(out) - blkx->dataStart;
+ 
+-    memset(&strm, 0, sizeof(strm));
+-    strm.zalloc = Z_NULL;
+-    strm.zfree = Z_NULL;
+-    strm.opaque = Z_NULL;
+-
+-    // printf("run %d: sectors=%" PRId64 ", left=%d\n", curRun,
+-    // blkx->runs[curRun].sectorCount, numSectors);
+-
+-    ASSERT(deflateInit(&strm, Z_DEFAULT_COMPRESSION) == Z_OK, "deflateInit");
+-
+-    ASSERT((strm.avail_in = in->read(
+-                in, inBuffer, blkx->runs[curRun].sectorCount * SECTOR_SIZE)) ==
+-               (blkx->runs[curRun].sectorCount * SECTOR_SIZE),
+-           "mRead");
+-    strm.next_in = inBuffer;
+-
+-    if (uncompressedChk)
+-      (*uncompressedChk)(uncompressedChkToken, inBuffer,
+-                         blkx->runs[curRun].sectorCount * SECTOR_SIZE);
+-
+-    blkx->runs[curRun].compOffset = out->tell(out) - blkx->dataStart;
+-    blkx->runs[curRun].compLength = 0;
+-
+-    strm.avail_out = bufferSize;
+-    strm.next_out = outBuffer;
+-
+-    ASSERT((ret = deflate(&strm, Z_FINISH)) != Z_STREAM_ERROR,
+-           "deflate/Z_STREAM_ERROR");
+-    if (ret != Z_STREAM_END) {
+-      ASSERT(0, "deflate");
++      if (uncompressedChk)
++        (*uncompressedChk)(uncompressedChkToken, job->input, job->sectors * SECTOR_SIZE);
++      unsigned char *data = job->output;
++      size_t length = job->outputSize;
++      if ((length / SECTOR_SIZE) > job->sectors) {
++        run->type = BLOCK_RAW;
++        data = job->input;
++        length = job->sectors * SECTOR_SIZE;
++      }
++      ASSERT(out->write(out, data, length) == length, "fwrite");
++      if (compressedChk)
++        (*compressedChk)(compressedChkToken, data, length);
++      run->compLength = length;
++      curSector += job->sectors;
++      curRun++;
+     }
+-    have = bufferSize - strm.avail_out;
+-
+-    if ((have / SECTOR_SIZE) > blkx->runs[curRun].sectorCount) {
+-      blkx->runs[curRun].type = BLOCK_RAW;
+-      ASSERT(out->write(out, inBuffer,
+-                        blkx->runs[curRun].sectorCount * SECTOR_SIZE) ==
+-                 (blkx->runs[curRun].sectorCount * SECTOR_SIZE),
+-             "fwrite");
+-      blkx->runs[curRun].compLength +=
+-          blkx->runs[curRun].sectorCount * SECTOR_SIZE;
+-
+-      if (compressedChk)
+-        (*compressedChk)(compressedChkToken, inBuffer,
+-                         blkx->runs[curRun].sectorCount * SECTOR_SIZE);
+-
+-    } else {
+-      ASSERT(out->write(out, outBuffer, have) == have, "fwrite");
+-
+-      if (compressedChk)
+-        (*compressedChk)(compressedChkToken, outBuffer, have);
+-
+-      blkx->runs[curRun].compLength += have;
+-    }
+-
+-    deflateEnd(&strm);
+-
+-    curSector += blkx->runs[curRun].sectorCount;
+-    numSectors -= blkx->runs[curRun].sectorCount;
+-    curRun++;
+   }
+ 
+   if (curRun >= roomForRuns) {
+@@ -136,7 +137,6 @@
+     blkx = (BLKXTable *)realloc(blkx, sizeof(BLKXTable) +
+                                           (roomForRuns * sizeof(BLKXRun)));
+   }
+-
+   blkx->runs[curRun].type = BLOCK_TERMINATOR;
+   blkx->runs[curRun].reserved = 0;
+   blkx->runs[curRun].sectorStart = curSector;
+@@ -145,8 +145,9 @@
+   blkx->runs[curRun].compLength = 0;
+   blkx->blocksRunCount = curRun + 1;
+ 
+-  free(inBuffer);
+-  free(outBuffer);
+-
++  for (unsigned i = 0; i < COMPRESSION_WORKERS; i++) {
++    free(jobs[i].input);
++    free(jobs[i].output);
++  }
+   return blkx;
+ }

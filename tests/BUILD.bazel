@@ -172,10 +172,12 @@ py_test(
     args = [
         "$(rootpath //electron/tools:xorriso)",
         "$(rootpath //electron/tools:dmg)",
+        "$(rootpath @udif_reference_sources//:dmg)",
     ],
     data = [
         "//electron/tools:dmg",
         "//electron/tools:xorriso",
+        "@udif_reference_sources//:dmg",
     ],
     target_compatible_with = ["@platforms//os:linux"],
     deps = [

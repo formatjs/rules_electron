@@ -8,12 +8,16 @@ cc_binary(
         "dmg/*.c",
         "includes/*.h",
     ]),
-    copts = ["-std=gnu11"],
+    copts = [
+        "-std=gnu11",
+        "-pthread",
+    ],
     defines = [
         "_FILE_OFFSET_BITS=64",
         "_GNU_SOURCE",
     ],
     includes = ["includes"],
+    linkopts = ["-pthread"],
     target_compatible_with = ["@platforms//os:linux"],
     visibility = ["//visibility:public"],
     deps = ["@zlib"],

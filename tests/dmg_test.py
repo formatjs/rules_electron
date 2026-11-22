@@ -2,25 +2,26 @@
 
 import hashlib
 import os
-from pathlib import Path
 import plistlib
+import random
 import shutil
 import struct
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import zlib
+from pathlib import Path
 
 from ds_store import DSStore
-from mac_alias import Alias
-
 from electron.private.dmg import create_dmg
 from electron.private.dmg_licenses import license_image, license_resources
 from electron.private.mac_sign import archive_bundle
+from mac_alias import Alias
 
-XORRISO, CONVERTER = [str(Path(value).resolve()) for value in sys.argv[1:3]]
-del sys.argv[1:3]
+XORRISO, CONVERTER, REFERENCE_CONVERTER = [str(Path(value).resolve()) for value in sys.argv[1:4]]
+del sys.argv[1:4]
 
 
 def png(width, height, gray):
@@ -134,6 +135,24 @@ class DmgTest(unittest.TestCase):
         create_dmg(**dict({"source": source, "app_name": "Sample.app", "volume_name": "Sample", "source_date_epoch": 1577836800,
                            "applications_link": True, "xorriso": XORRISO, "converter": CONVERTER, "output": output}, **overrides))
 
+    def test_converter_matches_serial_bytes_across_block_and_batch_boundaries(self):
+        # Mixed blocks exercise compressed/raw runs, ordering, and a short tail.
+        random_block = random.Random(0).randbytes(256 * 1024)
+        blocks = [bytes(256 * 1024), random_block, bytes(range(256)) * 1024]
+        payload = b"".join(blocks[index % len(blocks)] for index in range(13))
+        source = self.root / "filesystem.iso"
+        for sectors in [0, 1, 511, 512, 513, 2048, 2049, 6147]:
+            with self.subTest(sectors=sectors):
+                contents = payload[:sectors * 512]
+                source.write_bytes(contents)
+                outputs = []
+                for index, converter in enumerate([REFERENCE_CONVERTER, CONVERTER]):
+                    output = self.root / f"converted-{index}.dmg"
+                    subprocess.run([converter, str(source), str(output)], check=True, capture_output=True)
+                    outputs.append(output.read_bytes())
+                self.assertEqual(outputs[0], outputs[1])
+                self.assertEqual(decode_dmg(outputs[1]), contents)
+
     def test_dmg_roundtrip_modes_links_unicode_empty_directories_and_existing_seal(self):
         output = self.root / "release.dmg"
         self.build(self.source, output)
@@ -160,14 +179,21 @@ class DmgTest(unittest.TestCase):
             decode_dmg(damaged)
 
     def test_dmg_is_identical_for_zip_and_relocated_tree_with_different_times(self):
-        first, second = self.root / "one.dmg", self.root / "two.dmg"
-        self.build(self.source, first)
         moved = self.root / "relocated payload.app"
         shutil.copytree(self.bundle, moved, symlinks=True)
         for path in [moved, *moved.rglob("*")]:
             os.utime(path, (1234567890, 1234567890), follow_symlinks=False)
-        self.build(moved, second)
-        self.assertEqual(hashlib.sha256(first.read_bytes()).digest(), hashlib.sha256(second.read_bytes()).digest())
+        for epoch in [0, 1577836800]:
+            with self.subTest(epoch=epoch):
+                first, second = self.root / "one.dmg", self.root / "two.dmg"
+                self.build(self.source, first, source_date_epoch=epoch)
+                # Cross a wall-clock second so creation times cannot match by chance.
+                time.sleep(1.1)
+                self.build(moved, second, source_date_epoch=epoch)
+                first_bytes, second_bytes = first.read_bytes(), second.read_bytes()
+                first_image, second_image = decode_dmg(first_bytes), decode_dmg(second_bytes)
+                differences = [(i, a, b) for i, (a, b) in enumerate(zip(first_image, second_image)) if a != b]
+                self.assertEqual(first_bytes, second_bytes, "Filesystem differences: " + repr(differences[:32]))
 
     def test_invalid_labels_dates_or_bundle_fail_without_output(self):
         for index, options in enumerate([{"volume_name": "a" * 33}, {"app_name": "../Sample.app"},
