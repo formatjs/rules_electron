@@ -45,6 +45,7 @@ jobs:
           public_downloader="$PWD/tools/ci/public-downloader.cfg"
           public_distdir="$(mktemp -d /tmp/electron-signing-sources.XXXXXX)"
           python3 tools/ci/prefetch_signing_sources.py "$public_distdir"
+          bazel test --downloader_config="$public_downloader" --distdir="$public_distdir" --test_output=errors //tests:ci_bazel_test
           bazel test --downloader_config="$public_downloader" --distdir="$public_distdir" --test_output=errors //...
           bazel run --downloader_config="$public_downloader" --distdir="$public_distdir" @buildifier_prebuilt//:buildifier -- -mode=check -r .
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

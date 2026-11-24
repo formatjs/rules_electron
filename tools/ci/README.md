@@ -28,8 +28,8 @@ Never commit key values. Local users can supply credentials in ignored
 `.bazelrc.user`; the CI wrapper is only installed by GitHub Actions.
 
 Cross-build jobs download BB outputs and relay four archives as GitHub artifacts.
-Reusable native smoke jobs consume artifacts from that same workflow run and
-attempt, bound to the caller's commit; Linux x64, macOS ARM64 and Windows x64/ARM64
+Reusable native smoke jobs consume artifacts from that same workflow run,
+bound to the caller's commit; Linux x64, macOS ARM64 and Windows x64/ARM64
 hosts execute them without Bazel. Linux ARM64 remains cross-build only. Manual
 BB diagnostics still validate invocation repository, commit, workflow and digest.
 Manual native execution requires the invocation commit to match the selected
