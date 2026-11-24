@@ -254,8 +254,6 @@ jobs:
   native-smoke:
     needs: cross-build
     uses: ./.github/workflows/native-artifacts.yml
-    with:
-      commit_sha: ${{ github.sha }}
 
   source-native-smoke:
     if: github.event_name == 'workflow_dispatch' && inputs.source_example
@@ -263,7 +261,6 @@ jobs:
     uses: ./.github/workflows/native-artifacts.yml
     with:
       artifact_prefix: source-
-      commit_sha: ${{ github.sha }}
 
   ci:
     name: CI

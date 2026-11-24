@@ -1,7 +1,6 @@
 name: Native Electron Smoke
 
 on:
-  status:
   workflow_dispatch:
     inputs:
       invocation_url:
@@ -78,10 +77,7 @@ jobs:
         run: python3 tools/ci/source_workflow_lookup.py
 
   download:
-    if: >-
-      !inputs.logs_only && (inputs.invocation_url != '' ||
-      ((github.event.context == 'Cross-build Electron Apps' || github.event.context == 'Source-built desktop example') &&
-      github.event.sender.login == 'buildbuddy-io[bot]' && github.event.state == 'success'))
+    if: '!inputs.logs_only && inputs.commit_sha == github.sha'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -111,8 +107,6 @@ jobs:
     if: '!inputs.logs_only && !inputs.dmg_license_probe'
     needs: download
     uses: ./.github/workflows/native-artifacts.yml
-    with:
-      commit_sha: ${{ inputs.commit_sha || github.event.sha }}
 
   dmg_probe:
     if: inputs.dmg_license_probe && !inputs.logs_only

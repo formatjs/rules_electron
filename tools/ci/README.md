@@ -32,6 +32,9 @@ Reusable native smoke jobs consume artifacts from that same workflow run and
 attempt, bound to the caller's commit; Linux x64, macOS ARM64 and Windows x64/ARM64
 hosts execute them without Bazel. Linux ARM64 remains cross-build only. Manual
 BB diagnostics still validate invocation repository, commit, workflow and digest.
+Manual native execution requires the invocation commit to match the selected
+workflow revision; log diagnostics can inspect other commits. Native harnesses
+always come from the workflow revision, never an arbitrary input checkout.
 
 Use workflow dispatch with `source_example` to include the source-built desktop
 example. Its Bazel analysis client uses a larger Linux runner for the 24 GiB JVM;
