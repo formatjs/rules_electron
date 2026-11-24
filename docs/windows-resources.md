@@ -38,7 +38,7 @@ lockfile; no lifecycle scripts or package manager run in build actions. The
 declared Node is built from
 [hermeticbuild/nodejs](https://github.com/hermeticbuild/nodejs) 26.13.0 sources on
 BB Linux workers. Its Temporal crate mapping is injected explicitly into the
-Node extension. It remains an execution tool: the example's bootstrap Electron
+Node extension. It remains an execution tool: the example's prebuilt Electron
 39 runtime still embeds Node 22.20.0.
 
 The source Node and LLVM/Rust toolchains are example dependencies. Consumers
@@ -50,7 +50,7 @@ APIs and requires Electron to reject header and payload corruption.
 The [hosted validation](https://github.com/formatjs/rules_electron/actions/runs/42347096977)
 passed Windows x64/ARM64 metadata, launch and both corruption checks for GNU LLVM
 and MSVC variants. Linux DEB install/update and macOS integrity smoke also passed.
-This proves the source-built execution tool path against bootstrap Electron;
+This proves the source-built execution tool path against prebuilt Electron;
 full source-built target Electron remains pending.
 
 ## Windows icons

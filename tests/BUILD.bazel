@@ -891,51 +891,10 @@ py_test(
 )
 
 py_test(
-    name = "source_headers_diagnostics_test",
-    size = "small",
-    srcs = ["source_headers_diagnostics_test.py"],
-    deps = ["//tools/ci:source_headers_diagnostics"],
-)
-
-py_test(
-    name = "source_workflow_lookup_test",
-    srcs = ["source_workflow_lookup_test.py"],
-    deps = ["//tools/ci:source_workflow_lookup"],
-)
-
-py_test(
-    name = "source_registry_test",
-    size = "medium",
-    srcs = ["source_registry_test.py"],
-    deps = ["//tools/ci:source_registry"],
-)
-
-py_test(
-    name = "source_example_lock_test",
-    size = "small",
-    srcs = ["source_example_lock_test.py"],
-    deps = ["//tools/ci:source_example_lock"],
-)
-
-py_test(
     name = "buildbuddy_log_test",
     size = "small",
     srcs = ["buildbuddy_log_test.py"],
     deps = ["//tools/ci:buildbuddy_logs"],
-)
-
-py_test(
-    name = "source_runtime_diagnostics_test",
-    size = "small",
-    srcs = ["source_runtime_diagnostics_test.py"],
-    deps = ["//tools/ci:source_runtime_diagnostics"],
-)
-
-py_test(
-    name = "source_link_diagnostics_test",
-    size = "small",
-    srcs = ["source_link_diagnostics_test.py"],
-    deps = ["//tools/ci:source_link_diagnostics"],
 )
 
 py_test(
@@ -1187,19 +1146,6 @@ py_test(
         "@openssl",
     ],
     target_compatible_with = ["@platforms//os:linux"],
-)
-
-py_test(
-    name = "source_frontend_metrics_test",
-    srcs = ["source_frontend_metrics_test.py"],
-    target_compatible_with = ["@platforms//os:linux"],
-    deps = ["//tools/ci:source_frontend_metrics"],
-)
-
-py_test(
-    name = "source_metadata_test",
-    srcs = ["source_metadata_test.py"],
-    deps = ["//tools/ci:source_metadata"],
 )
 
 py_test(

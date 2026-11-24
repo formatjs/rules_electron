@@ -8,30 +8,25 @@ and Linux/Windows fuse settings. No electron-builder, package installation, netw
 GN or Ninja runs inside assembly actions. Python runs through a pinned Bazel
 execution toolchain; the target runtime is never executed during assembly.
 
-**Linux x64 source integration verified:** [perplexityai/electron](https://github.com/perplexityai/electron)
-builds a complete Linux x64 runtime. Its [standalone source test](https://formatjs.buildbuddy.io/invocation/6749caca-9b09-486b-92ea-294a92b378ba)
-passed relocation, packed browser/preload/renderer, IPC, pixels and ASAR checks.
-The [desktop example](examples/desktop/README.md) still uses labeled, pinned
-bootstrap runtimes by default. Its Linux x64 source adaptation
-[builds on BB](https://formatjs.buildbuddy.io/invocation/b6c026bb-e5be-469c-a797-1c190931e9df)
-and [passes native desktop, installer and updater smoke](https://github.com/formatjs/rules_electron/actions/runs/42790155958).
-Other variants in that run remain bootstrap. Source runtimes for other platforms
-remain open. The source module is not published to BCR.
+Electron runtime distributions are supplied by the caller as declared files or
+archives. The [desktop example](examples/desktop/README.md) uses integrity-pinned
+official Electron prebuilts. This repository does not build Electron, Chromium
+or Electron's embedded Node, and has no dependency on an Electron source overlay.
 
 ## Usage
 
-Given a source-built Linux Electron executable and its complete runtime files:
+Given a pinned prebuilt Linux Electron executable and its complete runtime files:
 
 ```starlark
 load("@rules_electron//electron:defs.bzl", "electron_app", "electron_runtime")
 
 electron_runtime(
     name = "runtime",
-    binary = ":source_built_electron",
+    binary = ":prebuilt_electron",
     files = {
         ":icu_data": "icudtl.dat",
         ":english_locale": "locales/en-US.pak",
-        # Declare every runtime dependency from the source build.
+        # Declare every file from the runtime distribution.
     },
 )
 
@@ -167,4 +162,4 @@ Source-built Linux AppImage packaging and embedded updater maps are documented i
 [AppImage](docs/appimage.md). Runtime extraction/launch and both Linux cross-builds
 pass on BB. Public AppImage packaging, feeds and native payload checks pass too;
 Linux x64 FUSE launch and real AppImage updater replacement pass too.
-Full source-built Electron and other release gaps remain tracked in the parity checklist.
+Remaining release gaps are tracked in the [parity checklist](docs/packaging-parity.md).

@@ -50,7 +50,7 @@ payload bytes and offsets, verify the single-manifest block map, check input
 relocation/order/mtime stability and reject incompatible inputs. The generic
 example builds/signs v1/v2 bundles containing both CPUs. Native x64/ARM64 hosts
 verified trust, use `IAppxBundleReader`, check inner package identities and
-offset bytes, installed the matching payload, launched real bootstrap Electron,
+offset bytes, installed the matching payload, launched real prebuilt Electron,
 upgraded and removed it. Both CPUs passed bundle-specific checks in
 [the native workflow](https://github.com/formatjs/rules_electron/actions/runs/42771327979);
 the ARM64 job later failed its separate NSIS machine-install state gate. No foreign-CPU executable runs during these checks.

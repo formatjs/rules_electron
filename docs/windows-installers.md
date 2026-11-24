@@ -101,10 +101,10 @@ The [60fe44f BB suite](https://formatjs.buildbuddy.io/invocation/5951b4ef-713b-4
 and [cross-build](https://formatjs.buildbuddy.io/invocation/83510536-6d02-4e0e-8325-d4e63e4540b3)
 passed. The [native gate](https://github.com/formatjs/rules_electron/actions/runs/42589695874)
 passed all four hosts. Windows x64/ARM64 checked both elevation bridge compiler
-variants and the MSVC bootstrap Electron machine lifecycle: Program Files/HKLM,
+variants and the MSVC prebuilt Electron machine lifecycle: Program Files/HKLM,
 common shortcuts, unchanged HKCU state, corrupt-update rejection, real elevated
 v1-to-v2 update, scope rejection, removal and preserved foreign handlers/data.
-Production signatures, interactive UAC and full source-runtime machine installs
+Production signatures and interactive UAC
 remain separate gates.
 
 The bridge preserves raw `/S` and `--updated` switches. NSIS's

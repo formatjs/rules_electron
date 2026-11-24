@@ -62,7 +62,7 @@ passed exact WinVerifyTrust results: unsigned `0x800b0100`, untrusted root
 Both installed the signed package, executed its native helper, removed the
 package and removed the temporary certificate. No runtime compilation or signing
 occurs on those hosts. The subsequent [full-app MSIX gate](msix.md) also passed
-bootstrap Electron installation and upgrades on both Windows CPUs. Production
+prebuilt Electron installation and upgrades on both Windows CPUs. Production
 credential/service interfaces and the complete source-built runtime remain open.
 
 `@rules_electron//electron/tools:sign_windows` provides an explicit Linux release

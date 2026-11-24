@@ -36,11 +36,8 @@ Manual native execution requires the invocation commit to match the selected
 workflow revision; log diagnostics can inspect other commits. Native harnesses
 always come from the workflow revision, never an arbitrary input checkout.
 
-Use workflow dispatch with `source_example` to include the source-built desktop
-example. Its Bazel analysis client uses a larger Linux runner for the 24 GiB JVM;
-compilation still runs on BB. Source smoke artifacts use a separate prefix so they
-cannot replace prebuilt-example artifacts.
-
-The `CI` check requires tests, cross-builds and native smoke to succeed. When source
-coverage is requested, its build and native smoke must also succeed. Releases must
-not use the public CI action cache as a trusted release cache.
+The `CI` check requires tests, cross-builds and all four native smoke jobs to
+succeed. Electron comes from the example's integrity-pinned official prebuilts;
+no source-overlay checkout or source-runtime build is part of this pipeline.
+Packaging tools and native addons still use declared Bazel toolchains on BB.
+Releases must not use the public CI action cache as a trusted release cache.

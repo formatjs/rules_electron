@@ -2,5 +2,4 @@ bazel-*
 .bazelrc.user
 __pycache__/
 *.pyc
-examples/source-desktop/
 .ci-artifacts/

@@ -2,10 +2,6 @@ name: Native artifact smoke
 
 on:
   workflow_call:
-    inputs:
-      artifact_prefix:
-        type: string
-        default: ''
 
 permissions:
   contents: read
@@ -45,7 +41,7 @@ jobs:
           architecture: ${{ matrix.architecture }}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: ${{ inputs.artifact_prefix || '' }}electron-smoke-${{ matrix.shard }}
+          name: electron-smoke-${{ matrix.shard }}
           path: artifacts
       - name: Install Linux GUI test libraries
         if: runner.os == 'Linux'

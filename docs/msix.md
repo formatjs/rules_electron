@@ -77,7 +77,7 @@ certificate cleanup on both Windows CPUs; see [signing stages](signing.md).
 This rule does not establish electron-updater support for MSIX. Existing NSIS updater lifecycle stays independently covered.
 
 The desktop example now includes signed v1/v2 MSIX packages of the real sample
-app, using the explicitly labeled bootstrap Electron runtime. Both contain the
+app, using the explicitly labeled prebuilt Electron runtime. Both contain the
 renderer, preload, npm closure, target-built addon/helper and ASAR integrity
 metadata. Physical empty resource directories are omitted explicitly; virtual
 ASAR directories remain. Installed smoke requires Electron's
@@ -95,7 +95,7 @@ installed v1, launched actual Electron, upgraded to v2, launched again and remov
 the package and temporary certificate. Both versions reported MSIX identity and
 native CPU, exercised the sandboxed renderer/preload, loaded the target-built
 addon/helper and checked packaged resources and multi-ASAR integrity metadata.
-This proves bootstrap-runtime deployment; the full source-built runtime remains
+This proves deployment for the pinned prebuilt runtime; production release validation remains
 unverified.
 
 `protocols` and `file_associations` declare packaged desktop handlers using
