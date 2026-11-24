@@ -22,7 +22,7 @@ class CiBazelTest(unittest.TestCase):
         git.write_text('#!/bin/sh\nprintf "%s\\n" "$CHECKOUT_SHA"\n')
         git.chmod(0o755)
         files = runfiles.Create()
-        self.wrapper = files.Rlocation(files.CurrentRepository() + "/tools/ci/bazel.sh")
+        self.wrapper = files.Rlocation((files.CurrentRepository() or "_main") + "/tools/ci/bazel.sh")
         self.environment = dict(
             os.environ,
             PATH=str(self.root) + os.pathsep + os.environ["PATH"],
