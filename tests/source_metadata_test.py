@@ -36,7 +36,7 @@ class SourceMetadataTest(unittest.TestCase):
                 profiles['linux-arm64-' + module + '-' + role + '.json'] = json.dumps(profile).encode()
         for name in ARTIFACTS:
             data = profiles.get(name, ('verified bytes for ' + name).encode())
-            uri = 'bytestream://formatjs.buildbuddy.io/blobs/' + hashlib.sha256(data).hexdigest() + '/' + str(len(data))
+            uri = 'bytestream://remote.buildbuddy.io/blobs/' + hashlib.sha256(data).hexdigest() + '/' + str(len(data))
             self.payloads[uri] = data
             records.append({'name': 'capture/' + name, 'uri': uri})
         return {'invocation': [{'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/formatjs/electron.git',
@@ -67,7 +67,7 @@ class SourceMetadataTest(unittest.TestCase):
     def test_identity_duplicates_missing_store_and_size_fail_before_file_download(self):
         response = self.response()
         invalids = []
-        for field, value in [('commitSha', 'b' * 40), ('repoUrl', 'https://github.com/formatjs/rules_electron'),
+        for field, value in [('commitSha', 'b' * 40), ('repoUrl', 'https://github.com/perplexityai/rules_electron'),
                              ('pattern', 'Electron source components'), ('success', False),
                              ('invocationStatus', 'PARTIAL_INVOCATION_STATUS')]:
             invalid = copy.deepcopy(response)
@@ -81,9 +81,9 @@ class SourceMetadataTest(unittest.TestCase):
             elif change == 'duplicate':
                 rows.append(copy.deepcopy(rows[0]))
             elif change == 'store':
-                rows[0]['uri'] = rows[0]['uri'].replace('formatjs.buildbuddy.io', 'private.invalid')
+                rows[0]['uri'] = rows[0]['uri'].replace('remote.buildbuddy.io', 'private.invalid')
             else:
-                rows[0]['uri'] = 'bytestream://formatjs.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(64 * 1024**2 + 1)
+                rows[0]['uri'] = 'bytestream://remote.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(64 * 1024**2 + 1)
             invalids.append(invalid)
         for invalid in invalids:
             with tempfile.TemporaryDirectory() as temporary, patch('tools.ci.source_metadata.api_request') as request:
@@ -113,7 +113,7 @@ class SourceMetadataTest(unittest.TestCase):
             profile = json.loads(self.payloads.pop(row['uri']))
             profile[field] = value
             data = json.dumps(profile).encode()
-            row['uri'] = 'bytestream://formatjs.buildbuddy.io/blobs/' + hashlib.sha256(data).hexdigest() + '/' + str(len(data))
+            row['uri'] = 'bytestream://remote.buildbuddy.io/blobs/' + hashlib.sha256(data).hexdigest() + '/' + str(len(data))
             self.payloads[row['uri']] = data
             with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
                 with patch('tools.ci.source_metadata.api_request', side_effect=lambda method, body, key: io.BytesIO(self.payloads[body['uri']])) as api:
@@ -125,7 +125,7 @@ class SourceMetadataTest(unittest.TestCase):
         response = self.response()
         response['invocation'][0]['repoUrl'] = 'https://private.example/implementation'
         environment = {'BUILDBUDDY_API_KEY': 'private-read-key', 'BUILD_SHA': 'a' * 40,
-                       'INVOCATION_URL': 'https://formatjs.buildbuddy.io/invocation/12345678-1234-1234-1234-123456789abc'}
+                       'INVOCATION_URL': 'https://app.buildbuddy.io/invocation/12345678-1234-1234-1234-123456789abc'}
         errors = io.StringIO()
         with patch.dict('os.environ', environment, clear=True), patch('tools.ci.source_metadata.api_request',
                 return_value=io.BytesIO(json.dumps(response).encode())), redirect_stderr(errors):

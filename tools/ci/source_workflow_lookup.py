@@ -53,7 +53,7 @@ def lookup(key, sha):
                 raise ValueError("Repeated lookup page")
             seen.add(token)
             request = urllib.request.Request(
-                "https://formatjs.buildbuddy.io/rpc/BuildBuddyService/SearchInvocation",
+                "https://app.buildbuddy.io/rpc/BuildBuddyService/SearchInvocation",
                 data=json.dumps({"query": {"repo_url": repository, "commit_sha": sha},
                                  "count": 100, "page_token": token}).encode(),
                 headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})

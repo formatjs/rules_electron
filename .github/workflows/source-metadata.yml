@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
       - name: Download verified source metadata
         env:
-          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_RO_PUBLIC_KEY }}
+          BUILDBUDDY_API_KEY: ${{ vars.BB_RO_KEY }}
           INVOCATION_URL: ${{ inputs.invocation_url }}
           BUILD_SHA: ${{ inputs.commit_sha }}
         run: python3 tools/ci/source_metadata.py

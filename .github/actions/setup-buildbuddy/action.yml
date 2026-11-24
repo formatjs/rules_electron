@@ -1,0 +1,16 @@
+name: Setup BuildBuddy
+description: Install Bazel client and organization-key wrapper
+runs:
+  using: composite
+  steps:
+    - uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 # 0.19.0
+      with:
+        bazelisk-cache: true
+        repository-cache: true
+    - shell: bash
+      run: |
+        set -euo pipefail
+        echo "BAZEL_REAL=$(command -v bazel)" >> "$GITHUB_ENV"
+        mkdir -p "$RUNNER_TEMP/electron-ci-bin"
+        ln -s "$GITHUB_WORKSPACE/tools/ci/bazel.sh" "$RUNNER_TEMP/electron-ci-bin/bazel"
+        echo "$RUNNER_TEMP/electron-ci-bin" >> "$GITHUB_PATH"

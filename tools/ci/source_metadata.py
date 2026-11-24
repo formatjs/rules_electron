@@ -51,7 +51,7 @@ def artifacts(response, sha):
         uri = matches[0].get('uri', '')
         parsed = urllib.parse.urlsplit(uri)
         digest = re.search(r'/blobs/([0-9a-f]{64})/(\d+)$', parsed.path)
-        if (parsed.scheme != 'bytestream' or parsed.netloc not in ('formatjs.buildbuddy.io', 'remote.buildbuddy.io')
+        if (parsed.scheme != 'bytestream' or parsed.netloc != 'remote.buildbuddy.io'
                 or not digest or int(digest[2]) > limit):
             raise ValueError('Invalid capture artifact store or size')
         result[name] = (uri, digest[1], int(digest[2]))

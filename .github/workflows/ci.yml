@@ -1,0 +1,286 @@
+name: BuildBuddy CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+    inputs:
+      source_example:
+        description: Also build the source-built Electron example on BB
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: buildbuddy-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  BB_RO_KEY: ${{ vars.BB_RO_KEY }}
+
+jobs:
+  test:
+    name: Test Linux assembly
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'perplexityai/rules_electron' && 'ci' || '' }}
+    env:
+      BB_RW_KEY: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'perplexityai/rules_electron' && secrets.BB_RW_KEY || '' }}
+      BUILDBUDDY_ARTIFACTS_DIRECTORY: ${{ github.workspace }}/.ci-artifacts/test
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-buildbuddy
+      - name: Build on BB
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$BUILDBUDDY_ARTIFACTS_DIRECTORY"
+          public_downloader="$PWD/tools/ci/public-downloader.cfg"
+          public_distdir="$(mktemp -d /tmp/electron-signing-sources.XXXXXX)"
+          python3 tools/ci/prefetch_signing_sources.py "$public_distdir"
+          bazel test --downloader_config="$public_downloader" --distdir="$public_distdir" --test_output=errors //...
+          bazel run --downloader_config="$public_downloader" --distdir="$public_distdir" @buildifier_prebuilt//:buildifier -- -mode=check -r .
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-profiles
+          path: .ci-artifacts/test/*.json*
+          if-no-files-found: ignore
+          retention-days: 7
+
+  cross-build:
+    name: Cross-build Electron Apps
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'perplexityai/rules_electron' && 'ci' || '' }}
+    env:
+      BB_RW_KEY: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'perplexityai/rules_electron' && secrets.BB_RW_KEY || '' }}
+      BUILDBUDDY_ARTIFACTS_DIRECTORY: ${{ github.workspace }}/.ci-artifacts/cross-build
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-buildbuddy
+      - name: Build on BB
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$BUILDBUDDY_ARTIFACTS_DIRECTORY"
+          source_root="$PWD"
+          public_downloader="$PWD/tools/ci/public-downloader.cfg"
+          public_distdir="$(mktemp -d /tmp/electron-signing-sources.XXXXXX)"
+          python3 tools/ci/prefetch_signing_sources.py "$public_distdir"
+          bazel build --downloader_config="$public_downloader" --distdir="$public_distdir" \
+            --profile="$BUILDBUDDY_ARTIFACTS_DIRECTORY/fixture-profile.json.gz" \
+            //tests:cross_build_fixtures
+          cd examples/desktop
+          bazel test --downloader_config="$public_downloader" --distdir="$public_distdir" --lockfile_mode=error //tools:file_matcher_test
+          bazel build --downloader_config="$public_downloader" --distdir="$public_distdir" --config=msvc-license --lockfile_mode=error --remote_download_toplevel \
+            --profile="$BUILDBUDDY_ARTIFACTS_DIRECTORY/cross-build-profile.json.gz" \
+            --experimental_profile_additional_tasks=remote_queue \
+            --experimental_profile_additional_tasks=remote_process_time \
+            --experimental_profile_additional_tasks=remote_download \
+            --experimental_profile_additional_tasks=remote_cache_check \
+            //:cross_build_smoke_bundle
+          app_inputs="$(mktemp /tmp/electron-app-inputs.XXXXXX.json)"
+          bazel aquery --downloader_config="$public_downloader" --distdir="$public_distdir" --config=msvc-license --lockfile_mode=error \
+            --output=jsonproto 'mnemonic("(?i)^(ElectronApp|ElectronDmg|ElectronDmgLicense|.*(foreign.?cc|cmake|meson|ninja).*|g?make|runmake|gn|rungn)$", deps(//:cross_build_smoke_bundle))' > "$app_inputs"
+          python3 "$source_root/tools/ci/platform_inputs_audit.py" "$app_inputs"
+          rm "$app_inputs"
+          cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: electron-smoke-linux-x64
+          path: .ci-artifacts/cross-build/electron-smoke-linux-x64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        with:
+          name: electron-smoke-macos-arm64
+          path: .ci-artifacts/cross-build/electron-smoke-macos-arm64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        with:
+          name: electron-smoke-windows-x64
+          path: .ci-artifacts/cross-build/electron-smoke-windows-x64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        with:
+          name: electron-smoke-windows-arm64
+          path: .ci-artifacts/cross-build/electron-smoke-windows-arm64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: cross-build-profiles
+          path: .ci-artifacts/cross-build/*.json*
+          if-no-files-found: ignore
+          retention-days: 7
+
+  source-example:
+    name: Source-built desktop example
+    if: github.event_name == 'workflow_dispatch' && inputs.source_example
+    runs-on: ubuntu-latest-16-cores
+    timeout-minutes: 180
+    environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'perplexityai/rules_electron' && 'ci' || '' }}
+    env:
+      BB_RW_KEY: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'perplexityai/rules_electron' && secrets.BB_RW_KEY || '' }}
+      BUILDBUDDY_ARTIFACTS_DIRECTORY: ${{ github.workspace }}/.ci-artifacts/source-example
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-buildbuddy
+      - name: Build on BB
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$BUILDBUDDY_ARTIFACTS_DIRECTORY"
+          source_root="$PWD"
+          source_setup="$(mktemp -d /tmp/electron-example-setup.XXXXXX)"
+          source_registry="$(mktemp -d /tmp/electron-example-registry.XXXXXX)"
+          source_distdir="$(mktemp -d /tmp/electron-example-distdir.XXXXXX)"
+          python3 - <<'PY'
+          import json
+          import os
+          print("SOURCE_FRONTEND_RESOURCES " + json.dumps({"cpu_count": os.cpu_count(), "cpu_affinity": len(os.sched_getaffinity(0))}, sort_keys=True))
+          PY
+          bazel run //tools/ci:stage_source_registry -- \
+            --output="$source_registry" --setup-directory="$source_setup"
+          bash "$source_setup/source_bootstrap" "$source_distdir"
+          python3 tools/ci/prefetch_signing_sources.py "$source_distdir"
+          cat tools/ci/public-downloader.cfg "$source_setup/source_downloader.cfg" > "$source_setup/downloader.cfg"
+          python3 tools/ci/prepare_source_example.py \
+            --source="$source_root/examples/desktop" --output="$source_root/examples/source-desktop"
+          cd examples/source-desktop
+          python3 "$source_setup/source_audit" --registry="file://$source_registry" \
+            --downloader-config="$source_setup/downloader.cfg" --distdir="$source_distdir"
+          bazel --host_jvm_args=-Xmx24g cquery --config=msvc-license \
+            --registry="file://$source_registry" --registry=https://bcr.bazel.build \
+            --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
+            'filter("bootstrap_electron_linux_x64|//source/distribution:runtime$", deps(//:cross_build_smoke_bundle))' \
+            --output=label > "$source_setup/runtime-deps"
+          python3 - "$source_setup/runtime-deps" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+          labels = Path(sys.argv[1]).read_text().splitlines()
+          assert not any("bootstrap_electron_linux_x64" in label for label in labels), "Bootstrap Linux runtime reached source example"
+          assert any(re.search(r"//source/distribution:runtime(?:\s|$)", label) for label in labels), "Source runtime missing from example"
+          PY
+          echo SOURCE_DESKTOP_DEPENDENCY_AUDIT_PASSED
+          bazel --host_jvm_args=-Xmx24g test \
+            --registry="file://$source_registry" --registry=https://bcr.bazel.build \
+            --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
+            //tools:file_matcher_test
+          cp MODULE.bazel.lock "$BUILDBUDDY_ARTIFACTS_DIRECTORY/source-example-analysis-MODULE.bazel.lock"
+          source_metrics_pid=""
+          stop_source_metrics() {
+            if [[ -n "$source_metrics_pid" ]]; then
+              kill "$source_metrics_pid" 2>/dev/null || true
+              wait "$source_metrics_pid" 2>/dev/null || true
+              source_metrics_pid=""
+            fi
+          }
+          trap stop_source_metrics EXIT
+          if source_server_pid="$(bazel --host_jvm_args=-Xmx24g info server_pid)"; then
+            python3 "$source_root/tools/ci/source_frontend_metrics.py" --pid "$source_server_pid" \
+              --output "$BUILDBUDDY_ARTIFACTS_DIRECTORY/source-frontend-metrics.jsonl" &
+            source_metrics_pid="$!"
+          fi
+          bazel --host_jvm_args=-Xmx24g build --config=msvc-license --remote_download_toplevel \
+            --discard_analysis_cache --notrack_incremental_state \
+            --registry="file://$source_registry" --registry=https://bcr.bazel.build \
+            --downloader_config="$source_setup/downloader.cfg" --distdir="$source_distdir" \
+            --profile="$BUILDBUDDY_ARTIFACTS_DIRECTORY/cross-build-profile.json.gz" \
+            --experimental_profile_additional_tasks=remote_queue \
+            --experimental_profile_additional_tasks=remote_process_time \
+            --experimental_profile_additional_tasks=remote_download \
+            --experimental_profile_additional_tasks=remote_cache_check \
+            //:cross_build_smoke_bundle
+          stop_source_metrics
+          cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"
+          cp MODULE.bazel.lock "$BUILDBUDDY_ARTIFACTS_DIRECTORY/source-example-MODULE.bazel.lock"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: source-electron-smoke-linux-x64
+          path: .ci-artifacts/source-example/electron-smoke-linux-x64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        with:
+          name: source-electron-smoke-macos-arm64
+          path: .ci-artifacts/source-example/electron-smoke-macos-arm64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        with:
+          name: source-electron-smoke-windows-x64
+          path: .ci-artifacts/source-example/electron-smoke-windows-x64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        with:
+          name: source-electron-smoke-windows-arm64
+          path: .ci-artifacts/source-example/electron-smoke-windows-arm64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: source-example-profiles
+          path: .ci-artifacts/source-example/*.json*
+          if-no-files-found: ignore
+          retention-days: 7
+
+  native-smoke:
+    needs: cross-build
+    uses: ./.github/workflows/native-artifacts.yml
+    with:
+      commit_sha: ${{ github.sha }}
+
+  source-native-smoke:
+    if: github.event_name == 'workflow_dispatch' && inputs.source_example
+    needs: source-example
+    uses: ./.github/workflows/native-artifacts.yml
+    with:
+      artifact_prefix: source-
+      commit_sha: ${{ github.sha }}
+
+  ci:
+    name: CI
+    if: always()
+    needs: [test, cross-build, native-smoke, source-example, source-native-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs) }}
+          SOURCE_EXAMPLE: ${{ github.event_name == 'workflow_dispatch' && inputs.source_example }}
+        run: |
+          python3 - <<'PYCODE'
+          import json, os
+          results = json.loads(os.environ['RESULTS'])
+          optional = {'source-example', 'source-native-smoke'} if os.environ['SOURCE_EXAMPLE'] != 'true' else set()
+          failed = [name for name, job in results.items()
+                    if job['result'] != 'success' and not (name in optional and job['result'] == 'skipped')]
+          if failed:
+              raise SystemExit('Failed or skipped checks: ' + ', '.join(failed))
+          PYCODE

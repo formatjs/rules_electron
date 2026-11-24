@@ -11,9 +11,9 @@ from tools.ci.source_example_lock import ARTIFACT, MAX_BYTES, fetch_lock
 
 class SourceExampleLockTest(unittest.TestCase):
     def response(self, data):
-        self.uri = "bytestream://formatjs.buildbuddy.io/blobs/" + hashlib.sha256(data).hexdigest() + "/" + str(len(data))
+        self.uri = "bytestream://remote.buildbuddy.io/blobs/" + hashlib.sha256(data).hexdigest() + "/" + str(len(data))
         return {"invocation": [{
-            "commitSha": "a" * 40, "repoUrl": "https://github.com/formatjs/rules_electron.git",
+            "commitSha": "a" * 40, "repoUrl": "https://github.com/perplexityai/rules_electron.git",
             "pattern": "Source-built desktop example", "success": True,
             "invocationStatus": "COMPLETE_INVOCATION_STATUS",
             "artifacts": [{"name": ARTIFACT, "uri": self.uri}],

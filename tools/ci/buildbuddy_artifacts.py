@@ -16,7 +16,7 @@ try:
 except ImportError:
     from smoke_shards import archive_name
 
-API = "https://formatjs.buildbuddy.io/api/v1/"
+API = "https://app.buildbuddy.io/api/v1/"
 ARCHIVE = "electron-cross-smoke.zip"
 MAX_BYTES = 2 * 1024**3
 SMOKE_WORKFLOWS = ("Cross-build Electron Apps", "Source-built desktop example")
@@ -29,7 +29,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 def invocation_id(url):
     parsed = urllib.parse.urlsplit(url)
-    if parsed.scheme != "https" or parsed.netloc != "formatjs.buildbuddy.io":
+    if parsed.scheme != "https" or parsed.netloc != "app.buildbuddy.io":
         raise ValueError("Unexpected BuildBuddy invocation host")
     match = re.fullmatch(r"/invocation/([0-9a-f-]{36})", parsed.path)
     if not match:
@@ -68,7 +68,7 @@ def _verified_invocation(response, expected_sha, require_success):
         raise ValueError("Expected one BuildBuddy invocation")
     invocation = invocations[0]
     if (invocation.get("commitSha") != expected_sha
-            or invocation.get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron"
+            or invocation.get("repoUrl", "").removesuffix(".git") != "https://github.com/perplexityai/rules_electron"
             or invocation.get("pattern") not in SMOKE_WORKFLOWS
             or (require_success and not invocation.get("success"))
             or invocation.get("invocationStatus") != "COMPLETE_INVOCATION_STATUS"):
@@ -89,7 +89,7 @@ def _artifact_uri(response, expected_sha, artifact_name, max_bytes, require_succ
         raise ValueError("Expected one matching BuildBuddy artifact")
     uri = artifacts[0].get("uri", "")
     parsed = urllib.parse.urlsplit(uri)
-    if parsed.scheme != "bytestream" or parsed.netloc not in ("formatjs.buildbuddy.io", "remote.buildbuddy.io"):
+    if parsed.scheme != "bytestream" or parsed.netloc != "remote.buildbuddy.io":
         raise ValueError("Unexpected artifact store")
     match = re.search(r"/blobs/([0-9a-f]{64})/(\d+)$", parsed.path)
     if not match or int(match[2]) > max_bytes:
