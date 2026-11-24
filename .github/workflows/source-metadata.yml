@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       commit_sha:
-        description: Exact formatjs/electron build commit
+        description: Exact perplexityai/electron build commit
         required: true
         type: string
 

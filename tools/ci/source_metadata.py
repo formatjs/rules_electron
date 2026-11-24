@@ -39,7 +39,7 @@ def artifacts(response, sha):
         raise ValueError('Expected one metadata capture')
     invocation = values[0]
     if (not re.fullmatch(r'[0-9a-f]{40}', sha) or invocation.get('commitSha') != sha
-            or invocation.get('repoUrl', '').removesuffix('.git') != 'https://github.com/formatjs/electron'
+            or invocation.get('repoUrl', '').removesuffix('.git') != 'https://github.com/perplexityai/electron'
             or invocation.get('pattern') != 'Capture Linux ARM64 GN metadata'
             or invocation.get('invocationStatus') != 'COMPLETE_INVOCATION_STATUS' or not invocation.get('success')):
         raise ValueError('Expected exact successful overlay metadata capture')

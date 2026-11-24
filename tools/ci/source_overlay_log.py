@@ -550,7 +550,7 @@ if __name__ == "__main__":
     def invocation(identifier):
         with api_request("GetInvocation", {"selector": {"invocation_id": identifier}, "include_child_invocations": True, "include_artifacts": True}, key) as response:
             values = json.load(response).get("invocation", [])
-        if len(values) != 1 or values[0].get("commitSha") != sha or values[0].get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/electron":
+        if len(values) != 1 or values[0].get("commitSha") != sha or values[0].get("repoUrl", "").removesuffix(".git") != "https://github.com/perplexityai/electron":
             raise ValueError("Expected Electron source-overlay repository and commit")
         return values[0]
 

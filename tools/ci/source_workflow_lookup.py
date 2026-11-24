@@ -12,7 +12,7 @@ try:
 except ImportError:
     from buildbuddy_artifacts import NoRedirect
 
-REPOSITORY = "https://github.com/formatjs/electron"
+REPOSITORY = "https://github.com/perplexityai/electron"
 WORKFLOWS = {"Electron source components", "Electron source cross-compile", "Electron BCR consumer"}
 STATES = {"COMPLETE_INVOCATION_STATUS": "complete", "PARTIAL_INVOCATION_STATUS": "running",
           "DISCONNECTED_INVOCATION_STATUS": "disconnected"}

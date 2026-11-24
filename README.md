@@ -8,7 +8,7 @@ and Linux/Windows fuse settings. No electron-builder, package installation, netw
 GN or Ninja runs inside assembly actions. Python runs through a pinned Bazel
 execution toolchain; the target runtime is never executed during assembly.
 
-**Linux x64 source integration verified:** [formatjs/electron](https://github.com/formatjs/electron)
+**Linux x64 source integration verified:** [perplexityai/electron](https://github.com/perplexityai/electron)
 builds a complete Linux x64 runtime. Its [standalone source test](https://formatjs.buildbuddy.io/invocation/6749caca-9b09-486b-92ea-294a92b378ba)
 passed relocation, packed browser/preload/renderer, IPC, pixels and ASAR checks.
 The [desktop example](examples/desktop/README.md) still uses labeled, pinned

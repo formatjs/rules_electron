@@ -37,7 +37,7 @@ on:
         description: Repository for read-only diagnostics
         type: choice
         default: perplexityai/rules_electron
-        options: [perplexityai/rules_electron, formatjs/electron]
+        options: [perplexityai/rules_electron, perplexityai/electron]
 
 permissions:
   contents: read
@@ -56,21 +56,21 @@ jobs:
         with:
           persist-credentials: false
       - name: Read verified BB invocation logs
-        if: inputs.build_repository != 'formatjs/electron'
+        if: inputs.build_repository != 'perplexityai/electron'
         env:
           BUILDBUDDY_API_KEY: ${{ vars.BB_RO_KEY }}
           INVOCATION_URL: ${{ inputs.invocation_url }}
           BUILD_SHA: ${{ inputs.commit_sha }}
         run: python3 tools/ci/buildbuddy_log.py
       - name: Read verified Electron source-overlay logs
-        if: inputs.build_repository == 'formatjs/electron' && !inputs.source_workflows_only
+        if: inputs.build_repository == 'perplexityai/electron' && !inputs.source_workflows_only
         env:
           BUILDBUDDY_API_KEY: ${{ vars.BB_RO_KEY }}
           INVOCATION_URL: ${{ inputs.invocation_url }}
           BUILD_SHA: ${{ inputs.commit_sha }}
         run: python3 tools/ci/source_overlay_log.py
       - name: Find exact Electron source-overlay workflows
-        if: inputs.build_repository == 'formatjs/electron' && inputs.source_workflows_only
+        if: inputs.build_repository == 'perplexityai/electron' && inputs.source_workflows_only
         env:
           BUILDBUDDY_API_KEY: ${{ vars.BB_RO_KEY }}
           BUILD_SHA: ${{ inputs.commit_sha }}

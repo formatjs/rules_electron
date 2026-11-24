@@ -39,7 +39,7 @@ class SourceMetadataTest(unittest.TestCase):
             uri = 'bytestream://remote.buildbuddy.io/blobs/' + hashlib.sha256(data).hexdigest() + '/' + str(len(data))
             self.payloads[uri] = data
             records.append({'name': 'capture/' + name, 'uri': uri})
-        return {'invocation': [{'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/formatjs/electron.git',
+        return {'invocation': [{'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/perplexityai/electron.git',
                                 'pattern': 'Capture Linux ARM64 GN metadata', 'success': True,
                                 'invocationStatus': 'COMPLETE_INVOCATION_STATUS', 'artifacts': records}]}
 
