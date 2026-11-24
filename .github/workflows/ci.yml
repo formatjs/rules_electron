@@ -47,7 +47,7 @@ jobs:
           python3 tools/ci/prefetch_signing_sources.py "$public_distdir"
           bazel test --downloader_config="$public_downloader" --distdir="$public_distdir" --test_output=errors //...
           bazel run --downloader_config="$public_downloader" --distdir="$public_distdir" @buildifier_prebuilt//:buildifier -- -mode=check -r .
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: test-profiles
@@ -95,35 +95,35 @@ jobs:
           python3 "$source_root/tools/ci/platform_inputs_audit.py" "$app_inputs"
           rm "$app_inputs"
           cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: electron-smoke-linux-x64
           path: .ci-artifacts/cross-build/electron-smoke-linux-x64.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: electron-smoke-macos-arm64
           path: .ci-artifacts/cross-build/electron-smoke-macos-arm64.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: electron-smoke-windows-x64
           path: .ci-artifacts/cross-build/electron-smoke-windows-x64.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: electron-smoke-windows-arm64
           path: .ci-artifacts/cross-build/electron-smoke-windows-arm64.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: cross-build-profiles
@@ -215,35 +215,35 @@ jobs:
           stop_source_metrics
           cp bazel-bin/electron-smoke-*.zip "$BUILDBUDDY_ARTIFACTS_DIRECTORY/"
           cp MODULE.bazel.lock "$BUILDBUDDY_ARTIFACTS_DIRECTORY/source-example-MODULE.bazel.lock"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: source-electron-smoke-linux-x64
           path: .ci-artifacts/source-example/electron-smoke-linux-x64.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: source-electron-smoke-macos-arm64
           path: .ci-artifacts/source-example/electron-smoke-macos-arm64.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: source-electron-smoke-windows-x64
           path: .ci-artifacts/source-example/electron-smoke-windows-x64.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: source-electron-smoke-windows-arm64
           path: .ci-artifacts/source-example/electron-smoke-windows-arm64.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: source-example-profiles
