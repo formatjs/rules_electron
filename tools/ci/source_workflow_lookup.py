@@ -12,7 +12,7 @@ try:
 except ImportError:
     from buildbuddy_artifacts import NoRedirect
 
-REPOSITORY = "https://github.com/formatjs/electron"
+REPOSITORY = "https://github.com/perplexityai/electron"
 WORKFLOWS = {"Electron source components", "Electron source cross-compile", "Electron BCR consumer"}
 STATES = {"COMPLETE_INVOCATION_STATUS": "complete", "PARTIAL_INVOCATION_STATUS": "running",
           "DISCONNECTED_INVOCATION_STATUS": "disconnected"}
@@ -53,7 +53,7 @@ def lookup(key, sha):
                 raise ValueError("Repeated lookup page")
             seen.add(token)
             request = urllib.request.Request(
-                "https://formatjs.buildbuddy.io/rpc/BuildBuddyService/SearchInvocation",
+                "https://app.buildbuddy.io/rpc/BuildBuddyService/SearchInvocation",
                 data=json.dumps({"query": {"repo_url": repository, "commit_sha": sha},
                                  "count": 100, "page_token": token}).encode(),
                 headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})

@@ -7,7 +7,7 @@ def _impl(ctx):
         if len(value) != length or any([value[i] not in "0123456789abcdef" for i in range(len(value))]):
             fail("Invalid Electron source pin")
     ctx.download_and_extract(
-        url = "https://github.com/formatjs/electron/archive/" + pin["commit"] + ".tar.gz",
+        url = "https://github.com/perplexityai/electron/archive/" + pin["commit"] + ".tar.gz",
         sha256 = pin["sha256"],
         stripPrefix = "electron-" + pin["commit"],
     )

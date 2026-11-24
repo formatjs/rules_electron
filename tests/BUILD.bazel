@@ -1201,3 +1201,11 @@ py_test(
     srcs = ["source_metadata_test.py"],
     deps = ["//tools/ci:source_metadata"],
 )
+
+py_test(
+    name = "ci_bazel_test",
+    size = "small",
+    srcs = ["ci_bazel_test.py"],
+    data = ["//tools/ci:bazel.sh"],
+    deps = ["@rules_python//python/runfiles"],
+)

@@ -17,7 +17,7 @@ from tools.ci.smoke_status_context import main as resolve_status
 class ArtifactHandoffTest(unittest.TestCase):
     def test_status_command_keeps_credentials_and_unverified_metadata_private(self):
         environment = {'BUILDBUDDY_API_KEY': 'private-read-key', 'BUILD_SHA': 'a' * 40,
-                       'INVOCATION_URL': 'https://formatjs.buildbuddy.io/invocation/12345678-1234-1234-1234-123456789abc'}
+                       'INVOCATION_URL': 'https://app.buildbuddy.io/invocation/12345678-1234-1234-1234-123456789abc'}
         for trusted in (True, False):
             response = self.response()
             response['invocation'][0]['pattern'] = 'Source-built desktop example'
@@ -48,11 +48,11 @@ class ArtifactHandoffTest(unittest.TestCase):
     def response(self):
         return {"invocation": [{
             "commitSha": "a" * 40,
-            "repoUrl": "https://github.com/formatjs/rules_electron.git",
+            "repoUrl": "https://github.com/perplexityai/rules_electron.git",
             "pattern": "Cross-build Electron Apps",
             "success": True,
             "invocationStatus": "COMPLETE_INVOCATION_STATUS",
-            "artifacts": [{"name": "electron-cross-smoke.zip", "uri": "bytestream://formatjs.buildbuddy.io/blobs/" + "b" * 64 + "/12"}],
+            "artifacts": [{"name": "electron-cross-smoke.zip", "uri": "bytestream://remote.buildbuddy.io/blobs/" + "b" * 64 + "/12"}],
         }]}
 
     def test_artifacts_bind_to_successful_repository_commit(self):
@@ -88,7 +88,7 @@ class ArtifactHandoffTest(unittest.TestCase):
         artifact['name'] = 'electron-smoke-linux-x64.zip'
 
         def sized(size):
-            artifact['uri'] = 'bytestream://formatjs.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(size)
+            artifact['uri'] = 'bytestream://remote.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(size)
 
         sized(2333020147)
         self.assertEqual(artifact_uri(response, 'a' * 40, artifact_name=artifact['name'])[2], 2333020147)
@@ -124,7 +124,7 @@ class ArtifactHandoffTest(unittest.TestCase):
             with self.subTest(field=field), self.assertRaises(ValueError):
                 source_profile_uri(invalid, 'a' * 40, 'cross-build-profile.json.gz')
         for uri in ['bytestream://untrusted.example/blobs/' + 'b' * 64 + '/12',
-                    'bytestream://formatjs.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(64 * 1024**2 + 1)]:
+                    'bytestream://remote.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(64 * 1024**2 + 1)]:
             invalid = copy.deepcopy(response)
             invalid['invocation'][0]['artifacts'][0]['uri'] = uri
             with self.subTest(uri=uri), self.assertRaises(ValueError):
@@ -141,21 +141,21 @@ class ArtifactHandoffTest(unittest.TestCase):
             changed['invocation'][0][field] = value
             with self.subTest(field=field), self.assertRaises(ValueError):
                 source_frontend_metrics_uri(changed, 'a' * 40)
-        response['invocation'][0]['artifacts'][0]['uri'] = 'bytestream://formatjs.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(1024**2 + 1)
+        response['invocation'][0]['artifacts'][0]['uri'] = 'bytestream://remote.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(1024**2 + 1)
         with self.assertRaises(ValueError):
             source_frontend_metrics_uri(response, 'a' * 40)
 
     def test_invocation_host_is_fixed_before_using_credentials(self):
         identifier = "12345678-1234-1234-1234-123456789abc"
-        self.assertEqual(invocation_id("https://formatjs.buildbuddy.io/invocation/" + identifier), identifier)
-        for host in ["https://untrusted.example", "http://formatjs.buildbuddy.io", "https://formatjs.buildbuddy.io@untrusted.example"]:
+        self.assertEqual(invocation_id("https://app.buildbuddy.io/invocation/" + identifier), identifier)
+        for host in ["https://untrusted.example", "http://app.buildbuddy.io", "https://formatjs.buildbuddy.io", "https://app.buildbuddy.io@untrusted.example"]:
             with self.subTest(host=host), self.assertRaises(ValueError):
                 invocation_id(host + "/invocation/" + identifier)
 
     def test_each_shard_requires_its_own_bound_artifact(self):
         response = self.response()
         artifacts = response["invocation"][0]["artifacts"]
-        artifacts[:] = [{"name": archive_name(shard), "uri": "bytestream://formatjs.buildbuddy.io/blobs/" + str(index) * 64 + "/12"}
+        artifacts[:] = [{"name": archive_name(shard), "uri": "bytestream://remote.buildbuddy.io/blobs/" + str(index) * 64 + "/12"}
                         for index, shard in enumerate(SHARDS)]
         for index, shard in enumerate(SHARDS):
             self.assertEqual(artifact_uri(response, "a" * 40, artifact_name=archive_name(shard))[1], str(index) * 64)

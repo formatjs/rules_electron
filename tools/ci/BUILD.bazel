@@ -162,3 +162,5 @@ py_binary(
     target_compatible_with = ["@platforms//os:linux"],
     deps = ["@rules_python//python/runfiles"],
 )
+
+exports_files(["bazel.sh"])

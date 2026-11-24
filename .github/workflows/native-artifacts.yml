@@ -1,0 +1,63 @@
+name: Native artifact smoke
+
+on:
+  workflow_call:
+    inputs:
+      artifact_prefix:
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            architecture: x64
+            shard: linux-x64
+            variants: [linux_x86_64]
+          - runner: macos-15
+            architecture: arm64
+            shard: macos-arm64
+            variants: [macos_aarch64]
+          - runner: windows-latest
+            architecture: x64
+            shard: windows-x64
+            variants: [windows_x86_64_gnullvm, windows_x86_64_msvc]
+          - runner: windows-11-arm
+            architecture: arm64
+            shard: windows-arm64
+            variants: [windows_aarch64_gnullvm, windows_aarch64_msvc]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.architecture }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ${{ inputs.artifact_prefix || '' }}electron-smoke-${{ matrix.shard }}
+          path: artifacts
+      - name: Install Linux GUI test libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb libgtk-3-0 libnss3 libasound2 libgbm1 desktop-file-utils shared-mime-info hicolor-icon-theme libglib2.0-bin p7zip-full fuse3
+      - name: Smoke BB-built apps on native host
+        env:
+          SMOKE_VARIANTS: ${{ toJSON(matrix.variants) }}
+          SMOKE_SHARD: ${{ matrix.shard }}
+        run: python -m tools.ci.run_native_smoke
+      - name: Check native signing traversal
+        if: runner.os == 'macOS'
+        run: node --test electron/tools/keychain_sign_test.mjs
+

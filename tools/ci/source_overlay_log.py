@@ -32,7 +32,7 @@ def source_profile_diagnostics(invocation, key):
         uri = matches[0].get("uri", "")
         parsed = urllib.parse.urlsplit(uri)
         digest = re.search(r"/blobs/([0-9a-f]{64})/(\d+)$", parsed.path)
-        if parsed.scheme != "bytestream" or parsed.netloc not in ("formatjs.buildbuddy.io", "remote.buildbuddy.io") or not digest or int(digest[2]) > 64 * 1024**2:
+        if parsed.scheme != "bytestream" or parsed.netloc != "remote.buildbuddy.io" or not digest or int(digest[2]) > 64 * 1024**2:
             raise ValueError("Invalid source profile artifact store or size")
         with api_request("GetFile", {"uri": uri}, key) as response:
             data = response.read(int(digest[2]) + 1)
@@ -338,7 +338,7 @@ def source_test_diagnostics(identifier, key, selected=None):
 
     def test_result(label):
         if label not in results:
-            request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetTarget",
+            request = urllib.request.Request("https://app.buildbuddy.io/rpc/BuildBuddyService/GetTarget",
                                              data=json.dumps({"invocation_id": identifier, "target_label": label}).encode(),
                                              headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
             with urllib.request.build_opener(NoRedirect()).open(request, timeout=120) as response:
@@ -375,7 +375,7 @@ def source_test_diagnostics(identifier, key, selected=None):
                     uri = file.get("uri", "")
                     parsed = urllib.parse.urlsplit(uri)
                     digest = re.search(r"/blobs/([0-9a-f]{64})/(\d+)$", parsed.path)
-                    if parsed.scheme != "bytestream" or parsed.netloc not in ("formatjs.buildbuddy.io", "remote.buildbuddy.io") or not digest or int(digest[2]) > 1024**2:
+                    if parsed.scheme != "bytestream" or parsed.netloc != "remote.buildbuddy.io" or not digest or int(digest[2]) > 1024**2:
                         continue
                     with api_request("GetFile", {"uri": uri}, key) as response:
                         data = response.read(int(digest[2]) + 1)
@@ -423,7 +423,7 @@ def failed_action_diagnostics(identifier, key):
             parts = path.split("/")
             public_headers.update("/".join(parts[index:]) for index in range(len(parts)))
     def executions(lookup, inline=False):
-        request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
+        request = urllib.request.Request("https://app.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
                                          data=json.dumps({"execution_lookup": lookup, "inline_execute_response": inline}).encode(),
                                          headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
         with urllib.request.build_opener(NoRedirect()).open(request, timeout=60) as response:
@@ -454,7 +454,7 @@ def failed_action_diagnostics(identifier, key):
         for digest in digests:
             if not digest or not re.fullmatch(r"[0-9a-f]{64}", digest.get("hash", "")) or not 0 < int(digest.get("sizeBytes", 0)) <= 1024**2:
                 continue
-            uri = "bytestream://formatjs.buildbuddy.io/blobs/" + digest["hash"] + "/" + str(digest["sizeBytes"])
+            uri = "bytestream://remote.buildbuddy.io/blobs/" + digest["hash"] + "/" + str(digest["sizeBytes"])
             with api_request("GetFile", {"uri": uri}, key) as response:
                 content = response.read(1024**2 + 1)
             if len(content) > 1024**2:
@@ -550,7 +550,7 @@ if __name__ == "__main__":
     def invocation(identifier):
         with api_request("GetInvocation", {"selector": {"invocation_id": identifier}, "include_child_invocations": True, "include_artifacts": True}, key) as response:
             values = json.load(response).get("invocation", [])
-        if len(values) != 1 or values[0].get("commitSha") != sha or values[0].get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/electron":
+        if len(values) != 1 or values[0].get("commitSha") != sha or values[0].get("repoUrl", "").removesuffix(".git") != "https://github.com/perplexityai/electron":
             raise ValueError("Expected Electron source-overlay repository and commit")
         return values[0]
 

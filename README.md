@@ -8,7 +8,7 @@ and Linux/Windows fuse settings. No electron-builder, package installation, netw
 GN or Ninja runs inside assembly actions. Python runs through a pinned Bazel
 execution toolchain; the target runtime is never executed during assembly.
 
-**Linux x64 source integration verified:** [formatjs/electron](https://github.com/formatjs/electron)
+**Linux x64 source integration verified:** [perplexityai/electron](https://github.com/perplexityai/electron)
 builds a complete Linux x64 runtime. Its [standalone source test](https://formatjs.buildbuddy.io/invocation/6749caca-9b09-486b-92ea-294a92b378ba)
 passed relocation, packed browser/preload/renderer, IPC, pixels and ASAR checks.
 The [desktop example](examples/desktop/README.md) still uses labeled, pinned
@@ -121,14 +121,16 @@ bazel build --platforms=//platforms:linux_aarch64 //tests:app
 bazel run @buildifier_prebuilt//:buildifier -- -mode=check -r .
 ```
 
-`buildbuddy.yaml` follows
-[rules_formatjs CI](https://github.com/formatjs/rules_formatjs/blob/main/buildbuddy.yaml):
+[BuildBuddy CI](.github/workflows/ci.yml) follows
+[gazelle_rs](https://github.com/perplexityai/gazelle_rs/blob/main/.github/ci/README.md):
 Linux tests on BuildBuddy remote execution, native fixture cross-linking for Linux
 x86_64/arm64, macOS x86_64/arm64 and Windows x86_64 (MinGW fixture). Linux assembly additionally
 cross-builds for both architectures. Cross-linking does not prove native execution
 or Electron support for those platforms. Runtime/build tools remain in target/exec
-configurations respectively. Configure BuildBuddy credentials through CI settings
-or `.bazelrc.user`; credentials do not belong in source.
+configurations respectively. GitHub Actions orchestrates clients; BuildBuddy runs compilation. Native jobs
+execute downloaded artifacts without compiling. See [CI setup](tools/ci/README.md)
+for organization keys and the main-only writer boundary. Local credentials belong
+in ignored `.bazelrc.user`.
 
 The independent desktop workspace declares all seven target/compiler variants.
 BB Linux workers compile all variants and emit four native-host smoke archives; GH hosted Linux x64,

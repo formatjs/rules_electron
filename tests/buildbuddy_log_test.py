@@ -14,11 +14,11 @@ from tools.ci.buildbuddy_log import profile_diagnostics, resource_diagnostics, f
 class BuildBuddyLogTest(unittest.TestCase):
     def test_large_source_archive_metadata_does_not_relax_download_limit(self):
         size = 4 * 1024**3
-        invocation = {'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/formatjs/rules_electron',
+        invocation = {'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/perplexityai/rules_electron',
                       'pattern': 'Source-built desktop example', 'success': True,
                       'invocationStatus': 'COMPLETE_INVOCATION_STATUS',
                       'artifacts': [{'name': 'electron-smoke-linux-x64.zip',
-                                     'uri': 'bytestream://formatjs.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(size)}]}
+                                     'uri': 'bytestream://remote.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(size)}]}
         output = io.StringIO()
         with patch('tools.ci.buildbuddy_log.api_request') as request, redirect_stdout(output):
             profile_diagnostics(invocation, 'private-read-key', 'a' * 40)
@@ -37,8 +37,8 @@ class BuildBuddyLogTest(unittest.TestCase):
         for private in (False, True):
             payload = {**sample, **({'private-command': 'private-secret'} if private else {})}
             data = json.dumps(payload).encode() + b'\n'
-            uri = 'bytestream://formatjs.buildbuddy.io/blobs/' + hashlib.sha256(data).hexdigest() + '/' + str(len(data))
-            invocation = {'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/formatjs/rules_electron',
+            uri = 'bytestream://remote.buildbuddy.io/blobs/' + hashlib.sha256(data).hexdigest() + '/' + str(len(data))
+            invocation = {'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/perplexityai/rules_electron',
                           'pattern': 'Source-built desktop example', 'success': False,
                           'invocationStatus': 'COMPLETE_INVOCATION_STATUS',
                           'artifacts': [{'name': 'source-frontend-metrics.jsonl', 'uri': uri}]}
@@ -54,18 +54,18 @@ class BuildBuddyLogTest(unittest.TestCase):
                 summary = json.loads(output.getvalue().split(': ', 1)[1])
                 self.assertEqual(summary['sampled_cpu_seconds'], 4)
                 self.assertEqual(summary['sampled_peak_rss_bytes'], 4096)
-                invocation['artifacts'][0]['uri'] = 'bytestream://formatjs.buildbuddy.io/blobs/' + '0' * 64 + '/' + str(len(data))
+                invocation['artifacts'][0]['uri'] = 'bytestream://remote.buildbuddy.io/blobs/' + '0' * 64 + '/' + str(len(data))
                 with patch('tools.ci.buildbuddy_log.api_request', return_value=nullcontext(io.BytesIO(data))):
                     with self.assertRaisesRegex(ValueError, 'digest or size mismatch'):
                         frontend_diagnostics(invocation, 'private-read-key', 'a' * 40)
 
     def source_profile(self, data, digest=None):
         invocation = {
-            'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/formatjs/rules_electron',
+            'commitSha': 'a' * 40, 'repoUrl': 'https://github.com/perplexityai/rules_electron',
             'pattern': 'Source-built desktop example', 'success': False,
             'invocationStatus': 'COMPLETE_INVOCATION_STATUS',
             'artifacts': [{'name': 'cross-build-profile.json.gz',
-                           'uri': 'bytestream://formatjs.buildbuddy.io/blobs/'
+                           'uri': 'bytestream://remote.buildbuddy.io/blobs/'
                            + (digest or hashlib.sha256(data).hexdigest()) + '/' + str(len(data))}],
         }
         output = io.StringIO()

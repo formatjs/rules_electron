@@ -38,7 +38,7 @@ def read_log(selector, key):
 
 
 def resource_diagnostics(identifier, key, max_bytes=64 * 1024**2):
-    request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
+    request = urllib.request.Request("https://app.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
                                      data=json.dumps({"execution_lookup": {"invocation_id": identifier}}).encode(),
                                      headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
     with urllib.request.build_opener(NoRedirect()).open(request, timeout=60) as response:
@@ -163,7 +163,7 @@ def profile_diagnostics(invocation, key, sha):
     for child in invocation.get("childInvocations", []):
         with api_request("GetInvocation", {"selector": {"invocation_id": child["invocationId"]}}, key) as response:
             values = json.load(response).get("invocation", [])
-        if len(values) != 1 or values[0].get("commitSha") != sha or values[0].get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron":
+        if len(values) != 1 or values[0].get("commitSha") != sha or values[0].get("repoUrl", "").removesuffix(".git") != "https://github.com/perplexityai/rules_electron":
             raise ValueError("Child invocation does not match this repository and commit")
         value = values[0]
         duration = int(value.get("durationUsec", 0))
@@ -180,10 +180,10 @@ def execution_diagnostics(log, key, expected_sha):
     for identifier in identifiers[:3]:
         with api_request("GetInvocation", {"selector": {"invocation_id": identifier}}, key) as response:
             invocations = json.load(response).get("invocation", [])
-        if len(invocations) != 1 or invocations[0].get("commitSha") != expected_sha or invocations[0].get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron":
+        if len(invocations) != 1 or invocations[0].get("commitSha") != expected_sha or invocations[0].get("repoUrl", "").removesuffix(".git") != "https://github.com/perplexityai/rules_electron":
             continue
         body = {"execution_lookup": {"invocation_id": identifier, "target_label": "//tests:hermetic_execution_test"}, "inline_execute_response": True}
-        request = urllib.request.Request("https://formatjs.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
+        request = urllib.request.Request("https://app.buildbuddy.io/rpc/BuildBuddyService/GetExecution",
                                          data=json.dumps(body).encode(), headers={"Content-Type": "application/json", "x-buildbuddy-api-key": key})
         with urllib.request.build_opener(NoRedirect()).open(request, timeout=60) as response:
             data = json.load(response)
@@ -210,7 +210,7 @@ if __name__ == "__main__":
         raise ValueError("Expected one invocation")
     invocation = invocations[0]
     if (invocation.get("commitSha") != os.environ["BUILD_SHA"]
-            or invocation.get("repoUrl", "").removesuffix(".git") != "https://github.com/formatjs/rules_electron"
+            or invocation.get("repoUrl", "").removesuffix(".git") != "https://github.com/perplexityai/rules_electron"
             or invocation.get("pattern") not in (*SMOKE_WORKFLOWS, "Test Linux assembly", "Benchmark UDIF compression")):
         raise ValueError("Invocation does not match this repository's CI commit")
     tail = read_log(selector, key)

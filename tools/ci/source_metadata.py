@@ -39,7 +39,7 @@ def artifacts(response, sha):
         raise ValueError('Expected one metadata capture')
     invocation = values[0]
     if (not re.fullmatch(r'[0-9a-f]{40}', sha) or invocation.get('commitSha') != sha
-            or invocation.get('repoUrl', '').removesuffix('.git') != 'https://github.com/formatjs/electron'
+            or invocation.get('repoUrl', '').removesuffix('.git') != 'https://github.com/perplexityai/electron'
             or invocation.get('pattern') != 'Capture Linux ARM64 GN metadata'
             or invocation.get('invocationStatus') != 'COMPLETE_INVOCATION_STATUS' or not invocation.get('success')):
         raise ValueError('Expected exact successful overlay metadata capture')
@@ -51,7 +51,7 @@ def artifacts(response, sha):
         uri = matches[0].get('uri', '')
         parsed = urllib.parse.urlsplit(uri)
         digest = re.search(r'/blobs/([0-9a-f]{64})/(\d+)$', parsed.path)
-        if (parsed.scheme != 'bytestream' or parsed.netloc not in ('formatjs.buildbuddy.io', 'remote.buildbuddy.io')
+        if (parsed.scheme != 'bytestream' or parsed.netloc != 'remote.buildbuddy.io'
                 or not digest or int(digest[2]) > limit):
             raise ValueError('Invalid capture artifact store or size')
         result[name] = (uri, digest[1], int(digest[2]))
