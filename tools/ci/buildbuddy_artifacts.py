@@ -19,7 +19,7 @@ except ImportError:
 API = "https://app.buildbuddy.io/api/v1/"
 ARCHIVE = "electron-cross-smoke.zip"
 MAX_BYTES = 2 * 1024**3
-SMOKE_WORKFLOWS = ("Cross-build Electron Apps", "Source-built desktop example")
+SMOKE_WORKFLOWS = ("Cross-build Electron Apps",)
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -39,27 +39,8 @@ def invocation_id(url):
 
 def artifact_uri(response, expected_sha, artifact_name=ARCHIVE, max_bytes=None):
     if max_bytes is None:
-        invocations = response.get('invocation', [])
-        source_linux = (len(invocations) == 1 and invocations[0].get('pattern') == 'Source-built desktop example'
-                        and artifact_name == archive_name('linux-x64'))
-        max_bytes = 3 * 1024**3 if source_linux else MAX_BYTES
+        max_bytes = MAX_BYTES
     return _artifact_uri(response, expected_sha, artifact_name, max_bytes, require_success=True)
-
-
-def source_profile_uri(response, expected_sha, artifact_name):
-    if artifact_name not in ('cross-build-profile.json.gz', 'fixture-profile.json.gz'):
-        raise ValueError('Only source timing profiles allow failed invocations')
-    invocations = response.get('invocation', [])
-    if len(invocations) != 1 or invocations[0].get('pattern') != 'Source-built desktop example':
-        raise ValueError('Expected source workflow timing profile')
-    return _artifact_uri(response, expected_sha, artifact_name, 64 * 1024**2, require_success=False)
-
-
-def source_frontend_metrics_uri(response, expected_sha):
-    invocations = response.get('invocation', [])
-    if len(invocations) != 1 or invocations[0].get('pattern') != 'Source-built desktop example':
-        raise ValueError('Expected source workflow frontend metrics')
-    return _artifact_uri(response, expected_sha, 'source-frontend-metrics.jsonl', 1024**2, require_success=False)
 
 
 def _verified_invocation(response, expected_sha, require_success):
@@ -77,9 +58,8 @@ def _verified_invocation(response, expected_sha, require_success):
 
 
 def smoke_status_context(response, expected_sha):
-    invocation = _verified_invocation(response, expected_sha, require_success=True)
-    return ('Native Electron Smoke (source Linux x64)' if invocation['pattern'] == 'Source-built desktop example'
-            else 'Native Electron Smoke')
+    _verified_invocation(response, expected_sha, require_success=True)
+    return 'Native Electron Smoke'
 
 
 def _artifact_uri(response, expected_sha, artifact_name, max_bytes, require_success):

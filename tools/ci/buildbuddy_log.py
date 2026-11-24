@@ -2,23 +2,18 @@
 
 import json
 import hashlib
-import gzip
-import zlib
 import os
 import re
 import urllib.request
-import urllib.error
 from collections import Counter
 
 try:
-    from .buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id, source_profile_uri, source_frontend_metrics_uri
-    from .profile_summary import decode_profile, recover_source_profile, summarize, summarize_source
-    from .source_frontend_metrics import summarize as summarize_frontend
+    from .buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id
+    from .profile_summary import decode_profile, summarize
     from .smoke_shards import SHARDS, archive_name
 except ImportError:
-    from buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id, source_profile_uri, source_frontend_metrics_uri
-    from profile_summary import decode_profile, recover_source_profile, summarize, summarize_source
-    from source_frontend_metrics import summarize as summarize_frontend
+    from buildbuddy_artifacts import NoRedirect, SMOKE_WORKFLOWS, api_request, artifact_uri, invocation_id
+    from profile_summary import decode_profile, summarize
     from smoke_shards import SHARDS, archive_name
 
 
@@ -61,103 +56,23 @@ def resource_diagnostics(identifier, key, max_bytes=64 * 1024**2):
     }, sort_keys=True))
 
 
-def frontend_diagnostics(invocation, key, sha):
-    uri, digest, size = source_frontend_metrics_uri({'invocation': [invocation]}, sha)
-    try:
-        with api_request('GetFile', {'uri': uri}, key) as response:
-            data = response.read(size + 1)
-    except urllib.error.HTTPError as error:
-        if error.code != 404:
-            raise
-        print('Source frontend metrics unavailable: NOT_FOUND')
-        return
-    if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
-        raise ValueError('Frontend metrics digest or size mismatch')
-    try:
-        summary = summarize_frontend(data)
-    except ValueError:
-        print('Source frontend metrics unavailable: INVALID_METRICS')
-        return
-    print('Verified BB source frontend metrics:', json.dumps(summary, sort_keys=True))
-
-
 def profile_diagnostics(invocation, key, sha):
-    source = invocation.get('pattern') == 'Source-built desktop example'
-    terminal_source = source and invocation.get('invocationStatus') == 'COMPLETE_INVOCATION_STATUS'
-    if terminal_source and any(artifact.get('name', '').rsplit('/', 1)[-1] == 'source-frontend-metrics.jsonl'
-                               for artifact in invocation.get('artifacts', [])):
-        frontend_diagnostics(invocation, key, sha)
     for name in ["cross-build-profile.json.gz", "fixture-profile.json.gz"]:
-        if (not invocation.get('success') and not terminal_source
-                or not any(a.get("name", "").endswith(name) for a in invocation.get("artifacts", []))):
+        if not invocation.get("success") or not any(a.get("name", "").endswith(name) for a in invocation.get("artifacts", [])):
             continue
-        if terminal_source:
-            uri, digest, size = source_profile_uri({'invocation': [invocation]}, sha, name)
-        else:
-            uri, digest, size = artifact_uri({"invocation": [invocation]}, sha, artifact_name=name, max_bytes=64 * 1024**2)
-        try:
-            with api_request("GetFile", {"uri": uri}, key) as response:
-                data = response.read(size + 1)
-        except urllib.error.HTTPError as error:
-            if not terminal_source or error.code != 404:
-                raise
-            print('Source profile unavailable:', json.dumps({'name': name, 'reason': 'NOT_FOUND'}))
-            continue
+        uri, digest, size = artifact_uri({"invocation": [invocation]}, sha,
+                                         artifact_name=name, max_bytes=64 * 1024**2)
+        with api_request("GetFile", {"uri": uri}, key) as response:
+            data = response.read(size + 1)
         if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
             raise ValueError("Profile digest or size mismatch")
-        try:
-            decoded = decode_profile(data)
-        except (EOFError, ValueError, gzip.BadGzipFile) as error:
-            if not terminal_source:
-                raise
-            if isinstance(error, EOFError):
-                reason = 'TRUNCATED_GZIP'
-                try:
-                    summary = summarize_source(recover_source_profile(data), allow_invalid_timings=True)
-                except (ValueError, zlib.error) as recovery_error:
-                    recovery_reason = {
-                        'Profile exceeds expanded size limit': 'EXPANDED_SIZE_LIMIT',
-                        'Invalid source profile timing': 'INVALID_TIMING',
-                        'Source profile timing exceeds limits': 'TIMING_LIMIT',
-                        'Source profile contains no recoverable events': 'NO_EVENTS',
-                        'Invalid source profile prefix': 'INVALID_PREFIX',
-                    }.get(str(recovery_error), 'INVALID_PROFILE')
-                    if isinstance(recovery_error, zlib.error):
-                        recovery_reason = 'INVALID_DEFLATE'
-                    print('Source profile recovery unavailable:', json.dumps({'name': name, 'reason': recovery_reason}))
-                else:
-                    print('Recovered incomplete BB source profile ' + name + ':', json.dumps(summary, sort_keys=True))
-            elif isinstance(error, gzip.BadGzipFile):
-                reason = 'INVALID_GZIP'
-            elif isinstance(error, json.JSONDecodeError):
-                reason = 'INVALID_JSON'
-            elif str(error) == 'Profile exceeds expanded size limit':
-                reason = 'EXPANDED_SIZE_LIMIT'
-            else:
-                reason = 'DECODE_FAILED'
-            print('Source profile unavailable:', json.dumps({'name': name, 'reason': reason, 'compressed_bytes': size}))
-            continue
-        try:
-            summary = (summarize_source if source else summarize)(decoded)
-        except ValueError as error:
-            if not terminal_source:
-                raise
-            reason = {
-                'Invalid source profile timing': 'INVALID_TIMING',
-                'Source profile timing exceeds limits': 'TIMING_LIMIT',
-                'Source profile span exceeds limits': 'SPAN_LIMIT',
-                'Profile contains no complete timing events': 'NO_EVENTS',
-            }.get(str(error), 'INVALID_PROFILE')
-            print('Source profile unavailable:', json.dumps({'name': name, 'reason': reason}))
-            continue
-        print("Verified BB profile " + name + ":", json.dumps(summary, sort_keys=True))
+        print("Verified BB profile " + name + ":", json.dumps(summarize(decode_profile(data)), sort_keys=True))
     for artifact in invocation.get("artifacts", []):
         name = artifact.get("name", "").rsplit("/", 1)[-1]
         if (name in ["electron-cross-smoke.zip"] + [archive_name(shard) for shard in SHARDS]
                 and invocation.get("success") and invocation.get("invocationStatus") == "COMPLETE_INVOCATION_STATUS"):
-            # Metadata inspection does not download or extract the archive.
-            limit = 16 * 1024**3 if source else 2 * 1024**3
-            _, digest, size = artifact_uri({"invocation": [invocation]}, sha, artifact_name=name, max_bytes=limit)
+            # Inspect verified metadata without downloading archives.
+            _, digest, size = artifact_uri({"invocation": [invocation]}, sha, artifact_name=name)
             print("Smoke archive digest:", json.dumps({"name": name, "sha256": digest, "size": size}, sort_keys=True))
     builds = []
     for child in invocation.get("childInvocations", []):

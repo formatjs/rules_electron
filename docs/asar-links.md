@@ -22,18 +22,9 @@ through aliases to unpacked files still depend on the runtime's sidecar path
 handling; those aliases are not materialized in the sidecar. Input-tree filesystem
 symlinks remain a separate mapping concern.
 
-The source overlay's [canonical resolver patch](https://github.com/formatjs/electron/commit/0a54b87346be709f43bb70a8b80209def644ce2c)
-addresses direct unpacked aliases, chained directory/file links, root aliases and
-canonical extraction cache keys. Its focused resolver test passed in the
-[BB consumer preflight](https://formatjs.buildbuddy.io/invocation/0133feee-c4e4-4e99-8560-c5cca00d3180).
-The [6c5ad31 consumer preflight](https://formatjs.buildbuddy.io/invocation/2ad91d1f-91e3-4950-a76a-65a631b812cd)
-also passed `asar_reader_test`, compiling the real `Archive`, `asar_util` and
-temporary-file implementation. It checks unpacked alias reads/writes, shared
-packed-file extraction identity, final-link stats, directory enumeration and
-cycle rejection. Later source-runtime smoke below covers Node filesystem behavior.
-The bootstrap runtime used by native examples
-does not contain this patch. Use the source runtime for its direct unpacked alias
-support.
+`rules_electron` does not patch the prebuilt runtime's ASAR reader. Use canonical
+paths for direct filesystem access to unpacked files; runtime-specific alias
+behavior is outside the packaging contract.
 
 The example exercises linked main entry, packed directory reads, chained file
 links and an unpacked native addon resolved through a file link.
@@ -43,10 +34,3 @@ links and an unpacked native addon resolved through a file link.
 and [native smoke](https://github.com/formatjs/rules_electron/actions/runs/42461286829)
 passed. Native coverage includes Linux x64, macOS ARM64 and Windows x64/ARM64
 with GNU LLVM/MSVC, plus existing installer/update and integrity checks.
-
-The [Linux source distribution smoke](https://formatjs.buildbuddy.io/invocation/6749caca-9b09-486b-92ea-294a92b378ba)
-passed ASAR aliases, CommonJS identity and unpacked writes after relocation.
-The [source desktop handoff](https://github.com/formatjs/rules_electron/actions/runs/42790155958)
-also passed Linux x64 packaging, linked entry/native-addon reads and installer/
-updater launch. Other variants in that run use bootstrap runtimes; complete source
-profiles for other triples remain open.

@@ -9,7 +9,7 @@ electron-builder replacement.
 | Target selection | Seven example OS/CPU/compiler variants; Linux x64 source desktop/package/update smoke | Source runtimes for other triples |
 | Main/preload/renderer inputs | Explicit files and generated directories | Rich package-provider adapters |
 | Runtime dependencies | Integrity-pinned npm v3 imports, workspace/generated providers and nested layouts; Node-API and Node/V8 addons with explicit ABI SDKs; Linux x64 source SDK | Provider-specific adapters; source SDKs for other targets |
-| ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity; complete standalone Linux source-runtime alias/sidecar/cache smoke | Complete source profiles for other triples |
+| ASAR | Deterministic standalone/main archives, virtual links and linked entry points, minimatch unpack patterns, hashes and unpacked sidecars; multi-archive macOS plist/Windows PE integrity | Broader runtime compatibility fixtures |
 | Extra resources/files | Declared file/tree mappings outside ASAR; Linux/macOS resource links; separate generated-tree link metadata through filtering, ASAR, plain apps, extra resources/files; native generated ASAR/plain-app/resource/extra-file aliases pass | Windows filesystem links |
 | File selection | Declared file/tree mappings; ordered minimatch filters; root tree mounts; explicit/tracked empty directories, including prepackaged imports | — |
 | Manifest metadata | Deep-merge overlays, source/generated dependency-manifest version rewrites, top-level field/script removal; shared app/update identity | Provider-specific metadata adapters |
@@ -20,7 +20,7 @@ electron-builder replacement.
 | Windows app | Renamed executable, current-process Node-API/Node/V8 exports and source-built delay loading; four compiler/CPU variants; PE branding/icons/ASAR integrity; explicit Authenticode release command | Production signing trust and release identity validation |
 | App version/build number | Public SemVer manifest override/validation; explicit build number/version; macOS app/helper, Windows PE/NSIS and DEB iteration | — |
 | OS registration | Linux desktop/MIME declarations and declared file-type PNG/SVG icons (native PNG install/update/purge checks pass); macOS URL/document types, document icons and native LaunchServices delivery; user/machine Windows URI schemes, Open With/Default Apps file handlers, document ICO paths, extra file verbs and shortcut AppUserModelID (native x64/ARM64 MSVC installer lifecycle passes) | Richer document metadata |
-| Installers | Linux DEB for amd64/arm64; native RPM v4 writer and native Fedora install/update/remove checks; source-built AppImages and embedded updater feeds for both Linux CPUs; user/machine Windows NSIS with declared tools, explicit multilingual license selection/acceptance, independent installer/uninstaller icons and owned-file uninstall; native MSIX writer with signed bootstrap Electron install/upgrade/remove on both Windows CPUs; source-built HFS+ UDIF macOS disk images with declared Finder layout/backgrounds, multilingual TEXT/RTF GUI consent and declared text companions for CLI consent, native alias and rendered-pixel checks | Live DMG Developer ID/TSA/Apple trust; production MSIX signing/OS integration and other packaging |
+| Installers | Linux DEB for amd64/arm64; native RPM v4 writer and native Fedora install/update/remove checks; source-built AppImages and embedded updater feeds for both Linux CPUs; user/machine Windows NSIS with declared tools, explicit multilingual license selection/acceptance, independent installer/uninstaller icons and owned-file uninstall; native MSIX writer with signed prebuilt Electron install/upgrade/remove on both Windows CPUs; source-built HFS+ UDIF macOS disk images with declared Finder layout/backgrounds, multilingual TEXT/RTF GUI consent and declared text companions for CLI consent, native alias and rendered-pixel checks | Live DMG Developer ID/TSA/Apple trust; production MSIX signing/OS integration and other packaging |
 | Prepackaged release stages | Public immutable app import for archives/installers; layout, CPU, packaged manifest and macOS identity validation; seven cross-build variants and four native hosts pass | Release signing APIs and signature trust policy |
 | Distribution archives | Public ZIP/tar/tar.gz/tar.xz/tar.bz2/tar.lz/tar.7z/7z rule, declared compressors, executable modes and relative symlinks; native macOS ZIP and Linux x64 tar.gz/tar.lz/tar.7z/7z launch | — |
 | Windows portable executables | Declared NSIS/7zip tools, exact argument/environment forwarding, child exit status and junction-safe temporary cleanup; both compiler variants pass on native x64/ARM64 | — |
@@ -71,10 +71,10 @@ and [all four native hosts](https://github.com/formatjs/rules_electron/actions/r
 including both Windows Packaging API gates. Fixture remains a minimal PE app.
 Signed minimal fixtures also passed native trust/tamper rejection and
 install/helper launch/removal on both Windows CPUs; see [signing proof](signing.md).
-The [full-app MSIX gate](msix.md) subsequently passed bootstrap Electron
+The [full-app MSIX gate](msix.md) subsequently passed prebuilt Electron
 install/launch/upgrade/removal on both Windows CPUs, with package identity,
 sandboxed renderer, native addon/helper and integrity metadata checks. The full
-source runtime and production signing remain unverified. App Installer
+production signing remains unverified. App Installer
 package/bundle metadata, publication and native update gates are tracked in
 [App Installer updates](appinstaller.md). Empty directory leaves and symlinks fail
 explicitly. See [MSIX](msix.md).
@@ -112,7 +112,4 @@ update differential cache seeding across users remain open. See
 The [Node/V8 addon SDK](native-addons.md) now passes actual shared backing-store
 ownership and byte checks in the main thread and a worker on all four native
 hosts. All seven variants cross-build with Electron's matching source-built
-libc++ ABI. The Linux source SDK also passes those checks in the standalone
-source runtime after relocation and renaming. The [source desktop handoff](https://github.com/formatjs/rules_electron/actions/runs/42790155958)
-also passes Linux x64 desktop, packages and updater launch with that SDK. Source
-runtimes/SDKs for other platforms remain open.
+libc++ ABI. Electron runtimes remain pinned prebuilts.

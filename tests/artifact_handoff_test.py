@@ -8,7 +8,7 @@ from contextlib import redirect_stdout, redirect_stderr
 from unittest.mock import patch
 from zipfile import ZipFile, ZipInfo
 
-from tools.ci.buildbuddy_artifacts import artifact_uri, invocation_id, source_profile_uri, source_frontend_metrics_uri, smoke_status_context
+from tools.ci.buildbuddy_artifacts import artifact_uri, invocation_id, smoke_status_context
 from tools.ci.run_native_smoke import extract_variant
 from tools.ci.smoke_shards import SHARDS, archive_name
 from tools.ci.smoke_status_context import main as resolve_status
@@ -20,7 +20,6 @@ class ArtifactHandoffTest(unittest.TestCase):
                        'INVOCATION_URL': 'https://app.buildbuddy.io/invocation/12345678-1234-1234-1234-123456789abc'}
         for trusted in (True, False):
             response = self.response()
-            response['invocation'][0]['pattern'] = 'Source-built desktop example'
             if not trusted:
                 response['invocation'][0]['repoUrl'] = 'https://private.example/secret'
             output, errors = io.StringIO(), io.StringIO()
@@ -30,16 +29,14 @@ class ArtifactHandoffTest(unittest.TestCase):
                     self.assertEqual(resolve_status(), 0 if trusted else 1)
             request.assert_called_once_with('GetInvocation', {'selector': {
                 'invocation_id': '12345678-1234-1234-1234-123456789abc'}}, 'private-read-key')
-            self.assertEqual(output.getvalue(), 'Native Electron Smoke (source Linux x64)\n' if trusted else '')
+            self.assertEqual(output.getvalue(), 'Native Electron Smoke\n' if trusted else '')
             self.assertEqual(errors.getvalue(), '' if trusted else 'SMOKE_STATUS_CONTEXT_FAILED\n')
 
     def test_status_context_uses_verified_workflow_not_dispatch_event(self):
         response = self.response()
         self.assertEqual(smoke_status_context(response, 'a' * 40), 'Native Electron Smoke')
-        response['invocation'][0]['pattern'] = 'Source-built desktop example'
-        self.assertEqual(smoke_status_context(response, 'a' * 40), 'Native Electron Smoke (source Linux x64)')
         for field, value in [('success', False), ('commitSha', 'c' * 40), ('repoUrl', 'https://example.invalid/private'),
-                             ('invocationStatus', 'PARTIAL_INVOCATION_STATUS'), ('pattern', 'Private workflow')]:
+                             ('invocationStatus', 'PARTIAL_INVOCATION_STATUS'), ('pattern', 'Private workflow'), ('pattern', 'Source-built desktop example')]:
             invalid = copy.deepcopy(response)
             invalid['invocation'][0][field] = value
             with self.subTest(field=field), self.assertRaises(ValueError):
@@ -68,82 +65,19 @@ class ArtifactHandoffTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             artifact_uri(response, "a" * 40)
 
-    def test_source_workflow_artifacts_keep_exact_commit_and_completion_checks(self):
+    def test_prebuilt_shards_share_the_bounded_download_limit(self):
         response = self.response()
-        response["invocation"][0]["pattern"] = "Source-built desktop example"
-        self.assertEqual(artifact_uri(response, "a" * 40)[1:], ("b" * 64, 12))
-        for field, value in [("commitSha", "c" * 40), ("success", False),
-                             ("repoUrl", "https://github.com/example/other"),
-                             ("invocationStatus", "PARTIAL_INVOCATION_STATUS")]:
-            invalid = copy.deepcopy(response)
-            invalid["invocation"][0][field] = value
-            with self.subTest(field=field), self.assertRaises(ValueError):
-                artifact_uri(invalid, "a" * 40)
-
-    def test_source_linux_transport_cap_is_bounded_and_not_shared_by_other_shards(self):
-        response = self.response()
-        invocation = response['invocation'][0]
-        invocation['pattern'] = 'Source-built desktop example'
-        artifact = invocation['artifacts'][0]
-        artifact['name'] = 'electron-smoke-linux-x64.zip'
-
-        def sized(size):
-            artifact['uri'] = 'bytestream://remote.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(size)
-
-        sized(2333020147)
-        self.assertEqual(artifact_uri(response, 'a' * 40, artifact_name=artifact['name'])[2], 2333020147)
-        sized(3 * 1024**3)
-        self.assertEqual(artifact_uri(response, 'a' * 40, artifact_name=artifact['name'])[2], 3 * 1024**3)
-        sized(3 * 1024**3 + 1)
-        with self.assertRaises(ValueError):
-            artifact_uri(response, 'a' * 40, artifact_name=artifact['name'])
-        sized(2 * 1024**3 + 1)
-        for name in ('electron-smoke-macos-arm64.zip', 'electron-smoke-windows-x64.zip', 'electron-cross-smoke.zip'):
-            artifact['name'] = name
-            with self.subTest(name=name), self.assertRaises(ValueError):
-                artifact_uri(response, 'a' * 40, artifact_name=name)
-        artifact['name'] = 'electron-smoke-linux-x64.zip'
-        invocation['pattern'] = 'Cross-build Electron Apps'
-        with self.assertRaises(ValueError):
-            artifact_uri(response, 'a' * 40, artifact_name=artifact['name'])
-
-    def test_failed_source_profile_is_data_only_and_still_bound_to_terminal_commit(self):
-        response = self.response()
-        invocation = response['invocation'][0]
-        invocation.update(pattern='Source-built desktop example', success=False)
-        invocation['artifacts'][0]['name'] = 'cross-build-profile.json.gz'
-        self.assertEqual(source_profile_uri(response, 'a' * 40, 'cross-build-profile.json.gz')[1:], ('b' * 64, 12))
-        with self.assertRaises(ValueError):
-            artifact_uri(response, 'a' * 40, artifact_name='cross-build-profile.json.gz')
-        with self.assertRaises(ValueError):
-            source_profile_uri(response, 'a' * 40, 'electron-cross-smoke.zip')
-        for field, value in [('commitSha', 'c' * 40), ('repoUrl', 'https://github.com/example/private'),
-                             ('pattern', 'Cross-build Electron Apps'), ('invocationStatus', 'PARTIAL_INVOCATION_STATUS')]:
-            invalid = copy.deepcopy(response)
-            invalid['invocation'][0][field] = value
-            with self.subTest(field=field), self.assertRaises(ValueError):
-                source_profile_uri(invalid, 'a' * 40, 'cross-build-profile.json.gz')
-        for uri in ['bytestream://untrusted.example/blobs/' + 'b' * 64 + '/12',
-                    'bytestream://remote.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(64 * 1024**2 + 1)]:
-            invalid = copy.deepcopy(response)
-            invalid['invocation'][0]['artifacts'][0]['uri'] = uri
-            with self.subTest(uri=uri), self.assertRaises(ValueError):
-                source_profile_uri(invalid, 'a' * 40, 'cross-build-profile.json.gz')
-
-    def test_frontend_metrics_allow_only_exact_terminal_source_invocation(self):
-        response = self.response()
-        response['invocation'][0].update(pattern='Source-built desktop example', success=False)
-        response['invocation'][0]['artifacts'][0]['name'] = 'source-frontend-metrics.jsonl'
-        self.assertEqual(source_frontend_metrics_uri(response, 'a' * 40)[1:], ('b' * 64, 12))
-        for field, value in [('commitSha', 'c' * 40), ('repoUrl', 'https://example.invalid/private'),
-                             ('pattern', 'Cross-build Electron Apps'), ('invocationStatus', 'PARTIAL_INVOCATION_STATUS')]:
-            changed = copy.deepcopy(response)
-            changed['invocation'][0][field] = value
-            with self.subTest(field=field), self.assertRaises(ValueError):
-                source_frontend_metrics_uri(changed, 'a' * 40)
-        response['invocation'][0]['artifacts'][0]['uri'] = 'bytestream://remote.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(1024**2 + 1)
-        with self.assertRaises(ValueError):
-            source_frontend_metrics_uri(response, 'a' * 40)
+        artifact = response['invocation'][0]['artifacts'][0]
+        for shard in SHARDS:
+            artifact['name'] = archive_name(shard)
+            for size in (2 * 1024**3, 2 * 1024**3 + 1):
+                artifact['uri'] = 'bytestream://remote.buildbuddy.io/blobs/' + 'b' * 64 + '/' + str(size)
+                with self.subTest(shard=shard, size=size):
+                    if size <= 2 * 1024**3:
+                        self.assertEqual(artifact_uri(response, 'a' * 40, artifact_name=artifact['name'])[2], size)
+                    else:
+                        with self.assertRaisesRegex(ValueError, 'Invalid artifact digest or size'):
+                            artifact_uri(response, 'a' * 40, artifact_name=artifact['name'])
 
     def test_invocation_host_is_fixed_before_using_credentials(self):
         identifier = "12345678-1234-1234-1234-123456789abc"

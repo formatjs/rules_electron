@@ -12,8 +12,6 @@ py_library(
     visibility = ["//tests:__pkg__"],
 )
 
-exports_files(["source_runtime_archive.bzl"])
-
 py_library(
     name = "appinstaller_server",
     srcs = ["windows_appinstaller_server.py"],
@@ -28,63 +26,7 @@ py_library(
         ":artifacts",
         ":profiles",
         ":smoke_shards",
-        ":source_frontend_metrics",
     ],
-)
-
-py_library(
-    name = "source_example_lock",
-    srcs = ["source_example_lock.py"],
-    visibility = ["//tests:__pkg__"],
-    deps = [":artifacts"],
-)
-
-py_library(
-    name = "source_metadata",
-    srcs = ["source_metadata.py"],
-    visibility = ["//tests:__pkg__"],
-    deps = [":artifacts"],
-)
-
-py_library(
-    name = "source_registry",
-    srcs = ["stage_source_registry.py"],
-    data = [
-        "electron_source_pin.json",
-        "@electron_source_overlay//:registry_sources",
-    ],
-    visibility = ["//tests:__pkg__"],
-    deps = ["@rules_python//python/runfiles"],
-)
-
-py_binary(
-    name = "stage_source_registry",
-    srcs = ["stage_source_registry.py"],
-    data = [
-        "electron_source_pin.json",
-        "@electron_source_overlay//:registry_sources",
-    ],
-    tags = ["manual"],
-    deps = ["@rules_python//python/runfiles"],
-)
-
-py_library(
-    name = "source_runtime_diagnostics",
-    srcs = ["source_runtime_diagnostics.py"],
-    visibility = ["//tests:__pkg__"],
-)
-
-py_library(
-    name = "source_workflow_lookup",
-    srcs = ["source_workflow_lookup.py"],
-    visibility = ["//tests:__pkg__"],
-    deps = [":artifacts"],
-)
-
-py_library(
-    name = "source_link_diagnostics",
-    srcs = ["source_link_diagnostics.py"],
-    visibility = ["//tests:__pkg__"],
 )
 
 py_library(
@@ -134,20 +76,8 @@ py_library(
 )
 
 py_library(
-    name = "source_headers_diagnostics",
-    srcs = ["source_headers_diagnostics.py"],
-    visibility = ["//tests:__pkg__"],
-)
-
-py_library(
     name = "execution_diagnostics",
     srcs = ["execution_diagnostics.py"],
-    visibility = ["//tests:__pkg__"],
-)
-
-py_library(
-    name = "source_frontend_metrics",
-    srcs = ["source_frontend_metrics.py"],
     visibility = ["//tests:__pkg__"],
 )
 
